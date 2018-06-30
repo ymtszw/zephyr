@@ -52,4 +52,4 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.text ""
+    Html.text "Hi"
