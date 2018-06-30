@@ -1,0 +1,10 @@
+{
+  "name": "zephyr",
+  "version": "1.0.0",
+  "description": "Zen Feed UI",
+  "main": "index.js",
+  "repository": "https://github.com/ymtszw/zephyr.git",
+  "author": "ymtszw",
+  "license": "BSD-3-Clause",
+  "private": false
+}
