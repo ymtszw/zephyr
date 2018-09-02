@@ -1,21 +1,25 @@
 module Main exposing (main)
 
+import Browser
 import Html
+import Json.Decode
 
 
-main : Program Never Model Msg
+main : Program Json.Decode.Value Model Msg
 main =
-    Html.program
+    Browser.application
         { init = init
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
+        , onUrlRequest = \_ -> NoOp
+        , onUrlChange = \_ -> NoOp
         }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( emptyModel, Cmd.none )
+init : Json.Decode.Value -> url -> key -> ( Model, Cmd Msg )
+init _ _ _ =
+    ( {}, Cmd.none )
 
 
 
@@ -23,11 +27,6 @@ init =
 
 
 type alias Model =
-    {}
-
-
-emptyModel : Model
-emptyModel =
     {}
 
 
@@ -40,16 +39,16 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        NoOp ->
-            ( model, Cmd.none )
+update _ model =
+    ( model, Cmd.none )
 
 
 
 -- VIEW
 
 
-view : Model -> Html.Html Msg
-view model =
-    Html.text "Hi"
+view : Model -> Browser.Document Msg
+view _ =
+    { title = "Zephyr"
+    , body = [ Html.text "Hi" ]
+    }
