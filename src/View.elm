@@ -78,7 +78,7 @@ mediaEl : Media -> Element Msg
 mediaEl media =
     case media of
         Image url ->
-            El.image [ El.explain Debug.todo, El.width El.fill ]
+            El.image [ El.width El.fill ]
                 { src = Url.toString url, description = "Welcome image" }
 
         Movie _ ->

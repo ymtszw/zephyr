@@ -5,7 +5,6 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
 import Data.Column as Column exposing (Column)
 import Data.Types exposing (Model, Msg(..))
-import Debug exposing (log)
 import Html
 import Json.Decode as D
 import Task
