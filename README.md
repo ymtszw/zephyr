@@ -9,6 +9,12 @@ Elm 0.19 exploration app.
 - `make`
 - Open http://localhot:8000
 
+### Release
+
+- Remove `Debug` module usages
+- `make release`
+- `git push origin master`
+
 ## In Windows
 
 With this project, I've explored capability of Elm development in Windows.

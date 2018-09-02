@@ -4,7 +4,8 @@ module Data.Types exposing (Model, Msg(..))
 
 
 type alias Model =
-    {}
+    { testKey : String
+    }
 
 
 type Msg

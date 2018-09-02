@@ -1,15 +1,15 @@
 module View exposing (body)
 
 import Data.Types exposing (Model, Msg)
-import Element as E
+import Element as El
 import Html
 
 
 body : Model -> Html.Html Msg
 body m =
-    E.layout [] (bodyElement m)
+    El.layout [] (bodyElement m)
 
 
-bodyElement : Model -> E.Element Msg
-bodyElement _ =
-    E.text "Hi"
+bodyElement : Model -> El.Element Msg
+bodyElement { testKey } =
+    El.text testKey

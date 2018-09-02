@@ -20,13 +20,18 @@ main =
 
 
 init : D.Value -> url -> key -> ( Model, Cmd Msg )
-init v _ _ =
-    let
-        _ =
-            Debug.log "decodedFlag" <|
-                D.decodeValue (D.dict D.string) v
-    in
-    ( {}, Cmd.none )
+init flags _ _ =
+    case D.decodeValue flagsDecoder flags of
+        Ok testKey ->
+            ( Model testKey, Cmd.none )
+
+        Err error ->
+            ( Model (D.errorToString error), Cmd.none )
+
+
+flagsDecoder : D.Decoder String
+flagsDecoder =
+    D.field "testKey" D.string
 
 
 
