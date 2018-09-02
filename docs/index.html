@@ -1,17 +1,15 @@
 <!DOCTYPE HTML>
 <html>
 <head>
+  <script type="text/javascript" src="//localhost:35729/livereload.js?snipver=1" async="" defer=""></script>
   <meta charset="UTF-8">
   <title>Main</title>
   <script src="zephyr.js" charset="utf-8"></script>
-</head>
-<body>
   <script>
     // This function is the world where flags are successfully retrieved from IndexedDB;
     // init Elm App and register port functions
-    function withFlags(flags) {
-      console.log(flags)
-      const app = Elm.Main.init({ flags: flags })
+    function withFlags(fromDb) {
+      const app = Elm.Main.init({ flags: fromDb })
 
       // Impl ports
     }
@@ -34,9 +32,12 @@
       store.transaction.oncomplete = (event) => { // Called after DB creation
         newDb.transaction("flags", "readwrite")
              .objectStore("flags")
-             .add({ id: "primary", testKey: "testValue" })
+             .add({ id: "primary", columns: [] })
       }
     }
     openRequest.onsuccess = (event) => withIndexedDb(event.target.result) // Called after onupgradeneeded finished
   </script>
+</head>
+<body>
+  <!-- Entire body will be replaced by Elm -->
 </body>
