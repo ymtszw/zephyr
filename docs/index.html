@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Main</title>
+  <script src="zephyr.js" charset="utf-8"></script>
+</head>
+<body>
+  <script>
+    // This function is the world where flags are successfully retrieved from IndexedDB;
+    // init Elm App and register port functions
+    function withFlags(flags) {
+      console.log(flags)
+      const app = Elm.Main.init({ flags: flags })
+
+      // Impl ports
+    }
+
+    function withIndexedDb(db) {
+      db.transaction("flags")
+        .objectStore("flags")
+        .get("primary")
+        .onsuccess = (event) => withFlags(event.target.result)
+      db.onerror = (event) => alert("Failed to retrieve flags from IndexedDB! Refuse to initiate Elm App.")
+    }
+
+    // Body of actual init procedure; init IndexedDB while registering callbacks
+    const openRequest = indexedDB.open("ZephyrDB")
+    openRequest.onerror = (event) => alert("IndexedDB cannot be opened!")
+    openRequest.onupgradeneeded = (event) => { // Also called on DB creation
+      const newDb = event.target.result
+      const store = newDb.createObjectStore("flags", { keyPath: "id" })
+      store.createIndex("id", "id", { unique: true })
+      store.transaction.oncomplete = (event) => { // Called after DB creation
+        newDb.transaction("flags", "readwrite")
+             .objectStore("flags")
+             .add({ id: "primary", testKey: "testValue" })
+      }
+    }
+    openRequest.onsuccess = (event) => withIndexedDb(event.target.result) // Called after onupgradeneeded finished
+  </script>
+</body>

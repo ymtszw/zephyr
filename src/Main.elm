@@ -2,10 +2,10 @@ module Main exposing (main)
 
 import Browser
 import Html
-import Json.Decode
+import Json.Decode as D
 
 
-main : Program Json.Decode.Value Model Msg
+main : Program D.Value Model Msg
 main =
     Browser.application
         { init = init
@@ -17,8 +17,13 @@ main =
         }
 
 
-init : Json.Decode.Value -> url -> key -> ( Model, Cmd Msg )
-init _ _ _ =
+init : D.Value -> url -> key -> ( Model, Cmd Msg )
+init v _ _ =
+    let
+        _ =
+            Debug.log "decodedFlag" <|
+                D.decodeValue (D.dict D.string) v
+    in
     ( {}, Cmd.none )
 
 
