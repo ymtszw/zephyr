@@ -1,8 +1,17 @@
-# zephyr
+# Zephyr
 
-(TBD)
+Elm 0.19 exploration app.
 
-Atom on WindowsでElm開発が行えるかどうか試すべく、いろいろ検証しながら環境構築した。
-詳細は以下のScrapboxを参照。結論としては問題なく開発できる。
+## Development
 
-[Elm development on Windows with Atom - ymtszw](https://scrapbox.io/ymtszw/Elm_development_on_Windows_with_Atom)
+- Globally install Elm 0.19 platform
+- Globally Install [elm-live](https://github.com/wking-io/elm-live)
+- `make`
+- Open http://localhot:8000
+
+## In Windows
+
+With this project, I've explored capability of Elm development in Windows.
+In short, it IS capable, with the help of WSL.
+
+[Elm development on Windows with Atom - ymtszw](https://scrapbox.io/ymtszw/Elm_development_on_Windows_with_Atom) (in Japanese)

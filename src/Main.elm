@@ -1,8 +1,10 @@
 module Main exposing (main)
 
 import Browser
+import Data.Types exposing (Model, Msg(..))
 import Html
 import Json.Decode as D
+import View
 
 
 main : Program D.Value Model Msg
@@ -28,19 +30,7 @@ init v _ _ =
 
 
 
--- MODEL
-
-
-type alias Model =
-    {}
-
-
-
 -- UPDATE
-
-
-type Msg
-    = NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -53,7 +43,7 @@ update _ model =
 
 
 view : Model -> Browser.Document Msg
-view _ =
+view m =
     { title = "Zephyr"
-    , body = [ Html.text "Hi" ]
+    , body = [ View.body m ]
     }
