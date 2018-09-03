@@ -5,19 +5,22 @@ import Json.Decode as D exposing (Decoder)
 
 
 type alias Column =
-    { items : List Item
+    { id : String
+    , items : List Item
     }
 
 
 decoder : Decoder Column
 decoder =
-    D.map Column
+    D.map2 Column
+        (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
 
 
-welcome : Column
-welcome =
-    { items =
+welcome : String -> Column
+welcome id =
+    { id = id
+    , items =
         [ Item.welcome
         , Item.textOnly "Text only message is also possible!"
         , Item.textOnly "Design is obviously inspired by Tweetdeck. Scrollbar style is only applied in webkit-family browsers."

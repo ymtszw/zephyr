@@ -1,8 +1,9 @@
 module View exposing (body)
 
+import Array exposing (Array)
 import Data.Column exposing (Column)
 import Data.Item exposing (Item, Media(..))
-import Data.Types exposing (Model, Msg)
+import Data.Types exposing (Model, Msg(..))
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
@@ -39,17 +40,19 @@ sidebarEl { columns, clientHeight } =
         (sidebarItemsEl columns)
 
 
-sidebarItemsEl : List Column -> Element Msg
+sidebarItemsEl : Array Column -> Element Msg
 sidebarItemsEl columns =
     columns
-        |> List.map sidebarItemEl
-        |> (\items -> items ++ [ addColumnButtonEl ])
-        |> El.column [ El.width El.fill ]
+        |> Array.indexedMap sidebarItemEl
+        |> Array.push ( "addColumnButton", addColumnButtonEl )
+        |> Array.toList
+        |> Element.Keyed.column [ El.width El.fill ]
 
 
-sidebarItemEl : Column -> Element Msg
-sidebarItemEl _ =
-    El.el [ El.width El.fill, El.padding 5 ] <|
+sidebarItemEl : Int -> Column -> ( String, Element Msg )
+sidebarItemEl index { id } =
+    ( "sidebarButton_" ++ id
+    , El.el [ El.width El.fill, El.padding 5 ] <|
         Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 10
@@ -59,7 +62,8 @@ sidebarItemEl _ =
             , BD.color oneDarkNote
             , BD.rounded 10
             ]
-            { onPress = Nothing, label = El.text "×" }
+            { onPress = Just (DelColumn index), label = El.text "×" }
+    )
 
 
 addColumnButtonEl : Element Msg
@@ -75,22 +79,23 @@ addColumnButtonEl =
             , BD.color oneDarkNote
             , BD.rounded 10
             ]
-            { onPress = Nothing, label = El.text "+" }
+            { onPress = Just AddColumn, label = El.text "+" }
 
 
 columnsEl : Model -> Element Msg
 columnsEl { columns, clientHeight } =
-    El.row
+    Element.Keyed.row
         [ El.width El.fill
         , El.height (El.fill |> El.maximum clientHeight)
         , BG.color oneDarkBg
         ]
-        (List.map (columnEl clientHeight) columns)
+        (Array.map (columnKeyEl clientHeight) columns |> Array.toList)
 
 
-columnEl : Int -> Column -> Element Msg
-columnEl clientHeight { items } =
-    El.el
+columnKeyEl : Int -> Column -> ( String, Element Msg )
+columnKeyEl clientHeight { id, items } =
+    ( "column_" ++ id
+    , El.el
         [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
         , El.height (El.fill |> El.maximum clientHeight)
         , El.scrollbarY
@@ -101,6 +106,7 @@ columnEl clientHeight { items } =
         , Font.color oneDarkText
         ]
         (items |> List.map itemEl |> El.column [ El.width El.fill ])
+    )
 
 
 itemEl : Item -> Element Msg

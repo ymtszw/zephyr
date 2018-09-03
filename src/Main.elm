@@ -1,10 +1,13 @@
 module Main exposing (main)
 
+import Array
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
+import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.Types exposing (Model, Msg(..))
+import Data.UniqueId as UniqueId
 import Html
 import Json.Decode as D
 import Task
@@ -25,17 +28,46 @@ main =
 
 init : D.Value -> url -> key -> ( Model, Cmd Msg )
 init flags _ _ =
-    ( Model
-        (case D.decodeValue flagsDecoder flags of
-            Ok ((_ :: _) as nonEmpty) ->
-                nonEmpty
-
-            _ ->
-                List.repeat 4 Column.welcome
-        )
-        1024
+    let
+        ( columns, idGen ) =
+            initColumns UniqueId.init flags
+    in
+    ( Model (Array.fromList columns) clientHeightFallback idGen
     , adjustMaxHeight
     )
+
+
+initColumns : UniqueId.Generator -> D.Value -> ( List Column, UniqueId.Generator )
+initColumns idGen flags =
+    case D.decodeValue flagsDecoder flags of
+        Ok ((_ :: _) as nonEmpty) ->
+            List.foldr
+                (\fromFlag ( accColumns, accIdGen ) ->
+                    let
+                        ( newId, newIdGen ) =
+                            UniqueId.gen "column" accIdGen
+                    in
+                    ( { fromFlag | id = newId } :: accColumns, newIdGen )
+                )
+                ( [], idGen )
+                nonEmpty
+
+        _ ->
+            List.foldr
+                (\welcomeFun ( accColumns, accIdGen ) ->
+                    let
+                        ( newId, newIdGen ) =
+                            UniqueId.gen "column" accIdGen
+                    in
+                    ( welcomeFun newId :: accColumns, newIdGen )
+                )
+                ( [], idGen )
+                (List.repeat 4 Column.welcome)
+
+
+clientHeightFallback : Int
+clientHeightFallback =
+    1024
 
 
 flagsDecoder : D.Decoder (List Column)
@@ -62,6 +94,16 @@ update msg model =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
             ( { model | clientHeight = round viewport.height }, Cmd.none )
+
+        AddColumn ->
+            let
+                ( newId, newIdGen ) =
+                    UniqueId.gen "column" model.idGen
+            in
+            ( { model | columns = Array.push (Column.welcome newId) model.columns, idGen = newIdGen }, Cmd.none )
+
+        DelColumn index ->
+            ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
