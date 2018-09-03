@@ -143,6 +143,7 @@ mediaEl media =
     case media of
         Image url ->
             El.image [ El.width El.fill ]
+                -- TODO pass description
                 { src = Url.toString url, description = "Welcome image" }
 
         Movie _ ->
