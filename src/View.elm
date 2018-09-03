@@ -7,6 +7,7 @@ import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
+import Element.Input
 import Element.Keyed
 import Element.Region exposing (description)
 import Html
@@ -21,7 +22,64 @@ body m =
 
 
 bodyEl : Model -> Element Msg
-bodyEl { columns, clientHeight } =
+bodyEl model =
+    El.row [ El.width El.fill, El.height El.fill ]
+        [ sidebarEl model
+        , columnsEl model
+        ]
+
+
+sidebarEl : Model -> Element Msg
+sidebarEl { columns, clientHeight } =
+    El.el
+        [ El.width (El.px 50)
+        , El.height (El.fill |> El.maximum clientHeight)
+        , BG.color oneDarkBg
+        ]
+        (sidebarItemsEl columns)
+
+
+sidebarItemsEl : List Column -> Element Msg
+sidebarItemsEl columns =
+    columns
+        |> List.map sidebarItemEl
+        |> (\items -> items ++ [ addColumnButtonEl ])
+        |> El.column [ El.width El.fill ]
+
+
+sidebarItemEl : Column -> Element Msg
+sidebarItemEl _ =
+    El.el [ El.width El.fill, El.padding 5 ] <|
+        Element.Input.button
+            [ El.width El.fill
+            , El.paddingXY 0 10
+            , El.clip
+            , Font.color oneDarkNote
+            , BD.width 1
+            , BD.color oneDarkNote
+            , BD.rounded 10
+            ]
+            { onPress = Nothing, label = El.text "×" }
+
+
+addColumnButtonEl : Element Msg
+addColumnButtonEl =
+    El.el [ El.width El.fill, El.padding 5 ] <|
+        Element.Input.button
+            [ El.width El.fill
+            , El.paddingXY 0 10
+            , El.clip
+            , Font.color oneDarkNote
+            , BD.dashed
+            , BD.width 1
+            , BD.color oneDarkNote
+            , BD.rounded 10
+            ]
+            { onPress = Nothing, label = El.text "+" }
+
+
+columnsEl : Model -> Element Msg
+columnsEl { columns, clientHeight } =
     El.row
         [ El.width El.fill
         , El.height (El.fill |> El.maximum clientHeight)
@@ -100,6 +158,11 @@ oneDarkMain =
     El.rgb255 54 57 63
 
 
+oneDarkSub : El.Color
+oneDarkSub =
+    El.rgb255 47 49 54
+
+
 oneDarkBd : El.Color
 oneDarkBd =
     El.rgb255 62 65 71
@@ -108,6 +171,11 @@ oneDarkBd =
 oneDarkText : El.Color
 oneDarkText =
     El.rgb255 220 221 222
+
+
+oneDarkNote : El.Color
+oneDarkNote =
+    El.rgb255 96 98 102
 
 
 oneDarkLink : El.Color

@@ -31,7 +31,7 @@ init flags _ _ =
                 nonEmpty
 
             _ ->
-                List.repeat 1 Column.welcome
+                List.repeat 4 Column.welcome
         )
         1024
     , adjustMaxHeight

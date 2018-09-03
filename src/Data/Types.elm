@@ -9,7 +9,7 @@ import Data.Column exposing (Column)
 
 
 type alias Model =
-    { columns : List Column
+    { columns : List Column -- FIXME Better use array for shuffling?
     , clientHeight : Int
     }
 

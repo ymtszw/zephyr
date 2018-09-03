@@ -1,4 +1,4 @@
-module Data.Item exposing (Item, Media(..), decoder, welcome)
+module Data.Item exposing (Item, Media(..), decoder, textOnly, welcome)
 
 import Element.Font
 import Json.Decode as D exposing (Decoder)
@@ -9,6 +9,11 @@ type alias Item =
     { message : String
     , mediaMaybe : Maybe Media
     }
+
+
+textOnly : String -> Item
+textOnly message =
+    Item message Nothing
 
 
 type Media
