@@ -5428,24 +5428,15 @@ var author$project$Main$initColumns = F2(
 				_Utils_Tuple2(_List_Nil, idGen),
 				nonEmpty);
 		} else {
-			return A3(
-				elm$core$List$foldr,
-				F2(
-					function (welcomeFun, _n3) {
-						var accColumns = _n3.a;
-						var accIdGen = _n3.b;
-						var _n4 = A2(author$project$Data$UniqueId$gen, 'column', accIdGen);
-						var newId = _n4.a;
-						var newIdGen = _n4.b;
-						return _Utils_Tuple2(
-							A2(
-								elm$core$List$cons,
-								welcomeFun(newId),
-								accColumns),
-							newIdGen);
-					}),
-				_Utils_Tuple2(_List_Nil, idGen),
-				A2(elm$core$List$repeat, 4, author$project$Data$Column$welcome));
+			var _n3 = A2(author$project$Data$UniqueId$gen, 'column', idGen);
+			var newId = _n3.a;
+			var newIdGen = _n3.b;
+			return _Utils_Tuple2(
+				_List_fromArray(
+					[
+						author$project$Data$Column$welcome(newId)
+					]),
+				newIdGen);
 		}
 	});
 var elm$core$Array$fromListHelp = F3(
