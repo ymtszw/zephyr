@@ -9,7 +9,7 @@ splitAt index array =
         len =
             Array.length array
     in
-    case ( index > 0, index < len ) of
+    case ( index >= 0, abs index < len ) of
         ( True, True ) ->
             ( slice 0 index array, slice index len array )
 
@@ -17,10 +17,10 @@ splitAt index array =
             ( array, empty )
 
         ( False, True ) ->
-            ( empty, array )
+            ( slice 0 (len + index) array, slice (len + index) len array )
 
         ( False, False ) ->
-            ( empty, empty )
+            ( empty, array )
 
 
 removeAt : Int -> Array a -> Array a
@@ -34,6 +34,9 @@ removeAt index array =
     in
     if lenRear == 0 then
         front
+
+    else if negate index > lenRear then
+        array
 
     else
         Array.append front (slice 1 lenRear rear)
