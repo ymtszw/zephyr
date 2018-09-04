@@ -1,4 +1,5 @@
 # Zephyr
+[![CircleCI](https://circleci.com/gh/ymtszw/zephyr.svg?style=svg)](https://circleci.com/gh/ymtszw/zephyr)
 
 Elm 0.19 exploration app.
 
