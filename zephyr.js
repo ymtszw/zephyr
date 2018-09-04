@@ -5133,7 +5133,7 @@ var author$project$Data$Item$welcome = {
 	bc: elm$core$Maybe$Just(
 		author$project$Data$Item$Image(
 			{ce: elm$core$Maybe$Nothing, cj: 'cdn.dribbble.com', cG: '/users/27231/screenshots/2432051/welcome.gif', cH: elm$core$Maybe$Nothing, cI: 1, cJ: elm$core$Maybe$Nothing})),
-	bd: 'Welcome to Zephyr!\n\nYou can add data producers and set up conditional feeds!'
+	bd: 'Welcome to Zephyr app!\n\nYou can add data producers and set up conditional feeds!'
 };
 var elm$core$List$append = F2(
 	function (xs, ys) {
