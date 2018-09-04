@@ -14,8 +14,7 @@ clean:
 	rm -rf dist/
 
 dist/index.html:
-	@chmod +x before_build
-	./before_build
+	bash ./before_build
 
 dist/zephyr.js:
 	elm make --optimize --output=dist/zephyr.js src/Main.elm
