@@ -29,7 +29,8 @@ jobs:
           - repo-{{ .Branch }}-{{ .Revision }}
       - checkout
       - run: make release
-      - run: git checkout gh-pages || git fetch origin gh-pages && git checkout gh-pages
+      - run: git checkout gh-pages || { git fetch origin gh-pages && git checkout gh-pages; }
+      - run: ls -lha
       - run: ls -lha dist/
 
 workflows:
