@@ -53,16 +53,11 @@ initColumns idGen flags =
                 nonEmpty
 
         _ ->
-            List.foldr
-                (\welcomeFun ( accColumns, accIdGen ) ->
-                    let
-                        ( newId, newIdGen ) =
-                            UniqueId.gen "column" accIdGen
-                    in
-                    ( welcomeFun newId :: accColumns, newIdGen )
-                )
-                ( [], idGen )
-                (List.repeat 4 Column.welcome)
+            let
+                ( newId, newIdGen ) =
+                    UniqueId.gen "column" idGen
+            in
+            ( [ Column.welcome newId ], newIdGen )
 
 
 clientHeightFallback : Int
