@@ -28,10 +28,8 @@ jobs:
           keys:
           - repo-{{ .Branch }}-{{ .Revision }}
       - checkout
-      - run: chmod +x before_build
       - run: make release
-      - run: ls -lha dist/
-      - run: git gheckout gh-pages || git fetch origin gh-pages && git checkout gh-pages
+      - run: git checkout gh-pages || git fetch origin gh-pages && git checkout gh-pages
       - run: ls -lha dist/
 
 workflows:

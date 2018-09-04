@@ -14,6 +14,7 @@ clean:
 	rm -rf dist/
 
 dist/index.html:
+	@chmod +x before_build
 	./before_build
 
 dist/zephyr.js:
