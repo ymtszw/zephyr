@@ -51,7 +51,7 @@ mediaDecoder =
 
 welcome : Item
 welcome =
-    { message = "Welcome to Zephyr!\n\nYou can add data producers and set up conditional feeds!"
+    { message = "Welcome to Zephyr app!\n\nYou can add data producers and set up conditional feeds!"
     , mediaMaybe =
         Just <|
             Image
