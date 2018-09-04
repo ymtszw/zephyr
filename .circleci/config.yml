@@ -30,8 +30,9 @@ jobs:
       - checkout
       - run: make release
       - run: git checkout gh-pages || { git fetch origin gh-pages && git checkout gh-pages; }
-      - run: ls -lha
-      - run: ls -lha dist/
+      - run: cp dist/* .
+      - run: git commit -a -m "[CI] Build release" || echo "Nothing to commit."
+      - run: git push origin gh-pages:gh-pages
 
 workflows:
   version: 2
