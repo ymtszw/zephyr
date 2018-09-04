@@ -32,8 +32,8 @@ jobs:
       - run: git checkout gh-pages || { git fetch origin gh-pages && git checkout gh-pages; }
       - run: cp dist/* .
       - run: git -c user.email=ymtszw@gmail.com -c user.name=ymtszw commit -a -m "[CI] Build release" || echo "Nothing to commit."
-      - run: git push origin gh-pages:gh-pages
-      - run: git push git@github.com:zephyr-app/zephyr-app.github.io.git gh-pages:master
+      - run: git push origin HEAD:gh-pages
+      - run: git push git@github.com:zephyr-app/zephyr-app.github.io.git HEAD:master
 
 workflows:
   version: 2
