@@ -1,1 +1,15 @@
 version: 2
+jobs:
+  noop:
+    machine: true
+    steps:
+      - run: :
+
+workflows:
+  version: 2
+  noop:
+    jobs:
+      - noop:
+          filters:
+            branches:
+              ignore: gh-pages
