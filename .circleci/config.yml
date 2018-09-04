@@ -1,0 +1,46 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: ymtszw/elm_for_ci:0.19
+    working_directory: ~/repo
+    steps:
+      - restore_cache:
+          keys:
+          - repo-{{ .Branch }}-{{ .Revision }}
+          - repo-{{ .Branch }}-
+          - repo-
+      - checkout
+      - run: elm-test
+      - save_cache:
+          paths:
+            - ~/.elm
+          key: repo-{{ .Branch }}-{{ .Revision }}
+  deploy:
+    docker:
+      - image: ymtszw/elm_for_ci:0.19
+    working_directory: ~/repo
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "ca:ab:40:08:08:7e:38:57:80:73:a3:03:ee:2c:0a:42"
+      - restore_cache:
+          keys:
+          - repo-{{ .Branch }}-{{ .Revision }}
+      - checkout
+      - run: make release
+      - run: ls -lha dist/
+      - run: git gheckout gh-pages || git fetch origin gh-pages && git checkout gh-pages
+      - run: ls -lha dist/
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test
+      - deploy:
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
