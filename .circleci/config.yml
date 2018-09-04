@@ -31,7 +31,7 @@ jobs:
       - run: make release
       - run: git checkout gh-pages || { git fetch origin gh-pages && git checkout gh-pages; }
       - run: cp dist/* .
-      - run: git commit -a -m "[CI] Build release" || echo "Nothing to commit."
+      - run: git -c user.email=ymtszw@gmail.com -c user.name=ymtszw commit -a -m "[CI] Build release" || echo "Nothing to commit."
       - run: git push origin gh-pages:gh-pages
 
 workflows:
