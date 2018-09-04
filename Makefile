@@ -11,7 +11,7 @@ release: clean docs/zephyr.js
 .PHONY: clean
 clean:
 	rm -rf elm-stuff/
-	rm docs/zephyr.js
+	rm -f docs/zephyr.js
 
 docs/zephyr.js:
 	elm make --optimize --output=docs/zephyr.js src/Main.elm
