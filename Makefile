@@ -3,15 +3,18 @@ all: start
 
 .PHONY: start
 start:
-	elm-live --pushstate --dir=docs --output=docs/zephyr.js src/Main.elm
+	elm-live --pushstate --dir=dist --before-build='./before_build' --output=dist/zephyr.js src/Main.elm
 
 .PHONY: release
-release: clean docs/zephyr.js
+release: clean dist/index.html dist/zephyr.js
 
 .PHONY: clean
 clean:
 	rm -rf elm-stuff/
-	rm -f docs/zephyr.js
+	rm -rf dist/
 
-docs/zephyr.js:
-	elm make --optimize --output=docs/zephyr.js src/Main.elm
+dist/index.html:
+	./before_build
+
+dist/zephyr.js:
+	elm make --optimize --output=dist/zephyr.js src/Main.elm
