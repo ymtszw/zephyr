@@ -3,7 +3,7 @@ jobs:
   noop:
     machine: true
     steps:
-      - run: :
+      - run: exit 0
 
 workflows:
   version: 2
