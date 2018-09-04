@@ -29,10 +29,10 @@ jobs:
           - repo-{{ .Branch }}-{{ .Revision }}
       - checkout
       - run: make release
-      - run: git checkout gh-pages || { git fetch origin gh-pages && git checkout gh-pages; }
+      - run: git checkout zephyr-app || { git fetch origin zephyr-app && git checkout zephyr-app; }
       - run: cp dist/* .
       - run: git -c user.email=ymtszw@gmail.com -c user.name=ymtszw commit -a -m "[CI] Build release" || echo "Nothing to commit."
-      - run: git push origin HEAD:gh-pages
+      - run: git push origin HEAD:zephyr-app
       - run: git push git@github.com:zephyr-app/zephyr-app.github.io.git HEAD:master
 
 workflows:
