@@ -33,6 +33,7 @@ jobs:
       - run: cp dist/* .
       - run: git -c user.email=ymtszw@gmail.com -c user.name=ymtszw commit -a -m "[CI] Build release" || echo "Nothing to commit."
       - run: git push origin gh-pages:gh-pages
+      - run: git push git@github.com:zephyr-app/zephyr-app.github.io.git gh-pages:master
 
 workflows:
   version: 2
