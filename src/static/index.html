@@ -21,14 +21,19 @@
       const app = Elm.Main.init({ flags: flagsFromDb })
 
       // Impl ports
+      app.ports.sendToJs.subscribe(({ columns }) => {
+        db.transaction("flags", "readwrite")
+          .objectStore("flags")
+          .put({ id: "primary", columns: columns})
+      })
     }
 
     function withIndexedDb(db) {
-      db.transaction("flags")
+      const getReq = db.transaction("flags")
         .objectStore("flags")
         .get("primary")
         .onsuccess = (event) => withFlags(db, event.target.result)
-      db.onerror = (event) => alert("Failed to retrieve flags from IndexedDB! Refuse to initiate Elm App.")
+      getReq.onerror = (event) => alert("Failed to retrieve flags from IndexedDB! Refuse to initiate Elm App.")
     }
 
     // Body of actual init procedure; init IndexedDB while registering callbacks

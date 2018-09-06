@@ -1,7 +1,8 @@
-module Data.Column exposing (Column, decoder, welcome)
+module Data.Column exposing (Column, decoder, encoder, welcome)
 
 import Data.Item as Item exposing (Item)
 import Json.Decode as D exposing (Decoder)
+import Json.Encode as E
 
 
 type alias Column =
@@ -15,6 +16,14 @@ decoder =
     D.map2 Column
         (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
+
+
+encoder : Column -> E.Value
+encoder { id, items } =
+    E.object
+        [ ( "id", E.string id )
+        , ( "items", E.list Item.encoder items )
+        ]
 
 
 welcome : String -> Column

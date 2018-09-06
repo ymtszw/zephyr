@@ -10,6 +10,8 @@ import Data.Types exposing (Model, Msg(..))
 import Data.UniqueId as UniqueId
 import Html
 import Json.Decode as D
+import Json.Encode as E
+import Ports
 import Task
 import View
 
@@ -88,13 +90,25 @@ update msg model =
                 ( newId, newIdGen ) =
                     UniqueId.gen "column" model.idGen
             in
-            ( { model | columns = Array.push (Column.welcome newId) model.columns, idGen = newIdGen }, Cmd.none )
+            persist ( { model | columns = Array.push (Column.welcome newId) model.columns, idGen = newIdGen }, Cmd.none )
 
         DelColumn index ->
-            ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
+            persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
+
+
+persist : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+persist ( model, cmd ) =
+    ( model, Cmd.batch [ cmd, Ports.sendToJs (encodeToFlags model) ] )
+
+
+encodeToFlags : Model -> E.Value
+encodeToFlags { columns } =
+    E.object
+        [ ( "columns", E.array Column.encoder columns )
+        ]
 
 
 

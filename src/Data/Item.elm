@@ -1,7 +1,8 @@
-module Data.Item exposing (Item, Media(..), decoder, textOnly, welcome)
+module Data.Item exposing (Item, Media(..), decoder, encoder, textOnly, welcome)
 
 import Element.Font
 import Json.Decode as D exposing (Decoder)
+import Json.Encode as E
 import Url
 
 
@@ -33,7 +34,7 @@ mediaDecoder =
     D.string
         |> D.andThen
             (\str ->
-                case Url.fromString (String.dropLeft 4 str) of
+                case Url.fromString (String.dropLeft 5 str) of
                     Just url ->
                         if String.startsWith "IMAGE" str then
                             D.succeed (Image url)
@@ -47,6 +48,24 @@ mediaDecoder =
                     Nothing ->
                         D.fail ("Invalid media URL: " ++ str)
             )
+
+
+encoder : Item -> E.Value
+encoder { message, mediaMaybe } =
+    E.object
+        [ ( "message", E.string message )
+        , ( "media", mediaMaybe |> Maybe.map mediaEncoder |> Maybe.withDefault E.null )
+        ]
+
+
+mediaEncoder : Media -> E.Value
+mediaEncoder media =
+    case media of
+        Image url ->
+            E.string ("IMAGE" ++ Url.toString url)
+
+        Movie url ->
+            E.string ("MOVIE" ++ Url.toString url)
 
 
 welcome : Item

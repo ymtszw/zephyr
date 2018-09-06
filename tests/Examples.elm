@@ -2,11 +2,15 @@ module Examples exposing (suite)
 
 import Array exposing (fromList)
 import Data.Array as Array
+import Data.Column
+import Data.Item
 import Data.UniqueId exposing (Generator)
 import Expect exposing (Expectation)
 import Fuzz
+import Json.Decode exposing (decodeValue)
 import String exposing (fromInt)
 import Test exposing (..)
+import Url
 
 
 
@@ -129,6 +133,38 @@ uniqueIdSuites =
 
 
 
+-- Data.Item
+
+
+itemSuites : Test
+itemSuites =
+    describe "Data.Item"
+        [ test "encoder/decoder should work" <|
+            \_ ->
+                Data.Item.welcome
+                    |> Data.Item.encoder
+                    |> decodeValue Data.Item.decoder
+                    |> Expect.equal (Ok Data.Item.welcome)
+        ]
+
+
+
+-- Data.Column
+
+
+columnSuites : Test
+columnSuites =
+    describe "Data.Column"
+        [ test "encoder/decoder should work" <|
+            \_ ->
+                Data.Column.welcome "test"
+                    |> Data.Column.encoder
+                    |> decodeValue Data.Column.decoder
+                    |> Expect.equal (Ok (Data.Column.welcome "test"))
+        ]
+
+
+
 -- MAIN
 
 
@@ -137,4 +173,6 @@ suite =
     describe "test"
         [ arraySuites
         , uniqueIdSuites
+        , itemSuites
+        , columnSuites
         ]
