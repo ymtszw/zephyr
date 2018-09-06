@@ -1,3 +1,3 @@
 #!/bin/bash
 mkdir -p dist/
-cp src/index.html dist/index.html
+cp -v src/static/* dist/

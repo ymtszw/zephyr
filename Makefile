@@ -6,14 +6,15 @@ start:
 	elm-live --pushstate --dir=dist --before-build='./before_build' --output=dist/zephyr.js src/Main.elm
 
 .PHONY: release
-release: clean dist/index.html dist/zephyr.js
+release: clean before_build dist/zephyr.js
 
 .PHONY: clean
 clean:
 	rm -rf elm-stuff/
 	rm -rf dist/
 
-dist/index.html:
+.PHONY: before_build
+before_build:
 	bash ./before_build
 
 dist/zephyr.js:
