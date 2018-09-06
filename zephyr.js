@@ -5345,6 +5345,21 @@ var author$project$Data$UniqueId$gen = F2(
 			return A3(author$project$Data$UniqueId$genImpl, prefix, 0, dict);
 		}
 	});
+var elm$core$Tuple$mapFirst = F2(
+	function (func, _n0) {
+		var x = _n0.a;
+		var y = _n0.b;
+		return _Utils_Tuple2(
+			func(x),
+			y);
+	});
+var author$project$Data$UniqueId$genAndMap = F3(
+	function (prefix, generator, transform) {
+		return A2(
+			elm$core$Tuple$mapFirst,
+			transform,
+			A2(author$project$Data$UniqueId$gen, prefix, generator));
+	});
 var author$project$Data$Column$Column = F2(
 	function (id, items) {
 		return {a5: id, a7: items};
@@ -5406,37 +5421,40 @@ var author$project$Main$initColumns = F2(
 	function (idGen, flags) {
 		var _n0 = A2(elm$json$Json$Decode$decodeValue, author$project$Main$flagsDecoder, flags);
 		if ((!_n0.$) && _n0.a.b) {
-			var nonEmpty = _n0.a;
-			return A3(
-				elm$core$List$foldr,
-				F2(
-					function (fromFlag, _n1) {
-						var accColumns = _n1.a;
-						var accIdGen = _n1.b;
-						var _n2 = A2(author$project$Data$UniqueId$gen, 'column', accIdGen);
-						var newId = _n2.a;
-						var newIdGen = _n2.b;
-						return _Utils_Tuple2(
-							A2(
+			var nonEmptyColumns = _n0.a;
+			var applyId = F2(
+				function (fromFlag, _n1) {
+					var accColumns = _n1.a;
+					var accIdGen = _n1.b;
+					return A3(
+						author$project$Data$UniqueId$genAndMap,
+						'column',
+						accIdGen,
+						function (newId) {
+							return A2(
 								elm$core$List$cons,
 								_Utils_update(
 									fromFlag,
 									{a5: newId}),
-								accColumns),
-							newIdGen);
-					}),
+								accColumns);
+						});
+				});
+			return A3(
+				elm$core$List$foldr,
+				applyId,
 				_Utils_Tuple2(_List_Nil, idGen),
-				nonEmpty);
+				nonEmptyColumns);
 		} else {
-			var _n3 = A2(author$project$Data$UniqueId$gen, 'column', idGen);
-			var newId = _n3.a;
-			var newIdGen = _n3.b;
-			return _Utils_Tuple2(
-				_List_fromArray(
-					[
-						author$project$Data$Column$welcome(newId)
-					]),
-				newIdGen);
+			return A3(
+				author$project$Data$UniqueId$genAndMap,
+				'column',
+				idGen,
+				function (newId) {
+					return _List_fromArray(
+						[
+							author$project$Data$Column$welcome(newId)
+						]);
+				});
 		}
 	});
 var elm$core$Array$fromListHelp = F3(
@@ -6626,14 +6644,6 @@ var elm$core$Maybe$map = F2(
 		} else {
 			return elm$core$Maybe$Nothing;
 		}
-	});
-var elm$core$Tuple$mapFirst = F2(
-	function (func, _n0) {
-		var x = _n0.a;
-		var y = _n0.b;
-		return _Utils_Tuple2(
-			func(x),
-			y);
 	});
 var elm$core$Tuple$mapSecond = F2(
 	function (func, _n0) {
