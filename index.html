@@ -1,25 +1,38 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-  <script type="text/javascript" src="//localhost:35729/livereload.js?snipver=1" async="" defer=""></script>
   <meta charset="UTF-8">
   <title>Main</title>
   <script src="zephyr.js" charset="utf-8"></script>
+  <script type="text/javascript">
+    if ("serviceWorker" in navigator
+      && ! window.origin.startsWith("http://localhost") // Comment this line to test serviceWorker locally
+    ) {
+      navigator.serviceWorker.register("zephyr-sw.js")
+        .then((reg) => console.log(`[Zephyr] ServiceWorker registered. Scope: ${reg.scope}`))
+        .catch((error) => console.error(`[Zephyr] ServiceWorker registration failed! ${error}`))
+    }
+  </script>
   <script>
     // This function is the world where flags are successfully retrieved from IndexedDB;
     // init Elm App and register port functions
-    function withFlags(fromDb) {
-      const app = Elm.Main.init({ flags: fromDb })
+    function withFlags(db, flagsFromDb) {
+      const app = Elm.Main.init({ flags: flagsFromDb })
 
       // Impl ports
+      app.ports.sendToJs.subscribe(({ columns }) => {
+        db.transaction("flags", "readwrite")
+          .objectStore("flags")
+          .put({ id: "primary", columns: columns})
+      })
     }
 
     function withIndexedDb(db) {
-      db.transaction("flags")
+      const getReq = db.transaction("flags")
         .objectStore("flags")
         .get("primary")
-        .onsuccess = (event) => withFlags(event.target.result)
-      db.onerror = (event) => alert("Failed to retrieve flags from IndexedDB! Refuse to initiate Elm App.")
+        .onsuccess = (event) => withFlags(db, event.target.result)
+      getReq.onerror = (event) => alert("Failed to retrieve flags from IndexedDB! Refuse to initiate Elm App.")
     }
 
     // Body of actual init procedure; init IndexedDB while registering callbacks
