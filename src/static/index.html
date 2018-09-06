@@ -6,12 +6,12 @@
   <title>Main</title>
   <script src="zephyr.js" charset="utf-8"></script>
   <script type="text/javascript">
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator
+      && ! window.origin.startsWith("http://localhost") // Comment this line to test serviceWorker locally
+    ) {
       navigator.serviceWorker.register("zephyr-sw.js")
         .then((reg) => console.log(`[Zephyr] ServiceWorker registered. Scope: ${reg.scope}`))
         .catch((error) => console.error(`[Zephyr] ServiceWorker registration failed! ${error}`))
-    } else {
-      console.log("[Zephyr] ServiceWorker not supported. Skipping.")
     }
   </script>
   <script>
