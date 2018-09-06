@@ -40,24 +40,17 @@ init flags _ _ =
 initColumns : UniqueId.Generator -> D.Value -> ( List Column, UniqueId.Generator )
 initColumns idGen flags =
     case D.decodeValue flagsDecoder flags of
-        Ok ((_ :: _) as nonEmpty) ->
-            List.foldr
-                (\fromFlag ( accColumns, accIdGen ) ->
-                    let
-                        ( newId, newIdGen ) =
-                            UniqueId.gen "column" accIdGen
-                    in
-                    ( { fromFlag | id = newId } :: accColumns, newIdGen )
-                )
-                ( [], idGen )
-                nonEmpty
+        Ok ((_ :: _) as nonEmptyColumns) ->
+            let
+                applyId fromFlag ( accColumns, accIdGen ) =
+                    UniqueId.genAndMap "column" accIdGen <|
+                        \newId ->
+                            { fromFlag | id = newId } :: accColumns
+            in
+            List.foldr applyId ( [], idGen ) nonEmptyColumns
 
         _ ->
-            let
-                ( newId, newIdGen ) =
-                    UniqueId.gen "column" idGen
-            in
-            ( [ Column.welcome newId ], newIdGen )
+            UniqueId.genAndMap "column" idGen <| \newId -> [ Column.welcome newId ]
 
 
 clientHeightFallback : Int

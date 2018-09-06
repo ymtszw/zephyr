@@ -1,4 +1,4 @@
-module Data.UniqueId exposing (Generator, gen, init)
+module Data.UniqueId exposing (Generator, gen, genAndMap, init)
 
 {-| Generates Unique (sequenced) ID string.
 -}
@@ -35,3 +35,20 @@ genImpl prefix current (Generator dict) =
 genIdString : String -> Int -> String
 genIdString prefix current =
     prefix ++ "_" ++ String.fromInt current
+
+
+{-| Generate an ID, then use it for a function.
+
+Used in everyday cases where you need your function result AND altered Generator.
+
+Has unusual argument order in that transform function not coming last.
+This is to allow writing in this style:
+
+    genAndMap "prefix" generator <|
+        \id ->
+            actualFunctionYouWantToDo id
+
+-}
+genAndMap : String -> Generator -> (String -> a) -> ( a, Generator )
+genAndMap prefix generator transform =
+    Tuple.mapFirst transform (gen prefix generator)
