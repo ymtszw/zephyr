@@ -2,8 +2,8 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Data.Column exposing (Column)
+import Data.Core exposing (Model, Msg(..))
 import Data.Item exposing (Item, Media(..))
-import Data.Types exposing (Model, Msg(..))
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
@@ -30,11 +30,15 @@ bodyEl model =
         ]
 
 
+
+-- SIDEBAR
+
+
 sidebarEl : Model -> Element Msg
-sidebarEl { columns, clientHeight } =
+sidebarEl { columns, env } =
     El.el
         [ El.width (El.px 50)
-        , El.height (El.fill |> El.maximum clientHeight)
+        , El.height (El.fill |> El.maximum env.clientHeight)
         , BG.color oneDarkBg
         ]
         (sidebarItemsEl columns)
@@ -82,14 +86,49 @@ addColumnButtonEl =
             { onPress = Just AddColumn, label = El.text "+" }
 
 
+
+-- LOADING
+
+
+loadingEl : Element Msg
+loadingEl =
+    El.el [ El.width El.fill, El.height El.fill, El.centerX, El.centerY ]
+        (El.text "Good Day!")
+
+
+
+-- COLUMNS
+
+
 columnsEl : Model -> Element Msg
-columnsEl { columns, clientHeight } =
-    Element.Keyed.row
-        [ El.width El.fill
-        , El.height (El.fill |> El.maximum clientHeight)
-        , BG.color oneDarkBg
+columnsEl { columns, env } =
+    backgroundEl <|
+        Element.Keyed.row
+            [ El.width El.fill
+            , El.height (El.fill |> El.maximum env.clientHeight)
+            ]
+            (Array.map (columnKeyEl env.clientHeight) columns |> Array.toList)
+
+
+backgroundEl : Element Msg -> Element Msg
+backgroundEl contents =
+    El.row
+        [ BG.color oneDarkBg
+        , El.width El.fill
+        , El.height El.fill
+        , Font.bold
+        , Font.color oneDarkSub
+        , Font.size (scale16 12)
+        , El.inFront contents
         ]
-        (Array.map (columnKeyEl clientHeight) columns |> Array.toList)
+        [ El.el
+            [ El.centerY
+            , El.centerX
+            , Font.center
+            , Font.family [ Font.serif ]
+            ]
+            (El.text "Zephyr")
+        ]
 
 
 columnKeyEl : Int -> Column -> ( String, Element Msg )

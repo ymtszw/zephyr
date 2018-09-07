@@ -46,7 +46,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       caches.match(e.request).then((response) => {
         if (response != null) {
-          console.log(`Using cache for: ${e.request.url}`)
+          log(`Using cache for: ${e.request.url}`)
           return response
         } else {
           return fetch(e.request.url, { mode: 'no-cors' })
@@ -59,5 +59,5 @@ self.addEventListener('fetch', (e) => {
 })
 
 function log(msg) {
-  console.log(`[Zephyr] ${msg}`)
+  console.log(`[ZephyrSW] ${msg}`)
 }

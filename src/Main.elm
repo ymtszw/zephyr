@@ -6,7 +6,7 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
-import Data.Types exposing (Model, Msg(..))
+import Data.Core exposing (Env, Model, Msg(..), initModel, welcomeModel)
 import Data.UniqueId as UniqueId
 import Html
 import Json.Decode as D
@@ -16,53 +16,13 @@ import Task
 import View
 
 
-main : Program D.Value Model Msg
-main =
-    Browser.application
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = sub
-        , onUrlRequest = \_ -> NoOp
-        , onUrlChange = \_ -> NoOp
-        }
+
+-- INIT
 
 
-init : D.Value -> url -> key -> ( Model, Cmd Msg )
-init flags _ _ =
-    let
-        ( columns, idGen ) =
-            initColumns UniqueId.init flags
-    in
-    ( Model (Array.fromList columns) clientHeightFallback idGen
-    , adjustMaxHeight
-    )
-
-
-initColumns : UniqueId.Generator -> D.Value -> ( List Column, UniqueId.Generator )
-initColumns idGen flags =
-    case D.decodeValue flagsDecoder flags of
-        Ok ((_ :: _) as nonEmptyColumns) ->
-            let
-                applyId fromFlag ( accColumns, accIdGen ) =
-                    UniqueId.genAndMap "column" accIdGen <|
-                        \newId ->
-                            { fromFlag | id = newId } :: accColumns
-            in
-            List.foldr applyId ( [], idGen ) nonEmptyColumns
-
-        _ ->
-            UniqueId.genAndMap "column" idGen <| \newId -> [ Column.welcome newId ]
-
-
-clientHeightFallback : Int
-clientHeightFallback =
-    1024
-
-
-flagsDecoder : D.Decoder (List Column)
-flagsDecoder =
-    D.field "columns" (D.list Column.decoder)
+init : Env -> url -> key -> ( Model, Cmd Msg )
+init env _ _ =
+    ( initModel env, adjustMaxHeight )
 
 
 adjustMaxHeight : Cmd Msg
@@ -75,7 +35,7 @@ adjustMaxHeight =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg ({ env } as model) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -83,7 +43,7 @@ update msg model =
 
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
-            ( { model | clientHeight = round viewport.height }, Cmd.none )
+            ( { model | env = { env | clientHeight = round viewport.height } }, Cmd.none )
 
         AddColumn ->
             let
@@ -95,20 +55,53 @@ update msg model =
         DelColumn index ->
             persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
+        Load val ->
+            ( loadColumns model val, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
 
 persist : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 persist ( model, cmd ) =
-    ( model, Cmd.batch [ cmd, Ports.sendToJs (encodeToFlags model) ] )
+    ( model
+    , if model.env.indexedDBAvailable then
+        Cmd.batch [ cmd, Ports.sendToJs (encodeModel model) ]
+
+      else
+        cmd
+    )
 
 
-encodeToFlags : Model -> E.Value
-encodeToFlags { columns } =
+encodeModel : Model -> E.Value
+encodeModel { columns } =
     E.object
         [ ( "columns", E.array Column.encoder columns )
         ]
+
+
+loadColumns : Model -> D.Value -> Model
+loadColumns model value =
+    case D.decodeValue savedStateDecoder value of
+        Ok ((_ :: _) as nonEmptyColumns) ->
+            let
+                applyId decoded ( accColumns, accIdGen ) =
+                    UniqueId.genAndMap "column" accIdGen <|
+                        \newId ->
+                            { decoded | id = newId } :: accColumns
+
+                ( newColumns, newIdGen ) =
+                    List.foldr applyId ( [], model.idGen ) nonEmptyColumns
+            in
+            { model | columns = Array.fromList newColumns, idGen = newIdGen }
+
+        _ ->
+            welcomeModel model.env
+
+
+savedStateDecoder : D.Decoder (List Column)
+savedStateDecoder =
+    D.field "columns" (D.list Column.decoder)
 
 
 
@@ -117,7 +110,10 @@ encodeToFlags { columns } =
 
 sub : Model -> Sub Msg
 sub _ =
-    onResize Resize
+    Sub.batch
+        [ onResize Resize
+        , Ports.loadFromJs Load
+        ]
 
 
 
@@ -129,3 +125,19 @@ view m =
     { title = "Zephyr"
     , body = View.body m
     }
+
+
+
+-- MAIN
+
+
+main : Program Env Model Msg
+main =
+    Browser.application
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = sub
+        , onUrlRequest = \_ -> NoOp
+        , onUrlChange = \_ -> NoOp
+        }
