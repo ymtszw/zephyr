@@ -36,12 +36,14 @@ bodyEl model =
 
 sidebarEl : Model -> Element Msg
 sidebarEl { columns, env } =
-    El.el
+    El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
         , BG.color oneDarkBg
         ]
-        (columnButtonsEl columns)
+        [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columns)
+        , El.el [ El.width El.fill, El.alignBottom ] otherButtonsEl
+        ]
 
 
 columnButtonsEl : Array Column -> Element Msg
@@ -84,6 +86,19 @@ columnAddButtonEl =
             , BD.rounded 10
             ]
             { onPress = Just AddColumn, label = El.text "+" }
+
+
+otherButtonsEl : Element Msg
+otherButtonsEl =
+    El.column [ El.width El.fill, El.padding 5 ]
+        [ El.link
+            [ El.width El.fill
+            , El.paddingXY 0 10
+            , BG.color oneDarkSub
+            , BD.rounded 10
+            ]
+            { url = "https://github.com/ymtszw/zephyr", label = El.text "</>" }
+        ]
 
 
 
@@ -131,7 +146,7 @@ columnKeyEl clientHeight { id, items } =
         , El.scrollbarY
         , El.paddingXY 5 0
         , BG.color oneDarkMain
-        , BD.width 2
+        , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
         , BD.color oneDarkBg
         , Font.color oneDarkText
         ]
