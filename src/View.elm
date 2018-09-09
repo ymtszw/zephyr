@@ -87,16 +87,6 @@ addColumnButtonEl =
 
 
 
--- LOADING
-
-
-loadingEl : Element Msg
-loadingEl =
-    El.el [ El.width El.fill, El.height El.fill, El.centerX, El.centerY ]
-        (El.text "Good Day!")
-
-
-
 -- COLUMNS
 
 
@@ -106,6 +96,7 @@ columnsEl { columns, env } =
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
+            , Font.regular
             ]
             (Array.map (columnKeyEl env.clientHeight) columns |> Array.toList)
 
