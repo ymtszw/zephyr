@@ -1,9 +1,10 @@
 module Main exposing (main)
 
 import Array
-import Browser
+import Browser exposing (UrlRequest(..))
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
+import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.Core exposing (Env, Model, Msg(..), initModel, welcomeModel)
@@ -13,6 +14,7 @@ import Json.Decode as D
 import Json.Encode as E
 import Ports
 import Task
+import Url
 import View
 
 
@@ -20,9 +22,9 @@ import View
 -- INIT
 
 
-init : Env -> url -> key -> ( Model, Cmd Msg )
-init env _ _ =
-    ( initModel env, adjustMaxHeight )
+init : Env -> url -> Key -> ( Model, Cmd Msg )
+init env _ navKey =
+    ( initModel env navKey, adjustMaxHeight )
 
 
 adjustMaxHeight : Cmd Msg
@@ -44,6 +46,12 @@ update msg ({ env } as model) =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
             ( { model | env = { env | clientHeight = round viewport.height } }, Cmd.none )
+
+        LinkClicked (Internal url) ->
+            ( model, Nav.pushUrl model.navKey (Url.toString url) )
+
+        LinkClicked (External url) ->
+            ( model, Nav.load url )
 
         AddColumn ->
             let
@@ -96,7 +104,7 @@ loadColumns model value =
             { model | columns = Array.fromList newColumns, idGen = newIdGen }
 
         _ ->
-            welcomeModel model.env
+            welcomeModel model.env model.navKey
 
 
 savedStateDecoder : D.Decoder (List Column)
@@ -138,6 +146,6 @@ main =
         , view = view
         , update = update
         , subscriptions = sub
-        , onUrlRequest = \_ -> NoOp
+        , onUrlRequest = LinkClicked
         , onUrlChange = \_ -> NoOp
         }
