@@ -7,6 +7,7 @@ import Browser.Navigation exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.UniqueId as UniqueId exposing (Generator)
 import Json.Decode exposing (Value)
+import Websocket
 
 
 
@@ -17,6 +18,7 @@ type alias Model =
     { columns : Array Column
     , idGen : Generator
     , navKey : Key
+    , wsState : Websocket.State Msg
     , env : Env
     }
 
@@ -34,6 +36,7 @@ initModel env navKey =
         { columns = Array.fromList []
         , idGen = UniqueId.init
         , navKey = navKey
+        , wsState = Websocket.init
         , env = env
         }
 
@@ -50,6 +53,7 @@ welcomeModel env navKey =
     { columns = Array.fromList columns
     , idGen = idGen
     , navKey = navKey
+    , wsState = Websocket.init
     , env = env
     }
 
