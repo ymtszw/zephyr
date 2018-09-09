@@ -5,6 +5,7 @@ import Browser exposing (UrlRequest)
 import Browser.Dom exposing (Viewport)
 import Browser.Navigation exposing (Key)
 import Data.Column as Column exposing (Column)
+import Data.Item exposing (Item)
 import Data.UniqueId as UniqueId exposing (Generator)
 import Json.Decode exposing (Value)
 import Websocket
@@ -19,6 +20,7 @@ type alias Model =
     , idGen : Generator
     , navKey : Key
     , wsState : Websocket.State Msg
+    , wsHandlers : Websocket.EventHandlers Item
     , env : Env
     }
 
@@ -37,6 +39,7 @@ initModel env navKey =
         , idGen = UniqueId.init
         , navKey = navKey
         , wsState = Websocket.init
+        , wsHandlers = Websocket.handlers []
         , env = env
         }
 
@@ -54,6 +57,7 @@ welcomeModel env navKey =
     , idGen = idGen
     , navKey = navKey
     , wsState = Websocket.init
+    , wsHandlers = Websocket.handlers []
     , env = env
     }
 
@@ -70,3 +74,4 @@ type Msg
     | AddColumn
     | DelColumn Int
     | Load Value
+    | WSReceive Value

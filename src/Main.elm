@@ -16,6 +16,7 @@ import Ports
 import Task
 import Url
 import View
+import Websocket
 
 
 
@@ -66,6 +67,9 @@ update msg ({ env } as model) =
         Load val ->
             ( loadColumns model val, Cmd.none )
 
+        WSReceive val ->
+            ( handleWS model val, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -110,6 +114,15 @@ loadColumns model value =
 savedStateDecoder : D.Decoder (List Column)
 savedStateDecoder =
     D.field "columns" (D.list Column.decoder)
+
+
+handleWS : Model -> D.Value -> Model
+handleWS model val =
+    let
+        ( newState, yields ) =
+            Websocket.receive model.wsState model.wsHandlers val
+    in
+    { model | wsState = newState }
 
 
 
