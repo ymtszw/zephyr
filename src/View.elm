@@ -41,20 +41,20 @@ sidebarEl { columns, env } =
         , El.height (El.fill |> El.maximum env.clientHeight)
         , BG.color oneDarkBg
         ]
-        (sidebarItemsEl columns)
+        (columnButtonsEl columns)
 
 
-sidebarItemsEl : Array Column -> Element Msg
-sidebarItemsEl columns =
+columnButtonsEl : Array Column -> Element Msg
+columnButtonsEl columns =
     columns
-        |> Array.indexedMap sidebarItemEl
-        |> Array.push ( "addColumnButton", addColumnButtonEl )
+        |> Array.indexedMap columnButtonEl
+        |> Array.push ( "columnAddButton", columnAddButtonEl )
         |> Array.toList
         |> Element.Keyed.column [ El.width El.fill ]
 
 
-sidebarItemEl : Int -> Column -> ( String, Element Msg )
-sidebarItemEl index { id } =
+columnButtonEl : Int -> Column -> ( String, Element Msg )
+columnButtonEl index { id } =
     ( "sidebarButton_" ++ id
     , El.el [ El.width El.fill, El.padding 5 ] <|
         Element.Input.button
@@ -70,8 +70,8 @@ sidebarItemEl index { id } =
     )
 
 
-addColumnButtonEl : Element Msg
-addColumnButtonEl =
+columnAddButtonEl : Element Msg
+columnAddButtonEl =
     El.el [ El.width El.fill, El.padding 5 ] <|
         Element.Input.button
             [ El.width El.fill
