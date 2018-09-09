@@ -11702,6 +11702,7 @@ var elm$core$Array$map = F2(
 			A2(elm$core$Elm$JsArray$map, helper, tree),
 			A2(elm$core$Elm$JsArray$map, func, tail));
 	});
+var mdgriffith$elm_ui$Element$Font$regular = A2(mdgriffith$elm_ui$Internal$Model$Class, mdgriffith$elm_ui$Internal$Flag$fontWeight, mdgriffith$elm_ui$Internal$Style$classes.dc);
 var mdgriffith$elm_ui$Element$Keyed$row = F2(
 	function (attrs, children) {
 		return A4(
@@ -11730,7 +11731,8 @@ var author$project$View$columnsEl = function (_n0) {
 				[
 					mdgriffith$elm_ui$Element$width(mdgriffith$elm_ui$Element$fill),
 					mdgriffith$elm_ui$Element$height(
-					A2(mdgriffith$elm_ui$Element$maximum, env.b1, mdgriffith$elm_ui$Element$fill))
+					A2(mdgriffith$elm_ui$Element$maximum, env.b1, mdgriffith$elm_ui$Element$fill)),
+					mdgriffith$elm_ui$Element$Font$regular
 				]),
 			elm$core$Array$toList(
 				A2(
