@@ -1,46 +1,54 @@
-module Websocket exposing (EventHandlers, MessageConverter, State, engage, handlers, init, receive)
+module Websocket exposing (Endpoint(..), EventHandler, Key(..), State, engage, init, receive)
 
 import Dict exposing (Dict)
 import Json.Decode exposing (Value)
 import Ports
-import WebSocketClient exposing (Config, PortVersion(..), Response(..), makeConfig, makeState, openWithKey, process)
+import WebSocketClient exposing (Response(..), close, makeConfig, makeState, openWithKey, process, send)
 
 
-type alias State msg =
-    WebSocketClient.State msg
+type alias State msg a b =
+    { clientState : WebSocketClient.State msg
+    , handlers : EventHandlers a b
+    }
 
 
-type alias EventHandlers a =
-    Dict Key (MessageConverter a)
+type alias EventHandlers a b =
+    Dict String (EventHandler a b)
 
 
-type alias Key =
-    String
+type Key
+    = Key String
 
 
-type alias MessageConverter a =
-    String -> List a
+type Endpoint
+    = Endpoint String
 
 
-config : Config msg
-config =
-    makeConfig Ports.webSocketClientCmd
+type alias EventHandler a b =
+    { state : a
+    , onMessage : a -> String -> ( List b, Reply, a )
+    }
 
 
-init : State msg
-init =
-    makeState config
+type Reply
+    = Reply String
+    | NoReply
 
 
-handlers : List ( String, MessageConverter a ) -> EventHandlers a
-handlers handlerList =
-    Dict.fromList handlerList
+init : List ( String, EventHandler a b ) -> State msg a b
+init handlerList =
+    State
+        (makeState (makeConfig Ports.webSocketClientCmd))
+        (Dict.fromList handlerList)
 
 
-engage : State msg -> Key -> String -> ( State msg, Cmd msg )
-engage state key url =
-    openWithKey PortVersion2 state key url
-        |> Tuple.mapSecond handleOnEngageResponse
+engage : State msg a b -> Key -> Endpoint -> EventHandler a b -> ( State msg a b, Cmd msg )
+engage s (Key key) (Endpoint url) handler =
+    url
+        |> openWithKey WebSocketClient.PortVersion2 s.clientState key
+        |> Tuple.mapBoth
+            (\newClientState -> State newClientState (Dict.insert key handler s.handlers))
+            handleOnEngageResponse
 
 
 handleOnEngageResponse : Response msg -> Cmd msg
@@ -59,44 +67,71 @@ handleOnEngageResponse res =
             Cmd.none
 
 
-receive : State msg -> EventHandlers a -> Value -> ( State msg, List a )
-receive state eh val =
-    process state val
-        |> Tuple.mapSecond (handleOnReceiveResponse eh)
+receive : State msg a b -> Value -> ( State msg a b, ( List b, Cmd msg ) )
+receive s val =
+    process s.clientState val
+        |> Tuple.mapFirst (\newClientState -> { s | clientState = newClientState })
+        |> handleOnReceiveResponse
 
 
-handleOnReceiveResponse : EventHandlers a -> Response msg -> List a
-handleOnReceiveResponse eh res =
+handleOnReceiveResponse : ( State msg a b, Response msg ) -> ( State msg a b, ( List b, Cmd msg ) )
+handleOnReceiveResponse ( s, res ) =
     case res of
         NoResponse ->
-            []
+            ( s, ( [], Cmd.none ) )
 
-        CmdResponse _ ->
-            -- Command is for sending message from Elm application, thus won't happen on receive
-            []
+        CmdResponse cmd ->
+            ( s, ( [], cmd ) )
 
         ConnectedResponse _ ->
-            -- Websocket APIs might return meaningful payload on connection.
-            -- If so apply MessageConverter here
-            []
+            ( s, ( [], Cmd.none ) )
 
         MessageReceivedResponse { key, message } ->
-            applyHandlers eh key message
+            applyHandlers s (Key key) message
 
         ClosedResponse _ ->
             -- Debug here
-            []
+            ( s, ( [], Cmd.none ) )
 
         ErrorResponse err ->
             -- Debug here
-            []
+            ( s, ( [], Cmd.none ) )
 
 
-applyHandlers : EventHandlers a -> Key -> String -> List a
-applyHandlers eh key message =
-    case Dict.get key eh of
+applyHandlers : State msg a b -> Key -> String -> ( State msg a b, ( List b, Cmd msg ) )
+applyHandlers s (Key key) message =
+    case Dict.get key s.handlers of
         Just handler ->
-            handler message
+            withHandler s handler (Key key) message
 
         Nothing ->
-            []
+            ( s, ( [], Cmd.none ) )
+
+
+withHandler : State msg a b -> EventHandler a b -> Key -> String -> ( State msg a b, ( List b, Cmd msg ) )
+withHandler s0 handler (Key key) message =
+    let
+        ( yields, reply, newState ) =
+            handler.onMessage handler.state message
+
+        newHandlers =
+            Dict.insert key { handler | state = newState } s0.handlers
+
+        ( cmd, s1 ) =
+            handleReply { s0 | handlers = newHandlers } (Key key) reply
+    in
+    ( s1, ( yields, cmd ) )
+
+
+handleReply : State msg a b -> Key -> Reply -> ( Cmd msg, State msg a b )
+handleReply s (Key key) reply =
+    case reply of
+        Reply payload ->
+            let
+                ( newClientState, res ) =
+                    send WebSocketClient.PortVersion2 s.clientState key payload
+            in
+            ( handleOnEngageResponse res, { s | clientState = newClientState } )
+
+        NoReply ->
+            ( Cmd.none, s )

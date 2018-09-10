@@ -7,7 +7,7 @@ import Browser.Events exposing (onResize)
 import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
-import Data.Core exposing (Env, Model, Msg(..), initModel, welcomeModel)
+import Data.Core as Core exposing (Env, Model, Msg(..), welcomeModel)
 import Data.UniqueId as UniqueId
 import Html
 import Json.Decode as D
@@ -25,7 +25,8 @@ import Websocket
 
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
-    ( initModel env navKey, adjustMaxHeight )
+    Core.init env navKey
+        |> Tuple.mapSecond (\cmd -> Cmd.batch [ cmd, adjustMaxHeight ])
 
 
 adjustMaxHeight : Cmd Msg
@@ -119,10 +120,13 @@ savedStateDecoder =
 handleWS : Model -> D.Value -> Model
 handleWS model val =
     let
-        ( newState, yields ) =
-            Websocket.receive model.wsState model.wsHandlers val
+        ( newWsState, yields ) =
+            Websocket.receive model.wsState val
+
+        _ =
+            Debug.log "yields" yields
     in
-    { model | wsState = newState }
+    { model | wsState = newWsState }
 
 
 
@@ -134,6 +138,7 @@ sub _ =
     Sub.batch
         [ onResize Resize
         , Ports.loadFromJs Load
+        , Ports.webSocketClientSub WSReceive
         ]
 
 
