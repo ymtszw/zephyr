@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Main</title>
-  <script src="zephyr.js" charset="utf-8"></script>
+  <script type="text/javascript" src="zephyr.js" charset="utf-8"></script>
+  <script type="text/javascript" src="vendor/WebSocketClient.js" charset="utf-8"></script>
 </head>
 <body>
   <!-- Entire body will be replaced by Elm -->
@@ -24,6 +25,7 @@
     // Since IndexedDB is all asynchronous, we do not synchronously wait for state load;
     // just launch Elm app then report saved state when ready
     const app = Elm.Main.init({ flags: { serviceWorkerAvailable, indexedDBAvailable, clientHeight } })
+    WebSocketClient.subscribe(app)
 
     if (indexedDBAvailable) {
       const openRequest = window.indexedDB.open("ZephyrDB", 3) // Increment version for migrate
