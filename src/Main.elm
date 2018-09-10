@@ -8,6 +8,7 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.Core as Core exposing (Env, Model, Msg(..), welcomeModel)
+import Data.Item exposing (Item)
 import Data.UniqueId as UniqueId
 import Html
 import Json.Decode as D
@@ -69,7 +70,7 @@ update msg ({ env } as model) =
             ( loadColumns model val, Cmd.none )
 
         WSReceive val ->
-            ( handleWS model val, Cmd.none )
+            handleWS model val
 
         NoOp ->
             ( model, Cmd.none )
@@ -117,16 +118,27 @@ savedStateDecoder =
     D.field "columns" (D.list Column.decoder)
 
 
-handleWS : Model -> D.Value -> Model
+handleWS : Model -> D.Value -> ( Model, Cmd Msg )
 handleWS model val =
     let
-        ( newWsState, yields ) =
+        ( newWsState, ( yields, cmd ) ) =
             Websocket.receive model.wsState val
-
-        _ =
-            Debug.log "yields" yields
     in
-    { model | wsState = newWsState }
+    ( pushYieldsToFirstColumn { model | wsState = newWsState } yields, cmd )
+
+
+pushYieldsToFirstColumn : Model -> List Item -> Model
+pushYieldsToFirstColumn m yields =
+    case Array.get 0 m.columns of
+        Just column ->
+            { m | columns = Array.set 0 { column | items = yields ++ column.items } m.columns }
+
+        Nothing ->
+            let
+                ( id, idGen ) =
+                    UniqueId.gen "column" m.idGen
+            in
+            { m | columns = Array.push { id = id, items = yields } m.columns }
 
 
 
