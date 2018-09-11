@@ -1,11 +1,13 @@
 log('ServiceWorker script loaded!')
 
-const STORAGE = 'zephyr_cache_v3' // increment version to enforce old cache deletion
+const STORAGE = 'zephyr_cache_v4' // increment version to enforce old cache deletion
 const APPSHELL = [
   '/',
   "/index.html",
   "/zephyr.js",
   "/vendor/WebSocketClient.js",
+  "/images/icons/icon-192x192.png",
+  "/images/icons/icon-512x512.png",
 ]
 
 self.addEventListener('install', (e) => {
