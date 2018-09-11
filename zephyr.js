@@ -8221,7 +8221,7 @@ var author$project$Main$update = F2(
 							}),
 						elm$core$Platform$Cmd$none));
 			case 6:
-				var id = msg.a;
+				var handle = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
@@ -8229,13 +8229,13 @@ var author$project$Main$update = F2(
 							aY: _Utils_update(
 								columnSwap,
 								{
-									cO: elm$core$Maybe$Just(id)
+									cO: elm$core$Maybe$Just(handle)
 								})
 						}),
 					elm$core$Platform$Cmd$none);
 			case 7:
 				return _Utils_Tuple2(
-					_Utils_update(
+					columnSwap.dB ? model : _Utils_update(
 						model,
 						{
 							aY: _Utils_update(
@@ -8260,13 +8260,8 @@ var author$project$Main$update = F2(
 						{
 							aY: _Utils_update(
 								columnSwap,
-								{cU: elm$core$Maybe$Nothing, dB: false})
+								{cO: elm$core$Maybe$Nothing, cU: elm$core$Maybe$Nothing, dB: false})
 						}),
-					elm$core$Platform$Cmd$none);
-			case 13:
-				var val = msg.a;
-				return _Utils_Tuple2(
-					A2(author$project$Main$loadColumns, model, val),
 					elm$core$Platform$Cmd$none);
 			case 10:
 				var id = msg.a;
@@ -8298,11 +8293,13 @@ var author$project$Main$update = F2(
 					_Utils_update(
 						model,
 						{
-							aY: _Utils_update(
-								columnSwap,
-								{cU: elm$core$Maybe$Nothing, dB: false}),
 							aZ: A3(author$project$Data$Array$moveFromTo, from, to, model.aZ)
 						}),
+					elm$core$Platform$Cmd$none);
+			case 13:
+				var val = msg.a;
+				return _Utils_Tuple2(
+					A2(author$project$Main$loadColumns, model, val),
 					elm$core$Platform$Cmd$none);
 			case 14:
 				var val = msg.a;
@@ -13115,9 +13112,7 @@ var author$project$View$backgroundEl = function (contents) {
 				mdgriffith$elm_ui$Element$text('Zephyr'))
 			]));
 };
-var author$project$Data$Core$GoUndraggable = function (a) {
-	return {$: 7, a: a};
-};
+var author$project$Data$Core$GoUndraggable = {$: 7};
 var author$project$Data$Core$MakeDraggable = function (a) {
 	return {$: 6, a: a};
 };
@@ -13178,28 +13173,22 @@ var author$project$View$columnHeaderEl = F2(
 					mdgriffith$elm_ui$Element$padding(10),
 					mdgriffith$elm_ui$Element$Background$color(author$project$View$oneDarkSub),
 					mdgriffith$elm_ui$Element$Events$onMouseEnter(
-					author$project$Data$Core$MakeDraggable(index)),
-					mdgriffith$elm_ui$Element$Events$onMouseLeave(
-					author$project$Data$Core$GoUndraggable(index))
+					author$project$Data$Core$MakeDraggable(
+						_Utils_Tuple2(index, id))),
+					mdgriffith$elm_ui$Element$Events$onMouseLeave(author$project$Data$Core$GoUndraggable)
 				]),
 			mdgriffith$elm_ui$Element$text('[PH] ' + id));
 	});
 var author$project$Data$Core$DragHover = function (a) {
 	return {$: 10, a: a};
 };
-var author$project$Data$Core$DragLeave = function (a) {
-	return {$: 11, a: a};
-};
+var author$project$Data$Core$DragLeave = {$: 11};
 var author$project$Data$Core$Drop = F2(
 	function (a, b) {
 		return {$: 12, a: a, b: b};
 	});
-var author$project$Data$Core$SwapEnd = function (a) {
-	return {$: 9, a: a};
-};
-var author$project$Data$Core$SwapStart = function (a) {
-	return {$: 8, a: a};
-};
+var author$project$Data$Core$SwapEnd = {$: 9};
+var author$project$Data$Core$SwapStart = {$: 8};
 var author$project$View$oneDarkSucc = A3(mdgriffith$elm_ui$Element$rgb255, 115, 201, 144);
 var author$project$View$oneDarkWarn = A3(mdgriffith$elm_ui$Element$rgb255, 226, 192, 141);
 var elm$html$Html$Attributes$draggable = _VirtualDom_attribute('draggable');
@@ -13251,14 +13240,16 @@ var mdgriffith$elm_ui$Element$Border$width = function (v) {
 			'border-width',
 			elm$core$String$fromInt(v) + 'px'));
 };
-var author$project$View$columnSwapAttrs = F3(
-	function (_n0, index, otherAttrs) {
+var author$project$View$columnSwapAttrs = F4(
+	function (_n0, index, id, otherAttrs) {
 		var handleMaybe = _n0.cO;
 		var hoverMaybe = _n0.cU;
 		var swapping = _n0.dB;
 		if (!handleMaybe.$) {
-			var handleIndex = handleMaybe.a;
-			return _Utils_eq(handleIndex, index) ? _Utils_ap(
+			var _n2 = handleMaybe.a;
+			var handleIndex = _n2.a;
+			var handleId = _n2.b;
+			return _Utils_eq(handleId, id) ? _Utils_ap(
 				otherAttrs,
 				_List_fromArray(
 					[
@@ -13270,14 +13261,12 @@ var author$project$View$columnSwapAttrs = F3(
 						A2(
 							elm$html$Html$Events$on,
 							'dragstart',
-							elm$json$Json$Decode$succeed(
-								author$project$Data$Core$SwapStart(index)))),
+							elm$json$Json$Decode$succeed(author$project$Data$Core$SwapStart))),
 						mdgriffith$elm_ui$Element$htmlAttribute(
 						A2(
 							elm$html$Html$Events$on,
 							'dragend',
-							elm$json$Json$Decode$succeed(
-								author$project$Data$Core$SwapEnd(index))))
+							elm$json$Json$Decode$succeed(author$project$Data$Core$SwapEnd)))
 					])) : (swapping ? _Utils_ap(
 				otherAttrs,
 				_Utils_ap(
@@ -13291,7 +13280,7 @@ var author$project$View$columnSwapAttrs = F3(
 								'dragenter',
 								elm$json$Json$Decode$succeed(
 									_Utils_Tuple2(
-										author$project$Data$Core$DragHover(index),
+										author$project$Data$Core$DragHover(id),
 										true)))),
 							mdgriffith$elm_ui$Element$htmlAttribute(
 							A2(
@@ -13299,14 +13288,13 @@ var author$project$View$columnSwapAttrs = F3(
 								'dragover',
 								elm$json$Json$Decode$succeed(
 									_Utils_Tuple2(
-										author$project$Data$Core$DragHover(index),
+										author$project$Data$Core$DragHover(id),
 										true)))),
 							mdgriffith$elm_ui$Element$htmlAttribute(
 							A2(
 								elm$html$Html$Events$on,
 								'dragleave',
-								elm$json$Json$Decode$succeed(
-									author$project$Data$Core$DragLeave(index)))),
+								elm$json$Json$Decode$succeed(author$project$Data$Core$DragLeave))),
 							mdgriffith$elm_ui$Element$htmlAttribute(
 							A2(
 								elm$html$Html$Events$on,
@@ -13316,7 +13304,7 @@ var author$project$View$columnSwapAttrs = F3(
 						]),
 					_Utils_eq(
 						hoverMaybe,
-						elm$core$Maybe$Just(index)) ? _List_fromArray(
+						elm$core$Maybe$Just(id)) ? _List_fromArray(
 						[
 							mdgriffith$elm_ui$Element$Border$color(author$project$View$oneDarkSucc),
 							mdgriffith$elm_ui$Element$Border$solid
@@ -13624,10 +13612,11 @@ var author$project$View$columnKeyEl = F4(
 			'column_' + id,
 			A2(
 				mdgriffith$elm_ui$Element$column,
-				A3(
+				A4(
 					author$project$View$columnSwapAttrs,
 					swap,
 					index,
+					id,
 					_List_fromArray(
 						[
 							mdgriffith$elm_ui$Element$width(
