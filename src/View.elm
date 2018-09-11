@@ -16,6 +16,7 @@ import Html
 import Html.Attributes exposing (draggable, style)
 import Html.Events
 import Json.Decode as D
+import String exposing (fromInt)
 import Url
 
 
@@ -145,7 +146,7 @@ columnKeyEl : Int -> ColumnSwap -> Int -> Column -> ( String, Element Msg )
 columnKeyEl clientHeight swap index { id, items } =
     ( "column_" ++ id
     , El.column
-        (columnSwapAttrs swap index <|
+        (columnSwapAttrs swap index id <|
             [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
             , El.height (El.fill |> El.maximum clientHeight)
             , El.scrollbarY
@@ -166,28 +167,28 @@ columnKeyEl clientHeight swap index { id, items } =
     )
 
 
-columnSwapAttrs : ColumnSwap -> Int -> List (El.Attribute Msg) -> List (El.Attribute Msg)
-columnSwapAttrs { handleMaybe, hoverMaybe, swapping } index otherAttrs =
+columnSwapAttrs : ColumnSwap -> Int -> String -> List (El.Attribute Msg) -> List (El.Attribute Msg)
+columnSwapAttrs { handleMaybe, hoverMaybe, swapping } index id otherAttrs =
     case handleMaybe of
-        Just handleIndex ->
-            if handleIndex == index then
+        Just ( handleIndex, handleId ) ->
+            if handleId == id then
                 otherAttrs
                     ++ [ El.htmlAttribute (draggable "true")
                        , El.htmlAttribute (style "cursor" "grab")
-                       , El.htmlAttribute (Html.Events.on "dragstart" (D.succeed (SwapStart index)))
-                       , El.htmlAttribute (Html.Events.on "dragend" (D.succeed (SwapEnd index)))
+                       , El.htmlAttribute (Html.Events.on "dragstart" (D.succeed SwapStart))
+                       , El.htmlAttribute (Html.Events.on "dragend" (D.succeed SwapEnd))
                        ]
 
             else if swapping then
                 otherAttrs
                     ++ [ BD.width 5
                        , BD.rounded 10
-                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragHover index, True )))
-                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( DragHover index, True )))
-                       , El.htmlAttribute (Html.Events.on "dragleave" (D.succeed (DragLeave index)))
+                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragHover id, True )))
+                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( DragHover id, True )))
+                       , El.htmlAttribute (Html.Events.on "dragleave" (D.succeed DragLeave))
                        , El.htmlAttribute (Html.Events.on "drop" (D.succeed (Drop handleIndex index)))
                        ]
-                    ++ (if hoverMaybe == Just index then
+                    ++ (if hoverMaybe == Just id then
                             [ BD.color oneDarkSucc, BD.solid ]
 
                         else
@@ -207,8 +208,8 @@ columnHeaderEl index id =
         [ El.width El.fill
         , El.padding 10
         , BG.color oneDarkSub
-        , Element.Events.onMouseEnter (MakeDraggable index)
-        , Element.Events.onMouseLeave (GoUndraggable index)
+        , Element.Events.onMouseEnter (MakeDraggable ( index, id ))
+        , Element.Events.onMouseLeave GoUndraggable
         ]
         (El.text ("[PH] " ++ id))
 

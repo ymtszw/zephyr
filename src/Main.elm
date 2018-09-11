@@ -66,34 +66,37 @@ update msg ({ env, columnSwap } as model) =
         DelColumn index ->
             persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
-        MakeDraggable id ->
-            ( { model | columnSwap = { columnSwap | handleMaybe = Just id } }, Cmd.none )
+        MakeDraggable handle ->
+            ( { model | columnSwap = { columnSwap | handleMaybe = Just handle } }, Cmd.none )
 
-        GoUndraggable _ ->
-            ( { model | columnSwap = { columnSwap | handleMaybe = Nothing } }, Cmd.none )
+        GoUndraggable ->
+            ( if columnSwap.swapping then
+                -- After dragging ended, suspended mouseleave event may fire BEFORE dragend/drop event,
+                -- in such cases we must wait before removing "handle"
+                model
 
-        SwapStart _ ->
+              else
+                { model | columnSwap = { columnSwap | handleMaybe = Nothing } }
+            , Cmd.none
+            )
+
+        SwapStart ->
             ( { model | columnSwap = { columnSwap | swapping = True } }, Cmd.none )
 
-        SwapEnd _ ->
-            ( { model | columnSwap = { columnSwap | swapping = False, hoverMaybe = Nothing } }, Cmd.none )
-
-        Load val ->
-            ( loadColumns model val, Cmd.none )
+        SwapEnd ->
+            ( { model | columnSwap = { columnSwap | handleMaybe = Nothing, hoverMaybe = Nothing, swapping = False } }, Cmd.none )
 
         DragHover id ->
             ( { model | columnSwap = { columnSwap | hoverMaybe = Just id } }, Cmd.none )
 
-        DragLeave _ ->
+        DragLeave ->
             ( { model | columnSwap = { columnSwap | hoverMaybe = Nothing } }, Cmd.none )
 
         Drop from to ->
-            ( { model
-                | columns = Array.moveFromTo from to model.columns
-                , columnSwap = { columnSwap | swapping = False, hoverMaybe = Nothing }
-              }
-            , Cmd.none
-            )
+            ( { model | columns = Array.moveFromTo from to model.columns }, Cmd.none )
+
+        Load val ->
+            ( loadColumns model val, Cmd.none )
 
         WSReceive val ->
             handleWS model val

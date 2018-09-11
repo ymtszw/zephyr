@@ -36,8 +36,8 @@ type alias Env =
 
 
 type alias ColumnSwap =
-    { handleMaybe : Maybe Int
-    , hoverMaybe : Maybe Int
+    { handleMaybe : Maybe ( Int, String )
+    , hoverMaybe : Maybe String
     , swapping : Bool
     }
 
@@ -100,12 +100,12 @@ type Msg
     | LinkClicked UrlRequest
     | AddColumn
     | DelColumn Int
-    | MakeDraggable Int
-    | GoUndraggable Int
-    | SwapStart Int
-    | SwapEnd Int
-    | DragHover Int
-    | DragLeave Int
+    | MakeDraggable ( Int, String )
+    | GoUndraggable
+    | SwapStart
+    | SwapEnd
+    | DragHover String
+    | DragLeave
     | Drop Int Int
     | Load Value
     | WSReceive Value
