@@ -29,7 +29,7 @@
     WebSocketClient.subscribe(app)
 
     if (indexedDBAvailable) {
-      const openRequest = window.indexedDB.open("ZephyrDB", 3) // Increment version for migrate
+      const openRequest = window.indexedDB.open("ZephyrDB", 3) // Increment version for migration
       openRequest.onerror = (event) => {
         // app.ports.indexedDBError.send(event)
         err(`IndexedDB cannot be opened! ${event}`)
@@ -37,6 +37,7 @@
       openRequest.onupgradeneeded = (event) => { // Also called on DB creation (first visit)
         log("Initialize IndexedDB...")
         const newDb = event.target.result
+        // Note that oldVersion property is always 0 on initial DB creation
         if (event.oldVersion < 2) {
           const store = newDb.createObjectStore("state", { keyPath: "id" })
           store.createIndex("id", "id", { unique: true })

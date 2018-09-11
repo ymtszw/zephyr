@@ -22,4 +22,4 @@ dist/zephyr.js:
 
 .PHONY: after_build
 after_build:
-	sed -i '/livereload/d' dist/index.html
+	bash ./after_build
