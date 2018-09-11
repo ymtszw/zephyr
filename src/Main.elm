@@ -40,7 +40,7 @@ adjustMaxHeight =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ env } as model) =
+update msg ({ env, columnSwap } as model) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -66,8 +66,34 @@ update msg ({ env } as model) =
         DelColumn index ->
             persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
+        MakeDraggable id ->
+            ( { model | columnSwap = { columnSwap | handleMaybe = Just id } }, Cmd.none )
+
+        GoUndraggable _ ->
+            ( { model | columnSwap = { columnSwap | handleMaybe = Nothing } }, Cmd.none )
+
+        SwapStart _ ->
+            ( { model | columnSwap = { columnSwap | swapping = True } }, Cmd.none )
+
+        SwapEnd _ ->
+            ( { model | columnSwap = { columnSwap | swapping = False, hoverMaybe = Nothing } }, Cmd.none )
+
         Load val ->
             ( loadColumns model val, Cmd.none )
+
+        DragHover id ->
+            ( { model | columnSwap = { columnSwap | hoverMaybe = Just id } }, Cmd.none )
+
+        DragLeave _ ->
+            ( { model | columnSwap = { columnSwap | hoverMaybe = Nothing } }, Cmd.none )
+
+        Drop from to ->
+            ( { model
+                | columns = Array.moveFromTo from to model.columns
+                , columnSwap = { columnSwap | swapping = False, hoverMaybe = Nothing }
+              }
+            , Cmd.none
+            )
 
         WSReceive val ->
             handleWS model val

@@ -2,16 +2,20 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Data.Column exposing (Column)
-import Data.Core exposing (Model, Msg(..))
+import Data.Core exposing (ColumnSwap, Model, Msg(..))
 import Data.Item exposing (Item, Media(..))
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
+import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Region exposing (description)
 import Html
+import Html.Attributes exposing (draggable, style)
+import Html.Events
+import Json.Decode as D
 import Url
 
 
@@ -106,14 +110,14 @@ otherButtonsEl =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columns, env } =
+columnsEl { columns, columnSwap, env } =
     backgroundEl <|
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
             , Font.regular
             ]
-            (Array.map (columnKeyEl env.clientHeight) columns |> Array.toList)
+            (Array.indexedMap (columnKeyEl env.clientHeight columnSwap) columns |> Array.toList)
 
 
 backgroundEl : Element Msg -> Element Msg
@@ -122,14 +126,14 @@ backgroundEl contents =
         [ BG.color oneDarkBg
         , El.width El.fill
         , El.height El.fill
-        , Font.bold
-        , Font.color oneDarkSub
-        , Font.size (scale16 12)
         , El.inFront contents
         ]
         [ El.el
             [ El.centerY
             , El.centerX
+            , Font.bold
+            , Font.color oneDarkSub
+            , Font.size (scale16 12)
             , Font.center
             , Font.family [ Font.serif ]
             ]
@@ -137,26 +141,81 @@ backgroundEl contents =
         ]
 
 
-columnKeyEl : Int -> Column -> ( String, Element Msg )
-columnKeyEl clientHeight { id, items } =
+columnKeyEl : Int -> ColumnSwap -> Int -> Column -> ( String, Element Msg )
+columnKeyEl clientHeight swap index { id, items } =
     ( "column_" ++ id
-    , El.el
-        [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-        , El.height (El.fill |> El.maximum clientHeight)
-        , El.scrollbarY
-        , El.paddingXY 5 0
-        , BG.color oneDarkMain
-        , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-        , BD.color oneDarkBg
-        , Font.color oneDarkText
+    , El.column
+        (columnSwapAttrs swap index <|
+            [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
+            , El.height (El.fill |> El.maximum clientHeight)
+            , El.scrollbarY
+            , BG.color oneDarkMain
+            , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
+            , BD.color oneDarkBg
+            , Font.color oneDarkText
+            ]
+        )
+        [ columnHeaderEl index id
+        , items
+            |> List.map itemEl
+            |> El.column
+                [ El.width El.fill
+                , El.paddingXY 5 0
+                ]
         ]
-        (items |> List.map itemEl |> El.column [ El.width El.fill ])
     )
+
+
+columnSwapAttrs : ColumnSwap -> Int -> List (El.Attribute Msg) -> List (El.Attribute Msg)
+columnSwapAttrs { handleMaybe, hoverMaybe, swapping } index otherAttrs =
+    case handleMaybe of
+        Just handleIndex ->
+            if handleIndex == index then
+                otherAttrs
+                    ++ [ El.htmlAttribute (draggable "true")
+                       , El.htmlAttribute (style "cursor" "grab")
+                       , El.htmlAttribute (Html.Events.on "dragstart" (D.succeed (SwapStart index)))
+                       , El.htmlAttribute (Html.Events.on "dragend" (D.succeed (SwapEnd index)))
+                       ]
+
+            else if swapping then
+                otherAttrs
+                    ++ [ BD.width 5
+                       , BD.rounded 10
+                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragHover index, True )))
+                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( DragHover index, True )))
+                       , El.htmlAttribute (Html.Events.on "dragleave" (D.succeed (DragLeave index)))
+                       , El.htmlAttribute (Html.Events.on "drop" (D.succeed (Drop handleIndex index)))
+                       ]
+                    ++ (if hoverMaybe == Just index then
+                            [ BD.color oneDarkSucc, BD.solid ]
+
+                        else
+                            [ BD.color oneDarkWarn, BD.dashed ]
+                       )
+
+            else
+                otherAttrs
+
+        Nothing ->
+            otherAttrs
+
+
+columnHeaderEl : Int -> String -> Element Msg
+columnHeaderEl index id =
+    El.el
+        [ El.width El.fill
+        , El.padding 10
+        , BG.color oneDarkSub
+        , Element.Events.onMouseEnter (MakeDraggable index)
+        , Element.Events.onMouseLeave (GoUndraggable index)
+        ]
+        (El.text ("[PH] " ++ id))
 
 
 itemEl : Item -> Element Msg
 itemEl { message, mediaMaybe } =
-    El.el [ El.width El.fill, El.paddingXY 10 15, BD.widthXY 0 1, BD.color oneDarkBd ] <|
+    El.el [ El.width El.fill, El.paddingXY 10 15, BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }, BD.color oneDarkBd ] <|
         case mediaMaybe of
             Just media ->
                 itemWithMedia message media
@@ -233,6 +292,21 @@ oneDarkNote =
 oneDarkLink : El.Color
 oneDarkLink =
     El.rgb255 15 144 202
+
+
+oneDarkSucc : El.Color
+oneDarkSucc =
+    El.rgb255 115 201 144
+
+
+oneDarkWarn : El.Color
+oneDarkWarn =
+    El.rgb255 226 192 141
+
+
+oneDarkErr : El.Color
+oneDarkErr =
+    El.rgb255 224 82 82
 
 
 

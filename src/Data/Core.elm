@@ -1,4 +1,4 @@
-module Data.Core exposing (Env, Model, Msg(..), init, welcomeModel)
+module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), init, welcomeModel)
 
 import Array exposing (Array)
 import Browser exposing (UrlRequest)
@@ -19,6 +19,7 @@ import Websocket
 
 type alias Model =
     { columns : Array Column
+    , columnSwap : ColumnSwap
     , producers : List Producer
     , idGen : Generator
     , navKey : Key
@@ -34,6 +35,13 @@ type alias Env =
     }
 
 
+type alias ColumnSwap =
+    { handleMaybe : Maybe Int
+    , hoverMaybe : Maybe Int
+    , swapping : Bool
+    }
+
+
 init : Env -> Key -> ( Model, Cmd Msg )
 init env navKey =
     initModel env navKey
@@ -44,6 +52,7 @@ initModel : Env -> Key -> Model
 initModel env navKey =
     if env.indexedDBAvailable then
         { columns = Array.fromList []
+        , columnSwap = ColumnSwap Nothing Nothing False
         , producers = []
         , idGen = UniqueId.init
         , navKey = navKey
@@ -71,6 +80,7 @@ welcomeModel env navKey =
             UniqueId.genAndMap "column" UniqueId.init <| \newId -> [ Column.welcome newId ]
     in
     { columns = Array.fromList columns
+    , columnSwap = ColumnSwap Nothing Nothing False
     , producers = []
     , idGen = idGen
     , navKey = navKey
@@ -90,5 +100,12 @@ type Msg
     | LinkClicked UrlRequest
     | AddColumn
     | DelColumn Int
+    | MakeDraggable Int
+    | GoUndraggable Int
+    | SwapStart Int
+    | SwapEnd Int
+    | DragHover Int
+    | DragLeave Int
+    | Drop Int Int
     | Load Value
     | WSReceive Value
