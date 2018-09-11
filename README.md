@@ -6,7 +6,7 @@ Elm 0.19 exploration app.
 ## Development
 
 - Globally install Elm 0.19 platform
-- Globally Install [elm-live](https://github.com/wking-io/elm-live)
+- Globally Install [elm-live](https://github.com/wking-io/elm-live) (>= 3.0.4)
 - `make`
 - Open http://localhot:8000
 

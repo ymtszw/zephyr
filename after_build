@@ -1,7 +1,0 @@
-#!/bin/bash
-if which -s gsed; then
-  SED="gsed"
-else
-  SED="sed"
-fi
-$SED -i '/livereload/d' dist/index.html
