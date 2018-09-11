@@ -3,7 +3,7 @@ all: start
 
 .PHONY: start
 start:
-	elm-live --pushstate --dir=dist --before-build='./before_build' --output=dist/zephyr.js src/Main.elm
+	elm-live src/Main.elm --pushstate --dir=dist --before-build='./before_build' -- --output=dist/zephyr.js
 
 .PHONY: release
 release: clean before_build dist/zephyr.js
