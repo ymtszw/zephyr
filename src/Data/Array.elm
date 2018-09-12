@@ -1,6 +1,16 @@
-module Data.Array exposing (moveFromTo, removeAt, splitAt, squeeze)
+module Data.Array exposing (moveFromTo, removeAt, splitAt, squeeze, update)
 
 import Array exposing (Array, empty, slice)
+
+
+update : Int -> (a -> a) -> Array a -> Array a
+update index fun array =
+    case Array.get index array of
+        Just e ->
+            Array.set index (fun e) array
+
+        Nothing ->
+            array
 
 
 splitAt : Int -> Array a -> ( Array a, Array a )
