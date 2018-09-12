@@ -7,7 +7,7 @@ import Browser.Events exposing (onResize)
 import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
-import Data.Core as Core exposing (Env, Model, Msg(..), welcomeModel)
+import Data.Core as Core exposing (ColumnSwap, Env, Model, Msg(..), welcomeModel)
 import Data.Item exposing (Item)
 import Data.UniqueId as UniqueId
 import Html
@@ -40,7 +40,7 @@ adjustMaxHeight =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ env, columnSwap } as model) =
+update msg ({ env } as model) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -66,35 +66,20 @@ update msg ({ env, columnSwap } as model) =
         DelColumn index ->
             persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
-        MakeDraggable handle ->
-            ( { model | columnSwap = { columnSwap | handleMaybe = Just handle } }, Cmd.none )
+        DragStart originalIndex grabbedId ->
+            ( { model | columnSwapMaybe = Just (ColumnSwap grabbedId originalIndex model.columns) }, Cmd.none )
 
-        GoUndraggable ->
-            ( if columnSwap.swapping then
-                -- After dragging ended, suspended mouseleave event may fire BEFORE dragend/drop event,
-                -- in such cases we must wait before removing "handle"
-                model
+        DragEnter dest ->
+            -- Since columnSwap object is rather big, we do not pass it along with messages
+            case model.columnSwapMaybe of
+                Just swap ->
+                    ( { model | columns = Array.moveFromTo swap.originalIndex dest swap.originalColumns }, Cmd.none )
 
-              else
-                { model | columnSwap = { columnSwap | handleMaybe = Nothing } }
-            , Cmd.none
-            )
-
-        DragStart ->
-            ( { model | columnSwap = { columnSwap | swapping = True } }, Cmd.none )
+                Nothing ->
+                    ( model, Cmd.none )
 
         DragEnd ->
-            -- Always eliminate "handle" on dragend event
-            ( { model | columnSwap = { columnSwap | handleMaybe = Nothing, hoverMaybe = Nothing, swapping = False } }, Cmd.none )
-
-        DragHover id ->
-            ( { model | columnSwap = { columnSwap | hoverMaybe = Just id } }, Cmd.none )
-
-        DragLeave ->
-            ( { model | columnSwap = { columnSwap | hoverMaybe = Nothing } }, Cmd.none )
-
-        Drop from to ->
-            ( { model | columns = Array.moveFromTo from to model.columns }, Cmd.none )
+            persist ( { model | columnSwapMaybe = Nothing }, Cmd.none )
 
         Load val ->
             ( loadColumns model val, Cmd.none )
@@ -168,7 +153,7 @@ pushYieldsToFirstColumn m yields =
                 ( id, idGen ) =
                     UniqueId.gen "column" m.idGen
             in
-            { m | columns = Array.push { id = id, items = yields } m.columns }
+            { m | columns = Array.push (Column id yields) m.columns }
 
 
 

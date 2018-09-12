@@ -19,7 +19,7 @@ import Websocket
 
 type alias Model =
     { columns : Array Column
-    , columnSwap : ColumnSwap
+    , columnSwapMaybe : Maybe ColumnSwap
     , producers : List Producer
     , idGen : Generator
     , navKey : Key
@@ -36,9 +36,9 @@ type alias Env =
 
 
 type alias ColumnSwap =
-    { handleMaybe : Maybe ( Int, String )
-    , hoverMaybe : Maybe String
-    , swapping : Bool
+    { grabbedId : String
+    , originalIndex : Int
+    , originalColumns : Array Column
     }
 
 
@@ -52,7 +52,7 @@ initModel : Env -> Key -> Model
 initModel env navKey =
     if env.indexedDBAvailable then
         { columns = Array.fromList []
-        , columnSwap = ColumnSwap Nothing Nothing False
+        , columnSwapMaybe = Nothing
         , producers = []
         , idGen = UniqueId.init
         , navKey = navKey
@@ -80,7 +80,7 @@ welcomeModel env navKey =
             UniqueId.genAndMap "column" UniqueId.init <| \newId -> [ Column.welcome newId ]
     in
     { columns = Array.fromList columns
-    , columnSwap = ColumnSwap Nothing Nothing False
+    , columnSwapMaybe = Nothing
     , producers = []
     , idGen = idGen
     , navKey = navKey
@@ -100,12 +100,8 @@ type Msg
     | LinkClicked UrlRequest
     | AddColumn
     | DelColumn Int
-    | MakeDraggable ( Int, String )
-    | GoUndraggable
-    | DragStart
+    | DragStart Int String
+    | DragEnter Int
     | DragEnd
-    | DragHover String
-    | DragLeave
-    | Drop Int Int
     | Load Value
     | WSReceive Value

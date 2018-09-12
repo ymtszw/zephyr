@@ -15,14 +15,14 @@ import Element.Region exposing (description)
 import Html
 import Html.Attributes exposing (draggable, style)
 import Html.Events
-import Json.Decode as D
+import Json.Decode as D exposing (Decoder)
 import String exposing (fromInt)
 import Url
 
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ El.layout [] (bodyEl m)
+    [ El.layout (dragEventHandlers m.columnSwapMaybe) (bodyEl m)
     , fancyScroll
     ]
 
@@ -33,6 +33,19 @@ bodyEl model =
         [ sidebarEl model
         , columnsEl model
         ]
+
+
+dragEventHandlers : Maybe ColumnSwap -> List (El.Attribute Msg)
+dragEventHandlers columnSwapMaybe =
+    case columnSwapMaybe of
+        Just _ ->
+            [ El.htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
+            , El.htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
+            , El.htmlAttribute (Html.Events.preventDefaultOn "drop" (D.succeed ( NoOp, True )))
+            ]
+
+        Nothing ->
+            []
 
 
 
@@ -111,14 +124,14 @@ otherButtonsEl =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columns, columnSwap, env } =
+columnsEl { columns, columnSwapMaybe, env } =
     backgroundEl <|
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
             , Font.regular
             ]
-            (Array.indexedMap (columnKeyEl env.clientHeight columnSwap) columns |> Array.toList)
+            (Array.indexedMap (columnKeyEl env.clientHeight columnSwapMaybe) columns |> Array.toList)
 
 
 backgroundEl : Element Msg -> Element Msg
@@ -142,74 +155,71 @@ backgroundEl contents =
         ]
 
 
-columnKeyEl : Int -> ColumnSwap -> Int -> Column -> ( String, Element Msg )
-columnKeyEl clientHeight swap index { id, items } =
-    ( "column_" ++ id
-    , El.column
-        (columnSwapAttrs swap index id <|
-            [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-            , El.height (El.fill |> El.maximum clientHeight)
-            , El.scrollbarY
-            , BG.color oneDarkMain
-            , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-            , BD.color oneDarkBg
-            , Font.color oneDarkText
-            ]
+columnKeyEl : Int -> Maybe ColumnSwap -> Int -> Column -> ( String, Element Msg )
+columnKeyEl clientHeight swapMaybe index column =
+    ( "column_" ++ column.id
+    , case swapMaybe of
+        Nothing ->
+            notDraggedColumnEl clientHeight column <|
+                [ El.htmlAttribute (draggable "true")
+                , El.htmlAttribute (Html.Events.on "dragstart" (fireOnColumnDrag index column.id))
+                ]
+
+        Just swap ->
+            if swap.grabbedId == column.id then
+                draggedColumnEl clientHeight
+
+            else
+                notDraggedColumnEl clientHeight column <|
+                    [ El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter index, True ))) ]
+    )
+
+
+notDraggedColumnEl : Int -> Column -> List (El.Attribute Msg) -> Element Msg
+notDraggedColumnEl clientHeight column attrs =
+    El.column
+        ([ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
+         , El.height (El.fill |> El.maximum clientHeight)
+         , El.scrollbarY
+         , BG.color oneDarkMain
+         , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
+         , BD.color oneDarkBg
+         , Font.color oneDarkText
+         ]
+            ++ attrs
         )
-        [ columnHeaderEl index id
-        , items
+        [ columnHeaderEl column.id
+        , column.items
             |> List.map itemEl
             |> El.column
                 [ El.width El.fill
                 , El.paddingXY 5 0
                 ]
         ]
-    )
 
 
-columnSwapAttrs : ColumnSwap -> Int -> String -> List (El.Attribute Msg) -> List (El.Attribute Msg)
-columnSwapAttrs { handleMaybe, hoverMaybe, swapping } index id otherAttrs =
-    case handleMaybe of
-        Just ( handleIndex, handleId ) ->
-            if handleId == id then
-                otherAttrs
-                    ++ [ El.htmlAttribute (draggable "true")
-                       , El.htmlAttribute (style "cursor" "grab")
-                       , El.htmlAttribute (Html.Events.on "dragstart" (D.succeed DragStart))
-                       , El.htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
-                       ]
+fireOnColumnDrag : Int -> String -> Decoder Msg
+fireOnColumnDrag index id =
+    let
+        fireUnlessItemsAreAttached types =
+            -- If Column div element is dragged, it should not have items attached in dataTransfer property
+            case types of
+                [] ->
+                    D.succeed (DragStart index id)
 
-            else if swapping then
-                otherAttrs
-                    ++ [ BD.width 5
-                       , BD.rounded 10
-                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragHover id, True )))
-                       , El.htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( DragHover id, True )))
-                       , El.htmlAttribute (Html.Events.on "dragleave" (D.succeed DragLeave))
-                       , El.htmlAttribute (Html.Events.on "drop" (D.succeed (Drop handleIndex index)))
-                       ]
-                    ++ (if hoverMaybe == Just id then
-                            [ BD.color oneDarkSucc, BD.solid ]
-
-                        else
-                            [ BD.color oneDarkWarn, BD.dashed ]
-                       )
-
-            else
-                otherAttrs
-
-        Nothing ->
-            otherAttrs
+                _ ->
+                    D.fail "Dragged element is not a column."
+    in
+    D.at [ "dataTransfer", "types" ] (D.list D.string)
+        |> D.andThen fireUnlessItemsAreAttached
 
 
-columnHeaderEl : Int -> String -> Element Msg
-columnHeaderEl index id =
+columnHeaderEl : String -> Element Msg
+columnHeaderEl id =
     El.el
         [ El.width El.fill
         , El.padding 10
         , BG.color oneDarkSub
-        , Element.Events.onMouseEnter (MakeDraggable ( index, id ))
-        , Element.Events.onMouseLeave GoUndraggable
         ]
         (El.text ("[PH] " ++ id))
 
@@ -254,6 +264,15 @@ mediaEl media =
         Movie _ ->
             -- Placeholder
             El.none
+
+
+draggedColumnEl : Int -> Element Msg
+draggedColumnEl clientHeight =
+    El.el
+        [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
+        , El.height (El.fill |> El.maximum clientHeight)
+        ]
+        El.none
 
 
 
