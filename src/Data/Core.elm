@@ -19,6 +19,7 @@ import Websocket
 
 type alias Model =
     { columns : Array Column
+    , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
     , producers : List Producer
     , idGen : Generator
@@ -51,14 +52,15 @@ init env navKey =
 initModel : Env -> Key -> Model
 initModel env navKey =
     if env.indexedDBAvailable then
-        { columns = Array.fromList []
-        , columnSwapMaybe = Nothing
-        , producers = []
-        , idGen = UniqueId.init
-        , navKey = navKey
-        , wsState = Websocket.init []
-        , env = env
-        }
+        Model
+            (Array.fromList [])
+            False
+            Nothing
+            []
+            UniqueId.init
+            navKey
+            (Websocket.init [])
+            env
 
     else
         welcomeModel env navKey
@@ -79,14 +81,15 @@ welcomeModel env navKey =
         ( columns, idGen ) =
             UniqueId.genAndMap "column" UniqueId.init <| \newId -> [ Column.welcome newId ]
     in
-    { columns = Array.fromList columns
-    , columnSwapMaybe = Nothing
-    , producers = []
-    , idGen = idGen
-    , navKey = navKey
-    , wsState = Websocket.init []
-    , env = env
-    }
+    Model
+        (Array.fromList columns)
+        False
+        Nothing
+        []
+        idGen
+        navKey
+        (Websocket.init [])
+        env
 
 
 
@@ -100,6 +103,7 @@ type Msg
     | LinkClicked UrlRequest
     | AddColumn
     | DelColumn Int
+    | ToggleColumnSwappable Bool
     | DragStart Int String
     | DragEnter Int
     | DragEnd

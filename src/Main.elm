@@ -3,7 +3,7 @@ module Main exposing (main)
 import Array
 import Browser exposing (UrlRequest(..))
 import Browser.Dom exposing (getViewport)
-import Browser.Events exposing (onResize)
+import Browser.Events exposing (Visibility(..), onResize)
 import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
@@ -66,6 +66,9 @@ update msg ({ env } as model) =
         DelColumn index ->
             persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
 
+        ToggleColumnSwappable bool ->
+            ( { model | columnSwappable = bool }, Cmd.none )
+
         DragStart originalIndex grabbedId ->
             ( { model | columnSwapMaybe = Just (ColumnSwap grabbedId originalIndex model.columns) }, Cmd.none )
 
@@ -79,7 +82,9 @@ update msg ({ env } as model) =
                     ( model, Cmd.none )
 
         DragEnd ->
-            persist ( { model | columnSwapMaybe = Nothing }, Cmd.none )
+            -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
+            -- So we always turn off swap mode at dragend
+            persist ( { model | columnSwappable = False, columnSwapMaybe = Nothing }, Cmd.none )
 
         Load val ->
             ( loadColumns model val, Cmd.none )
@@ -161,11 +166,31 @@ pushYieldsToFirstColumn m yields =
 
 
 sub : Model -> Sub Msg
-sub _ =
+sub m =
     Sub.batch
         [ onResize Resize
         , Ports.loadFromJs Load
         , Ports.webSocketClientSub WSReceive
+        , toggleColumnSwap m.columnSwappable
+        ]
+
+
+toggleColumnSwap : Bool -> Sub Msg
+toggleColumnSwap swappable =
+    Sub.batch
+        [ if not swappable then
+            Browser.Events.onKeyDown (D.field "altKey" D.bool |> D.map ToggleColumnSwappable)
+
+          else
+            Browser.Events.onKeyUp (D.field "altKey" D.bool |> D.map ToggleColumnSwappable)
+        , Browser.Events.onVisibilityChange <|
+            \visibility ->
+                case visibility of
+                    Visible ->
+                        NoOp
+
+                    Hidden ->
+                        ToggleColumnSwappable False
         ]
 
 

@@ -124,14 +124,14 @@ otherButtonsEl =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columns, columnSwapMaybe, env } =
+columnsEl { columns, columnSwappable, columnSwapMaybe, env } =
     backgroundEl <|
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
             , Font.regular
             ]
-            (Array.indexedMap (columnKeyEl env.clientHeight columnSwapMaybe) columns |> Array.toList)
+            (Array.indexedMap (columnKeyEl env.clientHeight columnSwappable columnSwapMaybe) columns |> Array.toList)
 
 
 backgroundEl : Element Msg -> Element Msg
@@ -155,15 +155,20 @@ backgroundEl contents =
         ]
 
 
-columnKeyEl : Int -> Maybe ColumnSwap -> Int -> Column -> ( String, Element Msg )
-columnKeyEl clientHeight swapMaybe index column =
+columnKeyEl : Int -> Bool -> Maybe ColumnSwap -> Int -> Column -> ( String, Element Msg )
+columnKeyEl clientHeight swappable swapMaybe index column =
     ( "column_" ++ column.id
     , case swapMaybe of
         Nothing ->
             notDraggedColumnEl clientHeight column <|
-                [ El.htmlAttribute (draggable "true")
-                , El.htmlAttribute (Html.Events.on "dragstart" (fireOnColumnDrag index column.id))
-                ]
+                if swappable then
+                    [ El.htmlAttribute (draggable "true")
+                    , El.htmlAttribute (style "cursor" "all-scroll")
+                    , El.htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
+                    ]
+
+                else
+                    []
 
         Just swap ->
             if swap.grabbedId == column.id then
@@ -198,20 +203,21 @@ notDraggedColumnEl clientHeight column attrs =
         ]
 
 
-fireOnColumnDrag : Int -> String -> Decoder Msg
-fireOnColumnDrag index id =
+onDragStart : Int -> String -> Decoder Msg
+onDragStart index id =
     let
-        fireUnlessItemsAreAttached types =
-            -- If Column div element is dragged, it should not have items attached in dataTransfer property
+        fireDependingOnDataTransfer types =
             case types of
                 [] ->
+                    -- If Column div elements are dragged, it should not have items attached in dataTransfer property
                     D.succeed (DragStart index id)
 
                 _ ->
-                    D.fail "Dragged element is not a column."
+                    -- Otherwise something else (img, link, etc...) are dragged. Turn off swap mode
+                    D.succeed (ToggleColumnSwappable False)
     in
     D.at [ "dataTransfer", "types" ] (D.list D.string)
-        |> D.andThen fireUnlessItemsAreAttached
+        |> D.andThen fireDependingOnDataTransfer
 
 
 columnHeaderEl : String -> Element Msg
