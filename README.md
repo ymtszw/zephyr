@@ -5,8 +5,10 @@ Elm 0.19 exploration app.
 
 ## Development
 
-- Globally install Elm 0.19 platform
-- Globally Install [elm-live](https://github.com/wking-io/elm-live) (>= 3.0.4)
+- Globally install:
+    - Elm 0.19 platform
+    - [elm-live](https://github.com/wking-io/elm-live) (>= 3.0.4)
+    - [uglifyjs](https://github.com/mishoo/UglifyJS2) (>= 3.4)
 - `make`
 - Open http://localhot:8000
 
