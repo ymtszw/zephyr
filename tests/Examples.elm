@@ -44,6 +44,15 @@ testMoveFromTo initial from to expect =
                 |> Expect.equal (fromList expect)
 
 
+testSqueeze : List a -> Int -> a -> List a -> Test
+testSqueeze initial index element expected =
+    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index:" ++ fromInt index) <|
+        \_ ->
+            fromList initial
+                |> Array.squeeze index element
+                |> Expect.equal (fromList expected)
+
+
 arraySuites : Test
 arraySuites =
     describe "Data.Array"
@@ -99,6 +108,18 @@ arraySuites =
             , testMoveFromTo [ 0, 1, 2, 3 ] 4 0 [ 0, 1, 2, 3 ]
             , testMoveFromTo [ 0, 1, 2, 3 ] 4 1 [ 0, 1, 2, 3 ]
             , testMoveFromTo [ 0, 1, 2, 3 ] 4 3 [ 0, 1, 2, 3 ]
+            ]
+        , describe "squeeze"
+            [ testSqueeze [ 0, 1, 2, 3 ] 0 9 [ 9, 0, 1, 2, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] 1 9 [ 0, 9, 1, 2, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] 2 9 [ 0, 1, 9, 2, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] 3 9 [ 0, 1, 2, 9, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] 4 9 [ 0, 1, 2, 3, 9 ]
+            , testSqueeze [ 0, 1, 2, 3 ] 5 9 [ 0, 1, 2, 3, 9 ]
+            , testSqueeze [ 0, 1, 2, 3 ] -1 9 [ 0, 1, 2, 9, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] -2 9 [ 0, 1, 9, 2, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] -3 9 [ 0, 9, 1, 2, 3 ]
+            , testSqueeze [ 0, 1, 2, 3 ] -4 9 [ 9, 0, 1, 2, 3 ]
             ]
         ]
 

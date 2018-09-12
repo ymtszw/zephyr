@@ -1,4 +1,4 @@
-module Data.Array exposing (moveFromTo, removeAt, splitAt)
+module Data.Array exposing (moveFromTo, removeAt, splitAt, squeeze)
 
 import Array exposing (Array, empty, slice)
 
@@ -98,3 +98,12 @@ moveToLeft from to moving array =
             slice (from + 1) len array
     in
     Array.append (Array.push moving leading) (Array.append rightShifted trailing)
+
+
+squeeze : Int -> a -> Array a -> Array a
+squeeze index element array =
+    let
+        ( front, rear ) =
+            splitAt index array
+    in
+    Array.append (Array.push element front) rear
