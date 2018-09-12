@@ -80,10 +80,11 @@ update msg ({ env, columnSwap } as model) =
             , Cmd.none
             )
 
-        SwapStart ->
+        DragStart ->
             ( { model | columnSwap = { columnSwap | swapping = True } }, Cmd.none )
 
-        SwapEnd ->
+        DragEnd ->
+            -- Always eliminate "handle" on dragend event
             ( { model | columnSwap = { columnSwap | handleMaybe = Nothing, hoverMaybe = Nothing, swapping = False } }, Cmd.none )
 
         DragHover id ->

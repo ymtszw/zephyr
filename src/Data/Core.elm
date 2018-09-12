@@ -102,8 +102,8 @@ type Msg
     | DelColumn Int
     | MakeDraggable ( Int, String )
     | GoUndraggable
-    | SwapStart
-    | SwapEnd
+    | DragStart
+    | DragEnd
     | DragHover String
     | DragLeave
     | Drop Int Int

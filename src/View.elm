@@ -175,8 +175,8 @@ columnSwapAttrs { handleMaybe, hoverMaybe, swapping } index id otherAttrs =
                 otherAttrs
                     ++ [ El.htmlAttribute (draggable "true")
                        , El.htmlAttribute (style "cursor" "grab")
-                       , El.htmlAttribute (Html.Events.on "dragstart" (D.succeed SwapStart))
-                       , El.htmlAttribute (Html.Events.on "dragend" (D.succeed SwapEnd))
+                       , El.htmlAttribute (Html.Events.on "dragstart" (D.succeed DragStart))
+                       , El.htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
                        ]
 
             else if swapping then
