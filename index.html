@@ -15,8 +15,7 @@
     <script type="text/javascript">
       // Prerequisites
       const isLocalDevelopment = window.origin.startsWith("http://localhost")
-      const serviceWorkerAvailable = "serviceWorker" in window.navigator &&
-        !isLocalDevelopment // Comment this line to test serviceWorker locally
+      const serviceWorkerAvailable = "serviceWorker" in window.navigator && !isLocalDevelopment
       const indexedDBAvailable = "indexedDB" in window
       const clientHeight = window.document.documentElement.clientHeight
 
