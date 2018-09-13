@@ -52,7 +52,9 @@ self.addEventListener('fetch', (e) => {
           log(`Using cache for: ${e.request.url}`)
           return response
         } else {
-          return fetch(e.request.url, { mode: 'no-cors' })
+          return fetch(e.request.url, {
+            mode: 'no-cors',
+          })
         }
       })
     )
