@@ -13,6 +13,8 @@ update index fun array =
             array
 
 
+{-| Split an Array at an index, such that the second half will start at the specified index.
+-}
 splitAt : Int -> Array a -> ( Array a, Array a )
 splitAt index array =
     let
