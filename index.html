@@ -38,7 +38,7 @@
       WebSocketClient.subscribe(app)
 
       if (indexedDBAvailable) {
-        const openRequest = window.indexedDB.open("ZephyrDB", 3) // Increment version for migration
+        const openRequest = window.indexedDB.open("ZephyrDB", 4) // Increment version for migration
         openRequest.onerror = (event) => {
           // app.ports.indexedDBError.send(event)
           err(`IndexedDB cannot be opened! ${event}`)
@@ -58,8 +58,7 @@
               newDb.transaction("state", "readwrite")
                 .objectStore("state")
                 .add({
-                  id: "primary",
-                  columns: [],
+                  id: "primary"
                 })
             }
           }
@@ -85,15 +84,11 @@
         }
 
         // State dump
-        app.ports.sendToJs.subscribe(({
-          columns,
-        }) => {
+        app.ports.sendToJs.subscribe((obj) => {
+          obj.id = "primary" // Destructive assign
           db.transaction("state", "readwrite")
             .objectStore("state")
-            .put({
-              id: "primary",
-              columns: columns,
-            })
+            .put(obj)
         })
       }
 
