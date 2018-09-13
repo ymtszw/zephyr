@@ -2,6 +2,7 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Data.Column exposing (Column)
+import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core exposing (ColumnSwap, Model, Msg(..))
 import Data.Item exposing (Item, Media(..))
 import Element as El exposing (Element)
@@ -53,23 +54,20 @@ dragEventHandlers columnSwapMaybe =
 
 
 sidebarEl : Model -> Element Msg
-sidebarEl { columns, env } =
+sidebarEl { columnStore, env } =
     El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
         , BG.color oneDarkBg
         ]
-        [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columns)
+        [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
         , El.el [ El.width El.fill, El.alignBottom ] otherButtonsEl
         ]
 
 
-columnButtonsEl : Array Column -> Element Msg
-columnButtonsEl columns =
-    columns
-        |> Array.indexedMap columnButtonEl
-        |> Array.push ( "columnAddButton", columnAddButtonEl )
-        |> Array.toList
+columnButtonsEl : ColumnStore -> Element Msg
+columnButtonsEl columnStore =
+    List.append (ColumnStore.indexedMap columnButtonEl columnStore) [ ( "columnAddButton", columnAddButtonEl ) ]
         |> Element.Keyed.column [ El.width El.fill ]
 
 
@@ -124,14 +122,14 @@ otherButtonsEl =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columns, columnSwappable, columnSwapMaybe, env } =
+columnsEl { columnStore, columnSwappable, columnSwapMaybe, env } =
     backgroundEl <|
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
             , Font.regular
             ]
-            (Array.indexedMap (columnKeyEl env.clientHeight columnSwappable columnSwapMaybe) columns |> Array.toList)
+            (ColumnStore.indexedMap (columnKeyEl env.clientHeight columnSwappable columnSwapMaybe) columnStore)
 
 
 backgroundEl : Element Msg -> Element Msg

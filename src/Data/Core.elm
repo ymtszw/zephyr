@@ -5,6 +5,7 @@ import Browser exposing (UrlRequest)
 import Browser.Dom exposing (Viewport)
 import Browser.Navigation exposing (Key)
 import Data.Column as Column exposing (Column)
+import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item exposing (Item)
 import Data.Producer as Producer exposing (Producer, Storage)
 import Data.UniqueId as UniqueId exposing (Generator)
@@ -18,7 +19,7 @@ import Websocket
 
 
 type alias Model =
-    { columns : Array Column
+    { columnStore : ColumnStore
     , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
     , producers : List Producer
@@ -39,7 +40,7 @@ type alias Env =
 type alias ColumnSwap =
     { grabbedId : String
     , originalIndex : Int
-    , originalColumns : Array Column
+    , originalOrder : Array String
     }
 
 
@@ -53,7 +54,7 @@ initModel : Env -> Key -> Model
 initModel env navKey =
     if env.indexedDBAvailable then
         Model
-            (Array.fromList [])
+            ColumnStore.init
             False
             Nothing
             []
@@ -78,11 +79,12 @@ installProducers m =
 welcomeModel : Env -> Key -> Model
 welcomeModel env navKey =
     let
-        ( columns, idGen ) =
-            UniqueId.genAndMap "column" UniqueId.init <| \newId -> [ Column.welcome newId ]
+        ( columnStore, idGen ) =
+            UniqueId.genAndMap "column" UniqueId.init <|
+                \newId -> ColumnStore.add (Column.welcome newId) ColumnStore.init
     in
     Model
-        (Array.fromList columns)
+        columnStore
         False
         Nothing
         []

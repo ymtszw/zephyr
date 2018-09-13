@@ -7,11 +7,12 @@ import Browser.Events exposing (Visibility(..), onResize)
 import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
+import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core as Core exposing (ColumnSwap, Env, Model, Msg(..), welcomeModel)
 import Data.Item exposing (Item)
 import Data.UniqueId as UniqueId
 import Html
-import Json.Decode as D
+import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Ports
 import Task
@@ -61,22 +62,23 @@ update msg ({ env } as model) =
                 ( newId, newIdGen ) =
                     UniqueId.gen "column" model.idGen
             in
-            persist ( { model | columns = Array.push (Column.welcome newId) model.columns, idGen = newIdGen }, Cmd.none )
+            persist ( { model | columnStore = ColumnStore.add (Column.welcome newId) model.columnStore, idGen = newIdGen }, Cmd.none )
 
         DelColumn index ->
-            persist ( { model | columns = Array.removeAt index model.columns }, Cmd.none )
+            persist ( { model | columnStore = ColumnStore.removeAt index model.columnStore }, Cmd.none )
 
         ToggleColumnSwappable bool ->
             ( { model | columnSwappable = bool }, Cmd.none )
 
         DragStart originalIndex grabbedId ->
-            ( { model | columnSwapMaybe = Just (ColumnSwap grabbedId originalIndex model.columns) }, Cmd.none )
+            ( { model | columnSwapMaybe = Just (ColumnSwap grabbedId originalIndex model.columnStore.order) }, Cmd.none )
 
         DragEnter dest ->
-            -- Since columnSwap object is rather big, we do not pass it along with messages
+            -- Ideally we should pass originalOrder Array along with messages so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
+            -- However currently there is a bug that prevents --debug compilation when Arrays are passed in messages. See https://github.com/elm/compiler/issues/1753
             case model.columnSwapMaybe of
                 Just swap ->
-                    ( { model | columns = Array.moveFromTo swap.originalIndex dest swap.originalColumns }, Cmd.none )
+                    ( { model | columnStore = ColumnStore.applyOrder (Array.moveFromTo swap.originalIndex dest swap.originalOrder) model.columnStore }, Cmd.none )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -87,7 +89,7 @@ update msg ({ env } as model) =
             persist ( { model | columnSwappable = False, columnSwapMaybe = Nothing }, Cmd.none )
 
         Load val ->
-            ( loadColumns model val, Cmd.none )
+            persist ( loadSavedState model val, Cmd.none )
 
         WSReceive val ->
             handleWS model val
@@ -96,6 +98,15 @@ update msg ({ env } as model) =
             ( model, Cmd.none )
 
 
+{-| Persist Elm application state to IndexedDB via port.
+
+Do not use this function on every update, instead use it only when subject-to-persist data is updated,
+in order to minimize IndexedDB access.
+
+Even queueing/throttling can be introduced later, for when IndexedDB access become too frequent
+(with risks of potential data loss, obviously.)
+
+-}
 persist : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 persist ( model, cmd ) =
     ( model
@@ -108,34 +119,56 @@ persist ( model, cmd ) =
 
 
 encodeModel : Model -> E.Value
-encodeModel { columns } =
+encodeModel m =
     E.object
-        [ ( "columns", E.array Column.encoder columns )
+        [ ( "columnStore", ColumnStore.encode m.columnStore )
+        , ( "idGen", UniqueId.encodeGenerator m.idGen )
         ]
 
 
-loadColumns : Model -> D.Value -> Model
-loadColumns model value =
-    case D.decodeValue savedStateDecoder value of
-        Ok ((_ :: _) as nonEmptyColumns) ->
-            let
-                applyId decoded ( accColumns, accIdGen ) =
-                    UniqueId.genAndMap "column" accIdGen <|
-                        \newId ->
-                            { decoded | id = newId } :: accColumns
-
-                ( newColumns, newIdGen ) =
-                    List.foldr applyId ( [], model.idGen ) nonEmptyColumns
-            in
-            { model | columns = Array.fromList newColumns, idGen = newIdGen }
+loadSavedState : Model -> D.Value -> Model
+loadSavedState model value =
+    case D.decodeValue (savedStateDecoder model.idGen) value of
+        Ok ( columnStore, newIdGen ) ->
+            { model | columnStore = columnStore, idGen = newIdGen }
 
         _ ->
             welcomeModel model.env model.navKey
 
 
-savedStateDecoder : D.Decoder (List Column)
-savedStateDecoder =
-    D.field "columns" (D.list Column.decoder)
+savedStateDecoder : UniqueId.Generator -> Decoder ( ColumnStore, UniqueId.Generator )
+savedStateDecoder idGen =
+    D.oneOf
+        [ v2StateDecoder
+        , v1StateDecoder idGen
+        ]
+
+
+v2StateDecoder : Decoder ( ColumnStore, UniqueId.Generator )
+v2StateDecoder =
+    D.map2 Tuple.pair
+        (D.field "columnStore" ColumnStore.decoder)
+        (D.field "idGen" UniqueId.generatorDecoder)
+
+
+v1StateDecoder : UniqueId.Generator -> Decoder ( ColumnStore, UniqueId.Generator )
+v1StateDecoder idGen =
+    let
+        convertFromV1State columns =
+            case columns of
+                (_ :: _) as nonEmptyColumns ->
+                    let
+                        applyId decoded ( accColumnStore, accIdGen ) =
+                            UniqueId.genAndMap "column" accIdGen <|
+                                \newId ->
+                                    ColumnStore.add { decoded | id = newId } accColumnStore
+                    in
+                    D.succeed <| List.foldr applyId ( ColumnStore.init, idGen ) nonEmptyColumns
+
+                [] ->
+                    D.fail "No saved columns. Go to fallback."
+    in
+    D.field "columns" (D.list Column.decoder) |> D.andThen convertFromV1State
 
 
 handleWS : Model -> D.Value -> ( Model, Cmd Msg )
@@ -144,21 +177,17 @@ handleWS model val =
         ( newWsState, ( yields, cmd ) ) =
             Websocket.receive model.wsState val
     in
-    ( pushYieldsToFirstColumn { model | wsState = newWsState } yields, cmd )
+    case yields of
+        [] ->
+            ( { model | wsState = newWsState }, cmd )
 
-
-pushYieldsToFirstColumn : Model -> List Item -> Model
-pushYieldsToFirstColumn m yields =
-    case Array.get 0 m.columns of
-        Just column ->
-            { m | columns = Array.set 0 { column | items = yields ++ column.items } m.columns }
-
-        Nothing ->
+        nonEmptyYields ->
             let
-                ( id, idGen ) =
-                    UniqueId.gen "column" m.idGen
+                ( newColumnStore, newIdGen ) =
+                    -- XXX Just for debugging. They should go to data broker eventually.
+                    ColumnStore.pushToFirstColumn model.idGen nonEmptyYields model.columnStore
             in
-            { m | columns = Array.push (Column id yields) m.columns }
+            persist ( { model | columnStore = newColumnStore, idGen = newIdGen, wsState = newWsState }, cmd )
 
 
 
