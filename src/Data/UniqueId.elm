@@ -1,9 +1,11 @@
-module Data.UniqueId exposing (Generator, gen, genAndMap, init)
+module Data.UniqueId exposing (Generator, encodeGenerator, gen, genAndMap, generatorDecoder, init)
 
 {-| Generates Unique (sequenced) ID string.
 -}
 
 import Dict exposing (Dict)
+import Json.Decode as D exposing (Decoder)
+import Json.Encode as E
 
 
 type Generator
@@ -13,6 +15,16 @@ type Generator
 init : Generator
 init =
     Generator Dict.empty
+
+
+encodeGenerator : Generator -> E.Value
+encodeGenerator (Generator dict) =
+    E.dict identity E.int dict
+
+
+generatorDecoder : Decoder Generator
+generatorDecoder =
+    D.map Generator (D.dict D.int)
 
 
 gen : String -> Generator -> ( String, Generator )
