@@ -4,10 +4,12 @@ import Array exposing (fromList)
 import Data.Array as Array
 import Data.Column
 import Data.Item
+import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueId exposing (Generator)
 import Expect exposing (Expectation)
 import Fuzz
 import Json.Decode exposing (decodeValue)
+import Parser
 import String exposing (fromInt)
 import Test exposing (..)
 import Url
@@ -220,6 +222,61 @@ columnSuites =
 
 
 
+-- Data.TextRenderer
+
+
+testParseIntoStringOrUrlList : String -> List StringOrUrl -> Test
+testParseIntoStringOrUrlList string expect =
+    test ("should work for text: '" ++ string ++ "'") <|
+        \_ ->
+            string
+                |> Parser.run Data.TextRenderer.parseIntoStringOrUrlList
+                |> Expect.equal (Ok expect)
+
+
+textRendererSuites : Test
+textRendererSuites =
+    describe "Data.TextRenderer"
+        [ describe "parseIntoStringOrUrlList"
+            [ testParseIntoStringOrUrlList "" []
+            , testParseIntoStringOrUrlList " " [ S " " ]
+            , testParseIntoStringOrUrlList "foobar" [ S "foobar" ]
+            , testParseIntoStringOrUrlList " very long text with\t\n spaces in it " [ S " very long text with\t\n spaces in it " ]
+            , testParseIntoStringOrUrlList "text with unparsable http" [ S "text with unparsable http" ]
+            , testParseIntoStringOrUrlList "text with unparsable http http" [ S "text with unparsable http http" ]
+            , testParseIntoStringOrUrlList "http://example.com" [ U exampleCom ]
+            , testParseIntoStringOrUrlList "http://example.com http://example.com" [ U exampleCom, S " ", U exampleCom ]
+            , testParseIntoStringOrUrlList "text with parsable http://example.com" [ S "text with parsable ", U exampleCom ]
+            , testParseIntoStringOrUrlList "textdirectlyfollowedbyhttp://example.com" [ S "textdirectlyfollowedby", U exampleCom ]
+            , testParseIntoStringOrUrlList "textdirectlyfollowedbyhttp://example.comandnotdelimittedproperly"
+                [ S "textdirectlyfollowedby"
+                , U { exampleCom | host = "example.comandnotdelimittedproperly" }
+                ]
+            , testParseIntoStringOrUrlList "text with parsable http://example.com !" [ S "text with parsable ", U exampleCom, S " !" ]
+            , testParseIntoStringOrUrlList "text with parsable http://example.com http://example.com !" [ S "text with parsable ", U exampleCom, S " ", U exampleCom, S " !" ]
+            , testParseIntoStringOrUrlList "text with parsable http://example.com and unparsable http !" [ S "text with parsable ", U exampleCom, S " and unparsable http !" ]
+            , testParseIntoStringOrUrlList "マルチバイト文字及びマルチバイトURLを含む http://example.com http://マルチバイト.jp"
+                [ S "マルチバイト文字及びマルチバイトURLを含む "
+                , U exampleCom
+                , S " "
+                , U { exampleCom | host = "マルチバイト.jp" }
+                ]
+            ]
+        ]
+
+
+exampleCom : Url.Url
+exampleCom =
+    { protocol = Url.Http
+    , host = "example.com"
+    , port_ = Nothing
+    , path = "/"
+    , fragment = Nothing
+    , query = Nothing
+    }
+
+
+
 -- MAIN
 
 
@@ -230,4 +287,5 @@ suite =
         , uniqueIdSuites
         , itemSuites
         , columnSuites
+        , textRendererSuites
         ]
