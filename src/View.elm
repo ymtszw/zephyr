@@ -1,6 +1,7 @@
 module View exposing (body)
 
 import Array exposing (Array)
+import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core exposing (ColumnSwap, Model, Msg(..))
@@ -58,7 +59,7 @@ sidebarEl { columnStore, env } =
     El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
-        , BG.color oneDarkBg
+        , BG.color oneDark.bg
         ]
         [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
         , El.el [ El.width El.fill, El.alignBottom ] otherButtonsEl
@@ -79,9 +80,9 @@ columnButtonEl index { id } =
             [ El.width El.fill
             , El.paddingXY 0 10
             , El.clip
-            , Font.color oneDarkNote
+            , Font.color oneDark.note
             , BD.width 1
-            , BD.color oneDarkNote
+            , BD.color oneDark.note
             , BD.rounded 10
             ]
             { onPress = Just (DelColumn index), label = El.text "×" }
@@ -95,10 +96,10 @@ columnAddButtonEl =
             [ El.width El.fill
             , El.paddingXY 0 10
             , El.clip
-            , Font.color oneDarkNote
+            , Font.color oneDark.note
             , BD.dashed
             , BD.width 1
-            , BD.color oneDarkNote
+            , BD.color oneDark.note
             , BD.rounded 10
             ]
             { onPress = Just AddColumn, label = El.text "+" }
@@ -110,7 +111,7 @@ otherButtonsEl =
         [ El.link
             [ El.width El.fill
             , El.paddingXY 0 10
-            , BG.color oneDarkSub
+            , BG.color oneDark.sub
             , BD.rounded 10
             ]
             { url = "https://github.com/ymtszw/zephyr", label = El.text "</>" }
@@ -135,7 +136,7 @@ columnsEl { columnStore, columnSwappable, columnSwapMaybe, env } =
 backgroundEl : Element Msg -> Element Msg
 backgroundEl contents =
     El.row
-        [ BG.color oneDarkBg
+        [ BG.color oneDark.bg
         , El.width El.fill
         , El.height El.fill
         , El.inFront contents
@@ -144,7 +145,7 @@ backgroundEl contents =
             [ El.centerY
             , El.centerX
             , Font.bold
-            , Font.color oneDarkSub
+            , Font.color oneDark.sub
             , Font.size (scale16 12)
             , Font.center
             , Font.family [ Font.serif ]
@@ -184,10 +185,10 @@ notDraggedColumnEl clientHeight column attrs =
         ([ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
          , El.height (El.fill |> El.maximum clientHeight)
          , El.scrollbarY
-         , BG.color oneDarkMain
+         , BG.color oneDark.main
          , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-         , BD.color oneDarkBg
-         , Font.color oneDarkText
+         , BD.color oneDark.bg
+         , Font.color oneDark.text
          ]
             ++ attrs
         )
@@ -223,7 +224,7 @@ columnHeaderEl id =
     El.el
         [ El.width El.fill
         , El.padding 10
-        , BG.color oneDarkSub
+        , BG.color oneDark.sub
         ]
         (El.text ("[PH] " ++ id))
 
@@ -243,7 +244,7 @@ draggedColumnEl clientHeight =
 
 itemEl : Item -> Element Msg
 itemEl { message, mediaMaybe } =
-    El.el [ El.width El.fill, El.paddingXY 10 15, BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }, BD.color oneDarkBd ] <|
+    El.el [ El.width El.fill, El.paddingXY 10 15, BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }, BD.color oneDark.bd ] <|
         case mediaMaybe of
             Just media ->
                 itemWithMedia message media
@@ -281,60 +282,6 @@ mediaEl media =
         Movie _ ->
             -- Placeholder
             El.none
-
-
-
--- COLOR
-
-
-oneDarkBg : El.Color
-oneDarkBg =
-    El.rgb255 32 34 37
-
-
-oneDarkMain : El.Color
-oneDarkMain =
-    El.rgb255 54 57 63
-
-
-oneDarkSub : El.Color
-oneDarkSub =
-    El.rgb255 47 49 54
-
-
-oneDarkBd : El.Color
-oneDarkBd =
-    El.rgb255 62 65 71
-
-
-oneDarkText : El.Color
-oneDarkText =
-    El.rgb255 220 221 222
-
-
-oneDarkNote : El.Color
-oneDarkNote =
-    El.rgb255 96 98 102
-
-
-oneDarkLink : El.Color
-oneDarkLink =
-    El.rgb255 15 144 202
-
-
-oneDarkSucc : El.Color
-oneDarkSucc =
-    El.rgb255 115 201 144
-
-
-oneDarkWarn : El.Color
-oneDarkWarn =
-    El.rgb255 226 192 141
-
-
-oneDarkErr : El.Color
-oneDarkErr =
-    El.rgb255 224 82 82
 
 
 
