@@ -6,6 +6,7 @@ import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core exposing (ColumnSwap, Model, Msg(..))
 import Data.Item exposing (Item, Media(..))
+import Data.TextRenderer exposing (TextRenderer)
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
@@ -260,7 +261,11 @@ itemTextOnly message =
 
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
-    El.paragraph [ Font.size (scale16 1) ] [ El.text message ]
+    El.paragraph
+        [ Font.size (scale16 1)
+        , El.htmlAttribute (style "white-space" "pre-wrap")
+        ]
+        (Data.TextRenderer.default oneDark message)
 
 
 itemWithMedia : String -> Media -> Element Msg
