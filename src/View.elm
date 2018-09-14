@@ -228,6 +228,19 @@ columnHeaderEl id =
         (El.text ("[PH] " ++ id))
 
 
+draggedColumnEl : Int -> Element Msg
+draggedColumnEl clientHeight =
+    El.el
+        [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
+        , El.height (El.fill |> El.maximum clientHeight)
+        ]
+        El.none
+
+
+
+-- ITEM
+
+
 itemEl : Item -> Element Msg
 itemEl { message, mediaMaybe } =
     El.el [ El.width El.fill, El.paddingXY 10 15, BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }, BD.color oneDarkBd ] <|
@@ -268,15 +281,6 @@ mediaEl media =
         Movie _ ->
             -- Placeholder
             El.none
-
-
-draggedColumnEl : Int -> Element Msg
-draggedColumnEl clientHeight =
-    El.el
-        [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-        , El.height (El.fill |> El.maximum clientHeight)
-        ]
-        El.none
 
 
 
