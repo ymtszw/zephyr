@@ -1,6 +1,6 @@
 log('ServiceWorker script loaded!')
 
-const STORAGE = 'zephyr_cache_v7' // increment version to enforce old cache deletion
+const STORAGE = 'zephyr_cache_v8' // increment version to enforce old cache deletion
 const APPSHELL = [
   '/',
   "/index.html",
@@ -59,7 +59,8 @@ self.addEventListener('fetch', (e) => {
       })
     )
   } else {
-    return // Let browser work in default way
+    // Let browser work in default way for non-http fetch; this includes chrome-extension:// and such
+    return
   }
 })
 
