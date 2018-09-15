@@ -7,7 +7,7 @@ import Browser.Navigation exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item exposing (Item)
-import Data.Producer as Producer exposing (Producer, Storage)
+import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId exposing (Generator)
 import Dict exposing (Dict)
 import Json.Decode exposing (Value)
@@ -22,10 +22,10 @@ type alias Model =
     { columnStore : ColumnStore
     , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
-    , producers : List Producer
+    , producerRegistry : ProducerRegistry
     , idGen : Generator
     , navKey : Key
-    , wsState : Websocket.State Msg Storage Item
+    , wsState : Websocket.State Msg
     , env : Env
     }
 
@@ -47,7 +47,7 @@ type alias ColumnSwap =
 init : Env -> Key -> ( Model, Cmd Msg )
 init env navKey =
     initModel env navKey
-        |> installProducers
+        |> engageProducers
 
 
 initModel : Env -> Key -> Model
@@ -57,23 +57,23 @@ initModel env navKey =
             ColumnStore.init
             False
             Nothing
-            []
+            Producer.initRegistry
             UniqueId.init
             navKey
-            (Websocket.init [])
+            Websocket.init
             env
 
     else
         welcomeModel env navKey
 
 
-installProducers : Model -> ( Model, Cmd Msg )
-installProducers m =
+engageProducers : Model -> ( Model, Cmd Msg )
+engageProducers m =
     let
-        { idGen, wsState, cmd } =
-            Producer.installAll m.idGen m.wsState m.producers
+        ( wsState, cmd ) =
+            Producer.engageAll m.wsState m.producerRegistry
     in
-    ( { m | idGen = idGen, wsState = wsState }, cmd )
+    ( { m | wsState = wsState }, cmd )
 
 
 welcomeModel : Env -> Key -> Model
@@ -87,10 +87,10 @@ welcomeModel env navKey =
         columnStore
         False
         Nothing
-        []
+        Producer.initRegistry
         idGen
         navKey
-        (Websocket.init [])
+        Websocket.init
         env
 
 
