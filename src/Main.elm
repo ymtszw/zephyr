@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import Array
 import Browser exposing (UrlRequest(..))
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (Visibility(..), onResize)
@@ -9,16 +8,14 @@ import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core as Core exposing (ColumnSwap, Env, Model, Msg(..), welcomeModel)
-import Data.Item exposing (Item)
+import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
-import Html
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Ports
 import Task
 import Url
 import View
-import Websocket
 
 
 
@@ -92,15 +89,19 @@ update msg ({ env } as model) =
             persist ( loadSavedState model val, Cmd.none )
 
         WSReceive val ->
-            handleWS model val
+            persist <| handleWS model val
 
         NoOp ->
             ( model, Cmd.none )
 
 
-{-| Persist Elm application state to IndexedDB via port.
 
-Do not use this function on every update, instead use it only when subject-to-persist data is updated,
+-- STATE PERSISTENCE
+
+
+{-| Persists Elm application state to IndexedDB via port.
+
+Do NOT call this function on every update, instead use it only when subject-to-persist data is updated,
 in order to minimize IndexedDB access.
 
 Even queueing/throttling can be introduced later, for when IndexedDB access become too frequent
@@ -122,36 +123,70 @@ encodeModel : Model -> E.Value
 encodeModel m =
     E.object
         [ ( "columnStore", ColumnStore.encode m.columnStore )
+        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
         , ( "idGen", UniqueId.encodeGenerator m.idGen )
         ]
 
 
+{-| Decodes JS value from IndexedDB and populate Model.
+
+This function is called upon Load Msg, not in init with flags,
+since all IndexedDB APIs are asynchronous.
+
+-}
 loadSavedState : Model -> D.Value -> Model
 loadSavedState model value =
     case D.decodeValue (savedStateDecoder model.idGen) value of
-        Ok ( columnStore, newIdGen ) ->
-            { model | columnStore = columnStore, idGen = newIdGen }
+        Ok savedState ->
+            { model
+                | columnStore = savedState.columnStore
+                , producerRegistry = savedState.producerRegistry
+                , idGen = savedState.idGen
+            }
 
         _ ->
             welcomeModel model.env model.navKey
 
 
-savedStateDecoder : UniqueId.Generator -> Decoder ( ColumnStore, UniqueId.Generator )
+type alias SavedState =
+    { columnStore : ColumnStore
+    , producerRegistry : ProducerRegistry
+    , idGen : UniqueId.Generator
+    }
+
+
+savedStateDecoder : UniqueId.Generator -> Decoder SavedState
 savedStateDecoder idGen =
+    -- Write new decoder and migration logic when you change SavedState structure
     D.oneOf
-        [ v2StateDecoder
+        [ v3StateDecoder
+        , v2StateDecoder
         , v1StateDecoder idGen
         ]
 
 
-v2StateDecoder : Decoder ( ColumnStore, UniqueId.Generator )
-v2StateDecoder =
-    D.map2 Tuple.pair
+v3StateDecoder : Decoder SavedState
+v3StateDecoder =
+    D.map3 SavedState
         (D.field "columnStore" ColumnStore.decoder)
+        (D.field "producerRegistry" Producer.registryDecoder)
         (D.field "idGen" UniqueId.generatorDecoder)
 
 
-v1StateDecoder : UniqueId.Generator -> Decoder ( ColumnStore, UniqueId.Generator )
+v2StateDecoder : Decoder SavedState
+v2StateDecoder =
+    D.map convertFromV2State <|
+        D.map2 Tuple.pair
+            (D.field "columnStore" ColumnStore.decoder)
+            (D.field "idGen" UniqueId.generatorDecoder)
+
+
+convertFromV2State : ( ColumnStore, UniqueId.Generator ) -> SavedState
+convertFromV2State ( columnStore, idGen ) =
+    SavedState columnStore Producer.initRegistry idGen
+
+
+v1StateDecoder : UniqueId.Generator -> Decoder SavedState
 v1StateDecoder idGen =
     let
         convertFromV1State columns =
@@ -168,18 +203,24 @@ v1StateDecoder idGen =
                 [] ->
                     D.fail "No saved columns. Go to fallback."
     in
-    D.field "columns" (D.list Column.decoder) |> D.andThen convertFromV1State
+    D.field "columns" (D.list Column.decoder)
+        |> D.andThen convertFromV1State
+        |> D.map convertFromV2State
+
+
+
+-- WEBSOCKET
 
 
 handleWS : Model -> D.Value -> ( Model, Cmd Msg )
 handleWS model val =
     let
-        ( newWsState, ( yields, cmd ) ) =
-            Websocket.receive model.wsState val
+        { producerRegistry, wsState, cmd, yields } =
+            Producer.receive model.producerRegistry model.wsState val
     in
     case yields of
         [] ->
-            ( { model | wsState = newWsState }, cmd )
+            ( { model | producerRegistry = producerRegistry, wsState = wsState }, cmd )
 
         nonEmptyYields ->
             let
@@ -187,7 +228,14 @@ handleWS model val =
                     -- XXX Just for debugging. They should go to data broker eventually.
                     ColumnStore.pushToFirstColumn model.idGen nonEmptyYields model.columnStore
             in
-            persist ( { model | columnStore = newColumnStore, idGen = newIdGen, wsState = newWsState }, cmd )
+            ( { model
+                | columnStore = newColumnStore
+                , producerRegistry = producerRegistry
+                , idGen = newIdGen
+                , wsState = wsState
+              }
+            , cmd
+            )
 
 
 
