@@ -184,16 +184,7 @@ columnKeyEl clientHeight { columnSwappable, columnSwapMaybe } index column =
 notDraggedColumnEl : Int -> Column -> List (El.Attribute Msg) -> Element Msg
 notDraggedColumnEl clientHeight column attrs =
     El.column
-        ([ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-         , El.height (El.fill |> El.maximum clientHeight)
-         , El.scrollbarY
-         , BG.color oneDark.main
-         , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-         , BD.color oneDark.bg
-         , Font.color oneDark.text
-         ]
-            ++ attrs
-        )
+        (columnBaseAttrs clientHeight ++ attrs)
         [ columnHeaderEl column.id
         , column.items
             |> List.map itemEl
@@ -202,6 +193,18 @@ notDraggedColumnEl clientHeight column attrs =
                 , El.paddingXY 5 0
                 ]
         ]
+
+
+columnBaseAttrs : Int -> List (El.Attribute Msg)
+columnBaseAttrs clientHeight =
+    [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
+    , El.height (El.fill |> El.maximum clientHeight)
+    , El.scrollbarY
+    , BG.color oneDark.main
+    , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
+    , BD.color oneDark.bg
+    , Font.color oneDark.text
+    ]
 
 
 onDragStart : Int -> String -> Decoder Msg
@@ -233,11 +236,7 @@ columnHeaderEl id =
 
 draggedColumnEl : Int -> Element Msg
 draggedColumnEl clientHeight =
-    El.el
-        [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-        , El.height (El.fill |> El.maximum clientHeight)
-        ]
-        El.none
+    El.el (columnBaseAttrs clientHeight ++ [ BG.color oneDark.bg ]) El.none
 
 
 
