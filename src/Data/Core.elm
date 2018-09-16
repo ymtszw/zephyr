@@ -1,4 +1,4 @@
-module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), init, welcomeModel)
+module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), UIState, init, welcomeModel)
 
 import Array exposing (Array)
 import Browser exposing (UrlRequest)
@@ -20,20 +20,19 @@ import Websocket
 
 type alias Model =
     { columnStore : ColumnStore
-    , columnSwappable : Bool
-    , columnSwapMaybe : Maybe ColumnSwap
     , producerRegistry : ProducerRegistry
     , idGen : Generator
     , navKey : Key
     , wsState : Websocket.State Msg
+    , uiState : UIState
     , env : Env
     }
 
 
-type alias Env =
-    { serviceWorkerAvailable : Bool
-    , indexedDBAvailable : Bool
-    , clientHeight : Int
+type alias UIState =
+    { configOpen : Bool
+    , columnSwappable : Bool
+    , columnSwapMaybe : Maybe ColumnSwap
     }
 
 
@@ -41,6 +40,13 @@ type alias ColumnSwap =
     { grabbedId : String
     , originalIndex : Int
     , originalOrder : Array String
+    }
+
+
+type alias Env =
+    { serviceWorkerAvailable : Bool
+    , indexedDBAvailable : Bool
+    , clientHeight : Int
     }
 
 
@@ -55,16 +61,20 @@ initModel env navKey =
     if env.indexedDBAvailable then
         Model
             ColumnStore.init
-            False
-            Nothing
             Producer.initRegistry
             UniqueId.init
             navKey
             Websocket.init
+            defaultUIState
             env
 
     else
         welcomeModel env navKey
+
+
+defaultUIState : UIState
+defaultUIState =
+    UIState False False Nothing
 
 
 engageProducers : Model -> ( Model, Cmd Msg )
@@ -85,12 +95,11 @@ welcomeModel env navKey =
     in
     Model
         columnStore
-        False
-        Nothing
         Producer.initRegistry
         idGen
         navKey
         Websocket.init
+        defaultUIState
         env
 
 
@@ -111,3 +120,4 @@ type Msg
     | DragEnd
     | Load Value
     | WSReceive Value
+    | ToggleConfig Bool

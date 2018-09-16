@@ -38,61 +38,84 @@ adjustMaxHeight =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ env } as model) =
+update msg ({ uiState, env } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
-            ( model, adjustMaxHeight )
+            ( m, adjustMaxHeight )
 
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
-            ( { model | env = { env | clientHeight = round viewport.height } }, Cmd.none )
+            ( { m | env = { env | clientHeight = round viewport.height } }, Cmd.none )
 
         LinkClicked (Internal url) ->
-            ( model, Nav.pushUrl model.navKey (Url.toString url) )
+            ( m, Nav.pushUrl m.navKey (Url.toString url) )
 
         LinkClicked (External url) ->
-            ( model, Nav.load url )
+            ( m, Nav.load url )
 
         AddColumn ->
-            let
-                ( newId, newIdGen ) =
-                    UniqueId.gen "column" model.idGen
-            in
-            persist ( { model | columnStore = ColumnStore.add (Column.welcome newId) model.columnStore, idGen = newIdGen }, Cmd.none )
+            persist ( addColumn m, Cmd.none )
 
         DelColumn index ->
-            persist ( { model | columnStore = ColumnStore.removeAt index model.columnStore }, Cmd.none )
+            persist ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none )
 
         ToggleColumnSwappable bool ->
-            ( { model | columnSwappable = bool }, Cmd.none )
+            ( { m | uiState = { uiState | columnSwappable = bool } }, Cmd.none )
 
         DragStart originalIndex grabbedId ->
-            ( { model | columnSwapMaybe = Just (ColumnSwap grabbedId originalIndex model.columnStore.order) }, Cmd.none )
+            let
+                columnSwap =
+                    ColumnSwap grabbedId originalIndex m.columnStore.order
+            in
+            ( { m | uiState = { uiState | columnSwapMaybe = Just columnSwap } }, Cmd.none )
 
         DragEnter dest ->
-            -- Ideally we should pass originalOrder Array along with messages so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
-            -- However currently there is a bug that prevents --debug compilation when Arrays are passed in messages. See https://github.com/elm/compiler/issues/1753
-            case model.columnSwapMaybe of
-                Just swap ->
-                    ( { model | columnStore = ColumnStore.applyOrder (Array.moveFromTo swap.originalIndex dest swap.originalOrder) model.columnStore }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            onDragEnter m dest
 
         DragEnd ->
             -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
             -- So we always turn off swap mode at dragend
-            persist ( { model | columnSwappable = False, columnSwapMaybe = Nothing }, Cmd.none )
+            persist ( { m | uiState = { uiState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
 
         Load val ->
-            persist ( loadSavedState model val, Cmd.none )
+            persist ( loadSavedState m val, Cmd.none )
 
         WSReceive val ->
-            persist <| handleWS model val
+            persist <| handleWS m val
+
+        ToggleConfig opened ->
+            ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         NoOp ->
-            ( model, Cmd.none )
+            ( m, Cmd.none )
+
+
+addColumn : Model -> Model
+addColumn m =
+    let
+        ( newId, newIdGen ) =
+            UniqueId.gen "column" m.idGen
+    in
+    { m | columnStore = ColumnStore.add (Column.welcome newId) m.columnStore, idGen = newIdGen }
+
+
+onDragEnter : Model -> Int -> ( Model, Cmd Msg )
+onDragEnter m dest =
+    -- Ideally we should pass originalOrder Array along with messages
+    -- so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
+    -- However currently there is a bug that prevents --debug compilation
+    -- when Arrays are passed in messages. See https://github.com/elm/compiler/issues/1753
+    case m.uiState.columnSwapMaybe of
+        Just swap ->
+            let
+                newOrder =
+                    Array.moveFromTo swap.originalIndex dest swap.originalOrder
+            in
+            ( { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }, Cmd.none )
+
+        Nothing ->
+            ( m, Cmd.none )
 
 
 
@@ -248,7 +271,7 @@ sub m =
         [ onResize Resize
         , Ports.loadFromJs Load
         , Ports.webSocketClientSub WSReceive
-        , toggleColumnSwap m.columnSwappable
+        , toggleColumnSwap m.uiState.columnSwappable
         ]
 
 

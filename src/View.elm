@@ -4,7 +4,7 @@ import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Core exposing (ColumnSwap, Model, Msg(..))
+import Data.Core exposing (ColumnSwap, Model, Msg(..), UIState)
 import Data.Item exposing (Item, Media(..))
 import Data.TextRenderer exposing (TextRenderer)
 import Element as El exposing (Element)
@@ -25,7 +25,7 @@ import Url
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ El.layout (dragEventHandlers m.columnSwapMaybe) (bodyEl m)
+    [ El.layout (dragEventHandlers m.uiState.columnSwapMaybe) (bodyEl m)
     , fancyScroll
     ]
 
@@ -60,6 +60,7 @@ sidebarEl { columnStore, env } =
     El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
+        , El.paddingXY 0 10
         , BG.color oneDark.bg
         ]
         [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
@@ -124,14 +125,14 @@ otherButtonsEl =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columnStore, columnSwappable, columnSwapMaybe, env } =
+columnsEl { columnStore, uiState, env } =
     backgroundEl <|
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
             , Font.regular
             ]
-            (ColumnStore.indexedMap (columnKeyEl env.clientHeight columnSwappable columnSwapMaybe) columnStore)
+            (ColumnStore.indexedMap (columnKeyEl env.clientHeight uiState) columnStore)
 
 
 backgroundEl : Element Msg -> Element Msg
@@ -155,13 +156,13 @@ backgroundEl contents =
         ]
 
 
-columnKeyEl : Int -> Bool -> Maybe ColumnSwap -> Int -> Column -> ( String, Element Msg )
-columnKeyEl clientHeight swappable swapMaybe index column =
+columnKeyEl : Int -> UIState -> Int -> Column -> ( String, Element Msg )
+columnKeyEl clientHeight { columnSwappable, columnSwapMaybe } index column =
     ( "column_" ++ column.id
-    , case swapMaybe of
+    , case columnSwapMaybe of
         Nothing ->
             notDraggedColumnEl clientHeight column <|
-                if swappable then
+                if columnSwappable then
                     [ El.htmlAttribute (draggable "true")
                     , El.htmlAttribute (style "cursor" "all-scroll")
                     , El.htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
@@ -287,6 +288,15 @@ mediaEl media =
         Movie _ ->
             -- Placeholder
             El.none
+
+
+
+-- CONFIG PANE
+
+
+configPaneEl : Element Msg
+configPaneEl =
+    Debug.todo "Config pane"
 
 
 
