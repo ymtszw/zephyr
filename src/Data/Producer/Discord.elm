@@ -12,7 +12,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 -}
 
 import Data.Item exposing (Item)
-import Data.Producer.Realtime as Realtime
+import Data.Producer.Realtime as Realtime exposing (Reply(..))
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Websocket exposing (Endpoint(..))
@@ -64,4 +64,4 @@ endpoint =
 
 receive : Realtime.Handler Discord
 receive discord message =
-    Debug.todo "TODO"
+    ( [ Data.Item.textOnly message ], discord, NoReply )
