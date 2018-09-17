@@ -1,4 +1,4 @@
-module Data.Producer.Discord exposing (Discord, decoder, encode, endpoint, receive)
+module Data.Producer.Discord exposing (Discord, Msg, configEl, decoder, encode, endpoint, receive, update)
 
 {-| Realtime Producer for Discord.
 
@@ -13,6 +13,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 import Data.Item exposing (Item)
 import Data.Producer.Realtime as Realtime exposing (Reply(..))
+import Element as El exposing (Element)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Websocket exposing (Endpoint(..))
@@ -65,3 +66,19 @@ endpoint =
 receive : Realtime.Handler Discord
 receive discord message =
     ( [ Data.Item.textOnly message ], discord, NoReply )
+
+
+type Msg
+    = NoOp
+
+
+update : Msg -> Maybe Discord -> Maybe Discord
+update msg discordMaybe =
+    case msg of
+        NoOp ->
+            discordMaybe
+
+
+configEl : Maybe Discord -> Element Msg
+configEl discordMaybe =
+    El.text "under construction"

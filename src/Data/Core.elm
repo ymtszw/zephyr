@@ -121,3 +121,4 @@ type Msg
     | Load Value
     | WSReceive Value
     | ToggleConfig Bool
+    | ProducerCtrl Producer.Msg

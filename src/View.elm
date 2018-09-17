@@ -6,7 +6,10 @@ import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core exposing (ColumnSwap, Model, Msg(..), UIState)
 import Data.Item exposing (Item, Media(..))
+import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.Producer.Discord as Discord
 import Data.TextRenderer exposing (TextRenderer)
+import Dict
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
@@ -120,7 +123,11 @@ otherButtonsEl uiState =
             [ El.width El.fill
             , El.paddingXY 0 7
             , BD.rounded 10
-            , El.mouseOver [ BG.color oneDark.main ]
+            , if uiState.configOpen then
+                BG.color oneDark.main
+
+              else
+                El.mouseOver [ BG.color oneDark.main ]
             ]
             { onPress = Just (ToggleConfig (not uiState.configOpen))
             , label = octiconEl Octicons.gear
@@ -347,16 +354,12 @@ configPaneEl m =
 
 configInnerEl : Model -> Element Msg
 configInnerEl m =
-    El.paragraph
+    El.column
         [ El.width El.fill
         , El.height El.fill
-        , El.padding 10
-        , BG.color oneDark.main
-        , BD.rounded 10
         ]
-        (List.repeat 6
-            (El.text "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
-        )
+        [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
+        ]
 
 
 

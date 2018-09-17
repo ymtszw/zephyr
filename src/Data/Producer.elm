@@ -1,9 +1,14 @@
-module Data.Producer exposing (ProducerRegistry, Receipt, encodeRegistry, engageAll, initRegistry, receive, registryDecoder)
+module Data.Producer exposing (Msg, ProducerRegistry, Receipt, configsEl, encodeRegistry, engageAll, initRegistry, receive, registryDecoder, update)
 
+import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
 import Data.Producer.Discord as Discord exposing (Discord)
 import Data.Producer.Realtime exposing (Reply(..))
 import Dict exposing (Dict)
+import Element as El exposing (Element)
+import Element.Background as BG
+import Element.Border as BD
+import Element.Font as Font
 import Json.Decode as D exposing (Decoder, Value)
 import Json.Encode as E
 import Websocket as WS exposing (Endpoint, Frame(..), Key(..))
@@ -151,3 +156,60 @@ sendReply wsState key producerReply =
 finalizeReceipt : ProducerRegistry -> Key -> ProducerReceipt msg -> Receipt msg
 finalizeReceipt producerRegistry (Key key) { producer, wsState, cmd, yields } =
     Receipt (Dict.insert key producer producerRegistry) wsState cmd yields
+
+
+type Msg
+    = DiscordMsg Discord.Msg
+
+
+update : Msg -> ProducerRegistry -> ProducerRegistry
+update msg producerRegistry =
+    case msg of
+        DiscordMsg dMsg ->
+            let
+                updateDiscord =
+                    unwrapDiscord
+                        >> Discord.update dMsg
+                        >> Maybe.map DiscordProducer
+            in
+            Dict.update "discord" updateDiscord producerRegistry
+
+
+unwrapDiscord : Maybe Producer -> Maybe Discord
+unwrapDiscord producerMaybe =
+    case producerMaybe of
+        Just (DiscordProducer discord) ->
+            Just discord
+
+        _ ->
+            Nothing
+
+
+configsEl : ProducerRegistry -> Element Msg
+configsEl producerRegistry =
+    El.column
+        [ El.width El.fill
+        , El.padding 10
+        , BG.color oneDark.main
+        , BD.rounded 10
+        ]
+        [ Dict.get "discord" producerRegistry
+            |> unwrapDiscord
+            |> Discord.configEl
+            |> configWrapEl DiscordMsg "Discord"
+        ]
+
+
+configWrapEl : (msg -> Msg) -> String -> Element msg -> Element Msg
+configWrapEl tagger title element =
+    El.map tagger <|
+        El.column [ El.width El.fill, El.spacingXY 0 5 ]
+            [ El.el
+                [ El.width El.fill
+                , Font.bold
+                , Font.size 24
+                , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                ]
+                (El.text title)
+            , element
+            ]

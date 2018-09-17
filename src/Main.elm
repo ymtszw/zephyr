@@ -87,6 +87,9 @@ update msg ({ uiState, env } as m) =
         ToggleConfig opened ->
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
+        ProducerCtrl pctrl ->
+            persist ( { m | producerRegistry = Producer.update pctrl m.producerRegistry }, Cmd.none )
+
         NoOp ->
             ( m, Cmd.none )
 
