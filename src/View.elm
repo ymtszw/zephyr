@@ -35,7 +35,11 @@ bodyEl : Model -> Element Msg
 bodyEl model =
     El.row [ El.width El.fill, El.height El.fill ]
         [ sidebarEl model
-        , configPaneEl model
+        , if model.uiState.configOpen then
+            configPaneEl model
+
+          else
+            El.none
         , columnsEl model
         ]
 
@@ -58,7 +62,7 @@ dragEventHandlers columnSwapMaybe =
 
 
 sidebarEl : Model -> Element Msg
-sidebarEl { columnStore, env } =
+sidebarEl { columnStore, uiState, env } =
     El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
@@ -66,20 +70,20 @@ sidebarEl { columnStore, env } =
         , BG.color oneDark.bg
         ]
         [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
-        , El.el [ El.width El.fill, El.alignBottom ] otherButtonsEl
+        , El.el [ El.width El.fill, El.alignBottom ] (otherButtonsEl uiState)
         ]
 
 
 columnButtonsEl : ColumnStore -> Element Msg
 columnButtonsEl columnStore =
     List.append (ColumnStore.indexedMap columnButtonEl columnStore) [ ( "columnAddButton", columnAddButtonEl ) ]
-        |> Element.Keyed.column [ El.width El.fill ]
+        |> Element.Keyed.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
 
 
 columnButtonEl : Int -> Column -> ( String, Element Msg )
 columnButtonEl index { id } =
     ( "sidebarButton_" ++ id
-    , El.el [ El.width El.fill, El.padding 5 ] <|
+    , El.el [ El.width El.fill ] <|
         Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 10
@@ -95,7 +99,7 @@ columnButtonEl index { id } =
 
 columnAddButtonEl : Element Msg
 columnAddButtonEl =
-    El.el [ El.width El.fill, El.padding 5 ] <|
+    El.el [ El.width El.fill ] <|
         Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 10
@@ -109,14 +113,23 @@ columnAddButtonEl =
             { onPress = Just AddColumn, label = El.text "+" }
 
 
-otherButtonsEl : Element Msg
-otherButtonsEl =
-    El.column [ El.width El.fill, El.padding 5 ]
-        [ El.link
+otherButtonsEl : UIState -> Element Msg
+otherButtonsEl uiState =
+    El.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
+        [ Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 7
-            , BG.color oneDark.sub
             , BD.rounded 10
+            , El.mouseOver [ BG.color oneDark.main ]
+            ]
+            { onPress = Just (ToggleConfig (not uiState.configOpen))
+            , label = octiconEl Octicons.gear
+            }
+        , El.link
+            [ El.width El.fill
+            , El.paddingXY 0 7
+            , BD.rounded 10
+            , BG.color oneDark.sub
             ]
             { url = "https://github.com/ymtszw/zephyr"
             , label = octiconEl Octicons.markGithub
@@ -328,26 +341,22 @@ configPaneEl m =
         , El.scrollbarY
         , BG.color oneDark.bg
         , Font.color oneDark.text
-        , transitionAll
         ]
         (configInnerEl m)
 
 
-transitionAll : El.Attribute Msg
-transitionAll =
-    El.htmlAttribute (style "transition" "all 1s ease-out")
-
-
 configInnerEl : Model -> Element Msg
 configInnerEl m =
-    El.el
+    El.paragraph
         [ El.width El.fill
         , El.height El.fill
         , El.padding 10
         , BG.color oneDark.main
         , BD.rounded 10
         ]
-        (El.text "Hi")
+        (List.repeat 6
+            (El.text "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+        )
 
 
 
