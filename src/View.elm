@@ -19,7 +19,8 @@ import Html
 import Html.Attributes exposing (draggable, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
-import String exposing (fromInt)
+import Octicons
+import String exposing (fromFloat)
 import Url
 
 
@@ -34,6 +35,7 @@ bodyEl : Model -> Element Msg
 bodyEl model =
     El.row [ El.width El.fill, El.height El.fill ]
         [ sidebarEl model
+        , configPaneEl model
         , columnsEl model
         ]
 
@@ -112,12 +114,36 @@ otherButtonsEl =
     El.column [ El.width El.fill, El.padding 5 ]
         [ El.link
             [ El.width El.fill
-            , El.paddingXY 0 10
+            , El.paddingXY 0 7
             , BG.color oneDark.sub
             , BD.rounded 10
             ]
-            { url = "https://github.com/ymtszw/zephyr", label = El.text "</>" }
+            { url = "https://github.com/ymtszw/zephyr"
+            , label = octiconEl Octicons.markGithub
+            }
         ]
+
+
+octiconEl : (Octicons.Options -> Html.Html msg) -> Element msg
+octiconEl octicon =
+    let
+        { red, green, blue } =
+            El.toRgb oneDark.note
+
+        colorStr =
+            "rgb("
+                ++ fromFloat (255 * red)
+                ++ ","
+                ++ fromFloat (255 * green)
+                ++ ","
+                ++ fromFloat (255 * blue)
+                ++ ")"
+    in
+    Octicons.defaultOptions
+        |> Octicons.color colorStr
+        |> Octicons.size 26
+        |> octicon
+        |> El.html
 
 
 
@@ -293,9 +319,35 @@ mediaEl media =
 -- CONFIG PANE
 
 
-configPaneEl : Element Msg
-configPaneEl =
-    Debug.todo "Config pane"
+configPaneEl : Model -> Element Msg
+configPaneEl m =
+    El.el
+        [ El.width (El.fill |> El.minimum 480 |> El.maximum 860)
+        , El.height (El.fill |> El.maximum m.env.clientHeight)
+        , El.padding 15
+        , El.scrollbarY
+        , BG.color oneDark.bg
+        , Font.color oneDark.text
+        , transitionAll
+        ]
+        (configInnerEl m)
+
+
+transitionAll : El.Attribute Msg
+transitionAll =
+    El.htmlAttribute (style "transition" "all 1s ease-out")
+
+
+configInnerEl : Model -> Element Msg
+configInnerEl m =
+    El.el
+        [ El.width El.fill
+        , El.height El.fill
+        , El.padding 10
+        , BG.color oneDark.main
+        , BD.rounded 10
+        ]
+        (El.text "Hi")
 
 
 

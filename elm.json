@@ -8,6 +8,7 @@
     "dependencies": {
         "direct": {
             "billstclair/elm-websocket-client": "2.0.2",
+            "capitalist/elm-octicons": "2.2.1",
             "elm/browser": "1.0.0",
             "elm/core": "1.0.0",
             "elm/html": "1.0.0",
@@ -19,6 +20,7 @@
         },
         "indirect": {
             "elm/random": "1.0.0",
+            "elm/svg": "1.0.1",
             "elm/time": "1.0.0",
             "elm/virtual-dom": "1.0.2",
             "elm-community/list-extra": "8.0.0"
