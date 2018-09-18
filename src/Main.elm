@@ -214,24 +214,25 @@ convertFromV2State ( columnStore, idGen ) =
 
 v1StateDecoder : UniqueId.Generator -> Decoder SavedState
 v1StateDecoder idGen =
-    let
-        convertFromV1State columns =
-            case columns of
-                (_ :: _) as nonEmptyColumns ->
-                    let
-                        applyId decoded ( accColumnStore, accIdGen ) =
-                            UniqueId.genAndMap "column" accIdGen <|
-                                \newId ->
-                                    ColumnStore.add { decoded | id = newId } accColumnStore
-                    in
-                    D.succeed <| List.foldr applyId ( ColumnStore.init, idGen ) nonEmptyColumns
-
-                [] ->
-                    D.fail "No saved columns. Go to fallback."
-    in
     D.field "columns" (D.list Column.decoder)
-        |> D.andThen convertFromV1State
+        |> D.andThen (convertFromV1State idGen)
         |> D.map convertFromV2State
+
+
+convertFromV1State : UniqueId.Generator -> List Column -> Decoder ( ColumnStore, UniqueId.Generator )
+convertFromV1State idGen columns =
+    case columns of
+        (_ :: _) as nonEmptyColumns ->
+            let
+                applyId decoded ( accColumnStore, accIdGen ) =
+                    UniqueId.genAndMap "column" accIdGen <|
+                        \newId ->
+                            ColumnStore.add { decoded | id = newId } accColumnStore
+            in
+            D.succeed <| List.foldr applyId ( ColumnStore.init, idGen ) nonEmptyColumns
+
+        [] ->
+            D.fail "No saved columns. Go to fallback."
 
 
 
