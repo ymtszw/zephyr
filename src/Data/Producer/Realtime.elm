@@ -12,9 +12,14 @@ import Data.Item exposing (Item)
 Payload of Reply must be properly serialized to bare String.
 Data.Producer nor Websocket module do not mutate payload at all.
 
+ReplyWithTimeout can be used for detecting whether there was
+a timely server response received, so that we can detect errors
+in stateful transaction. Floats are in milliseconds.
+
 -}
 type Reply
     = Reply String
+    | ReplyWithTimeout String Float
     | NoReply
 
 

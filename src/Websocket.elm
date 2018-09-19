@@ -1,4 +1,4 @@
-module Websocket exposing (Endpoint(..), Frame(..), Key(..), State, engage, init, receive, send)
+module Websocket exposing (Endpoint(..), Frame(..), Key(..), State, disengage, engage, init, receive, send)
 
 import Dict exposing (Dict)
 import Json.Decode exposing (Value)
@@ -77,19 +77,28 @@ convertResponse res =
         CmdResponse cmd ->
             ControlFrame cmd
 
-        ConnectedResponse _ ->
+        ConnectedResponse { key, description } ->
             -- Debug here
             ControlFrame Cmd.none
 
         MessageReceivedResponse { key, message } ->
             MessageFrame (Key key) message
 
-        ClosedResponse _ ->
+        ClosedResponse { key, code, reason } ->
             -- Debug here
-            ControlFrame Cmd.none
+            -- ControlFrame Cmd.none
+            let
+                _ =
+                    Debug.log "closed" (WebSocketClient.closedCodeToString code ++ ":" ++ reason)
+            in
+            MessageFrame (Key key) (WebSocketClient.closedCodeToString code ++ ":" ++ reason)
 
         ErrorResponse err ->
             -- Debug here
+            let
+                _ =
+                    Debug.log "err" (WebSocketClient.errorToString err)
+            in
             ControlFrame Cmd.none
 
 
@@ -99,3 +108,8 @@ send : State msg -> Key -> String -> ( State msg, Cmd msg )
 send clientState (Key key) payload =
     issueOutgoingCmd <|
         WebSocketClient.send WebSocketClient.PortVersion2 clientState key payload
+
+
+disengage : State msg -> Key -> ( State msg, Cmd msg )
+disengage clientState (Key key) =
+    issueOutgoingCmd <| WebSocketClient.close clientState key

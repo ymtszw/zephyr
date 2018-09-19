@@ -1,8 +1,8 @@
-module Data.Producer exposing (Msg, ProducerRegistry, Receipt, configsEl, encodeRegistry, engageAll, initRegistry, receive, registryDecoder, update)
+module Data.Producer exposing (Msg(..), ProducerRegistry, Receipt, configsEl, encodeRegistry, engageAll, initRegistry, receive, registryDecoder, update)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
-import Data.Producer.Discord as Discord exposing (Discord)
+import Data.Producer.Discord as Discord exposing (Discord, Token(..))
 import Data.Producer.Realtime exposing (Reply(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
@@ -11,6 +11,8 @@ import Element.Border as BD
 import Element.Font as Font
 import Json.Decode as D exposing (Decoder, Value)
 import Json.Encode as E
+import Process
+import Task
 import Websocket as WS exposing (Endpoint, Frame(..), Key(..))
 
 
@@ -78,7 +80,12 @@ engageOne : String -> Producer -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, C
 engageOne key producer prev =
     case producer of
         DiscordProducer discord ->
-            engageAndBatchCmd (Key key) Discord.endpoint prev
+            case discord.token of
+                Ready _ ->
+                    engageAndBatchCmd (Key key) Discord.endpoint prev
+
+                _ ->
+                    prev
 
 
 engageAndBatchCmd : Key -> Endpoint -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, Cmd msg )
@@ -100,21 +107,21 @@ Realtime Producers must expose Producer.Realtime.Handler type function
 that can handle arrived text messages.
 
 -}
-receive : ProducerRegistry -> WS.State msg -> Value -> Receipt msg
-receive producerRegistry wsState val =
+receive : (Key -> msg) -> ProducerRegistry -> WS.State msg -> Value -> Receipt msg
+receive timeoutTagger producerRegistry wsState val =
     case WS.receive wsState val of
         ( newWsState, MessageFrame key message ) ->
-            handleMessageFrame producerRegistry newWsState key message
+            handleMessageFrame timeoutTagger producerRegistry newWsState key message
 
         ( newWsState, ControlFrame cmd ) ->
             Receipt producerRegistry newWsState cmd []
 
 
-handleMessageFrame : ProducerRegistry -> WS.State msg -> Key -> String -> Receipt msg
-handleMessageFrame producerRegistry wsState (Key key) message =
+handleMessageFrame : (Key -> msg) -> ProducerRegistry -> WS.State msg -> Key -> String -> Receipt msg
+handleMessageFrame timeoutTagger producerRegistry wsState (Key key) message =
     case Dict.get key producerRegistry of
         Just producer ->
-            dispatch producer wsState (Key key) message
+            dispatch timeoutTagger producer wsState (Key key) message
                 |> finalizeReceipt producerRegistry (Key key)
 
         Nothing ->
@@ -129,8 +136,8 @@ type alias ProducerReceipt msg =
     }
 
 
-dispatch : Producer -> WS.State msg -> Key -> String -> ProducerReceipt msg
-dispatch producer wsState key message =
+dispatch : (Key -> msg) -> Producer -> WS.State msg -> Key -> String -> ProducerReceipt msg
+dispatch timeoutTagger producer wsState key message =
     case producer of
         DiscordProducer discord ->
             let
@@ -138,19 +145,31 @@ dispatch producer wsState key message =
                     Discord.receive discord message
 
                 ( newWsState, cmd ) =
-                    sendReply wsState key reply
+                    sendReply timeoutTagger wsState key reply
             in
             ProducerReceipt (DiscordProducer newDiscord) newWsState cmd yields
 
 
-sendReply : WS.State msg -> Key -> Reply -> ( WS.State msg, Cmd msg )
-sendReply wsState key producerReply =
+sendReply : (Key -> msg) -> WS.State msg -> Key -> Reply -> ( WS.State msg, Cmd msg )
+sendReply timeoutTagger wsState key producerReply =
     case producerReply of
         Reply payload ->
             WS.send wsState key payload
 
+        ReplyWithTimeout payload timeout ->
+            WS.send wsState key payload
+                |> Tuple.mapSecond (setTimeout (timeoutTagger key) timeout)
+
         NoReply ->
             ( wsState, Cmd.none )
+
+
+setTimeout : msg -> Float -> Cmd msg -> Cmd msg
+setTimeout timeoutMsg timeout cmd =
+    Cmd.batch
+        [ cmd
+        , Process.sleep timeout |> Task.perform (\_ -> timeoutMsg)
+        ]
 
 
 finalizeReceipt : ProducerRegistry -> Key -> ProducerReceipt msg -> Receipt msg
@@ -160,19 +179,33 @@ finalizeReceipt producerRegistry (Key key) { producer, wsState, cmd, yields } =
 
 type Msg
     = DiscordMsg Discord.Msg
+    | Timeout Key
 
 
-update : Msg -> ProducerRegistry -> ProducerRegistry
-update msg producerRegistry =
+{-| Update ProducerRegistry in a manner of component pattern.
+
+Returns same data structure as `receive`.
+
+-}
+update : Msg -> WS.State msg -> ProducerRegistry -> Receipt msg
+update msg wsState producerRegistry =
     case msg of
         DiscordMsg dMsg ->
-            let
-                updateDiscord =
-                    unwrapDiscord
-                        >> Discord.update dMsg
-                        >> Maybe.map DiscordProducer
-            in
-            Dict.update "discord" updateDiscord producerRegistry
+            Dict.update "discord" (updateDiscordWith (Discord.update dMsg)) producerRegistry
+                |> disengageIfNecessary "discord" wsState
+
+        Timeout (Key "discord") ->
+            Dict.update "discord" (updateDiscordWith (Discord.update Discord.Timeout)) producerRegistry
+                |> disengageIfNecessary "discord" wsState
+
+        otherwise ->
+            -- Crash by loop
+            update otherwise wsState producerRegistry
+
+
+updateDiscordWith : (Maybe Discord -> Maybe Discord) -> Maybe Producer -> Maybe Producer
+updateDiscordWith callback =
+    unwrapDiscord >> callback >> Maybe.map DiscordProducer
 
 
 unwrapDiscord : Maybe Producer -> Maybe Discord
@@ -183,6 +216,24 @@ unwrapDiscord producerMaybe =
 
         _ ->
             Nothing
+
+
+disengageIfNecessary : String -> WS.State msg -> ProducerRegistry -> Receipt msg
+disengageIfNecessary key wsState producerRegistry =
+    case Dict.get key producerRegistry of
+        Just _ ->
+            Receipt producerRegistry wsState Cmd.none []
+
+        Nothing ->
+            let
+                ( newWsState, cmd ) =
+                    WS.disengage wsState (Key key)
+            in
+            Receipt producerRegistry newWsState cmd []
+
+
+
+-- CONFIG VIEW
 
 
 configsEl : ProducerRegistry -> Element Msg

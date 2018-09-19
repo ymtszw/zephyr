@@ -79,16 +79,23 @@ update msg ({ uiState, env } as m) =
             persist ( { m | uiState = { uiState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
 
         Load val ->
-            persist ( loadSavedState m val, Cmd.none )
+            ( loadSavedState m val, Cmd.none )
+                |> engageProducers
+                |> persist
 
         WSReceive val ->
-            persist <| handleWS m val
+            Producer.receive (ProducerCtrl << Producer.Timeout) m.producerRegistry m.wsState val
+                |> applyProducerReceipt m
+                |> persist
 
         ToggleConfig opened ->
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            persist ( { m | producerRegistry = Producer.update pctrl m.producerRegistry }, Cmd.none )
+            Producer.update pctrl m.wsState m.producerRegistry
+                |> applyProducerReceipt m
+                |> engageProducers
+                |> persist
 
         NoOp ->
             ( m, Cmd.none )
@@ -236,15 +243,20 @@ convertFromV1State idGen columns =
 
 
 
--- WEBSOCKET
+-- PRODUCER
 
 
-handleWS : Model -> D.Value -> ( Model, Cmd Msg )
-handleWS model val =
+engageProducers : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+engageProducers ( m, cmd ) =
     let
-        { producerRegistry, wsState, cmd, yields } =
-            Producer.receive model.producerRegistry model.wsState val
+        ( wsState, engageCmd ) =
+            Producer.engageAll m.wsState m.producerRegistry
     in
+    ( { m | wsState = wsState }, Cmd.batch [ engageCmd, cmd ] )
+
+
+applyProducerReceipt : Model -> Producer.Receipt Msg -> ( Model, Cmd Msg )
+applyProducerReceipt model { producerRegistry, wsState, cmd, yields } =
     case yields of
         [] ->
             ( { model | producerRegistry = producerRegistry, wsState = wsState }, cmd )
