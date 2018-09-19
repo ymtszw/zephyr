@@ -52,8 +52,7 @@ type alias Env =
 
 init : Env -> Key -> ( Model, Cmd Msg )
 init env navKey =
-    initModel env navKey
-        |> engageProducers
+    ( initModel env navKey, Cmd.none )
 
 
 initModel : Env -> Key -> Model
@@ -75,15 +74,6 @@ initModel env navKey =
 defaultUIState : UIState
 defaultUIState =
     UIState False False Nothing
-
-
-engageProducers : Model -> ( Model, Cmd Msg )
-engageProducers m =
-    let
-        ( wsState, cmd ) =
-            Producer.engageAll m.wsState m.producerRegistry
-    in
-    ( { m | wsState = wsState }, cmd )
 
 
 welcomeModel : Env -> Key -> Model
