@@ -198,12 +198,12 @@ update globalTimeoutTagger msg wsState producerRegistry =
     case msg of
         DiscordMsg dMsg ->
             producerRegistry
-                |> updateProducerAndHandle "discord" DiscordProducer (unwrapDiscord >> Discord.update dMsg)
+                |> updateProducer "discord" DiscordProducer (unwrapDiscord >> Discord.update dMsg)
                 |> handleUpdateReply globalTimeoutTagger (Key "discord") Discord.endpoint wsState
 
         Timeout (Key "discord") ->
             producerRegistry
-                |> updateProducerAndHandle "discord" DiscordProducer (unwrapDiscord >> Discord.update Discord.Timeout)
+                |> updateProducer "discord" DiscordProducer (unwrapDiscord >> Discord.update Discord.Timeout)
                 |> handleUpdateReply globalTimeoutTagger (Key "discord") Discord.endpoint wsState
 
         otherwise ->
@@ -211,8 +211,8 @@ update globalTimeoutTagger msg wsState producerRegistry =
             update globalTimeoutTagger otherwise wsState producerRegistry
 
 
-updateProducerAndHandle : String -> (a -> Producer) -> (Maybe Producer -> ( Maybe a, Reply )) -> ProducerRegistry -> ( ProducerRegistry, Reply )
-updateProducerAndHandle key tagger producerUpdate producerRegistry =
+updateProducer : String -> (a -> Producer) -> (Maybe Producer -> ( Maybe a, Reply )) -> ProducerRegistry -> ( ProducerRegistry, Reply )
+updateProducer key tagger producerUpdate producerRegistry =
     producerRegistry
         |> Dict.get key
         |> producerUpdate
