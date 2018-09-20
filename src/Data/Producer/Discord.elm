@@ -20,6 +20,7 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import View.Parts exposing (disabled, disabledColor)
 import Websocket exposing (Endpoint(..))
@@ -27,7 +28,29 @@ import Websocket exposing (Endpoint(..))
 
 type alias Discord =
     { token : Token
-    , userMaybe : Maybe User
+    , interval : Maybe HeartbeatInterval
+    , sessionMaybe : Maybe Session
+    }
+
+
+{-| Interval to send Opcode 1 Heartbeat in milliseconds.
+
+Notified by server on conneciton establishment.
+
+-}
+type HeartbeatInterval
+    = HI Int
+
+
+{-| Session information of the connection.
+
+Notified by server on authentication success by Gateway Ready event.
+
+-}
+type alias Session =
+    { user : User
+    , s : SequenceNumber
+    , id : SessionId
     }
 
 
@@ -36,6 +59,14 @@ type alias User =
     , discriminator : String
     , email : String
     }
+
+
+type SequenceNumber
+    = S Int
+
+
+type SessionId
+    = SessionId String
 
 
 {-| Custom type that represents token lifecycle.
@@ -57,46 +88,29 @@ type Token
 
 decoder : Decoder Discord
 decoder =
-    D.field "tag" tagDecoder
-        |> D.andThen
-            (\_ ->
-                D.map2 Discord
-                    (D.field "token" tokenDecoder)
-                    (D.field "user" (D.maybe userDecoder))
-            )
-
-
-tagDecoder : Decoder ()
-tagDecoder =
-    let
-        readTagValue rawTag =
-            case rawTag of
-                "discord" ->
-                    D.succeed ()
-
-                _ ->
-                    D.fail "Not a 'discord' tag."
-    in
-    D.string |> D.andThen readTagValue
+    D.when (D.field "tag" D.string) ((==) "discord") <|
+        D.map3 Discord
+            (D.field "token" tokenDecoder)
+            (D.field "interval" (D.succeed Nothing))
+            (D.field "session" (D.maybe sessionDecoder))
 
 
 tokenDecoder : Decoder Token
 tokenDecoder =
-    let
-        genTagger rawTokenTag =
-            case rawTokenTag of
-                "New" ->
-                    New
+    D.oneOf
+        [ D.when (D.field "tag" D.string) ((==) "New") <|
+            D.map New (D.field "val" D.string)
+        , D.when (D.field "tag" D.string) ((==) "Ready") <|
+            D.map Ready (D.field "val" D.string)
+        ]
 
-                "Ready" ->
-                    Ready
 
-                _ ->
-                    -- Crash it!
-                    genTagger rawTokenTag
-    in
-    D.field "tag" (D.map genTagger D.string)
-        |> D.andThen (\tagger -> D.map tagger (D.field "val" D.string))
+sessionDecoder : Decoder Session
+sessionDecoder =
+    D.map3 Session
+        (D.field "user" userDecoder)
+        (D.field "s" (D.map S D.int))
+        (D.field "id" (D.map SessionId D.string))
 
 
 userDecoder : Decoder User
@@ -112,10 +126,10 @@ encode discord =
     E.object
         [ ( "tag", E.string "discord" )
         , ( "token", encodeToken discord.token )
-        , ( "user"
-          , case discord.userMaybe of
-                Just user ->
-                    encodeUser user
+        , ( "session"
+          , case discord.sessionMaybe of
+                Just session ->
+                    encodeSession session
 
                 Nothing ->
                     E.null
@@ -137,6 +151,19 @@ encodeToken token =
 
         Authenticated str ->
             E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
+
+
+encodeSession : Session -> E.Value
+encodeSession session =
+    let
+        ( S seq, SessionId id ) =
+            ( session.s, session.id )
+    in
+    E.object
+        [ ( "user", encodeUser session.user )
+        , ( "s", E.int seq )
+        , ( "id", E.string id )
+        ]
 
 
 encodeUser : User -> E.Value
@@ -173,14 +200,23 @@ endpoint =
     Endpoint "wss://gateway.discord.gg/?v=6&encoding=json"
 
 
+type Payload
+    = Hello HeartbeatInterval
+    | Dispatch Event
+
+
+type Event
+    = GatewayReady User SequenceNumber SessionId
+
+
 receive : Realtime.Handler Discord
 receive discord message =
     case D.decodeString gatewayPayloadDecoder message of
-        Ok (Hello _) ->
+        Ok (Hello hi) ->
             case discord.token of
                 Ready str ->
                     ( [ Data.Item.textOnly message ]
-                    , { discord | token = Authenticating str }
+                    , { discord | token = Authenticating str, interval = Just hi }
                     , ReplyWithTimeout (identifyPayload str) 5000
                     )
 
@@ -194,11 +230,14 @@ receive discord message =
                 _ ->
                     ( [ Data.Item.textOnly message ], discord, NoReply )
 
-        Ok (Dispatch (GatewayReady user)) ->
+        Ok (Dispatch (GatewayReady user seq id)) ->
             case discord.token of
                 Authenticating str ->
                     ( [ Data.Item.textOnly ("Authenticated as: " ++ user.username) ]
-                    , { discord | token = Authenticated str, userMaybe = Just user }
+                    , { discord
+                        | token = Authenticated str
+                        , sessionMaybe = Just (Session user seq id)
+                      }
                     , NoReply
                     )
 
@@ -211,71 +250,39 @@ receive discord message =
             ( [ Data.Item.textOnly message ], discord, NoReply )
 
 
-type Payload
-    = Hello Int
-    | Dispatch Event
-    | SomethingElse
-
-
-type Event
-    = GatewayReady User
-    | Unknown
-
-
 gatewayPayloadDecoder : Decoder Payload
 gatewayPayloadDecoder =
     D.oneOf
         [ helloDecoder
         , dispatchDecoder
-
-        -- , D.succeed SomethingElse
         ]
 
 
 helloDecoder : Decoder Payload
 helloDecoder =
-    let
-        checkOpCode op =
-            if op == 10 then
-                D.succeed ()
-
-            else
-                D.fail "Not hello."
-    in
-    D.field "op" (D.int |> D.andThen checkOpCode)
-        |> D.andThen (\_ -> D.map Hello (D.at [ "d", "heartbeat_interval" ] D.int))
+    D.when (D.field "op" D.int) ((==) 10) <|
+        D.map (Hello << HI) (D.at [ "d", "heartbeat_interval" ] D.int)
 
 
 dispatchDecoder : Decoder Payload
 dispatchDecoder =
-    let
-        checkOpCode op =
-            if op == 0 then
-                D.succeed ()
-
-            else
-                D.fail "Not dispatch."
-    in
-    D.field "op" (D.int |> D.andThen checkOpCode)
-        |> D.andThen (\_ -> D.map Dispatch eventDecoder)
+    D.when (D.field "op" D.int) ((==) 0) <|
+        D.map Dispatch eventDecoder
 
 
 eventDecoder : Decoder Event
 eventDecoder =
-    let
-        gatewayReadyTagger t =
-            case t of
-                "READY" ->
-                    D.succeed GatewayReady
-
-                _ ->
-                    D.fail "Not GatewayReady."
-    in
     D.oneOf
-        [ D.field "t" (D.string |> D.andThen gatewayReadyTagger)
-            |> D.andThen (\tagger -> D.map tagger (D.at [ "d", "user" ] userDecoder))
-        , D.succeed Unknown
+        [ D.when (D.field "t" D.string) ((==) "READY") gatewayReadyDecoder
         ]
+
+
+gatewayReadyDecoder : Decoder Event
+gatewayReadyDecoder =
+    D.map3 GatewayReady
+        (D.at [ "d", "user" ] userDecoder)
+        (D.field "s" (D.map S D.int))
+        (D.at [ "d", "session_id" ] (D.map SessionId D.string))
 
 
 identifyPayload : String -> String
@@ -324,7 +331,7 @@ update msg discordMaybe =
             Just { discord | token = newTokenInput discord.token str }
 
         ( TokenInput str, Nothing ) ->
-            Just (Discord (New str) Nothing)
+            Just (Discord (New str) Nothing Nothing)
 
         ( CommitToken, Just discord ) ->
             commitToken discord
