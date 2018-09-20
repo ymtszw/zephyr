@@ -16,11 +16,16 @@ ReplyWithTimeout can be used for detecting whether there was
 a timely server response received, so that we can detect errors
 in stateful transaction. Floats are in milliseconds.
 
+Engage/Disengage can be used to open/close connection
+after initial state load on application startup.
+
 -}
 type Reply
     = Reply String
     | ReplyWithTimeout String Float
     | NoReply
+    | Engage
+    | Disengage
 
 
 {-| Function to handle payload of Websocket.MessageFrame

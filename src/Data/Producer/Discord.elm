@@ -51,6 +51,7 @@ type alias Session =
     { user : User
     , s : SequenceNumber
     , id : SessionId
+    , token : String -- Hold currently used token in order to "reset" dirty form
     }
 
 
@@ -107,10 +108,11 @@ tokenDecoder =
 
 sessionDecoder : Decoder Session
 sessionDecoder =
-    D.map3 Session
+    D.map4 Session
         (D.field "user" userDecoder)
         (D.field "s" (D.map S D.int))
         (D.field "id" (D.map SessionId D.string))
+        (D.field "token" D.string)
 
 
 userDecoder : Decoder User
@@ -125,7 +127,7 @@ encode : Discord -> E.Value
 encode discord =
     E.object
         [ ( "tag", E.string "discord" )
-        , ( "token", encodeToken discord.token )
+        , ( "token", encodeToken discord )
         , ( "session"
           , case discord.sessionMaybe of
                 Just session ->
@@ -137,19 +139,29 @@ encode discord =
         ]
 
 
-encodeToken : Token -> E.Value
-encodeToken token =
-    case token of
-        New str ->
+encodeToken : Discord -> E.Value
+encodeToken discord =
+    -- Prioritize already authenticated token on persist
+    case ( discord.token, discord.sessionMaybe ) of
+        ( New str, Just session ) ->
+            E.object [ ( "tag", E.string "New" ), ( "val", E.string session.token ) ]
+
+        ( New str, Nothing ) ->
             E.object [ ( "tag", E.string "New" ), ( "val", E.string str ) ]
 
-        Ready str ->
+        ( Ready str, Just session ) ->
+            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string session.token ) ]
+
+        ( Ready str, Nothing ) ->
             E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
 
-        Authenticating str ->
+        ( Authenticating str, Just session ) ->
+            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string session.token ) ]
+
+        ( Authenticating str, Nothing ) ->
             E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
 
-        Authenticated str ->
+        ( Authenticated str, _ ) ->
             E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
 
 
@@ -163,6 +175,7 @@ encodeSession session =
         [ ( "user", encodeUser session.user )
         , ( "s", E.int seq )
         , ( "id", E.string id )
+        , ( "token", E.string session.token )
         ]
 
 
@@ -236,7 +249,7 @@ receive discord message =
                     ( [ Data.Item.textOnly ("Authenticated as: " ++ user.username) ]
                     , { discord
                         | token = Authenticated str
-                        , sessionMaybe = Just (Session user seq id)
+                        , sessionMaybe = Just (Session user seq id str)
                       }
                     , NoReply
                     )
@@ -324,26 +337,26 @@ type Msg
     | Timeout
 
 
-update : Msg -> Maybe Discord -> Maybe Discord
+update : Msg -> Maybe Discord -> ( Maybe Discord, Reply )
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            Just { discord | token = newTokenInput discord.token str }
+            ( Just { discord | token = newTokenInput discord.token str }, NoReply )
 
         ( TokenInput str, Nothing ) ->
-            Just (Discord (New str) Nothing Nothing)
+            ( Just (Discord (New str) Nothing Nothing), NoReply )
 
         ( CommitToken, Just discord ) ->
             commitToken discord
 
         ( CommitToken, Nothing ) ->
-            Nothing
+            ( Nothing, NoReply )
 
         ( Timeout, Just discord ) ->
             handleTimeout discord
 
         ( Timeout, Nothing ) ->
-            Nothing
+            ( Nothing, NoReply )
 
 
 newTokenInput : Token -> String -> Token
@@ -360,33 +373,42 @@ newTokenInput token newToken =
             New newToken
 
 
-commitToken : Discord -> Maybe Discord
+commitToken : Discord -> ( Maybe Discord, Reply )
 commitToken discord =
-    case discord.token of
-        New "" ->
-            Nothing
+    case ( discord.token, discord.sessionMaybe ) of
+        ( New "", Nothing ) ->
+            ( Nothing, NoReply )
 
-        New str ->
-            Just { discord | token = Ready str }
+        ( New "", Just _ ) ->
+            ( Nothing, Disengage )
+
+        ( New str, Just _ ) ->
+            -- Attempt to replace identify of current connection.
+            -- TODO need to check if this is even possible; if not, reconnect must be issued
+            ( Just { discord | token = Ready str }, Reply (identifyPayload str) )
+
+        ( New str, Nothing ) ->
+            ( Just { discord | token = Ready str }, Engage )
 
         _ ->
-            Just discord
+            -- Should not basically happen; though it could in extreme rare situations
+            ( Just discord, NoReply )
 
 
-handleTimeout : Discord -> Maybe Discord
+handleTimeout : Discord -> ( Maybe Discord, Reply )
 handleTimeout discord =
     case discord.token of
         New _ ->
-            Just discord
+            ( Just discord, NoReply )
 
         Ready _ ->
-            Just discord
+            ( Just discord, NoReply )
 
         Authenticating _ ->
-            Nothing
+            ( Nothing, Disengage )
 
         Authenticated _ ->
-            Just discord
+            ( Just discord, NoReply )
 
 
 

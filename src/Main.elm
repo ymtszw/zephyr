@@ -92,9 +92,8 @@ update msg ({ uiState, env } as m) =
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            Producer.update pctrl m.wsState m.producerRegistry
+            Producer.update (ProducerCtrl << Producer.Timeout) pctrl m.wsState m.producerRegistry
                 |> applyProducerReceipt m
-                |> engageProducers
                 |> persist
 
         NoOp ->
@@ -246,6 +245,12 @@ convertFromV1State idGen columns =
 -- PRODUCER
 
 
+{-| Engage Producers on saved state load.
+
+After the initial engage, subsequent engage/disengage should be done
+on demand generated as Producer Replys.
+
+-}
 engageProducers : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 engageProducers ( m, cmd ) =
     let
