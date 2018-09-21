@@ -1,4 +1,4 @@
-module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), init, welcomeModel)
+module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), UIState, init, welcomeModel)
 
 import Array exposing (Array)
 import Browser exposing (UrlRequest)
@@ -7,7 +7,7 @@ import Browser.Navigation exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item exposing (Item)
-import Data.Producer as Producer exposing (Producer, Storage)
+import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId exposing (Generator)
 import Dict exposing (Dict)
 import Json.Decode exposing (Value)
@@ -20,20 +20,19 @@ import Websocket
 
 type alias Model =
     { columnStore : ColumnStore
-    , columnSwappable : Bool
-    , columnSwapMaybe : Maybe ColumnSwap
-    , producers : List Producer
+    , producerRegistry : ProducerRegistry
     , idGen : Generator
     , navKey : Key
-    , wsState : Websocket.State Msg Storage Item
+    , wsState : Websocket.State Msg
+    , uiState : UIState
     , env : Env
     }
 
 
-type alias Env =
-    { serviceWorkerAvailable : Bool
-    , indexedDBAvailable : Bool
-    , clientHeight : Int
+type alias UIState =
+    { configOpen : Bool
+    , columnSwappable : Bool
+    , columnSwapMaybe : Maybe ColumnSwap
     }
 
 
@@ -44,10 +43,16 @@ type alias ColumnSwap =
     }
 
 
+type alias Env =
+    { serviceWorkerAvailable : Bool
+    , indexedDBAvailable : Bool
+    , clientHeight : Int
+    }
+
+
 init : Env -> Key -> ( Model, Cmd Msg )
 init env navKey =
-    initModel env navKey
-        |> installProducers
+    ( initModel env navKey, Cmd.none )
 
 
 initModel : Env -> Key -> Model
@@ -55,25 +60,20 @@ initModel env navKey =
     if env.indexedDBAvailable then
         Model
             ColumnStore.init
-            False
-            Nothing
-            []
+            Producer.initRegistry
             UniqueId.init
             navKey
-            (Websocket.init [])
+            Websocket.init
+            defaultUIState
             env
 
     else
         welcomeModel env navKey
 
 
-installProducers : Model -> ( Model, Cmd Msg )
-installProducers m =
-    let
-        { idGen, wsState, cmd } =
-            Producer.installAll m.idGen m.wsState m.producers
-    in
-    ( { m | idGen = idGen, wsState = wsState }, cmd )
+defaultUIState : UIState
+defaultUIState =
+    UIState False False Nothing
 
 
 welcomeModel : Env -> Key -> Model
@@ -85,12 +85,11 @@ welcomeModel env navKey =
     in
     Model
         columnStore
-        False
-        Nothing
-        []
+        Producer.initRegistry
         idGen
         navKey
-        (Websocket.init [])
+        Websocket.init
+        defaultUIState
         env
 
 
@@ -111,3 +110,5 @@ type Msg
     | DragEnd
     | Load Value
     | WSReceive Value
+    | ToggleConfig Bool
+    | ProducerCtrl Producer.Msg

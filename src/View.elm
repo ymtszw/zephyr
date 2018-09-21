@@ -4,9 +4,12 @@ import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Core exposing (ColumnSwap, Model, Msg(..))
+import Data.Core exposing (ColumnSwap, Model, Msg(..), UIState)
 import Data.Item exposing (Item, Media(..))
+import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.Producer.Discord as Discord
 import Data.TextRenderer exposing (TextRenderer)
+import Dict
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
@@ -19,13 +22,14 @@ import Html
 import Html.Attributes exposing (draggable, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
-import String exposing (fromInt)
+import Octicons
+import String exposing (fromFloat)
 import Url
 
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ El.layout (dragEventHandlers m.columnSwapMaybe) (bodyEl m)
+    [ El.layout (dragEventHandlers m.uiState.columnSwapMaybe) (bodyEl m)
     , fancyScroll
     ]
 
@@ -34,6 +38,11 @@ bodyEl : Model -> Element Msg
 bodyEl model =
     El.row [ El.width El.fill, El.height El.fill ]
         [ sidebarEl model
+        , if model.uiState.configOpen then
+            configPaneEl model
+
+          else
+            El.none
         , columnsEl model
         ]
 
@@ -56,27 +65,28 @@ dragEventHandlers columnSwapMaybe =
 
 
 sidebarEl : Model -> Element Msg
-sidebarEl { columnStore, env } =
+sidebarEl { columnStore, uiState, env } =
     El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
+        , El.paddingXY 0 10
         , BG.color oneDark.bg
         ]
         [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
-        , El.el [ El.width El.fill, El.alignBottom ] otherButtonsEl
+        , El.el [ El.width El.fill, El.alignBottom ] (otherButtonsEl uiState)
         ]
 
 
 columnButtonsEl : ColumnStore -> Element Msg
 columnButtonsEl columnStore =
     List.append (ColumnStore.indexedMap columnButtonEl columnStore) [ ( "columnAddButton", columnAddButtonEl ) ]
-        |> Element.Keyed.column [ El.width El.fill ]
+        |> Element.Keyed.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
 
 
 columnButtonEl : Int -> Column -> ( String, Element Msg )
 columnButtonEl index { id } =
     ( "sidebarButton_" ++ id
-    , El.el [ El.width El.fill, El.padding 5 ] <|
+    , El.el [ El.width El.fill ] <|
         Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 10
@@ -92,7 +102,7 @@ columnButtonEl index { id } =
 
 columnAddButtonEl : Element Msg
 columnAddButtonEl =
-    El.el [ El.width El.fill, El.padding 5 ] <|
+    El.el [ El.width El.fill ] <|
         Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 10
@@ -106,17 +116,54 @@ columnAddButtonEl =
             { onPress = Just AddColumn, label = El.text "+" }
 
 
-otherButtonsEl : Element Msg
-otherButtonsEl =
-    El.column [ El.width El.fill, El.padding 5 ]
-        [ El.link
+otherButtonsEl : UIState -> Element Msg
+otherButtonsEl uiState =
+    El.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
+        [ Element.Input.button
             [ El.width El.fill
-            , El.paddingXY 0 10
-            , BG.color oneDark.sub
+            , El.paddingXY 0 7
             , BD.rounded 10
+            , if uiState.configOpen then
+                BG.color oneDark.main
+
+              else
+                El.mouseOver [ BG.color oneDark.main ]
             ]
-            { url = "https://github.com/ymtszw/zephyr", label = El.text "</>" }
+            { onPress = Just (ToggleConfig (not uiState.configOpen))
+            , label = octiconEl Octicons.gear
+            }
+        , El.link
+            [ El.width El.fill
+            , El.paddingXY 0 7
+            , BD.rounded 10
+            , BG.color oneDark.sub
+            ]
+            { url = "https://github.com/ymtszw/zephyr"
+            , label = octiconEl Octicons.markGithub
+            }
         ]
+
+
+octiconEl : (Octicons.Options -> Html.Html msg) -> Element msg
+octiconEl octicon =
+    let
+        { red, green, blue } =
+            El.toRgb oneDark.note
+
+        colorStr =
+            "rgb("
+                ++ fromFloat (255 * red)
+                ++ ","
+                ++ fromFloat (255 * green)
+                ++ ","
+                ++ fromFloat (255 * blue)
+                ++ ")"
+    in
+    Octicons.defaultOptions
+        |> Octicons.color colorStr
+        |> Octicons.size 26
+        |> octicon
+        |> El.html
 
 
 
@@ -124,14 +171,14 @@ otherButtonsEl =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columnStore, columnSwappable, columnSwapMaybe, env } =
+columnsEl { columnStore, uiState, env } =
     backgroundEl <|
         Element.Keyed.row
             [ El.width El.fill
             , El.height (El.fill |> El.maximum env.clientHeight)
             , Font.regular
             ]
-            (ColumnStore.indexedMap (columnKeyEl env.clientHeight columnSwappable columnSwapMaybe) columnStore)
+            (ColumnStore.indexedMap (columnKeyEl env.clientHeight uiState) columnStore)
 
 
 backgroundEl : Element Msg -> Element Msg
@@ -155,13 +202,13 @@ backgroundEl contents =
         ]
 
 
-columnKeyEl : Int -> Bool -> Maybe ColumnSwap -> Int -> Column -> ( String, Element Msg )
-columnKeyEl clientHeight swappable swapMaybe index column =
+columnKeyEl : Int -> UIState -> Int -> Column -> ( String, Element Msg )
+columnKeyEl clientHeight { columnSwappable, columnSwapMaybe } index column =
     ( "column_" ++ column.id
-    , case swapMaybe of
+    , case columnSwapMaybe of
         Nothing ->
             notDraggedColumnEl clientHeight column <|
-                if swappable then
+                if columnSwappable then
                     [ El.htmlAttribute (draggable "true")
                     , El.htmlAttribute (style "cursor" "all-scroll")
                     , El.htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
@@ -183,16 +230,7 @@ columnKeyEl clientHeight swappable swapMaybe index column =
 notDraggedColumnEl : Int -> Column -> List (El.Attribute Msg) -> Element Msg
 notDraggedColumnEl clientHeight column attrs =
     El.column
-        ([ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-         , El.height (El.fill |> El.maximum clientHeight)
-         , El.scrollbarY
-         , BG.color oneDark.main
-         , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-         , BD.color oneDark.bg
-         , Font.color oneDark.text
-         ]
-            ++ attrs
-        )
+        (columnBaseAttrs clientHeight ++ attrs)
         [ columnHeaderEl column.id
         , column.items
             |> List.map itemEl
@@ -201,6 +239,18 @@ notDraggedColumnEl clientHeight column attrs =
                 , El.paddingXY 5 0
                 ]
         ]
+
+
+columnBaseAttrs : Int -> List (El.Attribute Msg)
+columnBaseAttrs clientHeight =
+    [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
+    , El.height (El.fill |> El.maximum clientHeight)
+    , El.scrollbarY
+    , BG.color oneDark.main
+    , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
+    , BD.color oneDark.bg
+    , Font.color oneDark.text
+    ]
 
 
 onDragStart : Int -> String -> Decoder Msg
@@ -232,11 +282,7 @@ columnHeaderEl id =
 
 draggedColumnEl : Int -> Element Msg
 draggedColumnEl clientHeight =
-    El.el
-        [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
-        , El.height (El.fill |> El.maximum clientHeight)
-        ]
-        El.none
+    El.el (columnBaseAttrs clientHeight ++ [ BG.color oneDark.bg ]) El.none
 
 
 
@@ -287,6 +333,33 @@ mediaEl media =
         Movie _ ->
             -- Placeholder
             El.none
+
+
+
+-- CONFIG PANE
+
+
+configPaneEl : Model -> Element Msg
+configPaneEl m =
+    El.el
+        [ El.width (El.fill |> El.minimum 480 |> El.maximum 860)
+        , El.height (El.fill |> El.maximum m.env.clientHeight)
+        , El.padding 15
+        , El.scrollbarY
+        , BG.color oneDark.bg
+        , Font.color oneDark.text
+        ]
+        (configInnerEl m)
+
+
+configInnerEl : Model -> Element Msg
+configInnerEl m =
+    El.column
+        [ El.width El.fill
+        , El.height El.fill
+        ]
+        [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
+        ]
 
 
 
