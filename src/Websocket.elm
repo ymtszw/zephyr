@@ -87,18 +87,9 @@ convertResponse res =
         ClosedResponse { key, code, reason } ->
             -- Debug here
             -- ControlFrame Cmd.none
-            let
-                _ =
-                    Debug.log "closed" (WebSocketClient.closedCodeToString code ++ ":" ++ reason)
-            in
             MessageFrame (Key key) (WebSocketClient.closedCodeToString code ++ ":" ++ reason)
 
         ErrorResponse err ->
-            -- Debug here
-            let
-                _ =
-                    Debug.log "err" (WebSocketClient.errorToString err)
-            in
             ControlFrame Cmd.none
 
 
