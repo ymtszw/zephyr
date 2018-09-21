@@ -23,6 +23,7 @@ after initial state load on application startup.
 type Reply
     = Reply String
     | ReplyWithTimeout String Float
+    | OnlyTimeout Float
     | NoReply
     | Engage
     | Disengage

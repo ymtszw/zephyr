@@ -2,7 +2,7 @@ module Data.Producer exposing (Msg(..), ProducerRegistry, Receipt, configsEl, en
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
-import Data.Producer.Discord as Discord exposing (Discord, Token(..))
+import Data.Producer.Discord as Discord exposing (Discord(..))
 import Data.Producer.Realtime exposing (Reply(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
@@ -80,8 +80,11 @@ engageOne : String -> Producer -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, C
 engageOne key producer prev =
     case producer of
         DiscordProducer discord ->
-            case discord.token of
-                Ready _ ->
+            case discord of
+                TokenReady _ ->
+                    engageAndBatchCmd (Key key) Discord.endpoint prev
+
+                Revisit _ ->
                     engageAndBatchCmd (Key key) Discord.endpoint prev
 
                 _ ->
@@ -158,7 +161,10 @@ handleReply globalTimeoutTagger wsState key endpoint producerReply =
 
         ReplyWithTimeout payload timeout ->
             WS.send wsState key payload
-                |> Tuple.mapSecond (setTimeout (globalTimeoutTagger key) timeout)
+                |> Tuple.mapSecond (\cmd -> Cmd.batch [ setTimeout (globalTimeoutTagger key) timeout, cmd ])
+
+        OnlyTimeout timeout ->
+            ( wsState, setTimeout (globalTimeoutTagger key) timeout )
 
         NoReply ->
             ( wsState, Cmd.none )
@@ -170,12 +176,9 @@ handleReply globalTimeoutTagger wsState key endpoint producerReply =
             WS.disengage wsState key
 
 
-setTimeout : msg -> Float -> Cmd msg -> Cmd msg
-setTimeout timeoutMsg timeout cmd =
-    Cmd.batch
-        [ cmd
-        , Process.sleep timeout |> Task.perform (\_ -> timeoutMsg)
-        ]
+setTimeout : msg -> Float -> Cmd msg
+setTimeout timeoutMsg timeout =
+    Process.sleep timeout |> Task.perform (\_ -> timeoutMsg)
 
 
 finalizeReceipt : ProducerRegistry -> Key -> ProducerReceipt msg -> Receipt msg

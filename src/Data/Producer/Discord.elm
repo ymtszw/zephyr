@@ -1,4 +1,4 @@
-module Data.Producer.Discord exposing (Discord, Msg(..), Token(..), configEl, decoder, encode, endpoint, receive, update)
+module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, endpoint, receive, update)
 
 {-| Realtime Producer for Discord.
 
@@ -19,6 +19,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Extra exposing (ite)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -26,11 +27,28 @@ import View.Parts exposing (disabled, disabledColor)
 import Websocket exposing (Endpoint(..))
 
 
-type alias Discord =
-    { token : Token
-    , interval : Maybe HeartbeatInterval
-    , sessionMaybe : Maybe Session
-    }
+{-| Discord state itself is a custom type that represents authentication status.
+
+  - When a user starts filling in token form, it becomes `TokenGiven` state
+  - When the above submitted, changes to `TokenReady`
+      - Form is locked until authentication attempted.
+  - On socket connected, it becomes `Connected` (rarely fail).
+    Token value will be used on "identify" request over Websocket.
+  - If it receives successful response, it becomes `Identified`
+      - Form is unlocked then.
+  - Session will be saved to IndexedDB. Upon reload, it starts with `Revisit` state.
+  - If socket connected but cannot identify with previously authenticated token,
+    it waits with `Reconnected` (login server may be busy/down).
+
+-}
+type Discord
+    = TokenGiven String
+    | TokenReady String
+    | Connected String HeartbeatInterval TimeoutRatch
+    | Identified String HeartbeatInterval Session TimeoutRatch
+    | Switching String HeartbeatInterval Session TimeoutRatch
+    | Revisit Session
+    | Reconnected HeartbeatInterval Session TimeoutRatch
 
 
 {-| Interval to send Opcode 1 Heartbeat in milliseconds.
@@ -39,7 +57,7 @@ Notified by server on conneciton establishment.
 
 -}
 type HeartbeatInterval
-    = HI Int
+    = HI Float
 
 
 {-| Session information of the connection.
@@ -70,39 +88,23 @@ type SessionId
     = SessionId String
 
 
-{-| Custom type that represents token lifecycle.
-
-  - When a user starts filling in token form, it becomes `New` token
-  - When the above submitted, `New` changes to `Ready`
-      - Form is locked until authentication attempted.
-  - `Ready` value will be used on "identify" request over Websocket, becoming `Authenticating`
-  - If it receives successful response, the value becomes `Authenticated`
-      - Form is unlocked then.
-
+{-| Ratch to limit there is only one timer exists;
+i.e. authentication checker, or heartbeat. Not both.
 -}
-type Token
-    = New String
-    | Ready String
-    | Authenticating String
-    | Authenticated String
+type alias TimeoutRatch =
+    Bool
 
 
 decoder : Decoder Discord
 decoder =
-    D.when (D.field "tag" D.string) ((==) "discord") <|
-        D.map3 Discord
-            (D.field "token" tokenDecoder)
-            (D.field "interval" (D.succeed Nothing))
-            (D.field "session" (D.maybe sessionDecoder))
-
-
-tokenDecoder : Decoder Token
-tokenDecoder =
     D.oneOf
-        [ D.when (D.field "tag" D.string) ((==) "New") <|
-            D.map New (D.field "val" D.string)
-        , D.when (D.field "tag" D.string) ((==) "Ready") <|
-            D.map Ready (D.field "val" D.string)
+        -- Saved state always starts with at best TokenReady state
+        [ D.when (D.field "tag" D.string) ((==) "discordRevisit") <|
+            D.map Revisit (D.field "session" sessionDecoder)
+        , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
+            D.map TokenReady (D.field "token" D.string)
+        , D.when (D.field "tag" D.string) ((==) "discordTokenGiven") <|
+            D.map TokenGiven (D.field "token" D.string)
         ]
 
 
@@ -125,44 +127,51 @@ userDecoder =
 
 encode : Discord -> E.Value
 encode discord =
-    E.object
-        [ ( "tag", E.string "discord" )
-        , ( "token", encodeToken discord )
-        , ( "session"
-          , case discord.sessionMaybe of
-                Just session ->
-                    encodeSession session
+    case discord of
+        TokenGiven token ->
+            E.object
+                [ ( "tag", E.string "discordTokenGiven" )
+                , ( "token", E.string token )
+                ]
 
-                Nothing ->
-                    E.null
-          )
-        ]
+        TokenReady token ->
+            E.object
+                [ ( "tag", E.string "discordTokenReady" )
+                , ( "token", E.string token )
+                ]
 
+        Connected token _ _ ->
+            -- New interval should be retrieved on next connection, not persisting old one
+            -- Step back to TokenReady state for retry
+            E.object
+                [ ( "tag", E.string "discordTokenReady" )
+                , ( "token", E.string token )
+                ]
 
-encodeToken : Discord -> E.Value
-encodeToken discord =
-    -- Prioritize already authenticated token on persist
-    case ( discord.token, discord.sessionMaybe ) of
-        ( New str, Just session ) ->
-            E.object [ ( "tag", E.string "New" ), ( "val", E.string session.token ) ]
+        Identified _ _ session _ ->
+            E.object
+                [ ( "tag", E.string "discordRevisit" )
+                , ( "session", encodeSession session )
+                ]
 
-        ( New str, Nothing ) ->
-            E.object [ ( "tag", E.string "New" ), ( "val", E.string str ) ]
+        Switching _ _ session _ ->
+            -- Not persisting yet-authenticated new token
+            E.object
+                [ ( "tag", E.string "discordRevisit" )
+                , ( "session", encodeSession session )
+                ]
 
-        ( Ready str, Just session ) ->
-            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string session.token ) ]
+        Revisit session ->
+            E.object
+                [ ( "tag", E.string "discordRevisit" )
+                , ( "session", encodeSession session )
+                ]
 
-        ( Ready str, Nothing ) ->
-            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
-
-        ( Authenticating str, Just session ) ->
-            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string session.token ) ]
-
-        ( Authenticating str, Nothing ) ->
-            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
-
-        ( Authenticated str, _ ) ->
-            E.object [ ( "tag", E.string "Ready" ), ( "val", E.string str ) ]
+        Reconnected _ session _ ->
+            E.object
+                [ ( "tag", E.string "discordRevisit" )
+                , ( "session", encodeSession session )
+                ]
 
 
 encodeSession : Session -> E.Value
@@ -188,20 +197,30 @@ encodeUser user =
         ]
 
 
-shouldLock : Token -> Bool
-shouldLock token =
-    case token of
-        New _ ->
+shouldLock : Discord -> Bool
+shouldLock discord =
+    case discord of
+        TokenGiven _ ->
             False
 
-        Ready _ ->
+        TokenReady _ ->
             True
 
-        Authenticating _ ->
+        Connected _ _ _ ->
             True
 
-        Authenticated _ ->
+        Identified _ _ _ _ ->
             False
+
+        Switching _ _ _ _ ->
+            True
+
+        Revisit _ ->
+            True
+
+        Reconnected _ _ _ ->
+            -- XXX There must be a "force reset" button, since token may be revoked by server
+            True
 
 
 
@@ -214,7 +233,9 @@ endpoint =
 
 
 type Payload
-    = Hello HeartbeatInterval
+    = HeartbeatAck
+    | HeartbeatReq
+    | Hello HeartbeatInterval
     | Dispatch Event
 
 
@@ -222,59 +243,157 @@ type Event
     = GatewayReady User SequenceNumber SessionId
 
 
+identifyTimeoutMs : Float
+identifyTimeoutMs =
+    10000
+
+
 receive : Realtime.Handler Discord
 receive discord message =
     case D.decodeString gatewayPayloadDecoder message of
-        Ok (Hello hi) ->
-            case discord.token of
-                Ready str ->
-                    ( [ Data.Item.textOnly message ]
-                    , { discord | token = Authenticating str, interval = Just hi }
-                    , ReplyWithTimeout (identifyPayload str) 5000
-                    )
+        Ok HeartbeatAck ->
+            -- Here we should set timeout for next heartbeat basically, only exception is on reconnect
+            case discord of
+                Connected token (HI hi) ratch ->
+                    ( [], Connected token (HI hi) True, ite ratch NoReply (OnlyTimeout hi) )
 
-                Authenticated str ->
-                    -- Just re-"identify"; better try "resume" first then "identify" on failure
-                    ( [ Data.Item.textOnly message ]
-                    , { discord | token = Authenticating str }
-                    , ReplyWithTimeout (identifyPayload str) 5000
+                Identified token (HI hi) session ratch ->
+                    ( [], Identified token (HI hi) session True, ite ratch NoReply (OnlyTimeout hi) )
+
+                Switching token (HI hi) session ratch ->
+                    ( [], Switching token (HI hi) session True, ite ratch NoReply (OnlyTimeout hi) )
+
+                Reconnected hi session ratch ->
+                    -- Server responding to heartbeat but not to identify. Cloud be outage. Keep trying identify.
+                    ( []
+                    , Reconnected hi session True
+                    , ite ratch
+                        (Reply (identifyPayload session.token))
+                        (ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs)
                     )
 
                 _ ->
-                    ( [ Data.Item.textOnly message ], discord, NoReply )
+                    -- Heartbeat arriving but Discord state does not have HeartbeatInterval!? Crash.
+                    receive discord message
+
+        Ok HeartbeatReq ->
+            -- In this case we should immediately send heartbeat then wait for ack.
+            case discord of
+                Connected _ _ _ ->
+                    -- Should not happen; server do not request heartbeat on initial connection
+                    ( [], discord, NoReply )
+
+                Identified _ _ session _ ->
+                    ( [], discord, Reply (heartbeatPayload session.s) )
+
+                Switching _ _ session _ ->
+                    ( [], discord, Reply (heartbeatPayload session.s) )
+
+                Reconnected hi session ratch ->
+                    -- Server responding to heartbeat but not to identify. Cloud be outage. Keep trying identify.
+                    ( []
+                    , Reconnected hi session True
+                    , ite ratch
+                        (Reply (identifyPayload session.token))
+                        (ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs)
+                    )
+
+                _ ->
+                    -- Heartbeat arriving but Discord state does not have HeartbeatInterval!? Crash.
+                    receive discord message
+
+        Ok (Hello hi) ->
+            -- Attempt identify and activate "check back later" timeout to detect authentication failure.
+            -- This should be done by handling connection closure by server (next version of elm-websocket-client).
+            case discord of
+                TokenReady token ->
+                    ( []
+                    , Connected token hi True
+                    , ReplyWithTimeout (identifyPayload token) identifyTimeoutMs
+                    )
+
+                Revisit session ->
+                    -- Just re-"identify" with new token. TODO use resume, then identify if rejected
+                    ( []
+                    , Reconnected hi session True
+                    , ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs
+                    )
+
+                Identified _ _ session ratch ->
+                    -- Somehow lost connection and reconnected, could be outage; TODO use resume, then identify if rejected
+                    ( []
+                    , Reconnected hi session True
+                    , ite ratch
+                        (Reply (identifyPayload session.token))
+                        (ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs)
+                    )
+
+                _ ->
+                    ( [], discord, NoReply )
 
         Ok (Dispatch (GatewayReady user seq id)) ->
-            case discord.token of
-                Authenticating str ->
+            case discord of
+                Connected token (HI hi) ratch ->
                     ( [ Data.Item.textOnly ("Authenticated as: " ++ user.username) ]
-                    , { discord
-                        | token = Authenticated str
-                        , sessionMaybe = Just (Session user seq id str)
-                      }
-                    , NoReply
+                    , Identified token (HI hi) (Session user seq id token) True
+                    , ite ratch NoReply (OnlyTimeout hi)
+                    )
+
+                Reconnected (HI hi) oldSession ratch ->
+                    ( [ Data.Item.textOnly ("Authenticated as: " ++ user.username) ]
+                    , Identified oldSession.token (HI hi) (Session user seq id oldSession.token) True
+                    , ite ratch NoReply (OnlyTimeout hi)
                     )
 
                 _ ->
-                    -- Trap
+                    -- Trap; if we currently trying to authenticate, there must be a HeartbeatInterval
                     receive discord message
 
         e ->
             -- Debug here
-            ( [ Data.Item.textOnly message ], discord, NoReply )
+            -- The only default behavior is revive heartbeat timer if somehow dead (ratch == False).
+            case discord of
+                Connected token (HI hi) False ->
+                    ( [ Data.Item.textOnly message ], Connected token (HI hi) True, OnlyTimeout hi )
+
+                Identified token (HI hi) session False ->
+                    ( [ Data.Item.textOnly message ], Identified token (HI hi) session True, ReplyWithTimeout (heartbeatPayload session.s) hi )
+
+                Switching token (HI hi) session False ->
+                    ( [ Data.Item.textOnly message ], Switching token (HI hi) session True, ReplyWithTimeout (heartbeatPayload session.s) hi )
+
+                Reconnected (HI hi) session False ->
+                    ( [ Data.Item.textOnly message ], Reconnected (HI hi) session True, ReplyWithTimeout (identifyPayload session.token) hi )
+
+                _ ->
+                    ( [ Data.Item.textOnly message ], discord, NoReply )
 
 
 gatewayPayloadDecoder : Decoder Payload
 gatewayPayloadDecoder =
     D.oneOf
-        [ helloDecoder
+        -- Should be ordered by frequency
+        [ heartbeatAckDecoder
         , dispatchDecoder
+        , helloDecoder
+        , heartbeatReqDecoder
         ]
+
+
+heartbeatAckDecoder : Decoder Payload
+heartbeatAckDecoder =
+    D.when (D.field "op" D.int) ((==) 11) (D.succeed HeartbeatAck)
+
+
+heartbeatReqDecoder : Decoder Payload
+heartbeatReqDecoder =
+    D.when (D.field "op" D.int) ((==) 1) (D.succeed HeartbeatReq)
 
 
 helloDecoder : Decoder Payload
 helloDecoder =
     D.when (D.field "op" D.int) ((==) 10) <|
-        D.map (Hello << HI) (D.at [ "d", "heartbeat_interval" ] D.int)
+        D.map (Hello << HI) (D.at [ "d", "heartbeat_interval" ] D.float)
 
 
 dispatchDecoder : Decoder Payload
@@ -308,7 +427,7 @@ identifyPayload tokenStr =
                     [ ( "token", E.string tokenStr )
                     , ( "properties"
                       , E.object
-                            [ ( "$os", E.string "linux" )
+                            [ ( "$os", E.string "other" )
                             , ( "$browser", E.string "disco" )
                             , ( "$device", E.string "disco" )
                             ]
@@ -341,10 +460,10 @@ update : Msg -> Maybe Discord -> ( Maybe Discord, Reply )
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            ( Just { discord | token = newTokenInput discord.token str }, NoReply )
+            ( Just (tokenInput discord str), NoReply )
 
         ( TokenInput str, Nothing ) ->
-            ( Just (Discord (New str) Nothing Nothing), NoReply )
+            ( Just (TokenGiven str), NoReply )
 
         ( CommitToken, Just discord ) ->
             commitToken discord
@@ -359,36 +478,40 @@ update msg discordMaybe =
             ( Nothing, NoReply )
 
 
-newTokenInput : Token -> String -> Token
-newTokenInput token newToken =
-    case token of
-        Ready _ ->
-            token
+tokenInput : Discord -> String -> Discord
+tokenInput discord newToken =
+    case discord of
+        TokenGiven _ ->
+            TokenGiven newToken
 
-        Authenticating _ ->
-            -- Currently authenticating token cannot be overwritten
-            token
+        Identified _ hi session ratch ->
+            Identified newToken hi session ratch
 
         _ ->
-            New newToken
+            -- Committed/just loaded/authenticating token cannot be overwritten until auth attempt resolved
+            discord
 
 
 commitToken : Discord -> ( Maybe Discord, Reply )
 commitToken discord =
-    case ( discord.token, discord.sessionMaybe ) of
-        ( New "", Nothing ) ->
+    case discord of
+        TokenGiven "" ->
             ( Nothing, NoReply )
 
-        ( New "", Just _ ) ->
+        Identified "" _ _ _ ->
             ( Nothing, Disengage )
 
-        ( New str, Just _ ) ->
-            -- Attempt to replace identify of current connection.
-            -- TODO need to check if this is even possible; if not, reconnect must be issued
-            ( Just { discord | token = Ready str }, Reply (identifyPayload str) )
+        Identified newToken _ _ ratch ->
+            -- Attempt to replace identity of current connection.
+            -- TODO need to check if this is even possible; if not, reconnect must be issued first
+            ( Just discord
+            , ite ratch
+                (Reply (identifyPayload newToken))
+                (ReplyWithTimeout (identifyPayload newToken) identifyTimeoutMs)
+            )
 
-        ( New str, Nothing ) ->
-            ( Just { discord | token = Ready str }, Engage )
+        TokenGiven str ->
+            ( Just (TokenReady str), Engage )
 
         _ ->
             -- Should not basically happen; though it could in extreme rare situations
@@ -397,18 +520,44 @@ commitToken discord =
 
 handleTimeout : Discord -> ( Maybe Discord, Reply )
 handleTimeout discord =
-    case discord.token of
-        New _ ->
-            ( Just discord, NoReply )
-
-        Ready _ ->
-            ( Just discord, NoReply )
-
-        Authenticating _ ->
+    -- Note that we must wait for "heartbeat ack" before registering timer for next heartbeat.
+    -- If ack does not arrive in timely manner, we must close connection and reconnect (NYI).
+    case discord of
+        Connected _ _ _ ->
+            -- First ever authentication attempt not succeeded in time; definitely failure
             ( Nothing, Disengage )
 
-        Authenticated _ ->
-            ( Just discord, NoReply )
+        Identified token hi session _ ->
+            -- "Normal" case, send heartbeat; kill ratch so that next timeout can be set on ack.
+            -- If ack does not arrive, connection may die anytime thereafter.
+            -- Can be revived with any request from server.
+            -- Otherwise it lives until elm-websocket-client decides to kill the connection.
+            -- If reconnected later, re-auth is attempted by receive function.
+            ( Just (Identified token hi session False), Reply (heartbeatPayload session.s) )
+
+        Switching _ (HI hi) oldSession _ ->
+            -- New authentication attempt failed, re-identify with old one
+            -- TODO Need to check its possibility, as in commitToken.
+            -- XXX Possibly, heartbeat timeout may arrive at this state before server returns Gateway Ready.
+            -- Ideally we should be able to distinguish auth failure (server close) and heartbeat timeout,
+            -- which should be possible in the next version of elm-websocket-client
+            ( Just (Reconnected (HI hi) oldSession True), ReplyWithTimeout (identifyPayload oldSession.token) hi )
+
+        Reconnected (HI hi) session _ ->
+            -- Keep sending heartbeat if "identify" not succeeding when it should. Possibly outage.
+            -- "Identify" will be retried on ack.
+            -- XXX Token may be revoked by the server. We need "force reset" button
+            ( Just (Reconnected (HI hi) session False), Reply (heartbeatPayload session.s) )
+
+        _ ->
+            -- Timeout when there is no connection!? Crash
+            handleTimeout discord
+
+
+heartbeatPayload : SequenceNumber -> String
+heartbeatPayload (S seq) =
+    E.encode 0 <|
+        E.object [ ( "op", E.int 1 ), ( "d", E.int seq ) ]
 
 
 
@@ -418,19 +567,19 @@ handleTimeout discord =
 configEl : Maybe Discord -> Element Msg
 configEl discordMaybe =
     case discordMaybe of
-        Just { token } ->
-            tokenFormEl token
+        Just discord ->
+            tokenFormEl discord
 
         Nothing ->
-            tokenFormEl (New "")
+            tokenFormEl (TokenGiven "")
 
 
-tokenFormEl : Token -> Element Msg
-tokenFormEl token =
+tokenFormEl : Discord -> Element Msg
+tokenFormEl discord =
     El.column
         [ El.width El.fill, El.spacing 5 ]
         [ Element.Input.text
-            (disabled (shouldLock token)
+            (disabled (shouldLock discord)
                 [ El.width El.fill
                 , El.padding 5
                 , BG.color oneDark.note
@@ -438,7 +587,7 @@ tokenFormEl token =
                 ]
             )
             { onChange = TokenInput
-            , text = tokenText token
+            , text = tokenText discord
             , placeholder = Nothing
             , label = tokenLabelEl
             }
@@ -448,48 +597,51 @@ tokenFormEl token =
              , El.padding 10
              , BD.rounded 5
              ]
-                |> disabled (shouldLock token)
-                |> disabledColor (shouldLock token)
+                |> disabled (shouldLockButton discord)
+                |> disabledColor (shouldLockButton discord)
             )
-            { onPress =
-                case token of
-                    New _ ->
-                        Just CommitToken
-
-                    _ ->
-                        Nothing
-            , label =
-                El.text <|
-                    case token of
-                        New _ ->
-                            "Submit"
-
-                        Ready _ ->
-                            "Waiting..."
-
-                        Authenticating _ ->
-                            "Authenticating..."
-
-                        Authenticated _ ->
-                            "Submit"
+            { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
+            , label = El.text (tokenInputButtonLabel discord)
             }
         ]
 
 
-tokenText : Token -> String
-tokenText token =
-    case token of
-        New str ->
-            str
+shouldLockButton : Discord -> Bool
+shouldLockButton discord =
+    case discord of
+        TokenGiven _ ->
+            False
 
-        Ready str ->
-            str
+        Identified newToken _ session _ ->
+            newToken == session.token
 
-        Authenticating str ->
-            str
+        _ ->
+            True
 
-        Authenticated str ->
-            str
+
+tokenText : Discord -> String
+tokenText discord =
+    case discord of
+        TokenGiven string ->
+            string
+
+        TokenReady string ->
+            string
+
+        Connected string _ _ ->
+            string
+
+        Identified string _ _ _ ->
+            string
+
+        Switching string _ _ _ ->
+            string
+
+        Revisit session ->
+            session.token
+
+        Reconnected _ session _ ->
+            session.token
 
 
 tokenLabelEl : Element.Input.Label msg
@@ -500,3 +652,28 @@ tokenLabelEl =
             , El.el [ Font.color oneDark.note, Font.size 14 ] <|
                 El.text "Some shady works required to acquire Discord personal access token. Do not talk about it."
             ]
+
+
+tokenInputButtonLabel : Discord -> String
+tokenInputButtonLabel discord =
+    case discord of
+        TokenGiven _ ->
+            "Submit"
+
+        TokenReady _ ->
+            "Waiting..."
+
+        Connected _ _ _ ->
+            "Authenticating..."
+
+        Identified _ _ _ _ ->
+            "Submit"
+
+        Switching _ _ _ _ ->
+            "Switching user..."
+
+        Revisit _ ->
+            "Reconnecting..."
+
+        Reconnected _ _ _ ->
+            "Re-authenticating..."
