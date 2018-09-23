@@ -1,10 +1,10 @@
 module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, endpoint, receive, update)
 
-{-| Realtime Producer for Discord.
+{-| Polling Producer for Discord.
 
-Using Discord's realtime communication backend: "Gateway".
+Using Discord's RESTful APIs to retrieve Items.
 
-<https://discordapp.com/developers/docs/topics/gateway>
+<https://discordapp.com/developers/docs/intro>
 
 Note that it involves a little "shady" work on retrieving
 full-privilege personal token for a Discord user. Discuss in private.
@@ -31,24 +31,25 @@ import Websocket exposing (Endpoint(..))
 
   - When a user starts filling in token form, it becomes `TokenGiven` state
   - When the above submitted, changes to `TokenReady`
-      - Form is locked until authentication attempted.
-  - On socket connected, it becomes `Connected` (rarely fail).
-    Token value will be used on "identify" request over Websocket.
-  - If it receives successful response, it becomes `Identified`
+      - Form is locked while authentication attempted.
+  - On successful response from Current User API, it becomes `Identified`
       - Form is unlocked then.
-  - Session will be saved to IndexedDB. Upon reload, it starts with `Revisit` state.
-  - If socket connected but cannot identify with previously authenticated token,
-    it waits with `Reconnected` (login server may be busy/down).
+  - Session (token, login user info) and Config (watching servers and channels)
+    will be saved to IndexedDB.
+  - Upon application reload, it starts with `Revisit` status,
+    then become `Identified` if the token successfully confirmed again.
+      - If not, it becomes `Expired`
+  - When token is changed to one for another user, it stops at `Switching` state,
+    requesting user confirmation, then move to `Identified`, discarding old Config.
 
 -}
 type Discord
     = TokenGiven String
     | TokenReady String
-    | Connected String HeartbeatInterval TimeoutRatch
-    | Identified String HeartbeatInterval Session TimeoutRatch
-    | Switching String HeartbeatInterval Session TimeoutRatch
-    | Revisit Session
-    | Reconnected HeartbeatInterval Session TimeoutRatch
+    | Identified String Session Config
+    | Revisit Session Config
+    | Expired String Session Config
+    | Switching Session Session Config
 
 
 {-| Interval to send Opcode 1 Heartbeat in milliseconds.
