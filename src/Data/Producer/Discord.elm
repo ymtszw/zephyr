@@ -1,4 +1,4 @@
-module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, endpoint, receive, update)
+module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, update)
 
 {-| Polling Producer for Discord.
 
@@ -13,32 +13,45 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
+import Data.Producer.Polling as Polling exposing (save)
 import Data.Producer.Realtime as Realtime exposing (Reply(..))
+import Dict exposing (Dict)
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Extra exposing (ite)
+import Http
+import HttpExtra as Http
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import Json.EncodeExtra as E
+import Task exposing (Task)
+import Time exposing (Posix)
+import Url exposing (Url)
 import View.Parts exposing (disabled, disabledColor)
 import Websocket exposing (Endpoint(..))
 
 
+
+-- TYPES
+
+
 {-| Discord state itself is a custom type that represents authentication status.
 
-  - When a user starts filling in token form, it becomes `TokenGiven` state
+  - When a user starts filling in token form for the first time, it becomes `TokenGiven` state
   - When the above submitted, changes to `TokenReady`
       - Form is locked while authentication attempted.
-  - On successful response from Current User API, it becomes `Identified`
+  - On successful response from Current User API, it becomes `Identified` with NewSession data.
+  - After that, available Guild and Channel lists are retrieved from Discord API.
+    When they are all ready, it becomes `Hydrated`.
       - Form is unlocked then.
-  - Session (token, login user info) and Config (watching servers and channels)
-    will be saved to IndexedDB.
+      - Once fully-hydrated state will be saved to IndexedDB.
   - Upon application reload, it starts with `Revisit` status,
-    then become `Identified` if the token successfully confirmed again.
-      - If not, it becomes `Expired`
+    then become `Hydrated` again if the token successfully confirmed.
+      - If not, it becomes `Expired` (it could also mean the token is revoked by the server)
   - When token is changed to one for another user, it stops at `Switching` state,
     requesting user confirmation, then move to `Identified`, discarding old Config.
 
@@ -46,54 +59,84 @@ import Websocket exposing (Endpoint(..))
 type Discord
     = TokenGiven String
     | TokenReady String
-    | Identified String Session Config
-    | Revisit Session Config
-    | Expired String Session Config
-    | Switching Session Session Config
+    | Identified NewSession
+    | Hydrated String PoV
+    | Revisit PoV
+    | Expired String PoV
+    | Switching NewSession PoV
 
 
-{-| Interval to send Opcode 1 Heartbeat in milliseconds.
+{-| Current user's point of view.
 
-Notified by server on conneciton establishment.
+In Discord, it contains:
 
--}
-type HeartbeatInterval
-    = HI Float
-
-
-{-| Session information of the connection.
-
-Notified by server on authentication success by Gateway Ready event.
+  - Working token
+  - Login User info
+  - ID Dict of subscribing Guilds. May be updated periodically.
+  - ID Dict of Channels in subscribing Guilds. Maybe updated periodically
 
 -}
-type alias Session =
-    { user : User
-    , s : SequenceNumber
-    , id : SessionId
-    , token : String -- Hold currently used token in order to "reset" dirty form
+type alias PoV =
+    { token : String
+    , user : User
+    , guilds : Dict String Guild
+    , channels : Dict String Channel
+    }
+
+
+type alias NewSession =
+    { token : String
+    , user : User
     }
 
 
 type alias User =
-    { username : String
+    { id : String
+    , username : String
     , discriminator : String
     , email : String
     }
 
 
-type SequenceNumber
-    = S Int
+type alias Guild =
+    { id : String
+    , name : String
+    , icon : Image
+    }
 
 
-type SessionId
-    = SessionId String
+type alias Channel =
+    { id : String
+    , name : String
+    , type_ : ChannelType
+    , lastMessageId : Maybe MessageId
+
+    -- Zephyr-only fields below
+    , lastFetchTime : Maybe Posix
+    , lastYieldTime : Maybe Posix
+    }
 
 
-{-| Ratch to limit there is only one timer exists;
-i.e. authentication checker, or heartbeat. Not both.
+{-| Ignoring voice channel and category.
 -}
-type alias TimeoutRatch =
-    Bool
+type ChannelType
+    = GuildText
+    | DM
+    | GroupDM
+
+
+type MessageId
+    = MessageId String
+
+
+type Image
+    = Emoji { id : String, ext : String }
+    | GuildIcon { guildId : String, hash : String }
+    | UserAvatar { userId : String, hash : String }
+
+
+
+-- DECODER
 
 
 decoder : Decoder Discord
@@ -101,7 +144,7 @@ decoder =
     D.oneOf
         -- Saved state always starts with at best TokenReady state
         [ D.when (D.field "tag" D.string) ((==) "discordRevisit") <|
-            D.map Revisit (D.field "session" sessionDecoder)
+            D.map Revisit (D.field "pov" povDecoder)
         , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
             D.map TokenReady (D.field "token" D.string)
         , D.when (D.field "tag" D.string) ((==) "discordTokenGiven") <|
@@ -109,21 +152,80 @@ decoder =
         ]
 
 
-sessionDecoder : Decoder Session
-sessionDecoder =
-    D.map4 Session
-        (D.field "user" userDecoder)
-        (D.field "s" (D.map S D.int))
-        (D.field "id" (D.map SessionId D.string))
+povDecoder : Decoder PoV
+povDecoder =
+    D.map4 PoV
         (D.field "token" D.string)
+        (D.field "user" userDecoder)
+        (D.field "guilds" (D.dict guildDecoder))
+        (D.field "channels" (D.dict channelDecoder))
 
 
 userDecoder : Decoder User
 userDecoder =
-    D.map3 User
+    D.map4 User
+        (D.field "id" D.string)
         (D.field "username" D.string)
         (D.field "discriminator" D.string)
         (D.field "email" D.string)
+
+
+guildDecoder : Decoder Guild
+guildDecoder =
+    let
+        toGuildIcon id hash =
+            GuildIcon { guildId = id, hash = hash }
+
+        decodeWithId id =
+            D.map2 (Guild id)
+                (D.field "name" D.string)
+                (D.field "icon" (D.map (toGuildIcon id) D.string))
+    in
+    D.field "id" D.string |> D.andThen decodeWithId
+
+
+channelDecoder : Decoder Channel
+channelDecoder =
+    let
+        flatten aMaybeMaybe =
+            case aMaybeMaybe of
+                Just (Just a) ->
+                    Just a
+
+                _ ->
+                    Nothing
+    in
+    D.map6 Channel
+        (D.field "id" D.string)
+        (D.field "name" D.string)
+        (D.field "type" channelTypeDecoder)
+        (D.map flatten (D.maybe (D.field "last_message_id" (D.maybe (D.map MessageId D.string)))))
+        (D.map flatten (D.maybe (D.field "lastFetchTime" (D.maybe (D.map Time.millisToPosix D.int)))))
+        (D.map flatten (D.maybe (D.field "lastYieldTime" (D.maybe (D.map Time.millisToPosix D.int)))))
+
+
+channelTypeDecoder : Decoder ChannelType
+channelTypeDecoder =
+    D.string
+        |> D.andThen
+            (\string ->
+                case string of
+                    "GUILD_TEXT" ->
+                        D.succeed GuildText
+
+                    "DM" ->
+                        D.succeed DM
+
+                    "GROUP_DM" ->
+                        D.succeed GroupDM
+
+                    _ ->
+                        D.fail "Invalid ChannelType"
+            )
+
+
+
+-- ENCODER
 
 
 encode : Discord -> E.Value
@@ -141,310 +243,114 @@ encode discord =
                 , ( "token", E.string token )
                 ]
 
-        Connected token _ _ ->
+        Identified session ->
             -- New interval should be retrieved on next connection, not persisting old one
             -- Step back to TokenReady state for retry
             E.object
                 [ ( "tag", E.string "discordTokenReady" )
-                , ( "token", E.string token )
+                , ( "token", E.string session.token )
                 ]
 
-        Identified _ _ session _ ->
+        Hydrated _ pov ->
             E.object
                 [ ( "tag", E.string "discordRevisit" )
-                , ( "session", encodeSession session )
+                , ( "pov", encodePov pov )
                 ]
 
-        Switching _ _ session _ ->
+        Switching _ pov ->
             -- Not persisting yet-authenticated new token
             E.object
                 [ ( "tag", E.string "discordRevisit" )
-                , ( "session", encodeSession session )
+                , ( "pov", encodePov pov )
                 ]
 
-        Revisit session ->
+        Revisit pov ->
             E.object
                 [ ( "tag", E.string "discordRevisit" )
-                , ( "session", encodeSession session )
+                , ( "pov", encodePov pov )
                 ]
 
-        Reconnected _ session _ ->
+        Expired _ pov ->
             E.object
                 [ ( "tag", E.string "discordRevisit" )
-                , ( "session", encodeSession session )
+                , ( "pov", encodePov pov )
                 ]
 
 
-encodeSession : Session -> E.Value
-encodeSession session =
-    let
-        ( S seq, SessionId id ) =
-            ( session.s, session.id )
-    in
+encodePov : PoV -> E.Value
+encodePov pov =
     E.object
-        [ ( "user", encodeUser session.user )
-        , ( "s", E.int seq )
-        , ( "id", E.string id )
-        , ( "token", E.string session.token )
+        [ ( "token", E.string pov.token )
+        , ( "user", encodeUser pov.user )
+        , ( "guilds", encodeGuildDict pov.guilds )
+        , ( "channels", encodeChannelDict pov.channels )
         ]
 
 
 encodeUser : User -> E.Value
 encodeUser user =
     E.object
-        [ ( "username", E.string user.username )
+        [ ( "id", E.string user.id )
+        , ( "username", E.string user.username )
         , ( "discriminator", E.string user.discriminator )
         , ( "email", E.string user.email )
         ]
 
 
-shouldLock : Discord -> Bool
-shouldLock discord =
-    case discord of
-        TokenGiven _ ->
-            False
-
-        TokenReady _ ->
-            True
-
-        Connected _ _ _ ->
-            True
-
-        Identified _ _ _ _ ->
-            False
-
-        Switching _ _ _ _ ->
-            True
-
-        Revisit _ ->
-            True
-
-        Reconnected _ _ _ ->
-            -- XXX There must be a "force reset" button, since token may be revoked by server
-            True
+encodeGuildDict : Dict String Guild -> E.Value
+encodeGuildDict guilds =
+    guilds |> Dict.map (\_ v -> encodeGuild v) |> Dict.toList |> E.object
 
 
-
--- PRODUCER INTERFACES
-
-
-endpoint : Endpoint
-endpoint =
-    Endpoint "wss://gateway.discord.gg/?v=6&encoding=json"
-
-
-type Payload
-    = HeartbeatAck
-    | HeartbeatReq
-    | Hello HeartbeatInterval
-    | Dispatch Event
-
-
-type Event
-    = GatewayReady User SequenceNumber SessionId
-
-
-identifyTimeoutMs : Float
-identifyTimeoutMs =
-    10000
-
-
-receive : Realtime.Handler Discord
-receive discord message =
-    case D.decodeString gatewayPayloadDecoder message of
-        Ok HeartbeatAck ->
-            -- Here we should set timeout for next heartbeat basically, only exception is on reconnect
-            case discord of
-                Connected token (HI hi) ratch ->
-                    ( [], Connected token (HI hi) True, ite ratch NoReply (OnlyTimeout hi) )
-
-                Identified token (HI hi) session ratch ->
-                    ( [], Identified token (HI hi) session True, ite ratch NoReply (OnlyTimeout hi) )
-
-                Switching token (HI hi) session ratch ->
-                    ( [], Switching token (HI hi) session True, ite ratch NoReply (OnlyTimeout hi) )
-
-                Reconnected hi session ratch ->
-                    -- Server responding to heartbeat but not to identify. Cloud be outage. Keep trying identify.
-                    ( []
-                    , Reconnected hi session True
-                    , ite ratch
-                        (Reply (identifyPayload session.token))
-                        (ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs)
-                    )
+encodeGuild : Guild -> E.Value
+encodeGuild guild =
+    E.object
+        [ ( "id", E.string guild.id )
+        , ( "name", E.string guild.name )
+        , ( "icon"
+          , case guild.icon of
+                GuildIcon { hash } ->
+                    E.string hash
 
                 _ ->
-                    -- Heartbeat arriving but Discord state does not have HeartbeatInterval!? Crash.
-                    receive discord message
-
-        Ok HeartbeatReq ->
-            -- In this case we should immediately send heartbeat then wait for ack.
-            case discord of
-                Connected _ _ _ ->
-                    -- Should not happen; server do not request heartbeat on initial connection
-                    ( [], discord, NoReply )
-
-                Identified _ _ session _ ->
-                    ( [], discord, Reply (heartbeatPayload session.s) )
-
-                Switching _ _ session _ ->
-                    ( [], discord, Reply (heartbeatPayload session.s) )
-
-                Reconnected hi session ratch ->
-                    -- Server responding to heartbeat but not to identify. Cloud be outage. Keep trying identify.
-                    ( []
-                    , Reconnected hi session True
-                    , ite ratch
-                        (Reply (identifyPayload session.token))
-                        (ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs)
-                    )
-
-                _ ->
-                    -- Heartbeat arriving but Discord state does not have HeartbeatInterval!? Crash.
-                    receive discord message
-
-        Ok (Hello hi) ->
-            -- Attempt identify and activate "check back later" timeout to detect authentication failure.
-            -- This should be done by handling connection closure by server (next version of elm-websocket-client).
-            case discord of
-                TokenReady token ->
-                    ( []
-                    , Connected token hi True
-                    , ReplyWithTimeout (identifyPayload token) identifyTimeoutMs
-                    )
-
-                Revisit session ->
-                    -- Just re-"identify" with new token. TODO use resume, then identify if rejected
-                    ( []
-                    , Reconnected hi session True
-                    , ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs
-                    )
-
-                Identified _ _ session ratch ->
-                    -- Somehow lost connection and reconnected, could be outage; TODO use resume, then identify if rejected
-                    ( []
-                    , Reconnected hi session True
-                    , ite ratch
-                        (Reply (identifyPayload session.token))
-                        (ReplyWithTimeout (identifyPayload session.token) identifyTimeoutMs)
-                    )
-
-                _ ->
-                    ( [], discord, NoReply )
-
-        Ok (Dispatch (GatewayReady user seq id)) ->
-            case discord of
-                Connected token (HI hi) ratch ->
-                    ( [ Data.Item.textOnly ("Authenticated as: " ++ user.username) ]
-                    , Identified token (HI hi) (Session user seq id token) True
-                    , ite ratch NoReply (OnlyTimeout hi)
-                    )
-
-                Reconnected (HI hi) oldSession ratch ->
-                    ( [ Data.Item.textOnly ("Authenticated as: " ++ user.username) ]
-                    , Identified oldSession.token (HI hi) (Session user seq id oldSession.token) True
-                    , ite ratch NoReply (OnlyTimeout hi)
-                    )
-
-                _ ->
-                    -- Trap; if we currently trying to authenticate, there must be a HeartbeatInterval
-                    receive discord message
-
-        e ->
-            -- Debug here
-            -- The only default behavior is revive heartbeat timer if somehow dead (ratch == False).
-            case discord of
-                Connected token (HI hi) False ->
-                    ( [ Data.Item.textOnly message ], Connected token (HI hi) True, OnlyTimeout hi )
-
-                Identified token (HI hi) session False ->
-                    ( [ Data.Item.textOnly message ], Identified token (HI hi) session True, ReplyWithTimeout (heartbeatPayload session.s) hi )
-
-                Switching token (HI hi) session False ->
-                    ( [ Data.Item.textOnly message ], Switching token (HI hi) session True, ReplyWithTimeout (heartbeatPayload session.s) hi )
-
-                Reconnected (HI hi) session False ->
-                    ( [ Data.Item.textOnly message ], Reconnected (HI hi) session True, ReplyWithTimeout (identifyPayload session.token) hi )
-
-                _ ->
-                    ( [ Data.Item.textOnly message ], discord, NoReply )
-
-
-gatewayPayloadDecoder : Decoder Payload
-gatewayPayloadDecoder =
-    D.oneOf
-        -- Should be ordered by frequency
-        [ heartbeatAckDecoder
-        , dispatchDecoder
-        , helloDecoder
-        , heartbeatReqDecoder
+                    -- Trap
+                    encodeGuild guild
+          )
         ]
 
 
-heartbeatAckDecoder : Decoder Payload
-heartbeatAckDecoder =
-    D.when (D.field "op" D.int) ((==) 11) (D.succeed HeartbeatAck)
+encodeChannelDict : Dict String Channel -> E.Value
+encodeChannelDict channels =
+    channels |> Dict.map (\_ v -> encodeChannel v) |> Dict.toList |> E.object
 
 
-heartbeatReqDecoder : Decoder Payload
-heartbeatReqDecoder =
-    D.when (D.field "op" D.int) ((==) 1) (D.succeed HeartbeatReq)
-
-
-helloDecoder : Decoder Payload
-helloDecoder =
-    D.when (D.field "op" D.int) ((==) 10) <|
-        D.map (Hello << HI) (D.at [ "d", "heartbeat_interval" ] D.float)
-
-
-dispatchDecoder : Decoder Payload
-dispatchDecoder =
-    D.when (D.field "op" D.int) ((==) 0) <|
-        D.map Dispatch eventDecoder
-
-
-eventDecoder : Decoder Event
-eventDecoder =
-    D.oneOf
-        [ D.when (D.field "t" D.string) ((==) "READY") gatewayReadyDecoder
+encodeChannel : Channel -> E.Value
+encodeChannel channel =
+    let
+        unwrapMessageId (MessageId mid) =
+            mid
+    in
+    E.object
+        [ ( "id", E.string channel.id )
+        , ( "name", E.string channel.name )
+        , ( "type", encodeChannelType channel.type_ )
+        , ( "last_message_id", E.maybe (unwrapMessageId >> E.string) channel.lastMessageId ) -- Match field name with Discord's API
+        , ( "lastFetchTime", E.maybe (Time.posixToMillis >> E.int) channel.lastFetchTime )
+        , ( "lastYieldTime", E.maybe (Time.posixToMillis >> E.int) channel.lastYieldTime )
         ]
 
 
-gatewayReadyDecoder : Decoder Event
-gatewayReadyDecoder =
-    D.map3 GatewayReady
-        (D.at [ "d", "user" ] userDecoder)
-        (D.field "s" (D.map S D.int))
-        (D.at [ "d", "session_id" ] (D.map SessionId D.string))
+encodeChannelType : ChannelType -> E.Value
+encodeChannelType type_ =
+    case type_ of
+        GuildText ->
+            E.string "GUILD_TEXT"
 
+        DM ->
+            E.string "DM"
 
-identifyPayload : String -> String
-identifyPayload tokenStr =
-    E.encode 0 <|
-        E.object
-            [ ( "op", E.int 2 )
-            , ( "d"
-              , E.object
-                    [ ( "token", E.string tokenStr )
-                    , ( "properties"
-                      , E.object
-                            [ ( "$os", E.string "other" )
-                            , ( "$browser", E.string "disco" )
-                            , ( "$device", E.string "disco" )
-                            ]
-                      )
-                    , ( "shard", E.list E.int [ 1, 10 ] )
-                    , ( "presence"
-                      , E.object
-                            [ ( "since", E.null )
-                            , ( "game", E.null )
-                            , ( "status", E.string "invisible" )
-                            , ( "afk", E.bool False )
-                            ]
-                      )
-                    ]
-              )
-            ]
+        GroupDM ->
+            E.string "GROUP_DM"
 
 
 
@@ -454,29 +360,25 @@ identifyPayload tokenStr =
 type Msg
     = TokenInput String
     | CommitToken
-    | Timeout
+    | Identify User
+    | Hydrate (Dict String Guild) (Dict String Channel)
+    | APIError Http.Error
 
 
-update : Msg -> Maybe Discord -> ( Maybe Discord, Reply )
+update : Polling.Update Discord Msg
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            ( Just (tokenInput discord str), NoReply )
+            save (Just (tokenInput discord str))
 
         ( TokenInput str, Nothing ) ->
-            ( Just (TokenGiven str), NoReply )
+            save (Just (TokenGiven str))
 
         ( CommitToken, Just discord ) ->
             commitToken discord
 
-        ( CommitToken, Nothing ) ->
-            ( Nothing, NoReply )
-
-        ( Timeout, Just discord ) ->
-            handleTimeout discord
-
-        ( Timeout, Nothing ) ->
-            ( Nothing, NoReply )
+        ( Identify user, Just discord ) ->
+            handleIdentify discord user
 
 
 tokenInput : Discord -> String -> Discord
@@ -485,80 +387,118 @@ tokenInput discord newToken =
         TokenGiven _ ->
             TokenGiven newToken
 
-        Identified _ hi session ratch ->
-            Identified newToken hi session ratch
+        Hydrated _ pov ->
+            Hydrated newToken pov
+
+        Expired _ pov ->
+            Expired newToken pov
 
         _ ->
             -- Committed/just loaded/authenticating token cannot be overwritten until auth attempt resolved
             discord
 
 
-commitToken : Discord -> ( Maybe Discord, Reply )
+commitToken : Discord -> Polling.Yield Discord Msg
 commitToken discord =
     case discord of
         TokenGiven "" ->
-            ( Nothing, NoReply )
+            save Nothing
 
-        Identified "" _ _ _ ->
-            ( Nothing, Disengage )
+        TokenGiven token ->
+            ( [], Just (TokenReady token), identify token )
 
-        Identified newToken _ _ ratch ->
-            -- Attempt to replace identity of current connection.
-            -- TODO need to check if this is even possible; if not, reconnect must be issued first
-            ( Just discord
-            , ite ratch
-                (Reply (identifyPayload newToken))
-                (ReplyWithTimeout (identifyPayload newToken) identifyTimeoutMs)
+        Hydrated "" _ ->
+            -- TODO Insert confirmation phase later
+            save Nothing
+
+        Hydrated newToken pov ->
+            ( [], Just discord, identify newToken )
+
+
+apiPath : String -> Url
+apiPath path =
+    { protocol = Url.Https
+    , host = "discordapp.com"
+    , port_ = Nothing
+    , path = "/api" ++ path
+    , fragment = Nothing
+    , query = Nothing
+    }
+
+
+identify : String -> Cmd Msg
+identify token =
+    Http.getWithAuth (apiPath "/users/@me") (Http.auth token) userDecoder
+        |> Http.try Identify APIError
+
+
+handleIdentify : Discord -> User -> Polling.Yield Discord Msg
+handleIdentify discord user =
+    case discord of
+        TokenReady token ->
+            ( [ Data.Item.textOnly ("User: " ++ user.username) ]
+            , Just (Identified (NewSession token user))
+            , hydrate token
             )
 
-        TokenGiven str ->
-            ( Just (TokenReady str), Engage )
+        Hydrated token pov ->
+            detectUserSwitch token pov user
 
-        _ ->
-            -- Should not basically happen; though it could in extreme rare situations
-            ( Just discord, NoReply )
+        Expired token pov ->
+            detectUserSwitch token pov user
 
-
-handleTimeout : Discord -> ( Maybe Discord, Reply )
-handleTimeout discord =
-    -- Note that we must wait for "heartbeat ack" before registering timer for next heartbeat.
-    -- If ack does not arrive in timely manner, we must close connection and reconnect (NYI).
-    case discord of
-        Connected _ _ _ ->
-            -- First ever authentication attempt not succeeded in time; definitely failure
-            ( Nothing, Disengage )
-
-        Identified token hi session _ ->
-            -- "Normal" case, send heartbeat; kill ratch so that next timeout can be set on ack.
-            -- If ack does not arrive, connection may die anytime thereafter.
-            -- Can be revived with any request from server.
-            -- Otherwise it lives until elm-websocket-client decides to kill the connection.
-            -- If reconnected later, re-auth is attempted by receive function.
-            ( Just (Identified token hi session False), Reply (heartbeatPayload session.s) )
-
-        Switching _ (HI hi) oldSession _ ->
-            -- New authentication attempt failed, re-identify with old one
-            -- TODO Need to check its possibility, as in commitToken.
-            -- XXX Possibly, heartbeat timeout may arrive at this state before server returns Gateway Ready.
-            -- Ideally we should be able to distinguish auth failure (server close) and heartbeat timeout,
-            -- which should be possible in the next version of elm-websocket-client
-            ( Just (Reconnected (HI hi) oldSession True), ReplyWithTimeout (identifyPayload oldSession.token) hi )
-
-        Reconnected (HI hi) session _ ->
-            -- Keep sending heartbeat if "identify" not succeeding when it should. Possibly outage.
-            -- "Identify" will be retried on ack.
-            -- XXX Token may be revoked by the server. We need "force reset" button
-            ( Just (Reconnected (HI hi) session False), Reply (heartbeatPayload session.s) )
-
-        _ ->
-            -- Timeout when there is no connection!? Crash
-            handleTimeout discord
+        Revisit pov ->
+            save (Just (Hydrated pov.token { pov | user = user }))
 
 
-heartbeatPayload : SequenceNumber -> String
-heartbeatPayload (S seq) =
-    E.encode 0 <|
-        E.object [ ( "op", E.int 1 ), ( "d", E.int seq ) ]
+detectUserSwitch : String -> PoV -> User -> Polling.Yield Discord Msg
+detectUserSwitch token pov user =
+    if user.id == pov.user.id then
+        save (Just (Hydrated token { pov | token = token, user = user }))
+
+    else
+        -- TODO Insert confirmation phase later
+        ( [ Data.Item.textOnly ("New User: " ++ user.username) ]
+        , Just (Switching (NewSession token user) pov)
+        , hydrate token
+        )
+
+
+hydrate : String -> Cmd Msg
+hydrate token =
+    Http.getWithAuth (apiPath "/users/@me/guilds") (Http.auth token) decodeGuildArrayIntoDict
+        |> Task.andThen (hydrateChannels token)
+        |> Http.try identity APIError
+
+
+decodeGuildArrayIntoDict : Decoder (Dict String Guild)
+decodeGuildArrayIntoDict =
+    let
+        listToDict guildList =
+            guildList
+                |> List.map (\guild -> ( guild.id, guild ))
+                |> Dict.fromList
+    in
+    D.map listToDict (D.list guildDecoder)
+
+
+hydrateChannels : String -> Dict String Guild -> Task Http.Error Msg
+hydrateChannels token guilds =
+    let
+        getGuildChannels guildId =
+            Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels"))
+                (Http.auth token)
+                (D.list channelDecoder)
+
+        intoDict listOfChannelList =
+            listOfChannelList
+                |> List.concatMap (List.map (\channel -> ( channel.id, channel )))
+                |> Dict.fromList
+    in
+    Dict.keys guilds
+        |> List.map getGuildChannels
+        |> Task.sequence
+        |> Task.map (intoDict >> Hydrate guilds)
 
 
 
@@ -580,7 +520,7 @@ tokenFormEl discord =
     El.column
         [ El.width El.fill, El.spacing 5 ]
         [ Element.Input.text
-            (disabled (shouldLock discord)
+            (disabled (shouldLockInput discord)
                 [ El.width El.fill
                 , El.padding 5
                 , BG.color oneDark.note
@@ -607,14 +547,38 @@ tokenFormEl discord =
         ]
 
 
-shouldLockButton : Discord -> Bool
-shouldLockButton discord =
+shouldLockInput : Discord -> Bool
+shouldLockInput discord =
     case discord of
         TokenGiven _ ->
             False
 
-        Identified newToken _ session _ ->
-            newToken == session.token
+        Hydrated _ _ ->
+            False
+
+        Expired _ _ ->
+            False
+
+        _ ->
+            True
+
+
+shouldLockButton : Discord -> Bool
+shouldLockButton discord =
+    case discord of
+        TokenGiven "" ->
+            True
+
+        TokenGiven _ ->
+            False
+
+        Hydrated currentInput pov ->
+            -- Prohibit submitting with the same token
+            currentInput == pov.token
+
+        Expired currentInput pov ->
+            -- Allow submitting with the same token in this case, triggering retry
+            False
 
         _ ->
             True
@@ -629,20 +593,20 @@ tokenText discord =
         TokenReady string ->
             string
 
-        Connected string _ _ ->
-            string
+        Identified newSession ->
+            newSession.token
 
-        Identified string _ _ _ ->
-            string
+        Hydrated token _ ->
+            token
 
-        Switching string _ _ _ ->
-            string
+        Switching newSession _ ->
+            newSession.token
 
-        Revisit session ->
-            session.token
+        Revisit pov ->
+            pov.token
 
-        Reconnected _ session _ ->
-            session.token
+        Expired token _ ->
+            token
 
 
 tokenLabelEl : Element.Input.Label msg
@@ -659,22 +623,26 @@ tokenInputButtonLabel : Discord -> String
 tokenInputButtonLabel discord =
     case discord of
         TokenGiven _ ->
-            "Submit"
+            "Register"
 
         TokenReady _ ->
             "Waiting..."
 
-        Connected _ _ _ ->
-            "Authenticating..."
+        Identified _ ->
+            "Fetching data..."
 
-        Identified _ _ _ _ ->
-            "Submit"
+        Hydrated token _ ->
+            if token == "" then
+                "Unregister"
 
-        Switching _ _ _ _ ->
-            "Switching user..."
+            else
+                "Change Token"
+
+        Switching _ _ ->
+            "Switching Identity"
 
         Revisit _ ->
-            "Reconnecting..."
+            "Reloading..."
 
-        Reconnected _ _ _ ->
-            "Re-authenticating..."
+        Expired _ _ ->
+            "Change Token"
