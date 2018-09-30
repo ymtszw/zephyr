@@ -84,7 +84,7 @@ update msg ({ uiState, env } as m) =
                 |> persist
 
         WSReceive val ->
-            Producer.receive (ProducerCtrl << Producer.Timeout) m.producerRegistry m.wsState val
+            Producer.receive ProducerCtrl m.producerRegistry m.wsState val
                 |> applyProducerReceipt m
                 |> persist
 
@@ -92,7 +92,7 @@ update msg ({ uiState, env } as m) =
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            Producer.update (ProducerCtrl << Producer.Timeout) pctrl m.wsState m.producerRegistry
+            Producer.update ProducerCtrl pctrl m.wsState m.producerRegistry
                 |> applyProducerReceipt m
                 |> persist
 

@@ -13,7 +13,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
-import Data.Producer.Polling as Polling exposing (save)
+import Data.Producer.Base as Producer exposing (save)
 import Data.Producer.Realtime as Realtime exposing (Reply(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
@@ -365,7 +365,7 @@ type Msg
     | APIError Http.Error
 
 
-update : Polling.Update Discord Msg
+update : Producer.Update Discord Msg
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
@@ -408,7 +408,7 @@ tokenInput discord newToken =
             discord
 
 
-commitToken : Discord -> Polling.Yield Discord Msg
+commitToken : Discord -> Producer.Yield Discord Msg
 commitToken discord =
     case discord of
         TokenGiven "" ->
@@ -436,7 +436,7 @@ commitToken discord =
             commitToken discord
 
 
-handleIdentify : Discord -> User -> Polling.Yield Discord Msg
+handleIdentify : Discord -> User -> Producer.Yield Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
@@ -463,7 +463,7 @@ handleIdentify discord user =
             handleIdentify discord user
 
 
-detectUserSwitch : String -> PoV -> User -> Polling.Yield Discord Msg
+detectUserSwitch : String -> PoV -> User -> Producer.Yield Discord Msg
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
         save (Just (Hydrated token { pov | token = token, user = user }))
@@ -476,7 +476,7 @@ detectUserSwitch token pov user =
         )
 
 
-handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Polling.Yield Discord Msg
+handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Discord Msg
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
@@ -490,7 +490,7 @@ handleHydrate discord guilds channels =
             handleHydrate discord guilds channels
 
 
-handleAPIError : Discord -> Http.Error -> Polling.Yield Discord Msg
+handleAPIError : Discord -> Http.Error -> Producer.Yield Discord Msg
 handleAPIError discord error =
     -- Debug here; mostly, unexpected API errors indicate auth error
     case discord of

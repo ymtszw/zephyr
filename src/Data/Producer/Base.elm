@@ -1,9 +1,11 @@
-module Data.Producer.Base exposing (Update, Yield, save)
+module Data.Producer.Base exposing (Update, Yield, save, setTimeout)
 
 {-| Defines types used by Producers.
 -}
 
 import Data.Item exposing (Item)
+import Process
+import Task
 
 
 type alias Yield state msg =
@@ -22,3 +24,8 @@ save stateMaybe =
 -}
 type alias Update state msg =
     msg -> Maybe state -> Yield state msg
+
+
+setTimeout : msg -> Float -> Cmd msg
+setTimeout timeoutMsg timeout =
+    Process.sleep timeout |> Task.perform (\_ -> timeoutMsg)

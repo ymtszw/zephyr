@@ -2,6 +2,7 @@ module Data.Producer exposing (Msg(..), ProducerRegistry, Receipt, configsEl, en
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
+import Data.Producer.Base exposing (Update, Yield)
 import Data.Producer.Discord as Discord exposing (Discord(..))
 import Data.Producer.Realtime exposing (Reply(..))
 import Dict exposing (Dict)
@@ -14,6 +15,10 @@ import Json.Encode as E
 import Process
 import Task
 import Websocket as WS exposing (Endpoint, Frame(..), Key(..))
+
+
+
+-- MODEL
 
 
 {-| Runtime dictionary of registered Producers.
@@ -69,6 +74,10 @@ initRegistry =
     Dict.empty
 
 
+
+-- ENGAGE
+
+
 {-| Engage all registered realtime Producers.
 -}
 engageAll : WS.State msg -> ProducerRegistry -> ( WS.State msg, Cmd msg )
@@ -79,21 +88,22 @@ engageAll wsState producerRegistry =
 engageOne : String -> Producer -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, Cmd msg )
 engageOne key producer prev =
     case producer of
-        DiscordProducer discord ->
-            case discord of
-                TokenReady _ ->
-                    engageAndBatchCmd (Key key) Discord.endpoint prev
-
-                Revisit _ ->
-                    engageAndBatchCmd (Key key) Discord.endpoint prev
-
-                _ ->
-                    prev
+        -- Currently there is no Realtime Producer
+        _ ->
+            prev
 
 
 engageAndBatchCmd : Key -> Endpoint -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, Cmd msg )
 engageAndBatchCmd key endpoint ( wsState, prevCmd ) =
     WS.engage key endpoint wsState |> Tuple.mapSecond (\newCmd -> Cmd.batch [ newCmd, prevCmd ])
+
+
+
+-- UPDATE, WS RECEIVER
+
+
+type Msg
+    = DiscordMsg Discord.Msg
 
 
 type alias Receipt msg =
@@ -104,27 +114,86 @@ type alias Receipt msg =
     }
 
 
+{-| Update ProducerRegistry in a manner of component pattern.
+
+Returns same data structure as `receive`.
+
+-}
+update : (Msg -> msg) -> Msg -> WS.State msg -> ProducerRegistry -> Receipt msg
+update msgTagger msg wsState producerRegistry =
+    case msg of
+        DiscordMsg dMsg ->
+            producerRegistry
+                |> updateProducer "discord" DiscordProducer (msgTagger << DiscordMsg) (unwrapDiscord >> Discord.update dMsg)
+                |> finalizeUpdate wsState
+
+
+updateProducer :
+    String
+    -> (a -> Producer)
+    -> (innerMsg -> msg)
+    -> (Maybe Producer -> Yield a innerMsg)
+    -> ProducerRegistry
+    -> ( List Item, ProducerRegistry, Cmd msg )
+updateProducer key stateTagger msgTagger producerUpdate producerRegistry =
+    producerRegistry
+        |> Dict.get key
+        |> producerUpdate
+        |> updateProducerRegistry key stateTagger msgTagger producerRegistry
+
+
+updateProducerRegistry :
+    String
+    -> (a -> Producer)
+    -> (innerMsg -> msg)
+    -> ProducerRegistry
+    -> Yield a innerMsg
+    -> ( List Item, ProducerRegistry, Cmd msg )
+updateProducerRegistry key stateTagger msgTagger producerRegistry ( yields, updateResult, innerCmd ) =
+    case updateResult of
+        Just state ->
+            ( yields, Dict.insert key (stateTagger state) producerRegistry, Cmd.map msgTagger innerCmd )
+
+        Nothing ->
+            ( yields, Dict.remove key producerRegistry, Cmd.map msgTagger innerCmd )
+
+
+finalizeUpdate : WS.State msg -> ( List Item, ProducerRegistry, Cmd msg ) -> Receipt msg
+finalizeUpdate wsState ( yields, producerRegistry, cmd ) =
+    Receipt producerRegistry wsState cmd yields
+
+
+unwrapDiscord : Maybe Producer -> Maybe Discord
+unwrapDiscord producerMaybe =
+    case producerMaybe of
+        Just (DiscordProducer discord) ->
+            Just discord
+
+        _ ->
+            Nothing
+
+
 {-| Handles Websocket messages for realtime Producers using Websockets.
 
 Realtime Producers must expose Producer.Realtime.Handler type function
 that can handle arrived text messages.
 
 -}
-receive : (Key -> msg) -> ProducerRegistry -> WS.State msg -> Value -> Receipt msg
-receive globalTimeoutTagger producerRegistry wsState val =
+receive : (Msg -> msg) -> ProducerRegistry -> WS.State msg -> Value -> Receipt msg
+receive msgTagger producerRegistry wsState val =
     case WS.receive wsState val of
         ( newWsState, MessageFrame key message ) ->
-            handleMessageFrame globalTimeoutTagger producerRegistry newWsState key message
+            handleMessageFrame msgTagger producerRegistry newWsState key message
 
         ( newWsState, ControlFrame cmd ) ->
             Receipt producerRegistry newWsState cmd []
 
 
-handleMessageFrame : (Key -> msg) -> ProducerRegistry -> WS.State msg -> Key -> String -> Receipt msg
-handleMessageFrame globalTimeoutTagger producerRegistry wsState (Key key) message =
+handleMessageFrame : (Msg -> msg) -> ProducerRegistry -> WS.State msg -> Key -> String -> Receipt msg
+handleMessageFrame msgTagger producerRegistry wsState (Key key) message =
     case Dict.get key producerRegistry of
         Just producer ->
-            dispatch globalTimeoutTagger producer wsState (Key key) message
+            dispatch producer wsState (Key key) message
                 |> finalizeReceipt producerRegistry (Key key)
 
         Nothing ->
@@ -139,117 +208,18 @@ type alias ProducerReceipt msg =
     }
 
 
-dispatch : (Key -> msg) -> Producer -> WS.State msg -> Key -> String -> ProducerReceipt msg
-dispatch globalTimeoutTagger producer wsState key message =
+dispatch : Producer -> WS.State msg -> Key -> String -> ProducerReceipt msg
+dispatch producer wsState key message =
     case producer of
-        DiscordProducer discord ->
-            let
-                ( yields, newDiscord, reply ) =
-                    Discord.receive discord message
-
-                ( newWsState, cmd ) =
-                    handleReply globalTimeoutTagger wsState key Discord.endpoint reply
-            in
-            ProducerReceipt (DiscordProducer newDiscord) newWsState cmd yields
-
-
-handleReply : (Key -> msg) -> WS.State msg -> Key -> Endpoint -> Reply -> ( WS.State msg, Cmd msg )
-handleReply globalTimeoutTagger wsState key endpoint producerReply =
-    case producerReply of
-        Reply payload ->
-            WS.send wsState key payload
-
-        ReplyWithTimeout payload timeout ->
-            WS.send wsState key payload
-                |> Tuple.mapSecond (\cmd -> Cmd.batch [ setTimeout (globalTimeoutTagger key) timeout, cmd ])
-
-        OnlyTimeout timeout ->
-            ( wsState, setTimeout (globalTimeoutTagger key) timeout )
-
-        NoReply ->
-            ( wsState, Cmd.none )
-
-        Engage ->
-            WS.engage key endpoint wsState
-
-        Disengage ->
-            WS.disengage wsState key
-
-
-setTimeout : msg -> Float -> Cmd msg
-setTimeout timeoutMsg timeout =
-    Process.sleep timeout |> Task.perform (\_ -> timeoutMsg)
+        -- Currently there is no Realtime Producer
+        -- TODO Need to reimplement Instruction handler with wsState
+        _ ->
+            ProducerReceipt producer wsState Cmd.none []
 
 
 finalizeReceipt : ProducerRegistry -> Key -> ProducerReceipt msg -> Receipt msg
 finalizeReceipt producerRegistry (Key key) { producer, wsState, cmd, yields } =
     Receipt (Dict.insert key producer producerRegistry) wsState cmd yields
-
-
-type Msg
-    = DiscordMsg Discord.Msg
-    | Timeout Key
-
-
-{-| Update ProducerRegistry in a manner of component pattern.
-
-Returns same data structure as `receive`.
-
--}
-update : (Key -> msg) -> Msg -> WS.State msg -> ProducerRegistry -> Receipt msg
-update globalTimeoutTagger msg wsState producerRegistry =
-    case msg of
-        DiscordMsg dMsg ->
-            producerRegistry
-                |> updateProducer "discord" DiscordProducer (unwrapDiscord >> Discord.update dMsg)
-                |> handleUpdateReply globalTimeoutTagger (Key "discord") Discord.endpoint wsState
-
-        Timeout (Key "discord") ->
-            producerRegistry
-                |> updateProducer "discord" DiscordProducer (unwrapDiscord >> Discord.update Discord.Timeout)
-                |> handleUpdateReply globalTimeoutTagger (Key "discord") Discord.endpoint wsState
-
-        otherwise ->
-            -- Crash by loop
-            update globalTimeoutTagger otherwise wsState producerRegistry
-
-
-updateProducer : String -> (a -> Producer) -> (Maybe Producer -> ( Maybe a, Reply )) -> ProducerRegistry -> ( ProducerRegistry, Reply )
-updateProducer key tagger producerUpdate producerRegistry =
-    producerRegistry
-        |> Dict.get key
-        |> producerUpdate
-        |> updateProducerRegistry key tagger producerRegistry
-
-
-updateProducerRegistry : String -> (a -> Producer) -> ProducerRegistry -> ( Maybe a, Reply ) -> ( ProducerRegistry, Reply )
-updateProducerRegistry key tagger producerRegistry ( updateResult, reply ) =
-    case updateResult of
-        Just state ->
-            ( Dict.insert key (tagger state) producerRegistry, reply )
-
-        Nothing ->
-            ( Dict.remove key producerRegistry, reply )
-
-
-handleUpdateReply : (Key -> msg) -> Key -> Endpoint -> WS.State msg -> ( ProducerRegistry, Reply ) -> Receipt msg
-handleUpdateReply globalTimeoutTagger key endpoint wsState ( producerRegistry, reply ) =
-    let
-        ( newWsState, cmd ) =
-            handleReply globalTimeoutTagger wsState key endpoint reply
-    in
-    -- XXX Currently update does not yields Items, but this can change if need be
-    Receipt producerRegistry newWsState cmd []
-
-
-unwrapDiscord : Maybe Producer -> Maybe Discord
-unwrapDiscord producerMaybe =
-    case producerMaybe of
-        Just (DiscordProducer discord) ->
-            Just discord
-
-        _ ->
-            Nothing
 
 
 
