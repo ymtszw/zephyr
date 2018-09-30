@@ -380,6 +380,16 @@ update msg discordMaybe =
         ( Identify user, Just discord ) ->
             handleIdentify discord user
 
+        ( Hydrate guilds channels, Just discord ) ->
+            handleHydrate discord guilds channels
+
+        ( APIError e, Just discord ) ->
+            handleAPIError discord e
+
+        ( _, Nothing ) ->
+            -- Msg other than TokenInput should not arrive when Discord state is missing.
+            save Nothing
+
 
 tokenInput : Discord -> String -> Discord
 tokenInput discord newToken =
@@ -414,22 +424,16 @@ commitToken discord =
         Hydrated newToken pov ->
             ( [], Just discord, identify newToken )
 
+        Expired "" _ ->
+            -- TODO Insert confirmation phase later
+            save Nothing
 
-apiPath : String -> Url
-apiPath path =
-    { protocol = Url.Https
-    , host = "discordapp.com"
-    , port_ = Nothing
-    , path = "/api" ++ path
-    , fragment = Nothing
-    , query = Nothing
-    }
+        Expired newToken pov ->
+            ( [], Just discord, identify newToken )
 
-
-identify : String -> Cmd Msg
-identify token =
-    Http.getWithAuth (apiPath "/users/@me") (Http.auth token) userDecoder
-        |> Http.try Identify APIError
+        _ ->
+            -- Otherwise token input is locked; this should not happen
+            commitToken discord
 
 
 handleIdentify : Discord -> User -> Polling.Yield Discord Msg
@@ -450,6 +454,14 @@ handleIdentify discord user =
         Revisit pov ->
             save (Just (Hydrated pov.token { pov | user = user }))
 
+        Switching _ pov ->
+            -- Retry Identify with previous token after error on Switching phase
+            detectUserSwitch pov.token pov user
+
+        _ ->
+            -- Otherwise Identify should not arrive
+            handleIdentify discord user
+
 
 detectUserSwitch : String -> PoV -> User -> Polling.Yield Discord Msg
 detectUserSwitch token pov user =
@@ -462,6 +474,62 @@ detectUserSwitch token pov user =
         , Just (Switching (NewSession token user) pov)
         , hydrate token
         )
+
+
+handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Polling.Yield Discord Msg
+handleHydrate discord guilds channels =
+    case discord of
+        Identified { token, user } ->
+            save (Just (Hydrated token (PoV token user guilds channels)))
+
+        Switching { token, user } _ ->
+            save (Just (Hydrated token (PoV token user guilds channels)))
+
+
+handleAPIError : Discord -> Http.Error -> Polling.Yield Discord Msg
+handleAPIError discord error =
+    -- Debug here; mostly, unexpected API errors indicate auth error
+    case discord of
+        TokenReady token ->
+            save Nothing
+
+        Identified _ ->
+            -- If successfully Identified, basically Hydrate should not fail. Fall back to token input.
+            save Nothing
+
+        Hydrated _ pov ->
+            save (Just (Hydrated pov.token pov))
+
+        Revisit pov ->
+            save (Just (Expired pov.token pov))
+
+        Expired token pov ->
+            save (Just discord)
+
+        Switching _ pov ->
+            -- Similar to Identified branch. Retry Identify with previous token
+            ( [], Just discord, identify pov.token )
+
+
+
+-- REST API CLIENTS
+
+
+apiPath : String -> Url
+apiPath path =
+    { protocol = Url.Https
+    , host = "discordapp.com"
+    , port_ = Nothing
+    , path = "/api" ++ path
+    , fragment = Nothing
+    , query = Nothing
+    }
+
+
+identify : String -> Cmd Msg
+identify token =
+    Http.getWithAuth (apiPath "/users/@me") (Http.auth token) userDecoder
+        |> Http.try Identify APIError
 
 
 hydrate : String -> Cmd Msg
