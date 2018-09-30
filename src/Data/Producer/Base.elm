@@ -1,7 +1,6 @@
-module Data.Producer.Polling exposing (Update, Yield, save)
+module Data.Producer.Base exposing (Update, Yield, save)
 
-{-| Defines types used by Producers that periodically
-fetch contents from remote APIs.
+{-| Defines types used by Producers.
 -}
 
 import Data.Item exposing (Item)
