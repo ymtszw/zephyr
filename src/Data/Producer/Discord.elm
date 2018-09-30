@@ -485,12 +485,20 @@ handleHydrate discord guilds channels =
         Switching { token, user } _ ->
             save (Just (Hydrated token (PoV token user guilds channels)))
 
+        _ ->
+            -- Otherwise Hydrate should not arrive
+            handleHydrate discord guilds channels
+
 
 handleAPIError : Discord -> Http.Error -> Polling.Yield Discord Msg
 handleAPIError discord error =
     -- Debug here; mostly, unexpected API errors indicate auth error
     case discord of
-        TokenReady token ->
+        TokenGiven _ ->
+            -- Late arrival of API response started in already discarded Discord state? Ignore.
+            save (Just discord)
+
+        TokenReady _ ->
             save Nothing
 
         Identified _ ->
