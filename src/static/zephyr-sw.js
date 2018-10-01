@@ -53,7 +53,7 @@ self.addEventListener('fetch', (e) => {
           return response
         } else {
           return fetch(e.request.url, {
-            mode: 'no-cors',
+            mode: 'cors',
           })
         }
       })
