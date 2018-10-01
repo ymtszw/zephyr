@@ -19,6 +19,9 @@ in stateful transaction. Floats are in milliseconds.
 Engage/Disengage can be used to open/close connection
 after initial state load on application startup.
 
+TODO: Refactor using simple Cmd-based instruction, just as in polling Producer.
+Define required APIs in Producer.Base.
+
 -}
 type Reply
     = Reply String

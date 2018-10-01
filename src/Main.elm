@@ -80,11 +80,11 @@ update msg ({ uiState, env } as m) =
 
         Load val ->
             ( loadSavedState m val, Cmd.none )
-                |> engageProducers
+                |> reloadProducers
                 |> persist
 
         WSReceive val ->
-            Producer.receive (ProducerCtrl << Producer.Timeout) m.producerRegistry m.wsState val
+            Producer.receive ProducerCtrl m.producerRegistry m.wsState val
                 |> applyProducerReceipt m
                 |> persist
 
@@ -92,7 +92,7 @@ update msg ({ uiState, env } as m) =
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            Producer.update (ProducerCtrl << Producer.Timeout) pctrl m.wsState m.producerRegistry
+            Producer.update ProducerCtrl pctrl m.wsState m.producerRegistry
                 |> applyProducerReceipt m
                 |> persist
 
@@ -245,19 +245,19 @@ convertFromV1State idGen columns =
 -- PRODUCER
 
 
-{-| Engage Producers on saved state load.
+{-| Reload Producers on saved state load.
 
 After the initial engage, subsequent engage/disengage should be done
 on demand generated as Producer Replys.
 
 -}
-engageProducers : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-engageProducers ( m, cmd ) =
+reloadProducers : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+reloadProducers ( m, cmd ) =
     let
-        ( wsState, engageCmd ) =
-            Producer.engageAll m.wsState m.producerRegistry
+        ( newRegistry, reloadCmd ) =
+            Producer.reloadAll m.producerRegistry
     in
-    ( { m | wsState = wsState }, Cmd.batch [ engageCmd, cmd ] )
+    ( { m | producerRegistry = newRegistry }, Cmd.batch [ Cmd.map ProducerCtrl reloadCmd, cmd ] )
 
 
 applyProducerReceipt : Model -> Producer.Receipt Msg -> ( Model, Cmd Msg )

@@ -25,6 +25,7 @@ import Json.Decode as D exposing (Decoder)
 import Octicons
 import String exposing (fromFloat)
 import Url
+import View.Parts exposing (octiconEl)
 
 
 body : Model -> List (Html.Html Msg)
@@ -142,28 +143,6 @@ otherButtonsEl uiState =
             , label = octiconEl Octicons.markGithub
             }
         ]
-
-
-octiconEl : (Octicons.Options -> Html.Html msg) -> Element msg
-octiconEl octicon =
-    let
-        { red, green, blue } =
-            El.toRgb oneDark.note
-
-        colorStr =
-            "rgb("
-                ++ fromFloat (255 * red)
-                ++ ","
-                ++ fromFloat (255 * green)
-                ++ ","
-                ++ fromFloat (255 * blue)
-                ++ ")"
-    in
-    Octicons.defaultOptions
-        |> Octicons.color colorStr
-        |> Octicons.size 26
-        |> octicon
-        |> El.html
 
 
 

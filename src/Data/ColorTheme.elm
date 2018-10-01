@@ -11,6 +11,7 @@ type alias ColorTheme =
     , text : Color
     , note : Color
     , link : Color
+    , active : Color
     , succ : Color
     , warn : Color
     , err : Color
@@ -27,6 +28,7 @@ oneDark =
         (rgb255 220 221 222)
         (rgb255 96 98 102)
         (rgb255 15 144 202)
+        (rgb255 103 123 196)
         (rgb255 115 201 144)
         (rgb255 226 192 141)
         (rgb255 224 82 82)

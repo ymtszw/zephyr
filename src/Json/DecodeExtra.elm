@@ -1,6 +1,6 @@
-module Json.DecodeExtra exposing (conditional, succeedIf, when)
+module Json.DecodeExtra exposing (conditional, leakyList, succeedIf, when)
 
-import Json.Decode exposing (Decoder, andThen, fail, succeed)
+import Json.Decode exposing (..)
 
 
 {-| Apply first Decoder. If it succeeds, apply second one and yields its results.
@@ -42,3 +42,14 @@ Same af Json.Decode.Extra.when
 when : Decoder a -> (a -> Bool) -> Decoder b -> Decoder b
 when valueDecoder valueCheck actual =
     conditional (succeedIf valueDecoder valueCheck) actual
+
+
+{-| Similar to Json.Decode.list, but it just ignores undecodable elements in the list instead of failing.
+
+Consequently, it always succeeds with some list.
+If all elements failed to be decoded, it succeeds with an empty list.
+
+-}
+leakyList : Decoder a -> Decoder (List a)
+leakyList decoder =
+    map (List.filterMap (decodeValue decoder >> Result.toMaybe)) (list value)
