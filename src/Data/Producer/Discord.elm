@@ -28,10 +28,11 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import Octicons
 import Task exposing (Task)
 import Time exposing (Posix)
 import Url exposing (Url)
-import View.Parts exposing (disabled, disabledColor)
+import View.Parts exposing (disabled, disabledColor, octiconEl)
 import Websocket exposing (Endpoint(..))
 
 
@@ -385,6 +386,7 @@ type Msg
     | CommitToken
     | Identify User
     | Hydrate (Dict String Guild) (Dict String Channel)
+    | Rehydrate
     | APIError Http.Error
 
 
@@ -405,6 +407,9 @@ update msg discordMaybe =
 
         ( Hydrate guilds channels, Just discord ) ->
             handleHydrate discord guilds channels
+
+        ( Rehydrate, Just discord ) ->
+            handleRehydrate discord
 
         ( APIError e, Just discord ) ->
             handleAPIError discord e
@@ -508,6 +513,10 @@ handleHydrate discord guilds channels =
         Switching { token, user } _ ->
             ( printGuilds guilds, Just (Hydrated token (PoV token user guilds channels)), Cmd.none )
 
+        Hydrated token pov ->
+            -- Rehydrate. Not diffing against current PoV, just overwrite.
+            ( printGuilds guilds, Just (Hydrated token (PoV pov.token pov.user guilds channels)), Cmd.none )
+
         _ ->
             -- Otherwise Hydrate should not arrive
             handleHydrate discord guilds channels
@@ -516,6 +525,17 @@ handleHydrate discord guilds channels =
 printGuilds : Dict String Guild -> List Item
 printGuilds guilds =
     Dict.foldl (\_ guild acc -> Item.textOnly ("Watching: " ++ guild.name) :: acc) [] guilds
+
+
+handleRehydrate : Discord -> Producer.Yield Discord Msg
+handleRehydrate discord =
+    case discord of
+        Hydrated _ pov ->
+            -- Rehydrate button should only be available in Hydrated state
+            ( [], Just discord, hydrate pov.token )
+
+        _ ->
+            handleRehydrate discord
 
 
 handleAPIError : Discord -> Http.Error -> Producer.Yield Discord Msg
@@ -636,19 +656,46 @@ tokenFormEl discord =
             , placeholder = Nothing
             , label = tokenLabelEl
             }
-        , Element.Input.button
-            ([ El.alignRight
-             , El.width (El.fill |> El.maximum 150)
-             , El.padding 10
-             , BD.rounded 5
-             ]
-                |> disabled (shouldLockButton discord)
-                |> disabledColor (shouldLockButton discord)
-            )
-            { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
-            , label = El.text (tokenInputButtonLabel discord)
-            }
+        , El.row [ El.width El.fill, El.spacing 10 ]
+            [ rehydrateButtonEl discord
+            , tokenSubmitButtonEl discord
+            ]
         ]
+
+
+tokenSubmitButtonEl : Discord -> Element Msg
+tokenSubmitButtonEl discord =
+    Element.Input.button
+        ([ El.alignRight
+         , El.width (El.fill |> El.maximum 150)
+         , El.padding 10
+         , BD.rounded 5
+         ]
+            |> disabled (shouldLockButton discord)
+            |> disabledColor (shouldLockButton discord)
+        )
+        { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
+        , label = El.text (tokenInputButtonLabel discord)
+        }
+
+
+rehydrateButtonEl : Discord -> Element Msg
+rehydrateButtonEl discord =
+    case discord of
+        Hydrated _ pov ->
+            Element.Input.button
+                [ El.alignRight
+                , El.height El.fill
+                , El.padding 5
+                , BD.rounded 30
+                , BG.color oneDark.sub
+                ]
+                { onPress = Just Rehydrate
+                , label = octiconEl Octicons.sync
+                }
+
+        _ ->
+            El.none
 
 
 shouldLockInput : Discord -> Bool
