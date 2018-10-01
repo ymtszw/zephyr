@@ -23,6 +23,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Extra exposing (ite)
+import Html.Attributes
 import Http
 import HttpExtra as Http
 import Json.Decode as D exposing (Decoder)
@@ -841,9 +842,7 @@ discordEl discord =
             ]
 
         Rehydrating _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl pov.guilds
-            ]
+            [ userNameAndAvatarEl pov.user ]
 
         Revisit pov ->
             [ userNameAndAvatarEl pov.user
@@ -900,6 +899,8 @@ guildIconEl guild =
                 , El.width (El.px 50)
                 , El.height (El.px 50)
                 , BD.rounded 5
+                , El.htmlAttribute (Html.Attributes.title guild.name)
+                , El.pointer
                 ]
                 El.none
 
@@ -910,6 +911,8 @@ guildIconEl guild =
                 , El.height (El.px 50)
                 , BD.rounded 5
                 , Font.size 24
+                , El.htmlAttribute (Html.Attributes.title guild.name)
+                , El.pointer
                 ]
                 (El.el [ El.centerX, El.centerY ] (El.text (String.left 1 guild.name)))
 
