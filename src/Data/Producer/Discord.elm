@@ -207,17 +207,17 @@ channelDecoder =
 
 channelTypeDecoder : Decoder ChannelType
 channelTypeDecoder =
-    D.string
+    D.int
         |> D.andThen
-            (\string ->
-                case string of
-                    "GUILD_TEXT" ->
+            (\num ->
+                case num of
+                    0 ->
                         D.succeed GuildText
 
-                    "DM" ->
+                    1 ->
                         D.succeed DM
 
-                    "GROUP_DM" ->
+                    3 ->
                         D.succeed GroupDM
 
                     _ ->
@@ -347,13 +347,13 @@ encodeChannelType : ChannelType -> E.Value
 encodeChannelType type_ =
     case type_ of
         GuildText ->
-            E.string "GUILD_TEXT"
+            E.int 0
 
         DM ->
-            E.string "DM"
+            E.int 1
 
         GroupDM ->
-            E.string "GROUP_DM"
+            E.int 3
 
 
 
