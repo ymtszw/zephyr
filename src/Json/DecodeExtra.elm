@@ -44,9 +44,9 @@ when valueDecoder valueCheck actual =
     conditional (succeedIf valueDecoder valueCheck) actual
 
 
-{-| Similar to Json.Decode.list, but it just ignores undecodable elements in the list.
+{-| Similar to Json.Decode.list, but it just ignores undecodable elements in the list instead of failing.
 
-Consequentially, it always succeeds with some list.
+Consequently, it always succeeds with some list.
 If all elements failed to be decoded, it succeeds with an empty list.
 
 -}
