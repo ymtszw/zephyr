@@ -13,7 +13,7 @@ disabled : Bool -> List (El.Attribute msg) -> List (El.Attribute msg)
 disabled isDisabled attrs =
     if isDisabled then
         [ El.htmlAttribute (Html.Attributes.disabled isDisabled)
-        , El.htmlAttribute (Html.Attributes.style "cursor" "not-allowed")
+        , El.htmlAttribute (Html.Attributes.style "cursor" "default")
         ]
             ++ attrs
 

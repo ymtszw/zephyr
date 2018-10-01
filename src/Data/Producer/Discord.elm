@@ -21,6 +21,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Extra exposing (ite)
 import Http
 import HttpExtra as Http
@@ -62,6 +63,7 @@ type Discord
     | TokenReady String
     | Identified NewSession
     | Hydrated String POV
+    | Rehydrating String POV
     | Revisit POV
     | Expired String POV
     | Switching NewSession POV
@@ -261,6 +263,12 @@ encode discord =
                 ]
 
         Hydrated _ pov ->
+            E.object
+                [ ( "tag", E.string "discordRevisit" )
+                , ( "pov", encodePov pov )
+                ]
+
+        Rehydrating _ pov ->
             E.object
                 [ ( "tag", E.string "discordRevisit" )
                 , ( "pov", encodePov pov )
@@ -480,10 +488,7 @@ handleIdentify : Discord -> User -> Producer.Yield Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            ( [ Item.textOnly ("User: " ++ user.username) ]
-            , Just (Identified (NewSession token user))
-            , hydrate token
-            )
+            ( [], Just (Identified (NewSession token user)), hydrate token )
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -525,8 +530,8 @@ handleHydrate discord guilds channels =
         Switching { token, user } _ ->
             ( printGuilds guilds, Just (Hydrated token (POV token user guilds channels)), Cmd.none )
 
-        Hydrated token pov ->
-            -- Rehydrate. Not diffing against current POV, just overwrite.
+        Rehydrating token pov ->
+            -- Not diffing against current POV, just overwrite.
             ( printGuilds guilds, Just (Hydrated token (POV pov.token pov.user guilds channels)), Cmd.none )
 
         _ ->
@@ -542,9 +547,9 @@ printGuilds guilds =
 handleRehydrate : Discord -> Producer.Yield Discord Msg
 handleRehydrate discord =
     case discord of
-        Hydrated _ pov ->
+        Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            ( [], Just discord, hydrate pov.token )
+            ( [], Just (Rehydrating token pov), hydrate pov.token )
 
         _ ->
             handleRehydrate discord
@@ -553,6 +558,7 @@ handleRehydrate discord =
 handleAPIError : Discord -> Http.Error -> Producer.Yield Discord Msg
 handleAPIError discord error =
     -- Debug here; mostly, unexpected API errors indicate auth error
+    -- TODO log some important errors somehow
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
@@ -567,6 +573,10 @@ handleAPIError discord error =
 
         Hydrated _ pov ->
             save (Just (Hydrated pov.token pov))
+
+        Rehydrating token pov ->
+            -- Just fall back to previous Hydrated state.
+            save (Just (Hydrated token pov))
 
         Revisit pov ->
             save (Just (Expired pov.token pov))
@@ -653,8 +663,7 @@ configEl discordMaybe =
 
 tokenFormEl : Discord -> Element Msg
 tokenFormEl discord =
-    El.column
-        [ El.width El.fill, El.spacing 5 ]
+    El.column [ El.width El.fill, El.spacing 5 ] <|
         [ Element.Input.text
             (disabled (shouldLockInput discord)
                 [ El.width El.fill
@@ -668,19 +677,19 @@ tokenFormEl discord =
             , placeholder = Nothing
             , label = tokenLabelEl
             }
-        , El.row [ El.width El.fill, El.spacing 10 ]
-            [ rehydrateButtonEl discord
-            , tokenSubmitButtonEl discord
+        , Element.Keyed.row [ El.width El.fill, El.spacing 10 ]
+            [ rehydrateButtonKeyEl discord
+            , tokenSubmitButtonKeyEl discord
             ]
-        , loginUserEl discord
         ]
+            ++ discordEl discord
 
 
-tokenSubmitButtonEl : Discord -> Element Msg
-tokenSubmitButtonEl discord =
+tokenSubmitButtonKeyEl : Discord -> ( String, Element Msg )
+tokenSubmitButtonKeyEl discord =
     Element.Input.button
         ([ El.alignRight
-         , El.width (El.fill |> El.maximum 150)
+         , El.width (El.px 180)
          , El.padding 10
          , BD.rounded 5
          ]
@@ -690,25 +699,27 @@ tokenSubmitButtonEl discord =
         { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
         , label = El.text (tokenInputButtonLabel discord)
         }
+        |> Tuple.pair "DiscordTokenSubmitButton"
 
 
-rehydrateButtonEl : Discord -> Element Msg
-rehydrateButtonEl discord =
-    case discord of
-        Hydrated _ pov ->
-            Element.Input.button
-                [ El.alignRight
-                , El.height El.fill
-                , El.padding 5
-                , BD.rounded 30
-                , BG.color oneDark.sub
-                ]
-                { onPress = Just Rehydrate
-                , label = octiconEl Octicons.sync
-                }
+rehydrateButtonKeyEl : Discord -> ( String, Element Msg )
+rehydrateButtonKeyEl discord =
+    Tuple.pair "DiscordRehydrateButton" <|
+        case discord of
+            Hydrated _ pov ->
+                Element.Input.button
+                    [ El.alignRight
+                    , El.height El.fill
+                    , El.padding 5
+                    , BD.rounded 30
+                    , BG.color oneDark.main
+                    ]
+                    { onPress = Just Rehydrate
+                    , label = octiconEl Octicons.sync
+                    }
 
-        _ ->
-            El.none
+            _ ->
+                El.none
 
 
 shouldLockInput : Discord -> Bool
@@ -763,6 +774,9 @@ tokenText discord =
         Hydrated token _ ->
             token
 
+        Rehydrating token _ ->
+            token
+
         Switching newSession _ ->
             newSession.token
 
@@ -802,6 +816,9 @@ tokenInputButtonLabel discord =
             else
                 "Change Token"
 
+        Rehydrating _ _ ->
+            "Fetching data..."
+
         Switching _ _ ->
             "Switching Identity"
 
@@ -812,27 +829,40 @@ tokenInputButtonLabel discord =
             "Change Token"
 
 
-loginUserEl : Discord -> Element Msg
-loginUserEl discord =
+discordEl : Discord -> List (Element Msg)
+discordEl discord =
     case discord of
         Identified newSession ->
-            userNameAndAvatarEl newSession.user
+            [ userNameAndAvatarEl newSession.user ]
 
         Hydrated _ pov ->
-            userNameAndAvatarEl pov.user
+            [ userNameAndAvatarEl pov.user
+            , guildsEl pov.guilds
+            ]
+
+        Rehydrating _ pov ->
+            [ userNameAndAvatarEl pov.user
+            , guildsEl pov.guilds
+            ]
 
         Revisit pov ->
-            userNameAndAvatarEl pov.user
+            [ userNameAndAvatarEl pov.user
+            , guildsEl pov.guilds
+            ]
 
         Expired _ pov ->
-            userNameAndAvatarEl pov.user
+            [ userNameAndAvatarEl pov.user
+            , guildsEl pov.guilds
+            ]
 
         Switching newSession pov ->
             -- TODO User switching confirmation
-            userNameAndAvatarEl pov.user
+            [ userNameAndAvatarEl pov.user
+            , guildsEl pov.guilds
+            ]
 
         _ ->
-            El.none
+            []
 
 
 userNameAndAvatarEl : User -> Element Msg
@@ -849,6 +879,39 @@ userNameAndAvatarEl user =
         , El.text user.username
         , El.el [ El.centerY, Font.size 14, Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
         ]
+
+
+guildsEl : Dict String Guild -> Element Msg
+guildsEl guilds =
+    El.row [ El.width El.fill, El.spacing 5 ]
+        [ El.el [] (El.text "Servers: ")
+        , guilds
+            |> Dict.foldl (\_ guild acc -> guildIconEl guild :: acc) []
+            |> El.wrappedRow [ El.width El.fill, El.spacing 5 ]
+        ]
+
+
+guildIconEl : Guild -> Element Msg
+guildIconEl guild =
+    case guild.icon of
+        Just guildIcon ->
+            El.el
+                [ BG.uncropped (imageUrl (Just "64") (I guildIcon))
+                , El.width (El.px 50)
+                , El.height (El.px 50)
+                , BD.rounded 5
+                ]
+                El.none
+
+        Nothing ->
+            El.el
+                [ BG.color oneDark.bg
+                , El.width (El.px 50)
+                , El.height (El.px 50)
+                , BD.rounded 5
+                , Font.size 24
+                ]
+                (El.el [ El.centerX, El.centerY ] (El.text (String.left 1 guild.name)))
 
 
 
