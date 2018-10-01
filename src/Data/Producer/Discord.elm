@@ -61,10 +61,10 @@ type Discord
     = TokenGiven String
     | TokenReady String
     | Identified NewSession
-    | Hydrated String PoV
-    | Revisit PoV
-    | Expired String PoV
-    | Switching NewSession PoV
+    | Hydrated String POV
+    | Revisit POV
+    | Expired String POV
+    | Switching NewSession POV
 
 
 {-| Current user's point of view.
@@ -77,7 +77,7 @@ In Discord, it contains:
   - ID Dict of Channels in subscribing Guilds. Maybe updated periodically
 
 -}
-type alias PoV =
+type alias POV =
     { token : String
     , user : User
     , guilds : Dict String Guild
@@ -96,6 +96,7 @@ type alias User =
     , username : String
     , discriminator : String
     , email : String
+    , avatar : Maybe Image
     }
 
 
@@ -131,7 +132,7 @@ type MessageId
 
 
 type Image
-    = Emoji { id : String, ext : String }
+    = Emoji String
     | GuildIcon { guildId : String, hash : String }
     | UserAvatar { userId : String, hash : String }
 
@@ -153,9 +154,9 @@ decoder =
         ]
 
 
-povDecoder : Decoder PoV
+povDecoder : Decoder POV
 povDecoder =
-    D.map4 PoV
+    D.map4 POV
         (D.field "token" D.string)
         (D.field "user" userDecoder)
         (D.field "guilds" (D.dict guildDecoder))
@@ -164,11 +165,18 @@ povDecoder =
 
 userDecoder : Decoder User
 userDecoder =
-    D.map4 User
-        (D.field "id" D.string)
-        (D.field "username" D.string)
-        (D.field "discriminator" D.string)
-        (D.field "email" D.string)
+    let
+        decodeWithId id =
+            D.map4 (User id)
+                (D.field "username" D.string)
+                (D.field "discriminator" D.string)
+                (D.field "email" D.string)
+                (D.field "avatar" (D.maybe (D.map (toUserAvatar id) D.string)))
+
+        toUserAvatar id hash =
+            UserAvatar { userId = id, hash = hash }
+    in
+    D.field "id" D.string |> D.andThen decodeWithId
 
 
 guildDecoder : Decoder Guild
@@ -278,7 +286,7 @@ encode discord =
                 ]
 
 
-encodePov : PoV -> E.Value
+encodePov : POV -> E.Value
 encodePov pov =
     E.object
         [ ( "token", E.string pov.token )
@@ -295,7 +303,21 @@ encodeUser user =
         , ( "username", E.string user.username )
         , ( "discriminator", E.string user.discriminator )
         , ( "email", E.string user.email )
+        , ( "avatar", E.maybe encodeImage user.avatar )
         ]
+
+
+encodeImage : Image -> E.Value
+encodeImage image =
+    case image of
+        Emoji id ->
+            E.string id
+
+        GuildIcon { hash } ->
+            E.string hash
+
+        UserAvatar { hash } ->
+            E.string hash
 
 
 encodeGuildDict : Dict String Guild -> E.Value
@@ -305,20 +327,10 @@ encodeGuildDict guilds =
 
 encodeGuild : Guild -> E.Value
 encodeGuild guild =
-    let
-        encodeGuildIcon icon =
-            case icon of
-                GuildIcon { hash } ->
-                    E.string hash
-
-                _ ->
-                    -- Trap
-                    encodeGuildIcon icon
-    in
     E.object
         [ ( "id", E.string guild.id )
         , ( "name", E.string guild.name )
-        , ( "icon", E.maybe encodeGuildIcon guild.icon )
+        , ( "icon", E.maybe encodeImage guild.icon )
         ]
 
 
@@ -491,7 +503,7 @@ handleIdentify discord user =
             handleIdentify discord user
 
 
-detectUserSwitch : String -> PoV -> User -> Producer.Yield Discord Msg
+detectUserSwitch : String -> POV -> User -> Producer.Yield Discord Msg
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
         save (Just (Hydrated token { pov | token = token, user = user }))
@@ -508,14 +520,14 @@ handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
-            ( printGuilds guilds, Just (Hydrated token (PoV token user guilds channels)), Cmd.none )
+            ( printGuilds guilds, Just (Hydrated token (POV token user guilds channels)), Cmd.none )
 
         Switching { token, user } _ ->
-            ( printGuilds guilds, Just (Hydrated token (PoV token user guilds channels)), Cmd.none )
+            ( printGuilds guilds, Just (Hydrated token (POV token user guilds channels)), Cmd.none )
 
         Hydrated token pov ->
-            -- Rehydrate. Not diffing against current PoV, just overwrite.
-            ( printGuilds guilds, Just (Hydrated token (PoV pov.token pov.user guilds channels)), Cmd.none )
+            -- Rehydrate. Not diffing against current POV, just overwrite.
+            ( printGuilds guilds, Just (Hydrated token (POV pov.token pov.user guilds channels)), Cmd.none )
 
         _ ->
             -- Otherwise Hydrate should not arrive
@@ -660,6 +672,7 @@ tokenFormEl discord =
             [ rehydrateButtonEl discord
             , tokenSubmitButtonEl discord
             ]
+        , loginUserEl discord
         ]
 
 
@@ -797,3 +810,89 @@ tokenInputButtonLabel discord =
 
         Expired _ _ ->
             "Change Token"
+
+
+loginUserEl : Discord -> Element Msg
+loginUserEl discord =
+    case discord of
+        Identified newSession ->
+            userNameAndAvatarEl newSession.user
+
+        Hydrated _ pov ->
+            userNameAndAvatarEl pov.user
+
+        Revisit pov ->
+            userNameAndAvatarEl pov.user
+
+        Expired _ pov ->
+            userNameAndAvatarEl pov.user
+
+        Switching newSession pov ->
+            -- TODO User switching confirmation
+            userNameAndAvatarEl pov.user
+
+        _ ->
+            El.none
+
+
+userNameAndAvatarEl : User -> Element Msg
+userNameAndAvatarEl user =
+    El.row [ El.width El.fill, El.spacing 5 ]
+        [ El.el [] (El.text "User: ")
+        , El.el
+            [ El.width (El.px 32)
+            , El.height (El.px 32)
+            , BD.rounded 16
+            , BG.uncropped (imageUrl (Just "32") (iod user.discriminator user.avatar))
+            ]
+            El.none
+        , El.text user.username
+        , El.el [ El.centerY, Font.size 14, Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
+        ]
+
+
+
+-- IMAGE API
+
+
+type ImageOrDiscriminator
+    = I Image
+    | D String
+
+
+iod : String -> Maybe Image -> ImageOrDiscriminator
+iod disc imageMaybe =
+    imageMaybe |> Maybe.map I |> Maybe.withDefault (D disc)
+
+
+imageUrl : Maybe String -> ImageOrDiscriminator -> String
+imageUrl sizeMaybe imageOrDiscriminator =
+    let
+        endpoint =
+            case imageOrDiscriminator of
+                I (Emoji string) ->
+                    "/emojis/" ++ string ++ ".png"
+
+                I (GuildIcon { guildId, hash }) ->
+                    "/icons/" ++ guildId ++ "/" ++ hash ++ ".png"
+
+                I (UserAvatar { userId, hash }) ->
+                    "/avatars/" ++ userId ++ "/" ++ hash ++ ".png"
+
+                D disc ->
+                    case String.toInt disc of
+                        Just int ->
+                            "/embed/avatars/" ++ String.fromInt (modBy int 5) ++ ".png"
+
+                        Nothing ->
+                            "/embed/avatars/0.png"
+
+        size =
+            case sizeMaybe of
+                Just sizeStr ->
+                    "?size=" ++ sizeStr
+
+                Nothing ->
+                    ""
+    in
+    "https://cdn.discordapp.com" ++ endpoint ++ size
