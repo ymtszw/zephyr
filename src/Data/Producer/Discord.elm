@@ -526,23 +526,18 @@ handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
-            ( printGuilds guilds, Just (Hydrated token (POV token user guilds channels)), Cmd.none )
+            save (Just (Hydrated token (POV token user guilds channels)))
 
         Switching { token, user } _ ->
-            ( printGuilds guilds, Just (Hydrated token (POV token user guilds channels)), Cmd.none )
+            save (Just (Hydrated token (POV token user guilds channels)))
 
         Rehydrating token pov ->
             -- Not diffing against current POV, just overwrite.
-            ( printGuilds guilds, Just (Hydrated token (POV pov.token pov.user guilds channels)), Cmd.none )
+            save (Just (Hydrated token (POV pov.token pov.user guilds channels)))
 
         _ ->
             -- Otherwise Hydrate should not arrive
             handleHydrate discord guilds channels
-
-
-printGuilds : Dict String Guild -> List Item
-printGuilds guilds =
-    Dict.foldl (\_ guild acc -> Item.textOnly ("Watching: " ++ guild.name) :: acc) [] guilds
 
 
 handleRehydrate : Discord -> Producer.Yield Discord Msg
