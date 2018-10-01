@@ -3,6 +3,7 @@ module View.Parts exposing (disabled, disabledColor, octiconEl)
 import Data.ColorTheme exposing (oneDark)
 import Element as El exposing (Element)
 import Element.Background as BG
+import Element.Font
 import Html
 import Html.Attributes
 import Octicons
@@ -23,10 +24,10 @@ disabled isDisabled attrs =
 disabledColor : Bool -> List (El.Attribute msg) -> List (El.Attribute msg)
 disabledColor isDisabled attrs =
     if isDisabled then
-        [ BG.color oneDark.sub ] ++ attrs
+        [ BG.color oneDark.sub, Element.Font.color oneDark.note ] ++ attrs
 
     else
-        [ BG.color oneDark.succ ] ++ attrs
+        [ BG.color oneDark.active ] ++ attrs
 
 
 octiconEl : (Octicons.Options -> Html.Html msg) -> Element msg
