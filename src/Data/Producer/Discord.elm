@@ -1,4 +1,4 @@
-module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, update)
+module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, reload, update)
 
 {-| Polling Producer for Discord.
 
@@ -12,7 +12,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 -}
 
 import Data.ColorTheme exposing (oneDark)
-import Data.Item exposing (Item)
+import Data.Item as Item exposing (Item)
 import Data.Producer.Base as Producer exposing (save)
 import Data.Producer.Realtime as Realtime exposing (Reply(..))
 import Dict exposing (Dict)
@@ -101,7 +101,7 @@ type alias User =
 type alias Guild =
     { id : String
     , name : String
-    , icon : Image
+    , icon : Maybe Image
     }
 
 
@@ -173,13 +173,13 @@ userDecoder =
 guildDecoder : Decoder Guild
 guildDecoder =
     let
-        toGuildIcon id hash =
-            GuildIcon { guildId = id, hash = hash }
-
         decodeWithId id =
             D.map2 (Guild id)
                 (D.field "name" D.string)
-                (D.field "icon" (D.map (toGuildIcon id) D.string))
+                (D.field "icon" (D.maybe (D.map (toGuildIcon id) D.string)))
+
+        toGuildIcon id hash =
+            GuildIcon { guildId = id, hash = hash }
     in
     D.field "id" D.string |> D.andThen decodeWithId
 
@@ -304,18 +304,20 @@ encodeGuildDict guilds =
 
 encodeGuild : Guild -> E.Value
 encodeGuild guild =
-    E.object
-        [ ( "id", E.string guild.id )
-        , ( "name", E.string guild.name )
-        , ( "icon"
-          , case guild.icon of
+    let
+        encodeGuildIcon icon =
+            case icon of
                 GuildIcon { hash } ->
                     E.string hash
 
                 _ ->
                     -- Trap
-                    encodeGuild guild
-          )
+                    encodeGuildIcon icon
+    in
+    E.object
+        [ ( "id", E.string guild.id )
+        , ( "name", E.string guild.name )
+        , ( "icon", E.maybe encodeGuildIcon guild.icon )
         ]
 
 
@@ -351,6 +353,27 @@ encodeChannelType type_ =
 
         GroupDM ->
             E.string "GROUP_DM"
+
+
+
+-- RELOADER
+
+
+reload : Producer.Reload Discord Msg
+reload discord =
+    case discord of
+        TokenGiven _ ->
+            ( discord, Cmd.none )
+
+        TokenReady token ->
+            ( discord, identify token )
+
+        Revisit pov ->
+            ( discord, identify pov.token )
+
+        _ ->
+            -- Other states should not come from IndexedDB
+            reload discord
 
 
 
@@ -440,7 +463,7 @@ handleIdentify : Discord -> User -> Producer.Yield Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            ( [ Data.Item.textOnly ("User: " ++ user.username) ]
+            ( [ Item.textOnly ("User: " ++ user.username) ]
             , Just (Identified (NewSession token user))
             , hydrate token
             )
@@ -470,7 +493,7 @@ detectUserSwitch token pov user =
 
     else
         -- TODO Insert confirmation phase later
-        ( [ Data.Item.textOnly ("New User: " ++ user.username) ]
+        ( [ Item.textOnly ("New User: " ++ user.username) ]
         , Just (Switching (NewSession token user) pov)
         , hydrate token
         )
@@ -480,14 +503,19 @@ handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
-            save (Just (Hydrated token (PoV token user guilds channels)))
+            ( printGuilds guilds, Just (Hydrated token (PoV token user guilds channels)), Cmd.none )
 
         Switching { token, user } _ ->
-            save (Just (Hydrated token (PoV token user guilds channels)))
+            ( printGuilds guilds, Just (Hydrated token (PoV token user guilds channels)), Cmd.none )
 
         _ ->
             -- Otherwise Hydrate should not arrive
             handleHydrate discord guilds channels
+
+
+printGuilds : Dict String Guild -> List Item
+printGuilds guilds =
+    Dict.foldl (\_ guild acc -> Item.textOnly ("Watching: " ++ guild.name) :: acc) [] guilds
 
 
 handleAPIError : Discord -> Http.Error -> Producer.Yield Discord Msg
@@ -564,7 +592,7 @@ hydrateChannels token guilds =
         getGuildChannels guildId =
             Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels"))
                 (Http.auth token)
-                (D.list channelDecoder)
+                (D.leakyList channelDecoder)
 
         intoDict listOfChannelList =
             listOfChannelList

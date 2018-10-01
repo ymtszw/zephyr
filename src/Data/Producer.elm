@@ -1,4 +1,4 @@
-module Data.Producer exposing (Msg(..), ProducerRegistry, Receipt, configsEl, encodeRegistry, engageAll, initRegistry, receive, registryDecoder, update)
+module Data.Producer exposing (Msg(..), ProducerRegistry, Receipt, configsEl, encodeRegistry, initRegistry, receive, registryDecoder, reloadAll, update)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
@@ -75,27 +75,34 @@ initRegistry =
 
 
 
--- ENGAGE
+-- RELOAD
 
 
-{-| Engage all registered realtime Producers.
+{-| Reload all registered Producers on application startup.
 -}
-engageAll : WS.State msg -> ProducerRegistry -> ( WS.State msg, Cmd msg )
-engageAll wsState producerRegistry =
-    Dict.foldl engageOne ( wsState, Cmd.none ) producerRegistry
+reloadAll : ProducerRegistry -> ( ProducerRegistry, Cmd Msg )
+reloadAll producerRegistry =
+    Dict.foldl reloadOne ( Dict.empty, Cmd.none ) producerRegistry
 
 
-engageOne : String -> Producer -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, Cmd msg )
-engageOne key producer prev =
+reloadOne : String -> Producer -> ( ProducerRegistry, Cmd Msg ) -> ( ProducerRegistry, Cmd Msg )
+reloadOne key producer prev =
+    -- Currently there is no Realtime Producer
+    -- And it is impossible to deregister Producer on reload (reload API not accepting `Maybe state`, just `state`)
     case producer of
-        -- Currently there is no Realtime Producer
-        _ ->
-            prev
+        DiscordProducer discord ->
+            Discord.reload discord |> saveStateAndBatchCmd key DiscordProducer DiscordMsg prev
 
 
-engageAndBatchCmd : Key -> Endpoint -> ( WS.State msg, Cmd msg ) -> ( WS.State msg, Cmd msg )
-engageAndBatchCmd key endpoint ( wsState, prevCmd ) =
-    WS.engage key endpoint wsState |> Tuple.mapSecond (\newCmd -> Cmd.batch [ newCmd, prevCmd ])
+saveStateAndBatchCmd :
+    String
+    -> (state -> Producer)
+    -> (msg -> Msg)
+    -> ( ProducerRegistry, Cmd Msg )
+    -> ( state, Cmd msg )
+    -> ( ProducerRegistry, Cmd Msg )
+saveStateAndBatchCmd key stateTagger msgTagger ( prevRegistry, prevCmd ) ( state, cmd ) =
+    ( Dict.insert key (stateTagger state) prevRegistry, Cmd.batch [ Cmd.map msgTagger cmd, prevCmd ] )
 
 
 
