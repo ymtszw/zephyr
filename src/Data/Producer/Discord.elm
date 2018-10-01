@@ -891,6 +891,7 @@ guildIconEl guild =
         Just guildIcon ->
             El.el
                 [ BG.uncropped (imageUrl (Just "64") (I guildIcon))
+                , BG.color oneDark.bg
                 , El.width (El.px 50)
                 , El.height (El.px 50)
                 , BD.rounded 5

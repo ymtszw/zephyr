@@ -3,7 +3,7 @@
 
 log('ServiceWorker script loaded!')
 
-const STORAGE = 'zephyr_cache_v13' // increment version to enforce old cache deletion
+const STORAGE = 'zephyr_cache_v14' // increment version to enforce old cache deletion
 const APPSHELL = [
   '/',
   '/index.html',
@@ -61,9 +61,8 @@ self.addEventListener('fetch', (e) => {
   }
 })
 
-function isAppShellFile(urlStr) {
-  const url = new URL(urlStr)
-  return APPSHELL.some((path) => url.pathname === path)
+function isAppShellFile(url) {
+  return url === self.origin || APPSHELL.some((path) => url === self.origin + path)
 }
 
 function respondAppShell(e) {
@@ -83,7 +82,7 @@ function respondAppShell(e) {
       log(`Using cached AppShell (${e.request.url}).`)
       return cachedResponse
     }).catch(() => {
-      // There is not cached AppShell; basically should not happen.
+      // There is no cached AppShell; basically should not happen.
       return fetch(e.request).then((newResponse) => {
         cache.put(e.request, newResponse.clone())
         log(`Cache loaded (${e.request.url}).`)
