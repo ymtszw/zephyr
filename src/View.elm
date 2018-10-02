@@ -5,7 +5,7 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Core exposing (ColumnSwap, Model, Msg(..), UIState)
-import Data.Item exposing (Item, Media(..))
+import Data.Item exposing (Item, Media(..), Metadata(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.TextRenderer exposing (TextRenderer)
@@ -25,7 +25,7 @@ import Json.Decode as D exposing (Decoder)
 import Octicons
 import String exposing (fromFloat)
 import Url
-import View.Parts exposing (octiconEl, scale16)
+import View.Parts exposing (octiconEl, scale12, squareIconEl)
 
 
 body : Model -> List (Html.Html Msg)
@@ -37,14 +37,36 @@ body m =
 
 bodyEl : Model -> Element Msg
 bodyEl model =
-    El.row [ El.width El.fill, El.height El.fill ]
-        [ sidebarEl model
-        , if model.uiState.configOpen then
-            configPaneEl model
+    backgroundEl <|
+        El.row [ El.width El.fill, El.height El.fill ]
+            [ sidebarEl model
+            , if model.uiState.configOpen then
+                configPaneEl model
 
-          else
-            El.none
-        , columnsEl model
+              else
+                El.none
+            , columnsEl model
+            ]
+
+
+backgroundEl : Element Msg -> Element Msg
+backgroundEl contents =
+    El.row
+        [ BG.color oneDark.bg
+        , El.width El.fill
+        , El.height El.fill
+        , El.inFront contents
+        ]
+        [ El.el
+            [ El.centerY
+            , El.centerX
+            , Font.bold
+            , Font.color oneDark.sub
+            , Font.size (scale12 12)
+            , Font.center
+            , Font.family [ Font.serif ]
+            ]
+            (El.text "Zephyr")
         ]
 
 
@@ -151,34 +173,12 @@ otherButtonsEl uiState =
 
 columnsEl : Model -> Element Msg
 columnsEl { columnStore, uiState, env } =
-    backgroundEl <|
-        Element.Keyed.row
-            [ El.width El.fill
-            , El.height (El.fill |> El.maximum env.clientHeight)
-            , Font.regular
-            ]
-            (ColumnStore.indexedMap (columnKeyEl env.clientHeight uiState) columnStore)
-
-
-backgroundEl : Element Msg -> Element Msg
-backgroundEl contents =
-    El.row
-        [ BG.color oneDark.bg
-        , El.width El.fill
-        , El.height El.fill
-        , El.inFront contents
+    Element.Keyed.row
+        [ El.width El.fill
+        , El.height (El.fill |> El.maximum env.clientHeight)
+        , Font.regular
         ]
-        [ El.el
-            [ El.centerY
-            , El.centerX
-            , Font.bold
-            , Font.color oneDark.sub
-            , Font.size (scale16 12)
-            , Font.center
-            , Font.family [ Font.serif ]
-            ]
-            (El.text "Zephyr")
-        ]
+        (ColumnStore.indexedMap (columnKeyEl env.clientHeight uiState) columnStore)
 
 
 columnKeyEl : Int -> UIState -> Int -> Column -> ( String, Element Msg )
@@ -269,36 +269,49 @@ draggedColumnEl clientHeight =
 
 
 itemEl : Item -> Element Msg
-itemEl { message, mediaMaybe } =
-    El.el [ El.width El.fill, El.paddingXY 10 15, BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }, BD.color oneDark.bd ] <|
-        case mediaMaybe of
-            Just media ->
-                itemWithMedia message media
+itemEl item =
+    El.row
+        [ El.width El.fill
+        , El.paddingXY 0 5
+        , El.spacing 5
+        , BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }
+        , BD.color oneDark.bd
+        ]
+        [ itemAvatarEl item
+        , itemContentsEl item
+        ]
 
-            Nothing ->
-                itemTextOnly message
+
+itemAvatarEl : Item -> Element Msg
+itemAvatarEl item =
+    case item.metadata of
+        DiscordMetadata dmd ->
+            squareIconEl dmd.userName dmd.userAvatarUrlMaybe
+
+        DefaultMetadata ->
+            squareIconEl "Zephyr" Nothing
 
 
-itemTextOnly : String -> Element Msg
-itemTextOnly message =
-    El.el [ El.width El.fill ] (messageToParagraph message)
+itemContentsEl : Item -> Element Msg
+itemContentsEl item =
+    case item.mediaMaybe of
+        Just media ->
+            El.textColumn [ El.spacingXY 0 10, El.width El.fill, El.alignTop ]
+                [ messageToParagraph item.message
+                , mediaEl media
+                ]
+
+        Nothing ->
+            El.el [ El.width El.fill, El.alignTop ] (messageToParagraph item.message)
 
 
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
     El.paragraph
-        [ Font.size (scale16 1)
+        [ Font.size (scale12 2)
         , El.htmlAttribute (style "white-space" "pre-wrap")
         ]
         (Data.TextRenderer.default oneDark message)
-
-
-itemWithMedia : String -> Media -> Element Msg
-itemWithMedia message media =
-    El.textColumn [ El.spacingXY 0 10, El.width El.fill ]
-        [ messageToParagraph message
-        , mediaEl media
-        ]
 
 
 mediaEl : Media -> Element Msg
@@ -325,7 +338,6 @@ configPaneEl m =
         , El.height (El.fill |> El.maximum m.env.clientHeight)
         , El.padding 15
         , El.scrollbarY
-        , BG.color oneDark.bg
         , Font.color oneDark.text
         ]
         (configInnerEl m)

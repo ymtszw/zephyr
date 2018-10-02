@@ -14,7 +14,7 @@ import Json.Decode as D exposing (Decoder, Value)
 import Json.Encode as E
 import Process
 import Task
-import View.Parts exposing (scale16)
+import View.Parts exposing (scale12)
 import Websocket as WS exposing (Endpoint, Frame(..), Key(..))
 
 
@@ -242,7 +242,7 @@ configsEl producerRegistry =
         , El.spacingXY 0 20
         , BG.color oneDark.main
         , BD.rounded 10
-        , Font.size (scale16 2)
+        , Font.size (scale12 2)
         ]
         [ Dict.get "discord" producerRegistry
             |> unwrapDiscord
@@ -260,7 +260,7 @@ configWrapEl tagger title element =
             [ El.el
                 [ El.width El.fill
                 , Font.bold
-                , Font.size (scale16 3)
+                , Font.size (scale12 3)
                 , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
                 ]
                 (El.text title)

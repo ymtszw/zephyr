@@ -1,9 +1,10 @@
-module View.Parts exposing (disabled, disabledColor, octiconEl, scale16)
+module View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareIconEl)
 
 import Data.ColorTheme exposing (oneDark)
 import Element as El exposing (Element)
 import Element.Background as BG
-import Element.Font
+import Element.Border as BD
+import Element.Font as Font
 import Html
 import Html.Attributes
 import Octicons
@@ -24,7 +25,7 @@ disabled isDisabled attrs =
 disabledColor : Bool -> List (El.Attribute msg) -> List (El.Attribute msg)
 disabledColor isDisabled attrs =
     if isDisabled then
-        [ BG.color oneDark.sub, Element.Font.color oneDark.note ] ++ attrs
+        [ BG.color oneDark.sub, Font.color oneDark.note ] ++ attrs
 
     else
         [ BG.color oneDark.active ] ++ attrs
@@ -52,10 +53,34 @@ octiconEl octicon =
         |> El.html
 
 
+squareIconEl : String -> Maybe String -> Element msg
+squareIconEl name urlMaybe =
+    let
+        ( attr, el ) =
+            case urlMaybe of
+                Just url ->
+                    ( BG.uncropped url, El.none )
+
+                Nothing ->
+                    ( Font.size (scale12 4), El.el [ El.centerX, El.centerY ] (El.text (String.left 1 name)) )
+    in
+    El.el
+        [ BG.color oneDark.bg
+        , El.width (El.px 50)
+        , El.height (El.px 50)
+        , El.alignTop
+        , BD.rounded 5
+        , El.htmlAttribute (Html.Attributes.title name)
+        , El.pointer
+        , attr
+        ]
+        el
+
+
 
 -- FONT SIZE
 
 
-scale16 : Int -> Int
-scale16 =
-    El.modular 16 1.25 >> round
+scale12 : Int -> Int
+scale12 =
+    El.modular 12 1.25 >> round

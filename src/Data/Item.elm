@@ -1,9 +1,10 @@
-module Data.Item exposing (Item, Media(..), decoder, encoder, textOnly, welcome)
+module Data.Item exposing (Item, Media(..), Metadata(..), decoder, encoder, textOnly, welcome)
 
 import Element.Font
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import Json.EncodeExtra as E
 import Url
 
 
@@ -19,7 +20,8 @@ type Metadata
     = DiscordMetadata
         { guildName : String
         , channelName : String
-        , authorName : String
+        , userName : String
+        , userAvatarUrlMaybe : Maybe String
         }
     | DefaultMetadata
 
@@ -71,10 +73,11 @@ metadataDecoder : Decoder Metadata
 metadataDecoder =
     D.oneOf
         [ D.when (D.field "tag" D.string) ((==) "DiscordMetadata") <|
-            D.map3 (\gn cn an -> DiscordMetadata { guildName = gn, channelName = cn, authorName = an })
+            D.map4 (\gn cn un uau -> DiscordMetadata { guildName = gn, channelName = cn, userName = un, userAvatarUrlMaybe = uau })
                 (D.field "guildName" D.string)
                 (D.field "channelName" D.string)
                 (D.field "authorName" D.string)
+                (D.field "userAvatarUrlMaybe" (D.maybe D.string))
         , D.when (D.field "tag" D.string) ((==) "DefaultMetadata") <| D.succeed DefaultMetadata
         ]
 
@@ -106,7 +109,8 @@ encodeMetadata metadata =
                 [ ( "tag", E.string "DiscordMetadata" )
                 , ( "guildName", E.string dmd.guildName )
                 , ( "channelName", E.string dmd.channelName )
-                , ( "authorName", E.string dmd.authorName )
+                , ( "userName", E.string dmd.userName )
+                , ( "userAvatarUrlMaybe", E.maybe E.string dmd.userAvatarUrlMaybe )
                 ]
 
         DefaultMetadata ->

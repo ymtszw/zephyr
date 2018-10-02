@@ -34,7 +34,7 @@ import Octicons
 import Task exposing (Task)
 import Time exposing (Posix)
 import Url exposing (Url)
-import View.Parts exposing (disabled, disabledColor, octiconEl, scale16)
+import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareIconEl)
 import Websocket exposing (Endpoint(..))
 
 
@@ -673,19 +673,16 @@ tokenFormEl discord =
             , placeholder = Nothing
             , label = tokenLabelEl
             }
-        , Element.Keyed.row [ El.width El.fill, El.spacing 10 ]
-            [ rehydrateButtonKeyEl discord
-            , tokenSubmitButtonKeyEl discord
-            ]
+        , tokenSubmitButtonEl discord
         ]
             ++ currentStateEl discord
 
 
-tokenSubmitButtonKeyEl : Discord -> ( String, Element Msg )
-tokenSubmitButtonKeyEl discord =
+tokenSubmitButtonEl : Discord -> Element Msg
+tokenSubmitButtonEl discord =
     Element.Input.button
         ([ El.alignRight
-         , El.width (El.px 180)
+         , El.width (El.shrink |> El.minimum 100)
          , El.padding 10
          , BD.rounded 5
          ]
@@ -695,27 +692,6 @@ tokenSubmitButtonKeyEl discord =
         { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
         , label = El.text (tokenInputButtonLabel discord)
         }
-        |> Tuple.pair "DiscordTokenSubmitButton"
-
-
-rehydrateButtonKeyEl : Discord -> ( String, Element Msg )
-rehydrateButtonKeyEl discord =
-    Tuple.pair "DiscordRehydrateButton" <|
-        case discord of
-            Hydrated _ pov ->
-                Element.Input.button
-                    [ El.alignRight
-                    , El.height El.fill
-                    , El.padding 5
-                    , BD.rounded 30
-                    , BG.color oneDark.main
-                    ]
-                    { onPress = Just Rehydrate
-                    , label = octiconEl Octicons.sync
-                    }
-
-            _ ->
-                El.none
 
 
 shouldLockInput : Discord -> Bool
@@ -788,8 +764,8 @@ tokenLabelEl =
     Element.Input.labelAbove [] <|
         El.column [ El.spacing 5 ]
             [ El.el [] (El.text "Token")
-            , El.el [ Font.color oneDark.note, Font.size (scale16 1) ] <|
-                El.text "Some shady works required to acquire Discord personal access token. Do not talk about it."
+            , El.paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
+                [ El.text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
             ]
 
 
@@ -833,26 +809,28 @@ currentStateEl discord =
 
         Hydrated _ pov ->
             [ userNameAndAvatarEl pov.user
-            , guildsEl pov.guilds
+            , guildsEl False pov
             ]
 
         Rehydrating _ pov ->
-            [ userNameAndAvatarEl pov.user ]
+            [ userNameAndAvatarEl pov.user
+            , guildsEl True pov
+            ]
 
         Revisit pov ->
             [ userNameAndAvatarEl pov.user
-            , guildsEl pov.guilds
+            , guildsEl False pov
             ]
 
         Expired _ pov ->
             [ userNameAndAvatarEl pov.user
-            , guildsEl pov.guilds
+            , guildsEl False pov
             ]
 
         Switching newSession pov ->
             -- TODO User switching confirmation
             [ userNameAndAvatarEl pov.user
-            , guildsEl pov.guilds
+            , guildsEl False pov
             ]
 
         _ ->
@@ -871,15 +849,18 @@ userNameAndAvatarEl user =
             ]
             El.none
         , El.text user.username
-        , El.el [ El.centerY, Font.size (scale16 1), Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
+        , El.el [ El.centerY, Font.size (scale12 1), Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
         ]
 
 
-guildsEl : Dict String Guild -> Element Msg
-guildsEl guilds =
+guildsEl : Bool -> POV -> Element Msg
+guildsEl rotating pov =
     El.row [ El.width El.fill, El.spacing 5 ]
-        [ El.el [] (El.text "Servers: ")
-        , guilds
+        [ El.column [ El.alignTop, El.spacing 5 ]
+            [ El.text "Servers: "
+            , rehydrateButtonEl rotating pov
+            ]
+        , pov.guilds
             |> Dict.foldl (\_ guild acc -> guildIconEl guild :: acc) []
             |> El.wrappedRow [ El.width El.fill, El.spacing 5 ]
         ]
@@ -887,30 +868,22 @@ guildsEl guilds =
 
 guildIconEl : Guild -> Element Msg
 guildIconEl guild =
-    case guild.icon of
-        Just guildIcon ->
-            El.el
-                [ BG.uncropped (imageUrl (Just "64") (I guildIcon))
-                , BG.color oneDark.bg
-                , El.width (El.px 50)
-                , El.height (El.px 50)
-                , BD.rounded 5
-                , El.htmlAttribute (Html.Attributes.title guild.name)
-                , El.pointer
-                ]
-                El.none
+    squareIconEl guild.name (Maybe.map (I >> imageUrl (Just "64")) guild.icon)
 
-        Nothing ->
-            El.el
-                [ BG.color oneDark.bg
-                , El.width (El.px 50)
-                , El.height (El.px 50)
-                , BD.rounded 5
-                , Font.size (scale16 2)
-                , El.htmlAttribute (Html.Attributes.title guild.name)
-                , El.pointer
-                ]
-                (El.el [ El.centerX, El.centerY ] (El.text (String.left 1 guild.name)))
+
+rehydrateButtonEl : Bool -> POV -> Element Msg
+rehydrateButtonEl rotating pov =
+    Element.Input.button
+        (disabled rotating
+            [ El.alignLeft
+            , El.height El.fill
+            , BD.rounded 30
+            , BG.color oneDark.main
+            ]
+        )
+        { onPress = ite rotating Nothing (Just Rehydrate)
+        , label = octiconEl Octicons.sync
+        }
 
 
 
