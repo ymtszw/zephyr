@@ -34,7 +34,7 @@ import Octicons
 import Task exposing (Task)
 import Time exposing (Posix)
 import Url exposing (Url)
-import View.Parts exposing (disabled, disabledColor, octiconEl)
+import View.Parts exposing (disabled, disabledColor, octiconEl, scale16)
 import Websocket exposing (Endpoint(..))
 
 
@@ -788,7 +788,7 @@ tokenLabelEl =
     Element.Input.labelAbove [] <|
         El.column [ El.spacing 5 ]
             [ El.el [] (El.text "Token")
-            , El.el [ Font.color oneDark.note, Font.size 14 ] <|
+            , El.el [ Font.color oneDark.note, Font.size (scale16 1) ] <|
                 El.text "Some shady works required to acquire Discord personal access token. Do not talk about it."
             ]
 
@@ -871,7 +871,7 @@ userNameAndAvatarEl user =
             ]
             El.none
         , El.text user.username
-        , El.el [ El.centerY, Font.size 14, Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
+        , El.el [ El.centerY, Font.size (scale16 1), Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
         ]
 
 
@@ -906,7 +906,7 @@ guildIconEl guild =
                 , El.width (El.px 50)
                 , El.height (El.px 50)
                 , BD.rounded 5
-                , Font.size 24
+                , Font.size (scale16 2)
                 , El.htmlAttribute (Html.Attributes.title guild.name)
                 , El.pointer
                 ]
