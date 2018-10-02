@@ -678,7 +678,7 @@ tokenFormEl discord =
             , tokenSubmitButtonKeyEl discord
             ]
         ]
-            ++ discordEl discord
+            ++ currentStateEl discord
 
 
 tokenSubmitButtonKeyEl : Discord -> ( String, Element Msg )
@@ -825,8 +825,8 @@ tokenInputButtonLabel discord =
             "Change Token"
 
 
-discordEl : Discord -> List (Element Msg)
-discordEl discord =
+currentStateEl : Discord -> List (Element Msg)
+currentStateEl discord =
     case discord of
         Identified newSession ->
             [ userNameAndAvatarEl newSession.user ]
