@@ -1,4 +1,4 @@
-module View.Parts exposing (disabled, disabledColor, octiconEl)
+module View.Parts exposing (disabled, disabledColor, octiconEl, scale16)
 
 import Data.ColorTheme exposing (oneDark)
 import Element as El exposing (Element)
@@ -50,3 +50,12 @@ octiconEl octicon =
         |> Octicons.size 26
         |> octicon
         |> El.html
+
+
+
+-- FONT SIZE
+
+
+scale16 : Int -> Int
+scale16 =
+    El.modular 16 1.25 >> round

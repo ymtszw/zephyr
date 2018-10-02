@@ -25,7 +25,7 @@ import Json.Decode as D exposing (Decoder)
 import Octicons
 import String exposing (fromFloat)
 import Url
-import View.Parts exposing (octiconEl)
+import View.Parts exposing (octiconEl, scale16)
 
 
 body : Model -> List (Html.Html Msg)
@@ -339,15 +339,6 @@ configInnerEl m =
         ]
         [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
         ]
-
-
-
--- FONT SIZE
-
-
-scale16 : Int -> Int
-scale16 =
-    El.modular 16 1.25 >> round
 
 
 
