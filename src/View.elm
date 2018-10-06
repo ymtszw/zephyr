@@ -216,6 +216,7 @@ notDraggedColumnEl clientHeight column attrs =
             |> El.column
                 [ El.width El.fill
                 , El.paddingXY 5 0
+                , El.scrollbarY
                 ]
         ]
 
@@ -224,7 +225,6 @@ columnBaseAttrs : Int -> List (El.Attribute Msg)
 columnBaseAttrs clientHeight =
     [ El.width (El.fill |> El.minimum 320 |> El.maximum 860)
     , El.height (El.fill |> El.maximum clientHeight)
-    , El.scrollbarY
     , BG.color oneDark.main
     , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
     , BD.color oneDark.bg
