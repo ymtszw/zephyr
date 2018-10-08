@@ -1,6 +1,7 @@
-module Json.DecodeExtra exposing (conditional, leakyList, maybeField, succeedIf, tag, tagged, tagged2, tagged3, when)
+module Json.DecodeExtra exposing (conditional, leakyList, maybeField, succeedIf, tag, tagged, tagged2, tagged3, url, when)
 
 import Json.Decode exposing (..)
+import Url
 
 
 {-| Apply first Decoder. If it succeeds, apply second one and yields its results.
@@ -126,3 +127,19 @@ tagged3 constructorName constructor value1Decoder value2Decoder value3Decoder =
             (field "v1" value1Decoder)
             (field "v2" value2Decoder)
             (field "v3" value3Decoder)
+
+
+{-| Decode a string into Url.Url.
+-}
+url : Decoder Url.Url
+url =
+    string
+        |> andThen
+            (\urlString ->
+                case Url.fromString urlString of
+                    Just decodedUrl ->
+                        succeed decodedUrl
+
+                    Nothing ->
+                        fail ("URL is serialized incorrectly: " ++ urlString)
+            )
