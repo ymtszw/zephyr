@@ -1,4 +1,4 @@
-module Json.DecodeExtra exposing (conditional, leakyList, succeedIf, when)
+module Json.DecodeExtra exposing (conditional, leakyList, maybeField, succeedIf, when)
 
 import Json.Decode exposing (..)
 
@@ -53,3 +53,28 @@ If all elements failed to be decoded, it succeeds with an empty list.
 leakyList : Decoder a -> Decoder (List a)
 leakyList decoder =
     map (List.filterMap (decodeValue decoder >> Result.toMaybe)) (list value)
+
+
+{-| Merger of Json.Decode.field AND Json.Decode.maybe.
+
+In some case, we want to decode a field into Maybe,
+wherein the field may be absent OR always exist but can be null.
+
+It practically just flattens Maybe value obtained from
+`maybe (field "fieldName" (maybe decoder))`.
+
+Also useful when introducing new field in serialized JSON format.
+
+-}
+maybeField : String -> Decoder a -> Decoder (Maybe a)
+maybeField fieldName decoder =
+    let
+        flatten aMaybeMaybe =
+            case aMaybeMaybe of
+                Just (Just a) ->
+                    Just a
+
+                _ ->
+                    Nothing
+    in
+    map flatten (maybe (field fieldName (maybe decoder)))
