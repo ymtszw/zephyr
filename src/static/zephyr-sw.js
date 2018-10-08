@@ -3,7 +3,7 @@
 
 log('ServiceWorker script loaded!')
 
-const STORAGE = 'zephyr_cache_v15' // increment version to enforce old cache deletion
+const STORAGE = 'zephyr_v15' // increment version to enforce old cache deletion
 const APPSHELL = [
   '/',
   '/index.html',
@@ -14,7 +14,7 @@ const APPSHELL = [
 ]
 
 self.addEventListener('install', (e) => {
-  log('Installing...')
+  log(`Installing... (AppShell version: ${STORAGE})`)
   e.waitUntil(
     caches.open(STORAGE).then((cache) => {
       log(`Adding AppShell to Cache: ${APPSHELL}`)
@@ -52,7 +52,6 @@ self.addEventListener('fetch', (e) => {
       log(`AppShell fetch: ${e.request.url}`)
       return respondAppShell(e)
     } else {
-      log(`Other fetch: ${e.request.url}`)
       return respondOther(e)
     }
   } else {
