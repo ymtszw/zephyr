@@ -79,6 +79,7 @@ update msg ({ uiState, env } as m) =
             persist ( { m | uiState = { uiState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
 
         Load val ->
+            -- Persist on Load, migrating to new encoding format if any
             ( loadSavedState m val, Cmd.none )
                 |> reloadProducers
                 |> persist

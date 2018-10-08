@@ -11,7 +11,9 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Json.Decode as D exposing (Decoder, Value)
+import Json.DecodeExtra as D
 import Json.Encode as E
+import Json.EncodeExtra as E
 import Process
 import Task
 import View.Parts exposing (scale12)
@@ -45,7 +47,10 @@ registryDecoder =
 keyProducerDecoder : Decoder ( String, Producer )
 keyProducerDecoder =
     D.oneOf
-        [ Discord.decoder |> D.map (DiscordProducer >> Tuple.pair "discord")
+        [ D.tagged "Discord" (DiscordProducer >> Tuple.pair "discord") Discord.decoder
+
+        -- Old version; to be removed after migration
+        , Discord.decoder |> D.map (DiscordProducer >> Tuple.pair "discord")
         ]
 
 
@@ -67,7 +72,7 @@ encodeProducer : ( String, Producer ) -> E.Value
 encodeProducer ( _, producer ) =
     case producer of
         DiscordProducer discord ->
-            Discord.encode discord
+            E.tagged "Discord" (Discord.encode discord)
 
 
 initRegistry : ProducerRegistry

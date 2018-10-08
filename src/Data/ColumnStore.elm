@@ -90,7 +90,7 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-{-| This is mostly for debugging purposes; take list of Items, push them all to the leftmost Column.
+{-| TODO This is mostly for debugging purposes; take list of Items, push them all to the leftmost Column.
 If there is no Column in ColumnStore, generate one.
 -}
 pushToFirstColumn : Data.UniqueId.Generator -> List Item -> ColumnStore -> ( ColumnStore, Data.UniqueId.Generator )
@@ -104,4 +104,4 @@ pushToFirstColumn idGen items columnStore =
                 ( id, newIdGen ) =
                     Data.UniqueId.gen "column" idGen
             in
-            ( add (Column id (List.reverse items)) columnStore, newIdGen )
+            ( add (Column id (List.reverse items) []) columnStore, newIdGen )

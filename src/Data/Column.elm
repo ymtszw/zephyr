@@ -2,28 +2,139 @@ module Data.Column exposing (Column, decoder, encoder, welcome)
 
 import Data.Item as Item exposing (Item)
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
+import Json.EncodeExtra as E
 
 
 type alias Column =
     { id : String
     , items : List Item
+    , filters : List Filter
     }
+
+
+{-| Filter to narrow down Items flowing into a Column.
+
+A List of Filters works in logical "and" manner.
+If newly arriving Item meets ALL Filters in the list,
+it enters the Column. Otherwise rejected.
+
+-}
+type Filter
+    = ByMessage String
+    | ByMedia MediaType
+    | ByMetadata MetadataFilter
+    | Or (List Filter)
+
+
+type MediaType
+    = None
+    | Image
+    | Movie
+
+
+type MetadataFilter
+    = IsDiscord
+    | OfDiscordGuild String
+    | OfDiscordChannel String
+    | OfDiscordUser String
+    | IsDefault
 
 
 decoder : Decoder Column
 decoder =
-    D.map2 Column
+    D.map3 Column
         (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
+        (D.oneOf
+            [ D.field "filters" (D.list filterDecoder)
+            , D.succeed [] -- Migration
+            ]
+        )
+
+
+filterDecoder : Decoder Filter
+filterDecoder =
+    D.oneOf
+        [ D.tagged "ByMessage" ByMessage D.string
+        , D.tagged "ByMedia" ByMedia mediaTypeDecoder
+        , D.tagged "ByMetadata" ByMetadata metadataFilterDecoder
+        , D.tagged "Or" Or (D.list (D.lazy (\_ -> filterDecoder)))
+        ]
+
+
+mediaTypeDecoder : Decoder MediaType
+mediaTypeDecoder =
+    D.oneOf [ D.tag "None" None, D.tag "Image" Image, D.tag "Movie" Movie ]
+
+
+metadataFilterDecoder : Decoder MetadataFilter
+metadataFilterDecoder =
+    D.oneOf
+        [ D.tag "IsDiscord" IsDiscord
+        , D.tagged "OfDiscordGuild" OfDiscordGuild D.string
+        , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
+        , D.tagged "OfDiscordUser" OfDiscordUser D.string
+        , D.tag "IsDefault" IsDefault
+        ]
 
 
 encoder : Column -> E.Value
-encoder { id, items } =
+encoder { id, items, filters } =
     E.object
         [ ( "id", E.string id )
         , ( "items", E.list Item.encoder items )
+        , ( "filters", E.list encodeFilter filters )
         ]
+
+
+encodeFilter : Filter -> E.Value
+encodeFilter filter =
+    case filter of
+        ByMessage query ->
+            E.tagged "ByMessage" (E.string query)
+
+        ByMedia mediaType ->
+            E.tagged "ByMedia" (encodeMediaType mediaType)
+
+        ByMetadata metadataFilter ->
+            E.tagged "ByMetadata" (encodeMetadataFilter metadataFilter)
+
+        Or filters ->
+            E.tagged "Or" (E.list encodeFilter filters)
+
+
+encodeMediaType : MediaType -> E.Value
+encodeMediaType mediaType =
+    case mediaType of
+        None ->
+            E.tag "None"
+
+        Image ->
+            E.tag "Image"
+
+        Movie ->
+            E.tag "Movie"
+
+
+encodeMetadataFilter : MetadataFilter -> E.Value
+encodeMetadataFilter metadataFilter =
+    case metadataFilter of
+        IsDiscord ->
+            E.tag "IsDiscord"
+
+        OfDiscordGuild guildId ->
+            E.tagged "OfDiscordGuild" (E.string guildId)
+
+        OfDiscordChannel channelId ->
+            E.tagged "OfDiscordChannel" (E.string channelId)
+
+        OfDiscordUser userId ->
+            E.tagged "OfDiscordUser" (E.string userId)
+
+        IsDefault ->
+            E.tag "IsDefault"
 
 
 welcome : String -> Column
@@ -38,4 +149,5 @@ welcome id =
         ]
             |> List.repeat 2
             |> List.concat
+    , filters = []
     }
