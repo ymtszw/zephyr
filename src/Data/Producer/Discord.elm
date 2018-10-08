@@ -147,8 +147,12 @@ type Image
 decoder : Decoder Discord
 decoder =
     D.oneOf
-        -- Saved state always starts with at best TokenReady state
-        [ D.when (D.field "tag" D.string) ((==) "discordRevisit") <|
+        [ D.tagged "Revisit" Revisit povDecoder
+        , D.tagged "TokenReady" TokenReady D.string
+        , D.tagged "TokenGiven" TokenGiven D.string
+
+        -- Old versions below; to be removed after migration
+        , D.when (D.field "tag" D.string) ((==) "discordRevisit") <|
             D.map Revisit (D.field "pov" povDecoder)
         , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
             D.map TokenReady (D.field "token" D.string)
@@ -235,55 +239,30 @@ encode : Discord -> E.Value
 encode discord =
     case discord of
         TokenGiven token ->
-            E.object
-                [ ( "tag", E.string "discordTokenGiven" )
-                , ( "token", E.string token )
-                ]
+            E.tagged "TokenGiven" (E.string token)
 
         TokenReady token ->
-            E.object
-                [ ( "tag", E.string "discordTokenReady" )
-                , ( "token", E.string token )
-                ]
+            E.tagged "TokenReady" (E.string token)
 
         Identified session ->
-            -- New interval should be retrieved on next connection, not persisting old one
-            -- Step back to TokenReady state for retry
-            E.object
-                [ ( "tag", E.string "discordTokenReady" )
-                , ( "token", E.string session.token )
-                ]
+            -- Step back to TokenReady state for clean retry
+            E.tagged "TokenReady" (E.string session.token)
 
         Hydrated _ pov ->
-            E.object
-                [ ( "tag", E.string "discordRevisit" )
-                , ( "pov", encodePov pov )
-                ]
+            E.tagged "Revisit" (encodePov pov)
 
         Rehydrating _ pov ->
-            E.object
-                [ ( "tag", E.string "discordRevisit" )
-                , ( "pov", encodePov pov )
-                ]
+            E.tagged "Revisit" (encodePov pov)
 
         Switching _ pov ->
-            -- Not persisting yet-authenticated new token
-            E.object
-                [ ( "tag", E.string "discordRevisit" )
-                , ( "pov", encodePov pov )
-                ]
+            -- Not persisting yet-confirmed UserSession
+            E.tagged "Revisit" (encodePov pov)
 
         Revisit pov ->
-            E.object
-                [ ( "tag", E.string "discordRevisit" )
-                , ( "pov", encodePov pov )
-                ]
+            E.tagged "Revisit" (encodePov pov)
 
         Expired _ pov ->
-            E.object
-                [ ( "tag", E.string "discordRevisit" )
-                , ( "pov", encodePov pov )
-                ]
+            E.tagged "Revisit" (encodePov pov)
 
 
 encodePov : POV -> E.Value

@@ -50,6 +50,15 @@ decoder =
 
 mediaDecoder : Decoder Media
 mediaDecoder =
+    D.oneOf
+        [ D.tagged "Image" Image D.url
+        , D.tagged "Movie" Movie D.url
+        , mediaDecoderOld -- To be removed after migration
+        ]
+
+
+mediaDecoderOld : Decoder Media
+mediaDecoderOld =
     D.string
         |> D.andThen
             (\str ->
@@ -72,13 +81,21 @@ mediaDecoder =
 metadataDecoder : Decoder Metadata
 metadataDecoder =
     D.oneOf
-        [ D.when (D.field "tag" D.string) ((==) "DiscordMetadata") <|
+        [ D.tagged "DiscordMetadata" DiscordMetadata <|
+            D.map4 (\gn cn un uau -> { guildName = gn, channelName = cn, userName = un, userAvatarUrlMaybe = uau })
+                (D.field "guildName" D.string)
+                (D.field "channelName" D.string)
+                (D.field "authorName" D.string)
+                (D.field "userAvatarUrlMaybe" (D.maybe D.string))
+        , D.tag "DefaultMetadata" DefaultMetadata
+
+        -- Old version; to be removed after migration
+        , D.when (D.field "tag" D.string) ((==) "DiscordMetadata") <|
             D.map4 (\gn cn un uau -> DiscordMetadata { guildName = gn, channelName = cn, userName = un, userAvatarUrlMaybe = uau })
                 (D.field "guildName" D.string)
                 (D.field "channelName" D.string)
                 (D.field "authorName" D.string)
                 (D.field "userAvatarUrlMaybe" (D.maybe D.string))
-        , D.when (D.field "tag" D.string) ((==) "DefaultMetadata") <| D.succeed DefaultMetadata
         ]
 
 
@@ -95,26 +112,26 @@ mediaEncoder : Media -> E.Value
 mediaEncoder media =
     case media of
         Image url ->
-            E.string ("IMAGE" ++ Url.toString url)
+            E.tagged "Image" (E.string (Url.toString url))
 
         Movie url ->
-            E.string ("MOVIE" ++ Url.toString url)
+            E.tagged "Movie" (E.string (Url.toString url))
 
 
 encodeMetadata : Metadata -> E.Value
 encodeMetadata metadata =
     case metadata of
         DiscordMetadata dmd ->
-            E.object
-                [ ( "tag", E.string "DiscordMetadata" )
-                , ( "guildName", E.string dmd.guildName )
-                , ( "channelName", E.string dmd.channelName )
-                , ( "userName", E.string dmd.userName )
-                , ( "userAvatarUrlMaybe", E.maybe E.string dmd.userAvatarUrlMaybe )
-                ]
+            E.tagged "DiscordMetadata" <|
+                E.object
+                    [ ( "guildName", E.string dmd.guildName )
+                    , ( "channelName", E.string dmd.channelName )
+                    , ( "userName", E.string dmd.userName )
+                    , ( "userAvatarUrlMaybe", E.maybe E.string dmd.userAvatarUrlMaybe )
+                    ]
 
         DefaultMetadata ->
-            E.object [ ( "tag", E.string "DefaultMetadata" ) ]
+            E.tag "DefaultMetadata"
 
 
 welcome : Item
