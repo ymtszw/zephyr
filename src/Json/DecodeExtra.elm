@@ -1,4 +1,4 @@
-module Json.DecodeExtra exposing (conditional, leakyList, maybeField, succeedIf, when)
+module Json.DecodeExtra exposing (conditional, leakyList, maybeField, succeedIf, tag, tagged, tagged2, tagged3, when)
 
 import Json.Decode exposing (..)
 
@@ -78,3 +78,51 @@ maybeField fieldName decoder =
                     Nothing
     in
     map flatten (maybe (field fieldName (maybe decoder)))
+
+
+{-| Decode a serialized custom type value of 0-variable.
+
+Use with EncodeExtra.tag.
+
+-}
+tag : String -> a -> Decoder a
+tag constructorName constructor =
+    when (field "tag" string) ((==) constructorName) (succeed constructor)
+
+
+{-| Decode a serialized custom type value of 1-variable.
+
+Use with EncodeExtra.tagged.
+
+-}
+tagged : String -> (a -> b) -> Decoder a -> Decoder b
+tagged constructorName constructor value1Decoder =
+    when (field "tag" string) ((==) constructorName) <|
+        map constructor (field "v1" value1Decoder)
+
+
+{-| Decode a serialized custom type value of 2-variable.
+
+Use with EncodeExtra.tagged2.
+
+-}
+tagged2 : String -> (a -> b -> c) -> Decoder a -> Decoder b -> Decoder c
+tagged2 constructorName constructor value1Decoder value2Decoder =
+    when (field "tag" string) ((==) constructorName) <|
+        map2 constructor
+            (field "v1" value1Decoder)
+            (field "v2" value2Decoder)
+
+
+{-| Decode a serialized custom type value of 3-variable.
+
+Use with EncodeExtra.tagged3.
+
+-}
+tagged3 : String -> (a -> b -> c -> d) -> Decoder a -> Decoder b -> Decoder c -> Decoder d
+tagged3 constructorName constructor value1Decoder value2Decoder value3Decoder =
+    when (field "tag" string) ((==) constructorName) <|
+        map3 constructor
+            (field "v1" value1Decoder)
+            (field "v2" value2Decoder)
+            (field "v3" value3Decoder)
