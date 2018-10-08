@@ -198,22 +198,13 @@ guildDecoder =
 
 channelDecoder : Decoder Channel
 channelDecoder =
-    let
-        flatten aMaybeMaybe =
-            case aMaybeMaybe of
-                Just (Just a) ->
-                    Just a
-
-                _ ->
-                    Nothing
-    in
     D.map6 Channel
         (D.field "id" D.string)
         (D.field "name" D.string)
         (D.field "type" channelTypeDecoder)
-        (D.map flatten (D.maybe (D.field "last_message_id" (D.maybe (D.map MessageId D.string)))))
-        (D.map flatten (D.maybe (D.field "lastFetchTime" (D.maybe (D.map Time.millisToPosix D.int)))))
-        (D.map flatten (D.maybe (D.field "lastYieldTime" (D.maybe (D.map Time.millisToPosix D.int)))))
+        (D.maybeField "last_message_id" (D.map MessageId D.string))
+        (D.maybeField "lastFetchTime" (D.map Time.millisToPosix D.int))
+        (D.maybeField "lastYieldTime" (D.map Time.millisToPosix D.int))
 
 
 channelTypeDecoder : Decoder ChannelType
