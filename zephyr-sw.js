@@ -40,6 +40,7 @@ function deleteOldCaches() {
   return caches.keys().then((cacheNames) => {
     return Promise.all(cacheNames.map((cacheName) => {
       if (cacheName !== STORAGE) {
+        log(`Deleting old cache storage: ${cacheName}`)
         return caches.delete(cacheName)
       }
     }))
