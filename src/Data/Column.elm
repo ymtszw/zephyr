@@ -11,6 +11,7 @@ type alias Column =
     { id : String
     , items : List Item
     , filters : List Filter
+    , configOpen : Bool
     }
 
 
@@ -44,7 +45,7 @@ type MetadataFilter
 
 decoder : Decoder Column
 decoder =
-    D.map3 Column
+    D.map4 Column
         (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
         (D.oneOf
@@ -52,6 +53,7 @@ decoder =
             , D.succeed [] -- Migration
             ]
         )
+        (D.succeed False)
 
 
 filterDecoder : Decoder Filter
@@ -150,4 +152,5 @@ welcome id =
             |> List.repeat 2
             |> List.concat
     , filters = []
+    , configOpen = False
     }
