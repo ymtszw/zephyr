@@ -106,4 +106,5 @@ type Msg
     | DragEnd
     | Load Value
     | ToggleConfig Bool
+    | ToggleColumnConfig String Bool
     | ProducerCtrl Producer.Msg

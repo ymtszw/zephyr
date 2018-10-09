@@ -1,4 +1,11 @@
-module Data.ColumnStore exposing (ColumnStore, add, applyOrder, decoder, encode, get, indexedMap, init, pushToFirstColumn, removeAt)
+module Data.ColumnStore exposing (ColumnStore, add, applyOrder, decoder, encode, get, indexedMap, init, pushToFirstColumn, removeAt, updateById)
+
+{-| Order-aware Column storage.
+
+Internally, Columns themselves are stored in ID-based Dict,
+whereas their order is stored in Array of IDs.
+
+-}
 
 import Array exposing (Array)
 import Data.Array as Array
@@ -36,6 +43,10 @@ init =
     ColumnStore Dict.empty Array.empty
 
 
+
+-- SINGULAR APIs
+
+
 add : Column -> ColumnStore -> ColumnStore
 add column columnStore =
     { columnStore
@@ -64,6 +75,15 @@ removeAt index columnStore =
             columnStore
 
 
+updateById : String -> (Column -> Column) -> ColumnStore -> ColumnStore
+updateById id transform columnStore =
+    { columnStore | dict = Dict.update id (Maybe.map transform) columnStore.dict }
+
+
+
+-- BULK APIs
+
+
 indexedMap : (Int -> Column -> a) -> ColumnStore -> List a
 indexedMap mapper { dict, order } =
     indexedMapImpl mapper dict (Array.toList order) 0 []
@@ -88,6 +108,10 @@ indexedMapImpl mapper dict idList index acc =
 applyOrder : Array String -> ColumnStore -> ColumnStore
 applyOrder order columnStore =
     { columnStore | order = order }
+
+
+
+-- DEBUG
 
 
 {-| TODO This is mostly for debugging purposes; take list of Items, push them all to the leftmost Column.

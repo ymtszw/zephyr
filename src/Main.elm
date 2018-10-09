@@ -87,6 +87,9 @@ update msg ({ viewState, env } as m) =
         ToggleConfig opened ->
             ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
 
+        ToggleColumnConfig cId bool ->
+            ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | configOpen = bool }) m.columnStore }, Cmd.none )
+
         ProducerCtrl pctrl ->
             Producer.update pctrl m.producerRegistry
                 |> applyProducerYield m
