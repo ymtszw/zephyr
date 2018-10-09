@@ -84,17 +84,12 @@ update msg ({ uiState, env } as m) =
                 |> reloadProducers
                 |> persist
 
-        WSReceive val ->
-            Producer.receive ProducerCtrl m.producerRegistry m.wsState val
-                |> applyProducerReceipt m
-                |> persist
-
         ToggleConfig opened ->
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            Producer.update ProducerCtrl pctrl m.wsState m.producerRegistry
-                |> applyProducerReceipt m
+            Producer.update ProducerCtrl pctrl m.producerRegistry
+                |> applyProducerYield m
                 |> persist
 
         NoOp ->
@@ -261,11 +256,11 @@ reloadProducers ( m, cmd ) =
     ( { m | producerRegistry = newRegistry }, Cmd.batch [ Cmd.map ProducerCtrl reloadCmd, cmd ] )
 
 
-applyProducerReceipt : Model -> Producer.Receipt Msg -> ( Model, Cmd Msg )
-applyProducerReceipt model { producerRegistry, wsState, cmd, yields } =
-    case yields of
+applyProducerYield : Model -> Producer.GrossYield Msg -> ( Model, Cmd Msg )
+applyProducerYield model gy =
+    case gy.items of
         [] ->
-            ( { model | producerRegistry = producerRegistry, wsState = wsState }, cmd )
+            ( { model | producerRegistry = gy.producerRegistry }, gy.cmd )
 
         nonEmptyYields ->
             let
@@ -275,11 +270,10 @@ applyProducerReceipt model { producerRegistry, wsState, cmd, yields } =
             in
             ( { model
                 | columnStore = newColumnStore
-                , producerRegistry = producerRegistry
+                , producerRegistry = gy.producerRegistry
                 , idGen = newIdGen
-                , wsState = wsState
               }
-            , cmd
+            , gy.cmd
             )
 
 
@@ -292,7 +286,6 @@ sub m =
     Sub.batch
         [ onResize Resize
         , Ports.loadFromJs Load
-        , Ports.webSocketClientSub WSReceive
         , toggleColumnSwap m.uiState.columnSwappable
         ]
 

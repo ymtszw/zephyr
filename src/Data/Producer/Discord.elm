@@ -14,7 +14,6 @@ full-privilege personal token for a Discord user. Discuss in private.
 import Data.ColorTheme exposing (oneDark)
 import Data.Item as Item exposing (Item)
 import Data.Producer.Base as Producer exposing (save)
-import Data.Producer.Realtime as Realtime exposing (Reply(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
 import Element.Background as BG
@@ -35,7 +34,6 @@ import Task exposing (Task)
 import Time exposing (Posix)
 import Url exposing (Url)
 import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareIconEl)
-import Websocket exposing (Endpoint(..))
 
 
 
@@ -434,21 +432,21 @@ commitToken discord =
             save Nothing
 
         TokenGiven token ->
-            ( [], Just (TokenReady token), identify token )
+            { items = [], newState = Just (TokenReady token), cmd = identify token }
 
         Hydrated "" _ ->
             -- TODO Insert confirmation phase later
             save Nothing
 
         Hydrated newToken pov ->
-            ( [], Just discord, identify newToken )
+            { items = [], newState = Just discord, cmd = identify newToken }
 
         Expired "" _ ->
             -- TODO Insert confirmation phase later
             save Nothing
 
         Expired newToken pov ->
-            ( [], Just discord, identify newToken )
+            { items = [], newState = Just discord, cmd = identify newToken }
 
         _ ->
             -- Otherwise token input is locked; this should not happen
@@ -459,7 +457,7 @@ handleIdentify : Discord -> User -> Producer.Yield Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            ( [], Just (Identified (NewSession token user)), hydrate token )
+            { items = [], newState = Just (Identified (NewSession token user)), cmd = hydrate token }
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -486,10 +484,10 @@ detectUserSwitch token pov user =
 
     else
         -- TODO Insert confirmation phase later
-        ( [ Item.textOnly ("New User: " ++ user.username) ]
-        , Just (Switching (NewSession token user) pov)
-        , hydrate token
-        )
+        { items = [ Item.textOnly ("New User: " ++ user.username) ]
+        , newState = Just (Switching (NewSession token user) pov)
+        , cmd = hydrate token
+        }
 
 
 handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Discord Msg
@@ -515,7 +513,7 @@ handleRehydrate discord =
     case discord of
         Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            ( [], Just (Rehydrating token pov), hydrate pov.token )
+            { items = [], newState = Just (Rehydrating token pov), cmd = hydrate pov.token }
 
         _ ->
             handleRehydrate discord
@@ -552,7 +550,7 @@ handleAPIError discord error =
 
         Switching _ pov ->
             -- Similar to Identified branch. Retry Identify with previous token
-            ( [], Just discord, identify pov.token )
+            { items = [], newState = Just discord, cmd = identify pov.token }
 
 
 

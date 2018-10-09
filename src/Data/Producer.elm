@@ -1,10 +1,9 @@
-module Data.Producer exposing (Msg(..), ProducerRegistry, Receipt, configsEl, encodeRegistry, initRegistry, receive, registryDecoder, reloadAll, update)
+module Data.Producer exposing (GrossYield, Msg(..), ProducerRegistry, configsEl, encodeRegistry, initRegistry, registryDecoder, reloadAll, update)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Item exposing (Item)
 import Data.Producer.Base exposing (Update, Yield)
 import Data.Producer.Discord as Discord exposing (Discord(..))
-import Data.Producer.Realtime exposing (Reply(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
 import Element.Background as BG
@@ -17,7 +16,6 @@ import Json.EncodeExtra as E
 import Process
 import Task
 import View.Parts exposing (scale12)
-import Websocket as WS exposing (Endpoint, Frame(..), Key(..))
 
 
 
@@ -112,18 +110,17 @@ saveStateAndBatchCmd key stateTagger msgTagger ( prevRegistry, prevCmd ) ( state
 
 
 
--- UPDATE, WS RECEIVER
+-- GROSS UPDATE
 
 
 type Msg
     = DiscordMsg Discord.Msg
 
 
-type alias Receipt msg =
-    { producerRegistry : ProducerRegistry
-    , wsState : WS.State msg
+type alias GrossYield msg =
+    { items : List Item
+    , producerRegistry : ProducerRegistry
     , cmd : Cmd msg
-    , yields : List Item
     }
 
 
@@ -132,13 +129,11 @@ type alias Receipt msg =
 Returns same data structure as `receive`.
 
 -}
-update : (Msg -> msg) -> Msg -> WS.State msg -> ProducerRegistry -> Receipt msg
-update msgTagger msg wsState producerRegistry =
+update : (Msg -> msg) -> Msg -> ProducerRegistry -> GrossYield msg
+update msgTagger msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
-            producerRegistry
-                |> updateProducer "discord" DiscordProducer (msgTagger << DiscordMsg) (unwrapDiscord >> Discord.update dMsg)
-                |> finalizeUpdate wsState
+            updateProducer "discord" DiscordProducer (msgTagger << DiscordMsg) (unwrapDiscord >> Discord.update dMsg) producerRegistry
 
 
 updateProducer :
@@ -147,7 +142,7 @@ updateProducer :
     -> (innerMsg -> msg)
     -> (Maybe Producer -> Yield a innerMsg)
     -> ProducerRegistry
-    -> ( List Item, ProducerRegistry, Cmd msg )
+    -> GrossYield msg
 updateProducer key stateTagger msgTagger producerUpdate producerRegistry =
     producerRegistry
         |> Dict.get key
@@ -161,19 +156,14 @@ updateProducerRegistry :
     -> (innerMsg -> msg)
     -> ProducerRegistry
     -> Yield a innerMsg
-    -> ( List Item, ProducerRegistry, Cmd msg )
-updateProducerRegistry key stateTagger msgTagger producerRegistry ( yields, updateResult, innerCmd ) =
-    case updateResult of
+    -> GrossYield msg
+updateProducerRegistry key stateTagger msgTagger producerRegistry yield =
+    case yield.newState of
         Just state ->
-            ( yields, Dict.insert key (stateTagger state) producerRegistry, Cmd.map msgTagger innerCmd )
+            GrossYield yield.items (Dict.insert key (stateTagger state) producerRegistry) (Cmd.map msgTagger yield.cmd)
 
         Nothing ->
-            ( yields, Dict.remove key producerRegistry, Cmd.map msgTagger innerCmd )
-
-
-finalizeUpdate : WS.State msg -> ( List Item, ProducerRegistry, Cmd msg ) -> Receipt msg
-finalizeUpdate wsState ( yields, producerRegistry, cmd ) =
-    Receipt producerRegistry wsState cmd yields
+            GrossYield yield.items (Dict.remove key producerRegistry) (Cmd.map msgTagger yield.cmd)
 
 
 unwrapDiscord : Maybe Producer -> Maybe Discord
@@ -184,55 +174,6 @@ unwrapDiscord producerMaybe =
 
         _ ->
             Nothing
-
-
-{-| Handles Websocket messages for realtime Producers using Websockets.
-
-Realtime Producers must expose Producer.Realtime.Handler type function
-that can handle arrived text messages.
-
--}
-receive : (Msg -> msg) -> ProducerRegistry -> WS.State msg -> Value -> Receipt msg
-receive msgTagger producerRegistry wsState val =
-    case WS.receive wsState val of
-        ( newWsState, MessageFrame key message ) ->
-            handleMessageFrame msgTagger producerRegistry newWsState key message
-
-        ( newWsState, ControlFrame cmd ) ->
-            Receipt producerRegistry newWsState cmd []
-
-
-handleMessageFrame : (Msg -> msg) -> ProducerRegistry -> WS.State msg -> Key -> String -> Receipt msg
-handleMessageFrame msgTagger producerRegistry wsState (Key key) message =
-    case Dict.get key producerRegistry of
-        Just producer ->
-            dispatch producer wsState (Key key) message
-                |> finalizeReceipt producerRegistry (Key key)
-
-        Nothing ->
-            Receipt producerRegistry wsState Cmd.none []
-
-
-type alias ProducerReceipt msg =
-    { producer : Producer
-    , wsState : WS.State msg
-    , cmd : Cmd msg
-    , yields : List Item
-    }
-
-
-dispatch : Producer -> WS.State msg -> Key -> String -> ProducerReceipt msg
-dispatch producer wsState key message =
-    case producer of
-        -- Currently there is no Realtime Producer
-        -- TODO Need to reimplement Instruction handler with wsState
-        _ ->
-            ProducerReceipt producer wsState Cmd.none []
-
-
-finalizeReceipt : ProducerRegistry -> Key -> ProducerReceipt msg -> Receipt msg
-finalizeReceipt producerRegistry (Key key) { producer, wsState, cmd, yields } =
-    Receipt (Dict.insert key producer producerRegistry) wsState cmd yields
 
 
 

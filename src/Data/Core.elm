@@ -11,7 +11,6 @@ import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId exposing (Generator)
 import Dict exposing (Dict)
 import Json.Decode exposing (Value)
-import Websocket
 
 
 
@@ -23,7 +22,6 @@ type alias Model =
     , producerRegistry : ProducerRegistry
     , idGen : Generator
     , navKey : Key
-    , wsState : Websocket.State Msg
     , uiState : UIState
     , env : Env
     }
@@ -58,14 +56,13 @@ init env navKey =
 initModel : Env -> Key -> Model
 initModel env navKey =
     if env.indexedDBAvailable then
-        Model
-            ColumnStore.init
-            Producer.initRegistry
-            UniqueId.init
-            navKey
-            Websocket.init
-            defaultUIState
-            env
+        { columnStore = ColumnStore.init
+        , producerRegistry = Producer.initRegistry
+        , idGen = UniqueId.init
+        , navKey = navKey
+        , uiState = defaultUIState
+        , env = env
+        }
 
     else
         welcomeModel env navKey
@@ -83,14 +80,13 @@ welcomeModel env navKey =
             UniqueId.genAndMap "column" UniqueId.init <|
                 \newId -> ColumnStore.add (Column.welcome newId) ColumnStore.init
     in
-    Model
-        columnStore
-        Producer.initRegistry
-        idGen
-        navKey
-        Websocket.init
-        defaultUIState
-        env
+    { columnStore = columnStore
+    , producerRegistry = Producer.initRegistry
+    , idGen = idGen
+    , navKey = navKey
+    , uiState = defaultUIState
+    , env = env
+    }
 
 
 
@@ -109,6 +105,5 @@ type Msg
     | DragEnter Int
     | DragEnd
     | Load Value
-    | WSReceive Value
     | ToggleConfig Bool
     | ProducerCtrl Producer.Msg
