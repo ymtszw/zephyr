@@ -128,4 +128,4 @@ pushToFirstColumn idGen items columnStore =
                 ( id, newIdGen ) =
                     Data.UniqueId.gen "column" idGen
             in
-            ( add (Column id (List.reverse items) [] False) columnStore, newIdGen )
+            ( add (Column id (List.reverse items) Array.empty False) columnStore, newIdGen )

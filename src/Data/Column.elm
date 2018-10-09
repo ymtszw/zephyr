@@ -1,5 +1,6 @@
 module Data.Column exposing (Column, decoder, encoder, welcome)
 
+import Array exposing (Array)
 import Data.Item as Item exposing (Item)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -10,14 +11,14 @@ import Json.EncodeExtra as E
 type alias Column =
     { id : String
     , items : List Item
-    , filters : List Filter
+    , filters : Array Filter
     , configOpen : Bool
     }
 
 
 {-| Filter to narrow down Items flowing into a Column.
 
-A List of Filters works in logical "and" manner.
+An Array of Filters works in logical "and" manner.
 If newly arriving Item meets ALL Filters in the list,
 it enters the Column. Otherwise rejected.
 
@@ -26,7 +27,7 @@ type Filter
     = ByMessage String
     | ByMedia MediaType
     | ByMetadata MetadataFilter
-    | Or (List Filter)
+    | Or (Array Filter)
 
 
 type MediaType
@@ -49,8 +50,8 @@ decoder =
         (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
         (D.oneOf
-            [ D.field "filters" (D.list filterDecoder)
-            , D.succeed [] -- Migration
+            [ D.field "filters" (D.array filterDecoder)
+            , D.succeed Array.empty -- Migration
             ]
         )
         (D.succeed False)
@@ -62,7 +63,7 @@ filterDecoder =
         [ D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
         , D.tagged "ByMetadata" ByMetadata metadataFilterDecoder
-        , D.tagged "Or" Or (D.list (D.lazy (\_ -> filterDecoder)))
+        , D.tagged "Or" Or (D.array (D.lazy (\_ -> filterDecoder)))
         ]
 
 
@@ -87,7 +88,7 @@ encoder { id, items, filters } =
     E.object
         [ ( "id", E.string id )
         , ( "items", E.list Item.encoder items )
-        , ( "filters", E.list encodeFilter filters )
+        , ( "filters", E.array encodeFilter filters )
         ]
 
 
@@ -104,7 +105,7 @@ encodeFilter filter =
             E.tagged "ByMetadata" (encodeMetadataFilter metadataFilter)
 
         Or filters ->
-            E.tagged "Or" (E.list encodeFilter filters)
+            E.tagged "Or" (E.array encodeFilter filters)
 
 
 encodeMediaType : MediaType -> E.Value
@@ -151,6 +152,6 @@ welcome id =
         ]
             |> List.repeat 2
             |> List.concat
-    , filters = []
+    , filters = Array.empty
     , configOpen = False
     }
