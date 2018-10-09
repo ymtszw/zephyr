@@ -1,4 +1,4 @@
-module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), UIState, init, welcomeModel)
+module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), ViewState, init, welcomeModel)
 
 import Array exposing (Array)
 import Browser exposing (UrlRequest)
@@ -22,12 +22,12 @@ type alias Model =
     , producerRegistry : ProducerRegistry
     , idGen : Generator
     , navKey : Key
-    , uiState : UIState
+    , viewState : ViewState
     , env : Env
     }
 
 
-type alias UIState =
+type alias ViewState =
     { configOpen : Bool
     , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
@@ -60,7 +60,7 @@ initModel env navKey =
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueId.init
         , navKey = navKey
-        , uiState = defaultUIState
+        , viewState = defaultUIState
         , env = env
         }
 
@@ -68,9 +68,9 @@ initModel env navKey =
         welcomeModel env navKey
 
 
-defaultUIState : UIState
+defaultUIState : ViewState
 defaultUIState =
-    UIState False False Nothing
+    ViewState False False Nothing
 
 
 welcomeModel : Env -> Key -> Model
@@ -84,7 +84,7 @@ welcomeModel env navKey =
     , producerRegistry = Producer.initRegistry
     , idGen = idGen
     , navKey = navKey
-    , uiState = defaultUIState
+    , viewState = defaultUIState
     , env = env
     }
 

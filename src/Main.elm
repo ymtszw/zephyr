@@ -38,7 +38,7 @@ adjustMaxHeight =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ uiState, env } as m) =
+update msg ({ viewState, env } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -61,14 +61,14 @@ update msg ({ uiState, env } as m) =
             persist ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none )
 
         ToggleColumnSwappable bool ->
-            ( { m | uiState = { uiState | columnSwappable = bool } }, Cmd.none )
+            ( { m | viewState = { viewState | columnSwappable = bool } }, Cmd.none )
 
         DragStart originalIndex grabbedId ->
             let
                 columnSwap =
                     ColumnSwap grabbedId originalIndex m.columnStore.order
             in
-            ( { m | uiState = { uiState | columnSwapMaybe = Just columnSwap } }, Cmd.none )
+            ( { m | viewState = { viewState | columnSwapMaybe = Just columnSwap } }, Cmd.none )
 
         DragEnter dest ->
             onDragEnter m dest
@@ -76,7 +76,7 @@ update msg ({ uiState, env } as m) =
         DragEnd ->
             -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
             -- So we always turn off swap mode at dragend
-            persist ( { m | uiState = { uiState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
+            persist ( { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
 
         Load val ->
             -- Persist on Load, migrating to new encoding format if any
@@ -85,7 +85,7 @@ update msg ({ uiState, env } as m) =
                 |> persist
 
         ToggleConfig opened ->
-            ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
+            ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
             Producer.update pctrl m.producerRegistry
@@ -111,7 +111,7 @@ onDragEnter m dest =
     -- so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
     -- However currently there is a bug that prevents --debug compilation
     -- when Arrays are passed in messages. See https://github.com/elm/compiler/issues/1753
-    case m.uiState.columnSwapMaybe of
+    case m.viewState.columnSwapMaybe of
         Just swap ->
             let
                 newOrder =
@@ -286,7 +286,7 @@ sub m =
     Sub.batch
         [ onResize Resize
         , Ports.loadFromJs Load
-        , toggleColumnSwap m.uiState.columnSwappable
+        , toggleColumnSwap m.viewState.columnSwappable
         ]
 
 

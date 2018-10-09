@@ -4,7 +4,7 @@ import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Core exposing (ColumnSwap, Model, Msg(..), UIState)
+import Data.Core exposing (ColumnSwap, Model, Msg(..), ViewState)
 import Data.Item exposing (Item, Media(..), Metadata(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
@@ -30,7 +30,7 @@ import View.Parts exposing (octiconEl, scale12, squareIconEl)
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ El.layout (dragEventHandlers m.uiState.columnSwapMaybe) (bodyEl m)
+    [ El.layout (dragEventHandlers m.viewState.columnSwapMaybe) (bodyEl m)
     , fancyScroll
     ]
 
@@ -40,7 +40,7 @@ bodyEl model =
     backgroundEl <|
         El.row [ El.width El.fill, El.height El.fill ]
             [ sidebarEl model
-            , if model.uiState.configOpen then
+            , if model.viewState.configOpen then
                 configPaneEl model
 
               else
@@ -88,7 +88,7 @@ dragEventHandlers columnSwapMaybe =
 
 
 sidebarEl : Model -> Element Msg
-sidebarEl { columnStore, uiState, env } =
+sidebarEl { columnStore, viewState, env } =
     El.column
         [ El.width (El.px 50)
         , El.height (El.fill |> El.maximum env.clientHeight)
@@ -96,7 +96,7 @@ sidebarEl { columnStore, uiState, env } =
         , BG.color oneDark.bg
         ]
         [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
-        , El.el [ El.width El.fill, El.alignBottom ] (otherButtonsEl uiState)
+        , El.el [ El.width El.fill, El.alignBottom ] (otherButtonsEl viewState)
         ]
 
 
@@ -139,20 +139,20 @@ columnAddButtonEl =
             { onPress = Just AddColumn, label = El.text "+" }
 
 
-otherButtonsEl : UIState -> Element Msg
-otherButtonsEl uiState =
+otherButtonsEl : ViewState -> Element Msg
+otherButtonsEl viewState =
     El.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
         [ Element.Input.button
             [ El.width El.fill
             , El.paddingXY 0 7
             , BD.rounded 10
-            , if uiState.configOpen then
+            , if viewState.configOpen then
                 BG.color oneDark.main
 
               else
                 El.mouseOver [ BG.color oneDark.main ]
             ]
-            { onPress = Just (ToggleConfig (not uiState.configOpen))
+            { onPress = Just (ToggleConfig (not viewState.configOpen))
             , label = octiconEl Octicons.gear
             }
         , El.link
@@ -172,16 +172,16 @@ otherButtonsEl uiState =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columnStore, uiState, env } =
+columnsEl { columnStore, viewState, env } =
     Element.Keyed.row
         [ El.width El.fill
         , El.height (El.fill |> El.maximum env.clientHeight)
         , Font.regular
         ]
-        (ColumnStore.indexedMap (columnKeyEl env.clientHeight uiState) columnStore)
+        (ColumnStore.indexedMap (columnKeyEl env.clientHeight viewState) columnStore)
 
 
-columnKeyEl : Int -> UIState -> Int -> Column -> ( String, Element Msg )
+columnKeyEl : Int -> ViewState -> Int -> Column -> ( String, Element Msg )
 columnKeyEl clientHeight { columnSwappable, columnSwapMaybe } index column =
     ( "column_" ++ column.id
     , case columnSwapMaybe of
