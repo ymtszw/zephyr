@@ -117,10 +117,10 @@ type Msg
     = DiscordMsg Discord.Msg
 
 
-type alias GrossYield msg =
+type alias GrossYield =
     { items : List Item
     , producerRegistry : ProducerRegistry
-    , cmd : Cmd msg
+    , cmd : Cmd Msg
     }
 
 
@@ -129,20 +129,20 @@ type alias GrossYield msg =
 Returns same data structure as `receive`.
 
 -}
-update : (Msg -> msg) -> Msg -> ProducerRegistry -> GrossYield msg
-update msgTagger msg producerRegistry =
+update : Msg -> ProducerRegistry -> GrossYield
+update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
-            updateProducer "discord" DiscordProducer (msgTagger << DiscordMsg) (unwrapDiscord >> Discord.update dMsg) producerRegistry
+            updateProducer "discord" DiscordProducer DiscordMsg (unwrapDiscord >> Discord.update dMsg) producerRegistry
 
 
 updateProducer :
     String
-    -> (a -> Producer)
-    -> (innerMsg -> msg)
-    -> (Maybe Producer -> Yield a innerMsg)
+    -> (state -> Producer)
+    -> (msg -> Msg)
+    -> (Maybe Producer -> Yield state msg)
     -> ProducerRegistry
-    -> GrossYield msg
+    -> GrossYield
 updateProducer key stateTagger msgTagger producerUpdate producerRegistry =
     producerRegistry
         |> Dict.get key
@@ -152,11 +152,11 @@ updateProducer key stateTagger msgTagger producerUpdate producerRegistry =
 
 updateProducerRegistry :
     String
-    -> (a -> Producer)
-    -> (innerMsg -> msg)
+    -> (state -> Producer)
+    -> (msg -> Msg)
     -> ProducerRegistry
-    -> Yield a innerMsg
-    -> GrossYield msg
+    -> Yield state msg
+    -> GrossYield
 updateProducerRegistry key stateTagger msgTagger producerRegistry yield =
     case yield.newState of
         Just state ->

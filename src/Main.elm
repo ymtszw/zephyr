@@ -88,7 +88,7 @@ update msg ({ uiState, env } as m) =
             ( { m | uiState = { uiState | configOpen = opened } }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            Producer.update ProducerCtrl pctrl m.producerRegistry
+            Producer.update pctrl m.producerRegistry
                 |> applyProducerYield m
                 |> persist
 
@@ -256,11 +256,11 @@ reloadProducers ( m, cmd ) =
     ( { m | producerRegistry = newRegistry }, Cmd.batch [ Cmd.map ProducerCtrl reloadCmd, cmd ] )
 
 
-applyProducerYield : Model -> Producer.GrossYield Msg -> ( Model, Cmd Msg )
+applyProducerYield : Model -> Producer.GrossYield -> ( Model, Cmd Msg )
 applyProducerYield model gy =
     case gy.items of
         [] ->
-            ( { model | producerRegistry = gy.producerRegistry }, gy.cmd )
+            ( { model | producerRegistry = gy.producerRegistry }, Cmd.map ProducerCtrl gy.cmd )
 
         nonEmptyYields ->
             let
@@ -273,7 +273,7 @@ applyProducerYield model gy =
                 , producerRegistry = gy.producerRegistry
                 , idGen = newIdGen
               }
-            , gy.cmd
+            , Cmd.map ProducerCtrl gy.cmd
             )
 
 
