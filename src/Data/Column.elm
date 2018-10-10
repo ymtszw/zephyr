@@ -1,4 +1,4 @@
-module Data.Column exposing (Column, Filter, decoder, encoder, welcome)
+module Data.Column exposing (Column, Filter, decoder, encoder, foldFilter, mapFilter, welcome)
 
 import Array exposing (Array)
 import Data.Item as Item exposing (Item)
@@ -168,3 +168,24 @@ welcome id =
     , filters = Array.empty
     , configOpen = False
     }
+
+
+
+-- FILTER APIs
+
+
+foldFilter : (FilterAtom -> a -> a) -> a -> Filter -> a
+foldFilter reducer acc filter =
+    case filter of
+        Singular filterAtom ->
+            reducer filterAtom acc
+
+        Or filterAtom otherFilter ->
+            foldFilter reducer (reducer filterAtom acc) otherFilter
+
+
+mapFilter : (FilterAtom -> a) -> Filter -> List a
+mapFilter transform filter =
+    filter
+        |> foldFilter (\fa acc -> transform fa :: acc) []
+        |> List.reverse
