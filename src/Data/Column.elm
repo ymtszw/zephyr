@@ -44,7 +44,6 @@ type MetadataFilter
     = IsDiscord
     | OfDiscordGuild String
     | OfDiscordChannel String
-    | OfDiscordUser String
     | IsDefault
 
 
@@ -89,7 +88,6 @@ metadataFilterDecoder =
         [ D.tag "IsDiscord" IsDiscord
         , D.tagged "OfDiscordGuild" OfDiscordGuild D.string
         , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
-        , D.tagged "OfDiscordUser" OfDiscordUser D.string
         , D.tag "IsDefault" IsDefault
         ]
 
@@ -150,9 +148,6 @@ encodeMetadataFilter metadataFilter =
 
         OfDiscordChannel channelId ->
             E.tagged "OfDiscordChannel" (E.string channelId)
-
-        OfDiscordUser userId ->
-            E.tagged "OfDiscordUser" (E.string userId)
 
         IsDefault ->
             E.tag "IsDefault"
