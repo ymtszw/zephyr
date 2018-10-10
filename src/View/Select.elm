@@ -64,12 +64,16 @@ el :
     -> List a
     -> Element Msg
 el { id, onSelectMsg, selectedOption, noMsgOptionEl } state options =
+    let
+        opened =
+            isOpen id state
+    in
     El.row [ El.width El.fill, Font.size (scale12 2) ]
         [ El.el
             [ El.width El.fill
-            , El.below (ite (isOpen id state) (optionsEl onSelectMsg noMsgOptionEl options) El.none)
+            , El.below (ite opened (optionsEl onSelectMsg noMsgOptionEl options) El.none)
             ]
-            (headerEl (SelectToggle id (not (isOpen id state))) selectedOption noMsgOptionEl)
+            (headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
         ]
 
 

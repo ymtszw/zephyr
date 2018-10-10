@@ -24,10 +24,14 @@ it enters the Column. Otherwise rejected.
 
 -}
 type Filter
+    = Singular FilterAtom
+    | Or FilterAtom Filter
+
+
+type FilterAtom
     = ByMessage String
     | ByMedia MediaType
     | ByMetadata MetadataFilter
-    | Or (List Filter)
 
 
 type MediaType
@@ -60,10 +64,17 @@ decoder =
 filterDecoder : Decoder Filter
 filterDecoder =
     D.oneOf
+        [ D.tagged "Singular" Singular filterAtomDecoder
+        , D.tagged2 "Or" Or filterAtomDecoder (D.lazy (\_ -> filterDecoder))
+        ]
+
+
+filterAtomDecoder : Decoder FilterAtom
+filterAtomDecoder =
+    D.oneOf
         [ D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
         , D.tagged "ByMetadata" ByMetadata metadataFilterDecoder
-        , D.tagged "Or" Or (D.list (D.lazy (\_ -> filterDecoder)))
         ]
 
 
@@ -95,6 +106,16 @@ encoder { id, items, filters } =
 encodeFilter : Filter -> E.Value
 encodeFilter filter =
     case filter of
+        Singular filterAtom ->
+            E.tagged "Singular" (encodeFilterAtom filterAtom)
+
+        Or filterAtom otherFilter ->
+            E.tagged2 "Or" (encodeFilterAtom filterAtom) (encodeFilter otherFilter)
+
+
+encodeFilterAtom : FilterAtom -> E.Value
+encodeFilterAtom filterAtom =
+    case filterAtom of
         ByMessage query ->
             E.tagged "ByMessage" (E.string query)
 
@@ -103,9 +124,6 @@ encodeFilter filter =
 
         ByMetadata metadataFilter ->
             E.tagged "ByMetadata" (encodeMetadataFilter metadataFilter)
-
-        Or filters ->
-            E.tagged "Or" (E.list encodeFilter filters)
 
 
 encodeMediaType : MediaType -> E.Value
