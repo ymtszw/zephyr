@@ -5,11 +5,12 @@ import Data.Msg exposing (Msg(..))
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
+import Element.Font as Font
 import Element.Input
 import Extra exposing (ite)
 import Octicons
 import Set exposing (Set)
-import View.Parts exposing (octiconEl)
+import View.Parts exposing (octiconFreeSizeEl, scale12)
 
 
 {-| Global state of select input elements.
@@ -63,7 +64,7 @@ el :
     -> List a
     -> Element Msg
 el { id, onSelectMsg, selectedOption, noMsgOptionEl } state options =
-    El.row [ El.width El.fill ]
+    El.row [ El.width El.fill, Font.size (scale12 2) ]
         [ El.el
             [ El.width El.fill
             , El.below (ite (isOpen id state) (optionsEl onSelectMsg noMsgOptionEl options) El.none)
@@ -84,16 +85,36 @@ headerEl onPress selectedOption noMsgOptionEl =
         , label =
             El.row [ El.width El.fill ]
                 [ Maybe.withDefault (El.text "Select...") (Maybe.map noMsgOptionEl selectedOption)
-                , El.el [ El.alignRight, BG.color oneDark.sub ] (octiconEl Octicons.chevronDown)
+                , El.el [ El.alignRight, BG.color oneDark.sub ] (octiconFreeSizeEl 20 Octicons.chevronDown)
                 ]
         }
 
 
 optionsEl : (a -> Msg) -> (a -> Element Msg) -> List a -> Element Msg
 optionsEl onSelectMsg noMsgOptionEl options =
-    List.map noMsgOptionEl options
+    options
+        |> List.map
+            (\option ->
+                Element.Input.button
+                    [ El.width El.fill
+                    , El.padding 5
+                    , El.mouseOver [ BG.color oneDark.sub ]
+                    ]
+                    { onPress = Just (SelectPick (onSelectMsg option))
+                    , label = El.el [ El.alignLeft ] (noMsgOptionEl option)
+                    }
+            )
         |> El.column
             [ El.width El.fill
-            , El.paddingXY 10 3
+            , El.paddingXY 0 5
+            , BD.width 1
+            , BD.rounded 5
+            , BD.color oneDark.bd
+            , BD.shadow
+                { offset = ( 5.0, 5.0 )
+                , blur = 10.0
+                , size = 0.0
+                , color = oneDark.bg
+                }
             , BG.color oneDark.note
             ]
