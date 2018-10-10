@@ -1,4 +1,4 @@
-module Data.Column exposing (Column, decoder, encoder, welcome)
+module Data.Column exposing (Column, Filter, decoder, encoder, welcome)
 
 import Array exposing (Array)
 import Data.Item as Item exposing (Item)
@@ -27,7 +27,7 @@ type Filter
     = ByMessage String
     | ByMedia MediaType
     | ByMetadata MetadataFilter
-    | Or (Array Filter)
+    | Or (List Filter)
 
 
 type MediaType
@@ -63,7 +63,7 @@ filterDecoder =
         [ D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
         , D.tagged "ByMetadata" ByMetadata metadataFilterDecoder
-        , D.tagged "Or" Or (D.array (D.lazy (\_ -> filterDecoder)))
+        , D.tagged "Or" Or (D.list (D.lazy (\_ -> filterDecoder)))
         ]
 
 
@@ -105,7 +105,7 @@ encodeFilter filter =
             E.tagged "ByMetadata" (encodeMetadataFilter metadataFilter)
 
         Or filters ->
-            E.tagged "Or" (E.array encodeFilter filters)
+            E.tagged "Or" (E.list encodeFilter filters)
 
 
 encodeMediaType : MediaType -> E.Value
