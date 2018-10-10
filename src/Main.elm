@@ -7,7 +7,8 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Core as Core exposing (ColumnSwap, Env, Model, Msg(..), welcomeModel)
+import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
+import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
 import Json.Decode as D exposing (Decoder)
@@ -24,7 +25,7 @@ import View
 
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
-    Core.init env navKey
+    Model.init env navKey
         |> Tuple.mapSecond (\cmd -> Cmd.batch [ cmd, adjustMaxHeight ])
 
 

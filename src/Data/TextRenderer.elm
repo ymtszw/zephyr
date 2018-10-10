@@ -1,7 +1,7 @@
 module Data.TextRenderer exposing (StringOrUrl(..), TextRenderer, default, parseIntoStringOrUrlList)
 
 import Data.ColorTheme exposing (ColorTheme)
-import Data.Core exposing (Msg)
+import Data.Msg exposing (Msg)
 import Element exposing (Element)
 import Element.Font as Font
 import Parser exposing ((|.), (|=), Parser, Step(..))

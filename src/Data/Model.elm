@@ -1,26 +1,19 @@
-module Data.Core exposing (ColumnSwap, Env, Model, Msg(..), ViewState, init, welcomeModel)
+module Data.Model exposing (ColumnSwap, Env, Model, ViewState, init, welcomeModel)
 
 import Array exposing (Array)
-import Browser exposing (UrlRequest)
-import Browser.Dom exposing (Viewport)
 import Browser.Navigation exposing (Key)
-import Data.Column as Column exposing (Column)
+import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Item exposing (Item)
+import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
-import Data.UniqueId as UniqueId exposing (Generator)
-import Dict exposing (Dict)
-import Json.Decode exposing (Value)
-
-
-
--- MODEL
+import Data.UniqueId as UniqueId
+import View.Select
 
 
 type alias Model =
     { columnStore : ColumnStore
     , producerRegistry : ProducerRegistry
-    , idGen : Generator
+    , idGen : UniqueId.Generator
     , navKey : Key
     , viewState : ViewState
     , env : Env
@@ -31,6 +24,7 @@ type alias ViewState =
     { configOpen : Bool
     , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
+    , selectState : View.Select.State
     }
 
 
@@ -60,7 +54,7 @@ initModel env navKey =
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueId.init
         , navKey = navKey
-        , viewState = defaultUIState
+        , viewState = defaultViewState
         , env = env
         }
 
@@ -68,9 +62,13 @@ initModel env navKey =
         welcomeModel env navKey
 
 
-defaultUIState : ViewState
-defaultUIState =
-    ViewState False False Nothing
+defaultViewState : ViewState
+defaultViewState =
+    { configOpen = False
+    , columnSwappable = False
+    , columnSwapMaybe = Nothing
+    , selectState = View.Select.init
+    }
 
 
 welcomeModel : Env -> Key -> Model
@@ -84,27 +82,6 @@ welcomeModel env navKey =
     , producerRegistry = Producer.initRegistry
     , idGen = idGen
     , navKey = navKey
-    , viewState = defaultUIState
+    , viewState = defaultViewState
     , env = env
     }
-
-
-
--- MSG
-
-
-type Msg
-    = NoOp
-    | Resize Int Int
-    | GetViewport Viewport
-    | LinkClicked UrlRequest
-    | AddColumn
-    | DelColumn Int
-    | ToggleColumnSwappable Bool
-    | DragStart Int String
-    | DragEnter Int
-    | DragEnd
-    | Load Value
-    | ToggleConfig Bool
-    | ToggleColumnConfig String Bool
-    | ProducerCtrl Producer.Msg
