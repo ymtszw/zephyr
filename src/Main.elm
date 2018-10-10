@@ -17,6 +17,7 @@ import Ports
 import Task
 import Url
 import View
+import View.Select
 
 
 
@@ -54,6 +55,15 @@ update msg ({ viewState, env } as m) =
 
         LinkClicked (External url) ->
             ( m, Nav.load url )
+
+        SelectToggle sId True ->
+            ( { m | viewState = { viewState | selectState = View.Select.open sId viewState.selectState } }, Cmd.none )
+
+        SelectToggle _ False ->
+            ( { m | viewState = { viewState | selectState = View.Select.close } }, Cmd.none )
+
+        SelectPick actualMsg ->
+            update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
 
         AddColumn ->
             persist ( addColumn m, Cmd.none )
