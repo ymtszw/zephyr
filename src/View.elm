@@ -374,7 +374,7 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
         discordMaterial =
             Producer.discordFilterAtomMaterial m.producerRegistry
     in
-    El.row [ El.width El.fill ]
+    El.row [ El.width El.fill, El.spacing 3 ]
         [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "variableInput") filterAtomMaybe
         ]
@@ -382,14 +382,15 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
 
 filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMaybe =
-    Select.el
-        { id = selectId
-        , onSelect = tagger
-        , selectedOption = filterAtomMaybe
-        , noMsgOptionEl = filterAtomTypeOptionEl
-        }
-        selectState
-        (availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe)
+    El.el [ El.width (El.fill |> El.maximum 150) ] <|
+        Select.el
+            { id = selectId
+            , onSelect = tagger
+            , selectedOption = filterAtomMaybe
+            , noMsgOptionEl = filterAtomTypeOptionEl
+            }
+            selectState
+            (availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe)
 
 
 filterAtomTypeOptionEl : FilterAtom -> Element msg

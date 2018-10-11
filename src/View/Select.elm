@@ -105,11 +105,9 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
     options
         |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
         |> El.column
-            [ El.width (El.shrink |> El.minimum 0)
-            , El.height (El.fill |> El.minimum 0 |> El.maximum 300)
-            , El.scrollbarY
-            , El.clipX
+            [ El.width (El.fill |> El.minimum 0)
             , El.paddingXY 0 5
+            , El.scrollbarY
             , BD.width 1
             , BD.rounded 5
             , BD.color oneDark.bd
@@ -121,6 +119,9 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
                 }
             , BG.color oneDark.note
             ]
+        |> El.el
+            [ El.height (El.fill |> El.minimum 0 |> El.maximum 300)
+            ]
 
 
 optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> a -> Element Msg
@@ -131,7 +132,7 @@ optionEl onSelect noMsgOptionEl selectedOption option =
     in
     El.el
         (selectedStyle
-            ++ [ El.width (El.fill |> El.minimum 80)
+            ++ [ El.width (El.fill |> El.minimum 0)
                , El.padding 5
                , El.mouseOver [ BG.color oneDark.sub ]
                , El.pointer
