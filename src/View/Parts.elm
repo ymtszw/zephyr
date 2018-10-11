@@ -58,8 +58,8 @@ octiconFreeSizeEl size octicon =
         |> El.html
 
 
-squareIconEl : String -> Maybe String -> Element msg
-squareIconEl name urlMaybe =
+squareIconEl : Int -> String -> Maybe String -> Element msg
+squareIconEl size name urlMaybe =
     let
         ( attr, el ) =
             case urlMaybe of
@@ -71,8 +71,8 @@ squareIconEl name urlMaybe =
     in
     El.el
         [ BG.color oneDark.bg
-        , El.width (El.px 50)
-        , El.height (El.px 50)
+        , El.width (El.px size)
+        , El.height (El.px size)
         , El.alignTop
         , BD.rounded 5
         , El.htmlAttribute (Html.Attributes.title name)

@@ -1,4 +1,9 @@
-module Data.Producer.Discord exposing (Channel, Discord(..), FilterAtomMaterial, Guild, Msg(..), configEl, decoder, encode, filterAtomMaterial, reload, update)
+module Data.Producer.Discord exposing
+    ( Discord(..), Guild, Channel, Msg(..), decoder, encode
+    , reload, update, configEl
+    , imageUrl, imageUrlNoFallback
+    , FilterAtomMaterial, filterAtomMaterial
+    )
 
 {-| Polling Producer for Discord.
 
@@ -8,6 +13,26 @@ Using Discord's RESTful APIs to retrieve Items.
 
 Note that it involves a little "shady" work on retrieving
 full-privilege personal token for a Discord user. Discuss in private.
+
+
+## Types
+
+@docs Discord, Guild, Channel, Msg, decoder, encode
+
+
+## Component APIs
+
+@docs reload, update, configEl
+
+
+## Runtime APIs
+
+@docs imageUrl, imageUrlNoFallback
+
+
+## Filter related
+
+@docs FilterAtomMaterial, filterAtomMaterial
 
 -}
 
@@ -848,7 +873,7 @@ guildsEl rotating pov =
 
 guildIconEl : Guild -> Element Msg
 guildIconEl guild =
-    squareIconEl guild.name (Maybe.map (I >> imageUrl (Just "64")) guild.icon)
+    squareIconEl 50 guild.name (Maybe.map (I >> imageUrl (Just "64")) guild.icon)
 
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
@@ -878,6 +903,11 @@ type ImageOrDiscriminator
 iod : String -> Maybe Image -> ImageOrDiscriminator
 iod disc imageMaybe =
     imageMaybe |> Maybe.map I |> Maybe.withDefault (D disc)
+
+
+imageUrlNoFallback : Maybe String -> Image -> String
+imageUrlNoFallback sizeMaybe image =
+    imageUrl sizeMaybe (I image)
 
 
 imageUrl : Maybe String -> ImageOrDiscriminator -> String

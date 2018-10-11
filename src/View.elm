@@ -590,10 +590,10 @@ itemAvatarEl : Item -> Element Msg
 itemAvatarEl item =
     case item.metadata of
         DiscordMetadata dmd ->
-            squareIconEl dmd.userName dmd.userAvatarUrlMaybe
+            squareIconEl 50 dmd.userName dmd.userAvatarUrlMaybe
 
         DefaultMetadata ->
-            squareIconEl "Zephyr" Nothing
+            squareIconEl 50 "Zephyr" Nothing
 
 
 itemContentsEl : Item -> Element Msg

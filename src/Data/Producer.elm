@@ -1,7 +1,6 @@
 module Data.Producer exposing
-    ( ProducerRegistry, Msg(..), GrossYield
+    ( ProducerRegistry, Msg(..), GrossYield, encodeRegistry, registryDecoder
     , initRegistry, reloadAll, update, configsEl
-    , encodeRegistry, registryDecoder
     , discordFilterAtomMaterial
     )
 
@@ -10,17 +9,12 @@ module Data.Producer exposing
 
 ## Types
 
-@docs ProducerRegistry, Msg, GrossYield
+@docs ProducerRegistry, Msg, GrossYield, encodeRegistry, registryDecoder
 
 
 ## Component APIs
 
 @docs initRegistry, reloadAll, update, configsEl
-
-
-## En/Decoders
-
-@docs encodeRegistry, registryDecoder
 
 
 ## Runtime APIs

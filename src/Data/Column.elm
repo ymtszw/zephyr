@@ -1,6 +1,5 @@
 module Data.Column exposing
-    ( Column, Filter(..), FilterAtom(..), MediaFilter(..), MetadataFilter(..), welcome
-    , encoder, decoder
+    ( Column, Filter(..), FilterAtom(..), MediaFilter(..), MetadataFilter(..), welcome, encoder, decoder
     , foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter
     )
 
@@ -9,12 +8,7 @@ module Data.Column exposing
 
 ## Types
 
-@docs Column, Filter, FilterAtom, MediaFilter, MetadataFilter, welcome
-
-
-## En/Decoder
-
-@docs encoder, decoder
+@docs Column, Filter, FilterAtom, MediaFilter, MetadataFilter, welcome, encoder, decoder
 
 
 ## Filter APIs
