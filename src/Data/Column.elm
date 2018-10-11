@@ -30,6 +30,7 @@ type alias Column =
     , items : List Item
     , filters : Array Filter
     , configOpen : Bool
+    , deleteGate : String
     }
 
 
@@ -75,7 +76,15 @@ type MetadataFilter
 
 decoder : Decoder Column
 decoder =
-    D.map4 Column
+    D.map3
+        (\id items filters ->
+            { id = id
+            , items = items
+            , filters = filters
+            , configOpen = False
+            , deleteGate = ""
+            }
+        )
         (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
         (D.oneOf
@@ -83,7 +92,6 @@ decoder =
             , D.succeed Array.empty -- Migration
             ]
         )
-        (D.succeed False)
 
 
 filterDecoder : Decoder Filter
@@ -193,6 +201,7 @@ welcome id =
             |> List.concat
     , filters = Array.empty
     , configOpen = False
+    , deleteGate = ""
     }
 
 

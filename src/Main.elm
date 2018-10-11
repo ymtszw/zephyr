@@ -100,7 +100,7 @@ update msg ({ viewState, env } as m) =
             ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
 
         ToggleColumnConfig cId bool ->
-            ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | configOpen = bool }) m.columnStore }, Cmd.none )
+            ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | configOpen = bool, deleteGate = "" }) m.columnStore }, Cmd.none )
 
         AddColumnFilter cId filter ->
             persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.push filter c.filters }) m.columnStore }, Cmd.none )
@@ -110,6 +110,9 @@ update msg ({ viewState, env } as m) =
 
         DelColumnFilter cId index ->
             persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.removeAt index c.filters }) m.columnStore }, Cmd.none )
+
+        ColumnDeleteGateInput cId text ->
+            ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | deleteGate = text }) m.columnStore }, Cmd.none )
 
         ProducerCtrl pctrl ->
             Producer.update pctrl m.producerRegistry

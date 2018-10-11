@@ -188,7 +188,7 @@ columnKeyEl m index column =
     Tuple.pair ("column_" ++ column.id) <|
         case m.viewState.columnSwapMaybe of
             Nothing ->
-                notDraggedColumnEl m column <|
+                notDraggedColumnEl m index column <|
                     if m.viewState.columnSwappable then
                         [ El.htmlAttribute (draggable "true")
                         , El.htmlAttribute (style "cursor" "all-scroll")
@@ -203,16 +203,16 @@ columnKeyEl m index column =
                     draggedColumnEl m.env.clientHeight
 
                 else
-                    notDraggedColumnEl m column <|
+                    notDraggedColumnEl m index column <|
                         [ El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter index, True ))) ]
 
 
-notDraggedColumnEl : Model -> Column -> List (El.Attribute Msg) -> Element Msg
-notDraggedColumnEl m column attrs =
+notDraggedColumnEl : Model -> Int -> Column -> List (El.Attribute Msg) -> Element Msg
+notDraggedColumnEl m index column attrs =
     El.column
         (columnBaseAttrs m.env.clientHeight ++ attrs)
         [ columnHeaderEl column
-        , columnConfigEl m column
+        , columnConfigEl m index column
         , column.items
             |> List.map itemEl
             |> El.column
@@ -271,18 +271,38 @@ columnHeaderEl column =
         ]
 
 
-columnConfigEl : Model -> Column -> Element Msg
-columnConfigEl m column =
+columnConfigEl : Model -> Int -> Column -> Element Msg
+columnConfigEl m index column =
     if column.configOpen then
-        El.el
+        El.column
             [ El.width El.fill
-            , BG.color oneDark.sub
             , El.padding 5
+            , El.spacing 3
+            , BG.color oneDark.sub
             ]
-            (filtersEl m column)
+            [ columnConfigTitleEl "Filter Rules"
+            , filtersEl m column
+            , columnConfigTitleEl "Danger"
+            , columnDeleteEl index column
+            , Element.Input.button [ El.width El.fill, BG.color oneDark.bg ]
+                { onPress = Just (ToggleColumnConfig column.id False)
+                , label = octiconFreeSizeEl 24 Octicons.triangleUp
+                }
+            ]
 
     else
         El.none
+
+
+columnConfigTitleEl : String -> Element Msg
+columnConfigTitleEl title =
+    El.el
+        [ El.width El.fill
+        , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+        , Font.size (scale12 3)
+        , Font.color oneDark.note
+        ]
+        (El.text title)
 
 
 filtersEl : Model -> Column -> Element Msg
@@ -590,6 +610,52 @@ discordChannelOptionEl channels cId =
 
         Nothing ->
             El.text cId
+
+
+columnDeleteEl : Int -> Column -> Element Msg
+columnDeleteEl index column =
+    El.row [ El.width El.fill, El.spacing 5, El.padding 10 ]
+        [ columnDeleteGateEl column
+        , columnDeleteButtonEl index column
+        ]
+
+
+columnDeleteGateEl : Column -> Element Msg
+columnDeleteGateEl column =
+    Element.Input.text
+        [ El.width El.fill
+        , El.height (El.px 30) -- Match with select input height
+        , El.padding 5
+        , BG.color oneDark.note
+        , BD.width 0
+        , Font.size (scale12 1)
+        ]
+        { onChange = ColumnDeleteGateInput column.id
+        , text = column.deleteGate
+        , placeholder =
+            Just <|
+                Element.Input.placeholder [] <|
+                    El.el [ El.centerY ] (El.text "Type DELETE to delete this column")
+        , label = Element.Input.labelHidden "Delete Gate"
+        }
+
+
+columnDeleteButtonEl : Int -> Column -> Element Msg
+columnDeleteButtonEl index column =
+    El.el [ El.width (El.px 100) ] <|
+        if String.toLower column.deleteGate == "delete" then
+            Element.Input.button
+                [ El.width El.fill
+                , El.height (El.px 30)
+                , BD.rounded 5
+                , BG.color oneDark.err
+                ]
+                { onPress = Just (DelColumn index)
+                , label = El.el [ El.centerX ] (El.text "Delete!")
+                }
+
+        else
+            El.none
 
 
 

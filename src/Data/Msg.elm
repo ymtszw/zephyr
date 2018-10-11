@@ -26,4 +26,5 @@ type Msg
     | AddColumnFilter String Data.Column.Filter
     | SetColumnFilter String Int Data.Column.Filter
     | DelColumnFilter String Int
+    | ColumnDeleteGateInput String String
     | ProducerCtrl Data.Producer.Msg
