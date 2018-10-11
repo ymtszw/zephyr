@@ -56,14 +56,14 @@ Require `id` and `state` to control open/closed status.
 -}
 el :
     { id : String
-    , onSelectMsg : a -> Msg
+    , onSelect : a -> Msg
     , selectedOption : Maybe a
     , noMsgOptionEl : a -> Element Msg
     }
     -> State
     -> List a
     -> Element Msg
-el { id, onSelectMsg, selectedOption, noMsgOptionEl } state options =
+el { id, onSelect, selectedOption, noMsgOptionEl } state options =
     let
         opened =
             isOpen id state
@@ -71,7 +71,7 @@ el { id, onSelectMsg, selectedOption, noMsgOptionEl } state options =
     El.row [ El.width El.fill, Font.size (scale12 2) ]
         [ El.el
             [ El.width El.fill
-            , El.below (ite opened (optionsEl onSelectMsg noMsgOptionEl options) El.none)
+            , El.below (ite opened (optionsEl onSelect noMsgOptionEl options) El.none)
             ]
             (headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
         ]
@@ -95,7 +95,7 @@ headerEl onPress selectedOption noMsgOptionEl =
 
 
 optionsEl : (a -> Msg) -> (a -> Element Msg) -> List a -> Element Msg
-optionsEl onSelectMsg noMsgOptionEl options =
+optionsEl onSelect noMsgOptionEl options =
     options
         |> List.map
             (\option ->
@@ -104,7 +104,7 @@ optionsEl onSelectMsg noMsgOptionEl options =
                     , El.padding 5
                     , El.mouseOver [ BG.color oneDark.sub ]
                     ]
-                    { onPress = Just (SelectPick (onSelectMsg option))
+                    { onPress = Just (SelectPick (onSelect option))
                     , label = El.el [ El.alignLeft ] (noMsgOptionEl option)
                     }
             )

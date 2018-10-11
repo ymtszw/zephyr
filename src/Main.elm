@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Array
 import Browser exposing (UrlRequest(..))
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (Visibility(..), onResize)
@@ -100,6 +101,12 @@ update msg ({ viewState, env } as m) =
 
         ToggleColumnConfig cId bool ->
             ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | configOpen = bool }) m.columnStore }, Cmd.none )
+
+        AddColumnFilter cId filter ->
+            persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.push filter c.filters }) m.columnStore }, Cmd.none )
+
+        SetColumnFilter cId index filter ->
+            persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.set index filter c.filters }) m.columnStore }, Cmd.none )
 
         ProducerCtrl pctrl ->
             Producer.update pctrl m.producerRegistry

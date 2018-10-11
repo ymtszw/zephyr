@@ -1,4 +1,27 @@
-module Data.Column exposing (Column, Filter, decoder, encoder, foldFilter, mapFilter, welcome)
+module Data.Column exposing
+    ( Column, Filter(..), FilterAtom(..), MediaFilter(..), MetadataFilter(..), welcome
+    , encoder, decoder
+    , foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter
+    )
+
+{-| Types and functions for columns in Zephyr.
+
+
+## Types
+
+@docs Column, Filter, FilterAtom, MediaFilter, MetadataFilter, welcome
+
+
+## En/Decoder
+
+@docs encoder, decoder
+
+
+## Filter APIs
+
+@docs foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter
+
+-}
 
 import Array exposing (Array)
 import Data.Item as Item exposing (Item)
@@ -18,9 +41,18 @@ type alias Column =
 
 {-| Filter to narrow down Items flowing into a Column.
 
-An Array of Filters works in logical "and" manner.
-If newly arriving Item meets ALL Filters in the list,
-it enters the Column. Otherwise rejected.
+An Array (List) of Filters showld work in logical "and" manner.
+If newly arriving Item meets ALL Filters, it should enter the Column.
+
+Filter type itself combines multiple filter conditions (FilterAtoms) in "or" manner.
+This is basically a linked list, though root node corresponds to an actual element, rather than emptiness.
+Therefore this data structure shows similar characteristics to Lists.
+Obviously prepending is fast while appending is slow (_O(N)_).
+Actual logical "or" processing will be done from "left-to-right" manner (foldl).
+
+However, adding new FilterAtom in a Filter is better be implemented in "append" manner,
+since IMO, that matches better with users' expectations in those kind of GUIs.
+For that, this module reluctantly exposes `appendToFilter` API.
 
 -}
 type Filter
@@ -30,14 +62,14 @@ type Filter
 
 type FilterAtom
     = ByMessage String
-    | ByMedia MediaType
+    | ByMedia MediaFilter
     | ByMetadata MetadataFilter
 
 
-type MediaType
-    = None
-    | Image
-    | Movie
+type MediaFilter
+    = HasNone
+    | HasImage
+    | HasMovie
 
 
 type MetadataFilter
@@ -77,9 +109,9 @@ filterAtomDecoder =
         ]
 
 
-mediaTypeDecoder : Decoder MediaType
+mediaTypeDecoder : Decoder MediaFilter
 mediaTypeDecoder =
-    D.oneOf [ D.tag "None" None, D.tag "Image" Image, D.tag "Movie" Movie ]
+    D.oneOf [ D.tag "HasNone" HasNone, D.tag "HasImage" HasImage, D.tag "HasMovie" HasMovie ]
 
 
 metadataFilterDecoder : Decoder MetadataFilter
@@ -124,17 +156,17 @@ encodeFilterAtom filterAtom =
             E.tagged "ByMetadata" (encodeMetadataFilter metadataFilter)
 
 
-encodeMediaType : MediaType -> E.Value
+encodeMediaType : MediaFilter -> E.Value
 encodeMediaType mediaType =
     case mediaType of
-        None ->
-            E.tag "None"
+        HasNone ->
+            E.tag "HasNone"
 
-        Image ->
-            E.tag "Image"
+        HasImage ->
+            E.tag "HasImage"
 
-        Movie ->
-            E.tag "Movie"
+        HasMovie ->
+            E.tag "HasMovie"
 
 
 encodeMetadataFilter : MetadataFilter -> E.Value
@@ -189,3 +221,86 @@ mapFilter transform filter =
     filter
         |> foldFilter (\fa acc -> transform fa :: acc) []
         |> List.reverse
+
+
+{-| Purpose-oriented fmap of Filter.
+
+In View, we want to show/edit Filter.
+In that, edit should be done via editing FilterAtom one by one.
+Therefore, we must be able to edit a FilterAtom wihtin a Filter,
+THEN get partially-edited Filter for later use (namely, sending via Msg).
+
+This variant of fmap achieves such a goal.
+Transformer function will receive not just a FilterAtom,
+but also a FUNCTION that yields a new, partially-updated Filter when a new FilterAtom is given.
+This "updater" function does not alter any other FilterAtoms in the Filter,
+just updates one at the position where that particular function has effect.
+
+Index can be used to e.g. assign unique ID to derived DOM element.
+
+-}
+indexedMapFilter : (Int -> FilterAtom -> a) -> Filter -> List a
+indexedMapFilter transform filter =
+    List.reverse (indexedMapFiltterImpl transform 0 [] filter)
+
+
+indexedMapFiltterImpl : (Int -> FilterAtom -> a) -> Int -> List a -> Filter -> List a
+indexedMapFiltterImpl transform index acc filter =
+    case filter of
+        Singular filterAtom ->
+            transform index filterAtom :: acc
+
+        Or filterAtom otherFilter ->
+            indexedMapFiltterImpl transform (index + 1) (transform index filterAtom :: acc) otherFilter
+
+
+{-| Add a FilterAtom at the end of "Or" sequence of a Filter. Takes _O(N)_.
+-}
+appendToFilter : FilterAtom -> Filter -> Filter
+appendToFilter newFilterAtom filter =
+    appendToFilterImpl newFilterAtom [] filter
+
+
+appendToFilterImpl : FilterAtom -> List FilterAtom -> Filter -> Filter
+appendToFilterImpl newFilterAtom reversedFilterAtoms filter =
+    case filter of
+        Singular filterAtom ->
+            prependAccumulated reversedFilterAtoms (Or filterAtom (Singular newFilterAtom))
+
+        Or filterAtom otherFilter ->
+            appendToFilterImpl newFilterAtom (filterAtom :: reversedFilterAtoms) otherFilter
+
+
+prependAccumulated : List FilterAtom -> Filter -> Filter
+prependAccumulated reversedFilterAtoms filter =
+    case reversedFilterAtoms of
+        [] ->
+            filter
+
+        fa :: fas ->
+            prependAccumulated fas (Or fa filter)
+
+
+setAtFilter : Int -> FilterAtom -> Filter -> Filter
+setAtFilter targetIndex newFilterAtom filter =
+    setAtFilterImpl targetIndex newFilterAtom 0 [] filter
+
+
+setAtFilterImpl : Int -> FilterAtom -> Int -> List FilterAtom -> Filter -> Filter
+setAtFilterImpl targetIndex newFilterAtom index reversedFilterAtoms filter =
+    if targetIndex == index then
+        case filter of
+            Singular _ ->
+                prependAccumulated reversedFilterAtoms (Singular newFilterAtom)
+
+            Or _ rest ->
+                prependAccumulated reversedFilterAtoms (Or newFilterAtom rest)
+
+    else
+        case filter of
+            Singular _ ->
+                -- Reached end without matching index (out-of-bound); just backtrack
+                prependAccumulated reversedFilterAtoms filter
+
+            Or filterAtom rest ->
+                setAtFilterImpl targetIndex newFilterAtom (index + 1) (filterAtom :: reversedFilterAtoms) rest

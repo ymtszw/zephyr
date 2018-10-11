@@ -1,4 +1,4 @@
-module Data.Producer.Discord exposing (Discord(..), Msg(..), configEl, decoder, encode, reload, update)
+module Data.Producer.Discord exposing (Channel, Discord(..), FilterAtomMaterial, Guild, Msg(..), configEl, decoder, encode, filterAtomMaterial, reload, update)
 
 {-| Polling Producer for Discord.
 
@@ -12,6 +12,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 -}
 
 import Data.ColorTheme exposing (oneDark)
+import Data.Column exposing (FilterAtom(..), MetadataFilter(..))
 import Data.Item as Item exposing (Item)
 import Data.Producer.Base as Producer exposing (save)
 import Dict exposing (Dict)
@@ -112,6 +113,7 @@ type alias Channel =
     { id : String
     , name : String
     , type_ : ChannelType
+    , guildMaybe : Maybe Guild -- Can be absent for DMs; not serialized to indexedDB
     , lastMessageId : Maybe MessageId
 
     -- Zephyr-only fields below
@@ -161,11 +163,15 @@ decoder =
 
 povDecoder : Decoder POV
 povDecoder =
-    D.map4 POV
-        (D.field "token" D.string)
-        (D.field "user" userDecoder)
-        (D.field "guilds" (D.dict guildDecoder))
-        (D.field "channels" (D.dict channelDecoder))
+    D.field "guilds" (D.dict guildDecoder)
+        |> D.andThen
+            (\guilds ->
+                D.map4 POV
+                    (D.field "token" D.string)
+                    (D.field "user" userDecoder)
+                    (D.succeed guilds)
+                    (D.field "channels" (D.dict (channelDecoder guilds)))
+            )
 
 
 userDecoder : Decoder User
@@ -198,12 +204,17 @@ guildDecoder =
     D.field "id" D.string |> D.andThen decodeWithId
 
 
-channelDecoder : Decoder Channel
-channelDecoder =
-    D.map6 Channel
+channelDecoder : Dict String Guild -> Decoder Channel
+channelDecoder guilds =
+    let
+        populateGuild guildIdMaybe =
+            Maybe.andThen (\gId -> Dict.get gId guilds) guildIdMaybe
+    in
+    D.map7 Channel
         (D.field "id" D.string)
         (D.field "name" D.string)
         (D.field "type" channelTypeDecoder)
+        (D.maybeField "guild_id" D.string |> D.map populateGuild)
         (D.maybeField "last_message_id" (D.map MessageId D.string))
         (D.maybeField "lastFetchTime" (D.map Time.millisToPosix D.int))
         (D.maybeField "lastYieldTime" (D.map Time.millisToPosix D.int))
@@ -326,6 +337,7 @@ encodeChannel channel =
         [ ( "id", E.string channel.id )
         , ( "name", E.string channel.name )
         , ( "type", encodeChannelType channel.type_ )
+        , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
         , ( "last_message_id", E.maybe (unwrapMessageId >> E.string) channel.lastMessageId ) -- Match field name with Discord's API
         , ( "lastFetchTime", E.maybe (Time.posixToMillis >> E.int) channel.lastFetchTime )
         , ( "lastYieldTime", E.maybe (Time.posixToMillis >> E.int) channel.lastYieldTime )
@@ -598,7 +610,7 @@ hydrateChannels token guilds =
         getGuildChannels guildId =
             Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels"))
                 (Http.auth token)
-                (D.leakyList channelDecoder)
+                (D.leakyList (channelDecoder guilds))
 
         intoDict listOfChannelList =
             listOfChannelList
@@ -899,3 +911,75 @@ imageUrl sizeMaybe imageOrDiscriminator =
                     ""
     in
     "https://cdn.discordapp.com" ++ endpoint ++ size
+
+
+
+-- RUNTIME APIs
+
+
+type alias FilterAtomMaterial =
+    { isDiscord : Maybe FilterAtom
+    , ofDiscordGuild : Maybe ( FilterAtom, Dict String Guild )
+    , ofDiscordChannel : Maybe ( FilterAtom, Dict String Channel )
+    }
+
+
+filterAtomMaterial : Discord -> FilterAtomMaterial
+filterAtomMaterial discord =
+    case availablePov discord of
+        Just { guilds, channels } ->
+            { isDiscord = Just (ByMetadata IsDiscord)
+            , ofDiscordGuild = ofDiscordGuildMaterial guilds
+            , ofDiscordChannel = ofDiscordChannelMaterial guilds channels
+            }
+
+        Nothing ->
+            { isDiscord = Nothing, ofDiscordGuild = Nothing, ofDiscordChannel = Nothing }
+
+
+ofDiscordGuildMaterial : Dict String Guild -> Maybe ( FilterAtom, Dict String Guild )
+ofDiscordGuildMaterial guilds =
+    case Dict.values guilds of
+        [] ->
+            Nothing
+
+        g :: _ ->
+            Just ( ByMetadata (OfDiscordGuild g.id), guilds )
+
+
+ofDiscordChannelMaterial : Dict String Guild -> Dict String Channel -> Maybe ( FilterAtom, Dict String Channel )
+ofDiscordChannelMaterial guilds channels =
+    case Dict.values channels of
+        [] ->
+            Nothing
+
+        c :: _ ->
+            Just ( ByMetadata (OfDiscordChannel c.id), channels )
+
+
+availablePov : Discord -> Maybe POV
+availablePov discord =
+    case discord of
+        TokenGiven _ ->
+            Nothing
+
+        TokenReady _ ->
+            Nothing
+
+        Identified _ ->
+            Nothing
+
+        Hydrated _ pov ->
+            Just pov
+
+        Rehydrating _ pov ->
+            Just pov
+
+        Revisit pov ->
+            Just pov
+
+        Expired _ pov ->
+            Just pov
+
+        Switching _ pov ->
+            Just pov

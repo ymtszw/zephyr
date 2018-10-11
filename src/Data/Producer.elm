@@ -1,9 +1,39 @@
-module Data.Producer exposing (GrossYield, Msg(..), ProducerRegistry, configsEl, encodeRegistry, initRegistry, registryDecoder, reloadAll, update)
+module Data.Producer exposing
+    ( ProducerRegistry, Msg(..), GrossYield
+    , initRegistry, reloadAll, update, configsEl
+    , encodeRegistry, registryDecoder
+    , discordFilterAtomMaterial
+    )
+
+{-| Types and functions representing data produecr in Zephyr.
+
+
+## Types
+
+@docs ProducerRegistry, Msg, GrossYield
+
+
+## Component APIs
+
+@docs initRegistry, reloadAll, update, configsEl
+
+
+## En/Decoders
+
+@docs encodeRegistry, registryDecoder
+
+
+## Runtime APIs
+
+@docs discordFilterAtomMaterial
+
+-}
 
 import Data.ColorTheme exposing (oneDark)
+import Data.Column exposing (FilterAtom)
 import Data.Item exposing (Item)
 import Data.Producer.Base exposing (Update, Yield)
-import Data.Producer.Discord as Discord exposing (Discord(..))
+import Data.Producer.Discord as Discord exposing (Channel, Discord, Guild)
 import Dict exposing (Dict)
 import Element as El exposing (Element)
 import Element.Background as BG
@@ -212,3 +242,17 @@ configWrapEl tagger title element =
                 (El.text title)
             , element
             ]
+
+
+
+-- RUNTIME APIs
+
+
+discordFilterAtomMaterial : ProducerRegistry -> Discord.FilterAtomMaterial
+discordFilterAtomMaterial producerRegistry =
+    case Dict.get "discord" producerRegistry of
+        Just (DiscordProducer discord) ->
+            Discord.filterAtomMaterial discord
+
+        _ ->
+            { isDiscord = Nothing, ofDiscordGuild = Nothing, ofDiscordChannel = Nothing }
