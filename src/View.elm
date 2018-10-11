@@ -113,15 +113,15 @@ columnButtonEl index { id } =
     ( "sidebarButton_" ++ id
     , El.el [ El.width El.fill ] <|
         Element.Input.button
-            [ El.width El.fill
-            , El.paddingXY 0 10
+            [ El.width (El.px 40)
+            , El.height (El.px 40)
             , El.clip
             , Font.color oneDark.note
             , BD.width 1
             , BD.color oneDark.note
             , BD.rounded 10
             ]
-            { onPress = Just (DelColumn index), label = El.text "×" }
+            { onPress = Just (DelColumn index), label = El.el [ El.centerX, El.centerY ] <| El.text "×" }
     )
 
 
@@ -129,8 +129,8 @@ columnAddButtonEl : Element Msg
 columnAddButtonEl =
     El.el [ El.width El.fill ] <|
         Element.Input.button
-            [ El.width El.fill
-            , El.paddingXY 0 10
+            [ El.width (El.px 40)
+            , El.height (El.px 40)
             , El.clip
             , Font.color oneDark.note
             , BD.dashed
@@ -138,15 +138,15 @@ columnAddButtonEl =
             , BD.color oneDark.note
             , BD.rounded 10
             ]
-            { onPress = Just AddColumn, label = El.text "+" }
+            { onPress = Just AddColumn, label = El.el [ El.centerX, El.centerY ] <| El.text "+" }
 
 
 otherButtonsEl : ViewState -> Element Msg
 otherButtonsEl viewState =
     El.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
         [ Element.Input.button
-            [ El.width El.fill
-            , El.paddingXY 0 7
+            [ El.width (El.px 40)
+            , El.height (El.px 40)
             , BD.rounded 10
             , if viewState.configOpen then
                 BG.color oneDark.main
@@ -155,16 +155,16 @@ otherButtonsEl viewState =
                 El.mouseOver [ BG.color oneDark.main ]
             ]
             { onPress = Just (ToggleConfig (not viewState.configOpen))
-            , label = octiconEl Octicons.gear
+            , label = El.el [ El.centerX, El.centerY ] <| octiconEl Octicons.gear
             }
         , El.link
-            [ El.width El.fill
-            , El.paddingXY 0 7
+            [ El.width (El.px 40)
+            , El.height (El.px 40)
             , BD.rounded 10
             , BG.color oneDark.sub
             ]
             { url = "https://github.com/ymtszw/zephyr"
-            , label = octiconEl Octicons.markGithub
+            , label = El.el [ El.centerX, El.centerY ] <| octiconEl Octicons.markGithub
             }
         ]
 
