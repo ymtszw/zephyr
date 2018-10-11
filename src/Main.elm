@@ -108,6 +108,9 @@ update msg ({ viewState, env } as m) =
         SetColumnFilter cId index filter ->
             persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.set index filter c.filters }) m.columnStore }, Cmd.none )
 
+        DelColumnFilter cId index ->
+            persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.removeAt index c.filters }) m.columnStore }, Cmd.none )
+
         ProducerCtrl pctrl ->
             Producer.update pctrl m.producerRegistry
                 |> applyProducerYield m

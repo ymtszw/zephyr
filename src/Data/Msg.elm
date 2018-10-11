@@ -25,4 +25,5 @@ type Msg
     | ToggleColumnConfig String Bool
     | AddColumnFilter String Data.Column.Filter
     | SetColumnFilter String Int Data.Column.Filter
+    | DelColumnFilter String Int
     | ProducerCtrl Data.Producer.Msg
