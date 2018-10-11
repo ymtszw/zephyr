@@ -174,22 +174,22 @@ otherButtonsEl viewState =
 
 
 columnsEl : Model -> Element Msg
-columnsEl { columnStore, producerRegistry, viewState, env } =
+columnsEl m =
     Element.Keyed.row
         [ El.width El.fill
-        , El.height (El.fill |> El.maximum env.clientHeight)
+        , El.height (El.fill |> El.maximum m.env.clientHeight)
         , Font.regular
         ]
-        (ColumnStore.indexedMap (columnKeyEl env.clientHeight viewState producerRegistry) columnStore)
+        (ColumnStore.indexedMap (columnKeyEl m) m.columnStore)
 
 
-columnKeyEl : Int -> ViewState -> ProducerRegistry -> Int -> Column -> ( String, Element Msg )
-columnKeyEl clientHeight { columnSwappable, columnSwapMaybe, selectState } producerRegistry index column =
+columnKeyEl : Model -> Int -> Column -> ( String, Element Msg )
+columnKeyEl m index column =
     Tuple.pair ("column_" ++ column.id) <|
-        case columnSwapMaybe of
+        case m.viewState.columnSwapMaybe of
             Nothing ->
-                notDraggedColumnEl clientHeight selectState producerRegistry column <|
-                    if columnSwappable then
+                notDraggedColumnEl m column <|
+                    if m.viewState.columnSwappable then
                         [ El.htmlAttribute (draggable "true")
                         , El.htmlAttribute (style "cursor" "all-scroll")
                         , El.htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
@@ -200,19 +200,19 @@ columnKeyEl clientHeight { columnSwappable, columnSwapMaybe, selectState } produ
 
             Just swap ->
                 if swap.grabbedId == column.id then
-                    draggedColumnEl clientHeight
+                    draggedColumnEl m.env.clientHeight
 
                 else
-                    notDraggedColumnEl clientHeight selectState producerRegistry column <|
+                    notDraggedColumnEl m column <|
                         [ El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter index, True ))) ]
 
 
-notDraggedColumnEl : Int -> Select.State -> ProducerRegistry -> Column -> List (El.Attribute Msg) -> Element Msg
-notDraggedColumnEl clientHeight selectState producerRegistry column attrs =
+notDraggedColumnEl : Model -> Column -> List (El.Attribute Msg) -> Element Msg
+notDraggedColumnEl m column attrs =
     El.column
-        (columnBaseAttrs clientHeight ++ attrs)
+        (columnBaseAttrs m.env.clientHeight ++ attrs)
         [ columnHeaderEl column
-        , columnConfigEl selectState producerRegistry column
+        , columnConfigEl m column
         , column.items
             |> List.map itemEl
             |> El.column
@@ -271,24 +271,24 @@ columnHeaderEl column =
         ]
 
 
-columnConfigEl : Select.State -> ProducerRegistry -> Column -> Element Msg
-columnConfigEl selectState producerRegistry column =
+columnConfigEl : Model -> Column -> Element Msg
+columnConfigEl m column =
     if column.configOpen then
         El.el
             [ El.width El.fill
             , BG.color oneDark.sub
             , El.padding 5
             ]
-            (filtersEl selectState producerRegistry column)
+            (filtersEl m column)
 
     else
         El.none
 
 
-filtersEl : Select.State -> ProducerRegistry -> Column -> Element Msg
-filtersEl selectState producerRegistry column =
-    Array.indexedMap (filterEl selectState producerRegistry column.id) column.filters
-        |> Array.push (addNewFilterEl selectState producerRegistry column.id)
+filtersEl : Model -> Column -> Element Msg
+filtersEl m column =
+    Array.indexedMap (filterEl m column.id) column.filters
+        |> Array.push (addNewFilterEl m column.id)
         |> Array.toList
         |> El.column
             [ El.width El.fill
@@ -299,22 +299,20 @@ filtersEl selectState producerRegistry column =
             ]
 
 
-filterEl : Select.State -> ProducerRegistry -> String -> Int -> Filter -> Element Msg
-filterEl selectState producerRegistry cId index filter =
+filterEl : Model -> String -> Int -> Filter -> Element Msg
+filterEl m cId index filter =
     filterWrap <|
         filterGeneratorEl (SetColumnFilter cId index)
-            selectState
-            producerRegistry
+            m
             (cId ++ "filter" ++ String.fromInt index)
             (Just filter)
 
 
-addNewFilterEl : Select.State -> ProducerRegistry -> String -> Element Msg
-addNewFilterEl selectState producerRegistry cId =
+addNewFilterEl : Model -> String -> Element Msg
+addNewFilterEl m cId =
     filterWrap <|
         filterGeneratorEl (AddColumnFilter cId)
-            selectState
-            producerRegistry
+            m
             (cId ++ "addNewFilter")
             Nothing
 
@@ -330,42 +328,42 @@ filterWrap =
         ]
 
 
-filterGeneratorEl : (Filter -> Msg) -> Select.State -> ProducerRegistry -> String -> Maybe Filter -> Element Msg
-filterGeneratorEl tagger selectState producerRegistry filterId filterMaybe =
+filterGeneratorEl : (Filter -> Msg) -> Model -> String -> Maybe Filter -> Element Msg
+filterGeneratorEl tagger m filterId filterMaybe =
     case filterMaybe of
         Just filter ->
             El.column [ El.width El.fill ] <|
-                Column.indexedMapFilter (filterAtomEl filter tagger selectState producerRegistry filterId) filter
-                    ++ [ newFilterAtomEl (\fa -> tagger <| Column.appendToFilter fa filter) selectState producerRegistry filterId ]
+                Column.indexedMapFilter (filterAtomEl filter tagger m filterId) filter
+                    ++ [ newFilterAtomEl (\fa -> tagger <| Column.appendToFilter fa filter) m filterId ]
 
         Nothing ->
             El.column [ El.width El.fill ]
-                [ newFilterAtomEl (tagger << Singular) selectState producerRegistry filterId ]
+                [ newFilterAtomEl (tagger << Singular) m filterId ]
 
 
-filterAtomEl : Filter -> (Filter -> Msg) -> Select.State -> ProducerRegistry -> String -> Int -> FilterAtom -> Element Msg
-filterAtomEl originalFilter tagger selectState producerRegistry filterId index filterAtom =
+filterAtomEl : Filter -> (Filter -> Msg) -> Model -> String -> Int -> FilterAtom -> Element Msg
+filterAtomEl originalFilter tagger m filterId index filterAtom =
     let
         updateAndTag newFilterAtom =
             tagger (Column.setAtFilter index newFilterAtom originalFilter)
     in
-    filterAtomInputEl updateAndTag selectState producerRegistry (filterId ++ "atom" ++ String.fromInt index) (Just filterAtom)
+    filterAtomInputEl updateAndTag m (filterId ++ "atom" ++ String.fromInt index) (Just filterAtom)
 
 
-newFilterAtomEl : (FilterAtom -> Msg) -> Select.State -> ProducerRegistry -> String -> Element Msg
-newFilterAtomEl tagger selectState producerRegistry filterId =
-    filterAtomInputEl tagger selectState producerRegistry (filterId ++ "newAtom") Nothing
+newFilterAtomEl : (FilterAtom -> Msg) -> Model -> String -> Element Msg
+newFilterAtomEl tagger m filterId =
+    filterAtomInputEl tagger m (filterId ++ "newAtom") Nothing
 
 
-filterAtomInputEl : (FilterAtom -> Msg) -> Select.State -> ProducerRegistry -> String -> Maybe FilterAtom -> Element Msg
-filterAtomInputEl tagger selectState producerRegistry filterAtomId filterAtomMaybe =
+filterAtomInputEl : (FilterAtom -> Msg) -> Model -> String -> Maybe FilterAtom -> Element Msg
+filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
     let
         discordMaterial =
-            Producer.discordFilterAtomMaterial producerRegistry
+            Producer.discordFilterAtomMaterial m.producerRegistry
     in
     El.row [ El.width El.fill, El.spacing 5 ]
-        [ filterAtomTypeSelectEl tagger selectState discordMaterial (filterAtomId ++ "typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger selectState discordMaterial (filterAtomId ++ "variableInput") filterAtomMaybe
+        [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "typeSelect") filterAtomMaybe
+        , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "variableInput") filterAtomMaybe
         ]
 
 
