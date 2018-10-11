@@ -5,9 +5,11 @@ import Data.Msg exposing (Msg(..))
 import Element as El exposing (Element)
 import Element.Background as BG
 import Element.Border as BD
+import Element.Events
 import Element.Font as Font
 import Element.Input
 import Extra exposing (ite)
+import Html.Attributes
 import Octicons
 import Set exposing (Set)
 import View.Parts exposing (octiconFreeSizeEl, scale12)
@@ -101,26 +103,12 @@ headerEl onPress selectedOption noMsgOptionEl =
 optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List a -> Element Msg
 optionsEl onSelect noMsgOptionEl selectedOption options =
     options
-        |> List.map
-            (\option ->
-                let
-                    selectedStyle =
-                        ite (selectedOption == Just option) [ BG.color oneDark.sub ] []
-                in
-                Element.Input.button
-                    (selectedStyle
-                        ++ [ El.width (El.fill |> El.minimum 0)
-                           , El.padding 5
-                           , El.mouseOver [ BG.color oneDark.sub ]
-                           ]
-                    )
-                    { onPress = Just (SelectPick (onSelect option))
-                    , label = El.el [ El.alignLeft ] (noMsgOptionEl option)
-                    }
-            )
+        |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
         |> El.column
-            [ El.width (El.fill |> El.minimum 0)
+            [ El.width (El.shrink |> El.minimum 0)
+            , El.height (El.fill |> El.minimum 0 |> El.maximum 300)
             , El.scrollbarY
+            , El.clipX
             , El.paddingXY 0 5
             , BD.width 1
             , BD.rounded 5
@@ -133,7 +121,21 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
                 }
             , BG.color oneDark.note
             ]
-        |> El.el
-            [ El.width (El.fill |> El.minimum 0)
-            , El.height (El.fill |> El.maximum 600)
-            ]
+
+
+optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> a -> Element Msg
+optionEl onSelect noMsgOptionEl selectedOption option =
+    let
+        selectedStyle =
+            ite (selectedOption == Just option) [ BG.color oneDark.active ] []
+    in
+    El.el
+        (selectedStyle
+            ++ [ El.width (El.fill |> El.minimum 80)
+               , El.padding 5
+               , El.mouseOver [ BG.color oneDark.sub ]
+               , El.pointer
+               , Element.Events.onClick (SelectPick (onSelect option))
+               ]
+        )
+        (noMsgOptionEl option)

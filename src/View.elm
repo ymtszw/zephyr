@@ -40,7 +40,7 @@ body m =
 bodyEl : Model -> Element Msg
 bodyEl model =
     backgroundEl <|
-        El.row [ El.width El.fill, El.height El.fill ]
+        El.row [ El.width El.fill, El.height El.fill, El.clipY ]
             [ sidebarEl model
             , if model.viewState.configOpen then
                 configPaneEl model
@@ -290,6 +290,7 @@ filtersEl m column =
     Array.indexedMap (filterEl m column.id) column.filters
         |> Array.push (addNewFilterEl m column.id)
         |> Array.toList
+        |> List.intersperse (filterLogicSeparator "AND")
         |> El.column
             [ El.width El.fill
             , El.padding 5
@@ -317,6 +318,17 @@ addNewFilterEl m cId =
             Nothing
 
 
+filterLogicSeparator : String -> Element msg
+filterLogicSeparator text =
+    El.el
+        [ El.width El.fill
+        , El.padding 3
+        , Font.size (scale12 2)
+        , Font.color oneDark.note
+        ]
+        (El.el [ El.centerX ] (El.text text))
+
+
 filterWrap : Element msg -> Element msg
 filterWrap =
     El.el
@@ -333,8 +345,9 @@ filterGeneratorEl tagger m filterId filterMaybe =
     case filterMaybe of
         Just filter ->
             El.column [ El.width El.fill ] <|
-                Column.indexedMapFilter (filterAtomEl filter tagger m filterId) filter
-                    ++ [ newFilterAtomEl (\fa -> tagger <| Column.appendToFilter fa filter) m filterId ]
+                List.intersperse (filterLogicSeparator "OR") <|
+                    Column.indexedMapFilter (filterAtomEl filter tagger m filterId) filter
+                        ++ [ newFilterAtomEl (\fa -> tagger <| Column.appendToFilter fa filter) m filterId ]
 
         Nothing ->
             El.column [ El.width El.fill ]
@@ -361,7 +374,7 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
         discordMaterial =
             Producer.discordFilterAtomMaterial m.producerRegistry
     in
-    El.row [ El.width El.fill, El.spacing 5 ]
+    El.row [ El.width El.fill ]
         [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "variableInput") filterAtomMaybe
         ]
@@ -381,24 +394,25 @@ filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMay
 
 filterAtomTypeOptionEl : FilterAtom -> Element msg
 filterAtomTypeOptionEl filterAtom =
-    case filterAtom of
-        ByMessage _ ->
-            El.text "Message contains..."
+    El.el [ Font.size (scale12 1) ] <|
+        case filterAtom of
+            ByMessage _ ->
+                El.text "Message contains..."
 
-        ByMedia _ ->
-            El.text "Attached media..."
+            ByMedia _ ->
+                El.text "Attached media..."
 
-        ByMetadata IsDefault ->
-            El.text "System message"
+            ByMetadata IsDefault ->
+                El.text "System message"
 
-        ByMetadata IsDiscord ->
-            El.text "Discord message"
+            ByMetadata IsDiscord ->
+                El.text "Discord message"
 
-        ByMetadata (OfDiscordGuild _) ->
-            El.text "Discord message in server..."
+            ByMetadata (OfDiscordGuild _) ->
+                El.text "Discord message in server..."
 
-        ByMetadata (OfDiscordChannel _) ->
-            El.text "Discord message in channel..."
+            ByMetadata (OfDiscordChannel _) ->
+                El.text "Discord message in channel..."
 
 
 availableFilterAtomsWithDefaultArguments : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
@@ -506,14 +520,16 @@ filterAtomVariableTextInputEl : (String -> Msg) -> String -> Element Msg
 filterAtomVariableTextInputEl tagger text =
     Element.Input.text
         [ El.width El.fill
+        , El.height (El.px 30) -- Match with select input height
         , El.padding 5
         , BG.color oneDark.note
         , BD.width 0
+        , Font.size (scale12 1)
         ]
         { onChange = tagger
         , text = text
         , placeholder = Nothing
-        , label = Element.Input.labelLeft [] El.none
+        , label = Element.Input.labelHidden "text"
         }
 
 
@@ -523,7 +539,7 @@ filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, 
         { id = selectId
         , onSelect = tagger
         , selectedOption = Just selected
-        , noMsgOptionEl = optionEl
+        , noMsgOptionEl = El.el [ Font.size (scale12 1) ] << optionEl
         }
         selectState
         options
@@ -533,23 +549,29 @@ mediaTypeOptionEl : MediaFilter -> Element msg
 mediaTypeOptionEl mediaType =
     case mediaType of
         HasNone ->
-            El.row [ El.width El.fill ] [ El.text "None" ]
+            El.text "None"
 
         HasImage ->
-            El.row [ El.width El.fill ] [ El.text "Image", El.el [ El.alignRight ] (octiconFreeSizeEl 18 Octicons.fileMedia) ]
+            El.text "Image"
 
         HasMovie ->
-            El.row [ El.width El.fill ] [ El.text "Movie", El.el [ El.alignRight ] (octiconFreeSizeEl 18 Octicons.deviceCameraVideo) ]
+            El.text "Movie"
 
 
 discordGuildOptionEl : Dict String Guild -> String -> Element msg
 discordGuildOptionEl guilds gId =
     case Dict.get gId guilds of
         Just guild ->
-            El.text guild.name
+            El.row [ El.width El.fill, El.spacing 3 ]
+                [ discordGuildSmallIconEl guild, El.text guild.name ]
 
         Nothing ->
             El.text gId
+
+
+discordGuildSmallIconEl : Guild -> Element msg
+discordGuildSmallIconEl guild =
+    squareIconEl 20 guild.name (Maybe.map (Discord.imageUrlNoFallback (Just "16")) guild.icon)
 
 
 discordChannelOptionEl : Dict String Channel -> String -> Element msg
@@ -558,7 +580,8 @@ discordChannelOptionEl channels cId =
         Just channel ->
             case channel.guildMaybe of
                 Just guild ->
-                    El.text (guild.name ++ " / #" ++ channel.name)
+                    El.row [ El.width El.fill, El.spacing 3 ]
+                        [ discordGuildSmallIconEl guild, El.text ("#" ++ channel.name) ]
 
                 Nothing ->
                     -- Mostly DM

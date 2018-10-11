@@ -67,7 +67,7 @@ squareIconEl size name urlMaybe =
                     ( BG.uncropped url, El.none )
 
                 Nothing ->
-                    ( Font.size (scale12 4), El.el [ El.centerX, El.centerY ] (El.text (String.left 1 name)) )
+                    ( Font.size (size // 2), El.el [ El.centerX, El.centerY ] (El.text (String.left 1 name)) )
     in
     El.el
         [ BG.color oneDark.bg
