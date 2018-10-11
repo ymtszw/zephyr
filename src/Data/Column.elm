@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, Filter(..), FilterAtom(..), MediaFilter(..), MetadataFilter(..), welcome, encoder, decoder
-    , foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter
+    , foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter, removeAtFilter
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -13,7 +13,7 @@ module Data.Column exposing
 
 ## Filter APIs
 
-@docs foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter
+@docs foldFilter, mapFilter, indexedMapFilter, appendToFilter, setAtFilter, removeAtFilter
 
 -}
 
@@ -277,24 +277,60 @@ prependAccumulated reversedFilterAtoms filter =
 
 setAtFilter : Int -> FilterAtom -> Filter -> Filter
 setAtFilter targetIndex newFilterAtom filter =
-    setAtFilterImpl targetIndex newFilterAtom 0 [] filter
+    updateAtFilter targetIndex (always (Just newFilterAtom)) filter |> Maybe.withDefault filter
 
 
-setAtFilterImpl : Int -> FilterAtom -> Int -> List FilterAtom -> Filter -> Filter
-setAtFilterImpl targetIndex newFilterAtom index reversedFilterAtoms filter =
+removeAtFilter : Int -> Filter -> Maybe Filter
+removeAtFilter targetIndex filter =
+    updateAtFilter targetIndex (always Nothing) filter
+
+
+updateAtFilter : Int -> (FilterAtom -> Maybe FilterAtom) -> Filter -> Maybe Filter
+updateAtFilter targetIndex update filter =
+    updateAtFilterImpl targetIndex update 0 [] filter
+
+
+updateAtFilterImpl : Int -> (FilterAtom -> Maybe FilterAtom) -> Int -> List FilterAtom -> Filter -> Maybe Filter
+updateAtFilterImpl targetIndex update index reversedFilterAtoms filter =
     if targetIndex == index then
-        case filter of
-            Singular _ ->
-                prependAccumulated reversedFilterAtoms (Singular newFilterAtom)
+        case ( filter, reversedFilterAtoms ) of
+            ( Singular targetFilterAtom, [] ) ->
+                case update targetFilterAtom of
+                    Just newFilterAtom ->
+                        Just (Singular newFilterAtom)
 
-            Or _ rest ->
-                prependAccumulated reversedFilterAtoms (Or newFilterAtom rest)
+                    Nothing ->
+                        Nothing
+
+            ( Singular targetFilterAtom, prevFilterAtom :: fas ) ->
+                case update targetFilterAtom of
+                    Just newFilterAtom ->
+                        Just (prependAccumulated reversedFilterAtoms (Singular newFilterAtom))
+
+                    Nothing ->
+                        Just (prependAccumulated fas (Singular prevFilterAtom))
+
+            ( Or targetFilterAtom rest, [] ) ->
+                case update targetFilterAtom of
+                    Just newFilterAtom ->
+                        Just (Or newFilterAtom rest)
+
+                    Nothing ->
+                        Just rest
+
+            ( Or targetFilterAtom rest, prevFilterAtom :: fas ) ->
+                case update targetFilterAtom of
+                    Just newFilterAtom ->
+                        Just (prependAccumulated reversedFilterAtoms (Or newFilterAtom rest))
+
+                    Nothing ->
+                        Just (prependAccumulated fas (Or prevFilterAtom rest))
 
     else
         case filter of
             Singular _ ->
                 -- Reached end without matching index (out-of-bound); just backtrack
-                prependAccumulated reversedFilterAtoms filter
+                Just (prependAccumulated reversedFilterAtoms filter)
 
             Or filterAtom rest ->
-                setAtFilterImpl targetIndex newFilterAtom (index + 1) (filterAtom :: reversedFilterAtoms) rest
+                updateAtFilterImpl targetIndex update (index + 1) (filterAtom :: reversedFilterAtoms) rest
