@@ -136,7 +136,7 @@ encodeMetadata metadata =
 
 welcome : Item
 welcome =
-    { message = "Welcome to Zephyr app!\n\nYou can add data producers and set up conditional feeds!"
+    { message = "Welcome to Zephyr app! 🚀\n\nThis is Elm-powered multi-service feed reader!\n\nLet's start with configuring column filters above!"
     , mediaMaybe =
         Just <|
             Image

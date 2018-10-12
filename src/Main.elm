@@ -129,7 +129,7 @@ addColumn m =
         ( newId, newIdGen ) =
             UniqueId.gen "column" m.idGen
     in
-    { m | columnStore = ColumnStore.add (Column.welcome newId) m.columnStore, idGen = newIdGen }
+    { m | columnStore = ColumnStore.add (Column.new newId) m.columnStore, idGen = newIdGen }
 
 
 onDragEnter : Model -> Int -> ( Model, Cmd Msg )
