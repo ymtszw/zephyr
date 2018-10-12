@@ -572,6 +572,7 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
                 case discordMaterial.ofDiscordChannel of
                     Just ( _, channels ) ->
                         ( Dict.values channels
+                            |> List.filter .readable
                             |> List.sortBy (.guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~")
                             |> List.map .id
                           -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback

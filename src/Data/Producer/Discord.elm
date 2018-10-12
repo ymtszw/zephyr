@@ -144,6 +144,7 @@ type alias Channel =
     -- Zephyr-only fields below
     , lastFetchTime : Maybe Posix
     , lastYieldTime : Maybe Posix
+    , readable : Bool -- Become False on fetch failure (no longer fetched afterward), reset to True on Hydrate/Rehydrate
     }
 
 
@@ -235,7 +236,7 @@ channelDecoder guilds =
         populateGuild guildIdMaybe =
             Maybe.andThen (\gId -> Dict.get gId guilds) guildIdMaybe
     in
-    D.map7 Channel
+    D.map8 Channel
         (D.field "id" D.string)
         (D.field "name" D.string)
         (D.field "type" channelTypeDecoder)
@@ -243,6 +244,7 @@ channelDecoder guilds =
         (D.maybeField "last_message_id" (D.map MessageId D.string))
         (D.maybeField "lastFetchTime" (D.map Time.millisToPosix D.int))
         (D.maybeField "lastYieldTime" (D.map Time.millisToPosix D.int))
+        (D.maybeField "readable" D.bool |> D.map (Maybe.withDefault True))
 
 
 channelTypeDecoder : Decoder ChannelType
@@ -366,6 +368,7 @@ encodeChannel channel =
         , ( "last_message_id", E.maybe (unwrapMessageId >> E.string) channel.lastMessageId ) -- Match field name with Discord's API
         , ( "lastFetchTime", E.maybe (Time.posixToMillis >> E.int) channel.lastFetchTime )
         , ( "lastYieldTime", E.maybe (Time.posixToMillis >> E.int) channel.lastYieldTime )
+        , ( "readable", E.bool channel.readable )
         ]
 
 
