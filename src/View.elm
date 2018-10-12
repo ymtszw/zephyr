@@ -279,12 +279,14 @@ columnConfigEl m index column =
             , El.padding 5
             , El.spacing 3
             , BG.color oneDark.sub
+            , BD.width 1
+            , BD.color oneDark.note
             ]
             [ columnConfigTitleEl "Filter Rules"
             , filtersEl m column
-            , columnConfigTitleEl "Danger"
+            , columnConfigTitleEl "Danger Zone"
             , columnDeleteEl index column
-            , Element.Input.button [ El.width El.fill, BG.color oneDark.bg ]
+            , Element.Input.button [ El.width El.fill, BG.color oneDark.sub ]
                 { onPress = Just (ToggleColumnConfig column.id False)
                 , label = octiconFreeSizeEl 24 Octicons.triangleUp
                 }
@@ -312,7 +314,7 @@ filtersEl m column =
         |> Array.toList
         |> List.intersperse (filterLogicSeparator "AND")
         |> El.column
-            [ El.width El.fill
+            [ El.width (El.fill |> El.minimum 0)
             , El.padding 5
             , El.spacing 3
             , BD.rounded 5
@@ -322,26 +324,37 @@ filtersEl m column =
 
 filterEl : Model -> String -> Int -> Filter -> Element Msg
 filterEl m cId index filter =
-    filterWrap <|
-        filterGeneratorEl (SetColumnFilter cId index)
-            m
-            (cId ++ "filter" ++ String.fromInt index)
-            (Just filter)
+    let
+        tagger newFilterMaybe =
+            case newFilterMaybe of
+                Just newFilter ->
+                    SetColumnFilter cId index newFilter
+
+                Nothing ->
+                    DelColumnFilter cId index
+    in
+    filterGeneratorEl tagger m cId (Just ( index, filter ))
 
 
 addNewFilterEl : Model -> String -> Element Msg
 addNewFilterEl m cId =
-    filterWrap <|
-        filterGeneratorEl (AddColumnFilter cId)
-            m
-            (cId ++ "addNewFilter")
-            Nothing
+    let
+        tagger newFilterMaybe =
+            case newFilterMaybe of
+                Just newFilter ->
+                    AddColumnFilter cId newFilter
+
+                Nothing ->
+                    -- Should not happen
+                    tagger newFilterMaybe
+    in
+    filterGeneratorEl tagger m cId Nothing
 
 
 filterLogicSeparator : String -> Element msg
 filterLogicSeparator text =
     El.el
-        [ El.width El.fill
+        [ El.width (El.fill |> El.minimum 0)
         , El.padding 3
         , Font.size (scale12 2)
         , Font.color oneDark.note
@@ -349,36 +362,62 @@ filterLogicSeparator text =
         (El.el [ El.centerX ] (El.text text))
 
 
-filterWrap : Element msg -> Element msg
-filterWrap =
-    El.el
+filterGeneratorEl : (Maybe Filter -> Msg) -> Model -> String -> Maybe ( Int, Filter ) -> Element Msg
+filterGeneratorEl tagger m cId indexFilterMaybe =
+    El.row
         [ El.width El.fill
-        , El.padding 5
         , BD.width 1
         , BD.rounded 5
         , BD.color oneDark.note
         ]
+        [ case indexFilterMaybe of
+            Just ( index, filter ) ->
+                let
+                    filterId =
+                        cId ++ "filter" ++ String.fromInt index
+                in
+                El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ] <|
+                    List.intersperse (filterLogicSeparator "OR") <|
+                        Column.indexedMapFilter (filterAtomEl filter tagger m filterId) filter
+                            ++ [ newFilterAtomEl (\fa -> tagger (Just (Column.appendToFilter fa filter))) m filterId ]
+
+            Nothing ->
+                El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ]
+                    [ newFilterAtomEl (tagger << Just << Singular) m (cId ++ "addNewFilter") ]
+        , deleteFilterButtonEl cId indexFilterMaybe
+        ]
 
 
-filterGeneratorEl : (Filter -> Msg) -> Model -> String -> Maybe Filter -> Element Msg
-filterGeneratorEl tagger m filterId filterMaybe =
-    case filterMaybe of
-        Just filter ->
-            El.column [ El.width El.fill ] <|
-                List.intersperse (filterLogicSeparator "OR") <|
-                    Column.indexedMapFilter (filterAtomEl filter tagger m filterId) filter
-                        ++ [ newFilterAtomEl (\fa -> tagger <| Column.appendToFilter fa filter) m filterId ]
+deleteFilterButtonEl : String -> Maybe ( Int, Filter ) -> Element Msg
+deleteFilterButtonEl cId indexFilterMaybe =
+    case indexFilterMaybe of
+        Just ( index, _ ) ->
+            El.el
+                [ El.width (El.px 20)
+                , El.height El.fill
+                , El.mouseOver [ BG.color oneDark.err ]
+                , El.alignRight
+                , BD.roundEach { topLeft = 0, topRight = 5, bottomRight = 5, bottomLeft = 0 }
+                , Element.Events.onClick (DelColumnFilter cId index)
+                , El.pointer
+                ]
+                (El.el [ El.centerY, El.centerX ] <| octiconFreeSizeEl 16 Octicons.trashcan)
 
         Nothing ->
-            El.column [ El.width El.fill ]
-                [ newFilterAtomEl (tagger << Singular) m filterId ]
+            El.none
 
 
-filterAtomEl : Filter -> (Filter -> Msg) -> Model -> String -> Int -> FilterAtom -> Element Msg
+filterAtomEl : Filter -> (Maybe Filter -> Msg) -> Model -> String -> Int -> FilterAtom -> Element Msg
 filterAtomEl originalFilter tagger m filterId index filterAtom =
     let
         updateAndTag newFilterAtom =
-            tagger (Column.setAtFilter index newFilterAtom originalFilter)
+            tagger <|
+                case newFilterAtom of
+                    RemoveMe ->
+                        Column.removeAtFilter index originalFilter
+
+                    _ ->
+                        Just (Column.setAtFilter index newFilterAtom originalFilter)
     in
     filterAtomInputEl updateAndTag m (filterId ++ "atom" ++ String.fromInt index) (Just filterAtom)
 
@@ -394,7 +433,7 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
         discordMaterial =
             Producer.discordFilterAtomMaterial m.producerRegistry
     in
-    El.row [ El.width El.fill, El.spacing 3 ]
+    El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
         [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "variableInput") filterAtomMaybe
         ]
@@ -402,7 +441,7 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
 
 filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMaybe =
-    El.el [ El.width (El.fill |> El.maximum 150) ] <|
+    El.el [ El.width (El.fill |> El.maximum 120) ] <|
         Select.el
             { id = selectId
             , onSelect = tagger
@@ -424,10 +463,10 @@ filterAtomTypeOptionEl filterAtom =
                 El.text "Attached media..."
 
             ByMetadata IsDefault ->
-                El.text "System message"
+                El.text "All system message"
 
             ByMetadata IsDiscord ->
-                El.text "Discord message"
+                El.text "All Discord message"
 
             ByMetadata (OfDiscordGuild _) ->
                 El.text "Discord message in server..."
@@ -435,10 +474,15 @@ filterAtomTypeOptionEl filterAtom =
             ByMetadata (OfDiscordChannel _) ->
                 El.text "Discord message in channel..."
 
+            RemoveMe ->
+                El.text "Remove this filter"
+
 
 availableFilterAtomsWithDefaultArguments : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
 availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe =
-    basicFilterAtoms filterAtomMaybe ++ discordFilterAtoms discordMaterial filterAtomMaybe
+    basicFilterAtoms filterAtomMaybe
+        ++ discordFilterAtoms discordMaterial filterAtomMaybe
+        ++ Maybe.withDefault [] (Maybe.map (always [ RemoveMe ]) filterAtomMaybe)
 
 
 basicFilterAtoms : Maybe FilterAtom -> List FilterAtom
@@ -514,7 +558,11 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
             filterAtomVariableSelectInputEl (tagger << ByMetadata << OfDiscordGuild) selectState (inputId ++ "variableSelect") gId <|
                 case discordMaterial.ofDiscordGuild of
                     Just ( _, guilds ) ->
-                        ( Dict.keys guilds, discordGuildOptionEl guilds )
+                        ( Dict.values guilds
+                            |> List.sortBy .name
+                            |> List.map .id
+                        , discordGuildOptionEl guilds
+                        )
 
                     Nothing ->
                         ( [], El.text )
@@ -532,6 +580,10 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
 
                     Nothing ->
                         ( [], El.text )
+
+        Just RemoveMe ->
+            -- Should not happen
+            El.none
 
         Nothing ->
             El.none
@@ -601,8 +653,10 @@ discordChannelOptionEl channels cId =
         Just channel ->
             case channel.guildMaybe of
                 Just guild ->
-                    El.row [ El.width El.fill, El.spacing 3 ]
-                        [ discordGuildSmallIconEl guild, El.text ("#" ++ channel.name) ]
+                    El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
+                        [ discordGuildSmallIconEl guild
+                        , El.text ("#" ++ channel.name)
+                        ]
 
                 Nothing ->
                     -- Mostly DM

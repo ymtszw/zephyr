@@ -59,6 +59,7 @@ type FilterAtom
     = ByMessage String
     | ByMedia MediaFilter
     | ByMetadata MetadataFilter
+    | RemoveMe -- This is only for deletion from UI, not actually used as filter
 
 
 type MediaFilter
@@ -156,6 +157,10 @@ encodeFilterAtom filterAtom =
 
         ByMetadata metadataFilter ->
             E.tagged "ByMetadata" (encodeMetadataFilter metadataFilter)
+
+        RemoveMe ->
+            -- Should not be stored in Filter
+            encodeFilterAtom filterAtom
 
 
 encodeMediaType : MediaFilter -> E.Value

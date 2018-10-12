@@ -70,34 +70,32 @@ el { id, onSelect, selectedOption, noMsgOptionEl } state options =
         opened =
             isOpen id state
     in
-    -- `El.minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
-    -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
-    El.row [ El.width (El.fill |> El.minimum 0), Font.size (scale12 2) ]
-        [ El.el
-            [ El.width (El.fill |> El.minimum 0)
-            , El.below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) El.none)
-            ]
-            (headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
+    El.el
+        [ El.width (El.fill |> El.minimum 0)
+        , El.below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) El.none)
+        , Font.size (scale12 2)
         ]
+        (headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
 
 
 headerEl : Msg -> Maybe a -> (a -> Element Msg) -> Element Msg
 headerEl onPress selectedOption noMsgOptionEl =
-    Element.Input.button
-        [ El.width (El.fill |> El.minimum 0)
-        , BD.rounded 5
+    El.row
+        [ El.width El.fill
+        , El.spacing 3
         , El.padding 5
+        , BD.rounded 5
         , BG.color oneDark.note
+        , Element.Events.onClick onPress
+        , El.pointer
         ]
-        { onPress = Just onPress
-        , label =
-            El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
-                [ El.el [ El.width (El.fill |> El.minimum 0), El.clipX ] <|
-                    Maybe.withDefault (El.text "Select...") (Maybe.map noMsgOptionEl selectedOption)
-                , El.el [ El.width (El.px 20), El.alignRight, BG.color oneDark.sub ] <|
-                    octiconFreeSizeEl 20 Octicons.chevronDown
-                ]
-        }
+        [ -- `El.minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
+          -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
+          El.el [ El.width (El.fill |> El.minimum 0), El.clipX ] <|
+            Maybe.withDefault (El.text "Select...") (Maybe.map noMsgOptionEl selectedOption)
+        , El.el [ El.width (El.px 20), El.alignRight, BG.color oneDark.sub ] <|
+            octiconFreeSizeEl 20 Octicons.chevronDown
+        ]
 
 
 optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List a -> Element Msg
@@ -105,7 +103,7 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
     options
         |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
         |> El.column
-            [ El.width (El.fill |> El.minimum 0)
+            [ El.width (El.fill |> El.minimum 100)
             , El.paddingXY 0 5
             , El.scrollbarY
             , BD.width 1
@@ -119,9 +117,7 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
                 }
             , BG.color oneDark.note
             ]
-        |> El.el
-            [ El.height (El.fill |> El.minimum 0 |> El.maximum 300)
-            ]
+        |> El.el [ El.height (El.fill |> El.maximum 300) ]
 
 
 optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> a -> Element Msg
@@ -132,7 +128,7 @@ optionEl onSelect noMsgOptionEl selectedOption option =
     in
     El.el
         (selectedStyle
-            ++ [ El.width (El.fill |> El.minimum 0)
+            ++ [ El.width El.fill
                , El.padding 5
                , El.mouseOver [ BG.color oneDark.sub ]
                , El.pointer
