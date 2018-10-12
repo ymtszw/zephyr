@@ -214,10 +214,14 @@ columnSuites =
     describe "Data.Column"
         [ test "encoder/decoder should work" <|
             \_ ->
-                Data.Column.welcome "test"
+                let
+                    welcome =
+                        Data.Column.welcome "test"
+                in
+                welcome
                     |> Data.Column.encoder
                     |> decodeValue Data.Column.decoder
-                    |> Expect.equal (Ok (Data.Column.welcome "test"))
+                    |> Expect.equal (Ok { welcome | configOpen = False })
         ]
 
 
