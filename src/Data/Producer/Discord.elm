@@ -1,7 +1,8 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), Guild, Channel, Msg(..), decoder, encode
+    ( Discord(..), Guild, Channel, FetchStatus(..), Msg(..), decoder, encode
+    , Message, Author(..), encodeMessage, messageDecoder
     , reload, update, configEl
-    , imageUrl, imageUrlNoFallback
+    , imageUrlWithFallback, imageUrlNoFallback
     , FilterAtomMaterial, filterAtomMaterial
     )
 
@@ -17,7 +18,12 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, Guild, Channel, Msg, decoder, encode
+@docs Discord, Guild, Channel, FetchStatus, Msg, decoder, encode
+
+
+## Message
+
+@docs Message, Author, encodeMessage, messageDecoder
 
 
 ## Component APIs
@@ -27,7 +33,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs imageUrl, imageUrlNoFallback
+@docs imageUrlWithFallback, imageUrlNoFallback
 
 
 ## Filter related
@@ -37,8 +43,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 -}
 
 import Data.ColorTheme exposing (oneDark)
-import Data.Column exposing (FilterAtom(..), MetadataFilter(..))
-import Data.Item as Item exposing (Item)
+import Data.Filter exposing (FilterAtom(..))
 import Data.Producer.Base as Producer exposing (save)
 import Dict exposing (Dict)
 import Element as El exposing (Element)
@@ -51,6 +56,7 @@ import Extra exposing (ite)
 import Html.Attributes
 import Http
 import HttpExtra as Http
+import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -142,9 +148,7 @@ type alias Channel =
     , lastMessageId : Maybe MessageId
 
     -- Zephyr-only fields below
-    , lastFetchTime : Maybe Posix
-    , lastYieldTime : Maybe Posix
-    , readable : Bool -- Become False on fetch failure (no longer fetched afterward), reset to True on Hydrate/Rehydrate
+    , fetchStatus : FetchStatus
     }
 
 
@@ -166,105 +170,75 @@ type Image
     | UserAvatar { userId : String, hash : String }
 
 
-
--- DECODER
-
-
-decoder : Decoder Discord
-decoder =
-    D.oneOf
-        [ D.tagged "Revisit" Revisit povDecoder
-        , D.tagged "TokenReady" TokenReady D.string
-        , D.tagged "TokenGiven" TokenGiven D.string
-
-        -- Old versions below; to be removed after migration
-        , D.when (D.field "tag" D.string) ((==) "discordRevisit") <|
-            D.map Revisit (D.field "pov" povDecoder)
-        , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
-            D.map TokenReady (D.field "token" D.string)
-        , D.when (D.field "tag" D.string) ((==) "discordTokenGiven") <|
-            D.map TokenGiven (D.field "token" D.string)
-        ]
+type FetchStatus
+    = NeverFetched
+    | InitialFetching
+    | NextFetchAt Posix BackoffFactor
+    | Fetching Posix BackoffFactor
+    | Forbidden
 
 
-povDecoder : Decoder POV
-povDecoder =
-    D.field "guilds" (D.dict guildDecoder)
-        |> D.andThen
-            (\guilds ->
-                D.map4 POV
-                    (D.field "token" D.string)
-                    (D.field "user" userDecoder)
-                    (D.succeed guilds)
-                    (D.field "channels" (D.dict (channelDecoder guilds)))
-            )
+type BackoffFactor
+    = BF5
+    | BF10
+    | BF30
+    | BF60
+    | BF120
 
 
-userDecoder : Decoder User
-userDecoder =
-    let
-        decodeWithId id =
-            D.map4 (User id)
-                (D.field "username" D.string)
-                (D.field "discriminator" D.string)
-                (D.field "email" D.string)
-                (D.field "avatar" (D.maybe (D.map (toUserAvatar id) D.string)))
-
-        toUserAvatar id hash =
-            UserAvatar { userId = id, hash = hash }
-    in
-    D.field "id" D.string |> D.andThen decodeWithId
+type Msg
+    = TokenInput String
+    | CommitToken
+    | Identify User
+    | Hydrate (Dict String Guild) (Dict String Channel)
+    | Rehydrate
+    | Fetched FetchResult
+    | APIError Http.Error
 
 
-guildDecoder : Decoder Guild
-guildDecoder =
-    let
-        decodeWithId id =
-            D.map2 (Guild id)
-                (D.field "name" D.string)
-                (D.field "icon" (D.maybe (D.map (toGuildIcon id) D.string)))
-
-        toGuildIcon id hash =
-            GuildIcon { guildId = id, hash = hash }
-    in
-    D.field "id" D.string |> D.andThen decodeWithId
+type FetchResult
+    = FetchErr Posix Http.Error
+    | FetchOk Posix (List Message)
 
 
-channelDecoder : Dict String Guild -> Decoder Channel
-channelDecoder guilds =
-    let
-        populateGuild guildIdMaybe =
-            Maybe.andThen (\gId -> Dict.get gId guilds) guildIdMaybe
-    in
-    D.map8 Channel
-        (D.field "id" D.string)
-        (D.field "name" D.string)
-        (D.field "type" channelTypeDecoder)
-        (D.maybeField "guild_id" D.string |> D.map populateGuild)
-        (D.maybeField "last_message_id" (D.map MessageId D.string))
-        (D.maybeField "lastFetchTime" (D.map Time.millisToPosix D.int))
-        (D.maybeField "lastYieldTime" (D.map Time.millisToPosix D.int))
-        (D.maybeField "readable" D.bool |> D.map (Maybe.withDefault True))
+{-| Discord Message Object.
+
+Only interested in "type: 0" (DEFAULT) messages.
+
+-}
+type alias Message =
+    { id : String
+    , channelId : String
+    , guildId : Maybe String
+    , author : Author
+    , timestamp : Posix
+    , content : String
+    , embeds : List Embed
+    , attachments : List Attachment
+    }
 
 
-channelTypeDecoder : Decoder ChannelType
-channelTypeDecoder =
-    D.int
-        |> D.andThen
-            (\num ->
-                case num of
-                    0 ->
-                        D.succeed GuildText
+type Author
+    = UserAuthor User
+    | WebhookAuthor User
 
-                    1 ->
-                        D.succeed DM
 
-                    3 ->
-                        D.succeed GroupDM
+type alias Embed =
+    { title : Maybe String
+    , description : Maybe String
+    , url : Maybe Url
 
-                    _ ->
-                        D.fail "Invalid ChannelType"
-            )
+    -- TODO add other properties
+    }
+
+
+type alias Attachment =
+    { filename : String
+    , url : Url
+    , proxy_url : Url
+    , height : Maybe Int
+    , width : Maybe Int
+    }
 
 
 
@@ -366,9 +340,7 @@ encodeChannel channel =
         , ( "type", encodeChannelType channel.type_ )
         , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
         , ( "last_message_id", E.maybe (unwrapMessageId >> E.string) channel.lastMessageId ) -- Match field name with Discord's API
-        , ( "lastFetchTime", E.maybe (Time.posixToMillis >> E.int) channel.lastFetchTime )
-        , ( "lastYieldTime", E.maybe (Time.posixToMillis >> E.int) channel.lastYieldTime )
-        , ( "readable", E.bool channel.readable )
+        , ( "fetchStatus", encodeFetchStatus channel.fetchStatus )
         ]
 
 
@@ -383,6 +355,257 @@ encodeChannelType type_ =
 
         GroupDM ->
             E.int 3
+
+
+encodeFetchStatus : FetchStatus -> E.Value
+encodeFetchStatus fetchStatus =
+    case fetchStatus of
+        NeverFetched ->
+            E.tag "NeverFetched"
+
+        InitialFetching ->
+            E.tag "NeverFetched"
+
+        NextFetchAt posix bf ->
+            E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
+
+        Fetching posix bf ->
+            E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
+
+        Forbidden ->
+            E.tag "Forbidden"
+
+
+encodeBackoffFactor : BackoffFactor -> E.Value
+encodeBackoffFactor bf =
+    case bf of
+        BF5 ->
+            E.tag "BF5"
+
+        BF10 ->
+            E.tag "BF10"
+
+        BF30 ->
+            E.tag "BF30"
+
+        BF60 ->
+            E.tag "BF60"
+
+        BF120 ->
+            E.tag "BF120"
+
+
+encodeMessage : Message -> E.Value
+encodeMessage message =
+    E.object
+        [ ( "id", E.string message.id )
+        , ( "channel_id", E.string message.channelId )
+        , ( "guild_id", E.maybe E.string message.guildId )
+        , ( "author", encodeAuthor message.author )
+        , ( "timestamp", Iso8601.encode message.timestamp )
+        , ( "content", E.string message.content )
+        , ( "embeds", E.list encodeEmbed message.embeds )
+        , ( "attachments", E.list encodeAttachment message.attachments )
+        ]
+
+
+encodeAuthor : Author -> E.Value
+encodeAuthor author =
+    case author of
+        UserAuthor user ->
+            E.tagged "UserAuthor" (encodeUser user)
+
+        WebhookAuthor user ->
+            E.tagged "WebhookAuthor" (encodeUser user)
+
+
+encodeEmbed : Embed -> E.Value
+encodeEmbed embed =
+    E.object
+        [ ( "title", E.maybe E.string embed.title )
+        , ( "description", E.maybe E.string embed.description )
+        , ( "url", E.maybe (Url.toString >> E.string) embed.url )
+        ]
+
+
+encodeAttachment : Attachment -> E.Value
+encodeAttachment attachment =
+    E.object
+        [ ( "filename", E.string attachment.filename )
+        , ( "url", E.string (Url.toString attachment.url) )
+        , ( "proxy_url", E.string (Url.toString attachment.proxy_url) )
+        , ( "height", E.maybe E.int attachment.height )
+        , ( "width", E.maybe E.int attachment.width )
+        ]
+
+
+
+-- DECODER
+
+
+decoder : Decoder Discord
+decoder =
+    D.oneOf
+        [ D.tagged "Revisit" Revisit povDecoder
+        , D.tagged "TokenReady" TokenReady D.string
+        , D.tagged "TokenGiven" TokenGiven D.string
+
+        -- Old versions below; to be removed after migration
+        , D.when (D.field "tag" D.string) ((==) "discordRevisit") <|
+            D.map Revisit (D.field "pov" povDecoder)
+        , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
+            D.map TokenReady (D.field "token" D.string)
+        , D.when (D.field "tag" D.string) ((==) "discordTokenGiven") <|
+            D.map TokenGiven (D.field "token" D.string)
+        ]
+
+
+povDecoder : Decoder POV
+povDecoder =
+    D.field "guilds" (D.dict guildDecoder)
+        |> D.andThen
+            (\guilds ->
+                D.map4 POV
+                    (D.field "token" D.string)
+                    (D.field "user" userDecoder)
+                    (D.succeed guilds)
+                    (D.field "channels" (D.dict (channelDecoder guilds)))
+            )
+
+
+userDecoder : Decoder User
+userDecoder =
+    let
+        decodeWithId id =
+            D.map4 (User id)
+                (D.field "username" D.string)
+                (D.field "discriminator" D.string)
+                (D.field "email" D.string)
+                (D.field "avatar" (D.maybe (D.map (toUserAvatar id) D.string)))
+
+        toUserAvatar id hash =
+            UserAvatar { userId = id, hash = hash }
+    in
+    D.field "id" D.string |> D.andThen decodeWithId
+
+
+guildDecoder : Decoder Guild
+guildDecoder =
+    let
+        decodeWithId id =
+            D.map2 (Guild id)
+                (D.field "name" D.string)
+                (D.field "icon" (D.maybe (D.map (toGuildIcon id) D.string)))
+
+        toGuildIcon id hash =
+            GuildIcon { guildId = id, hash = hash }
+    in
+    D.field "id" D.string |> D.andThen decodeWithId
+
+
+channelDecoder : Dict String Guild -> Decoder Channel
+channelDecoder guilds =
+    let
+        populateGuild guildIdMaybe =
+            Maybe.andThen (\gId -> Dict.get gId guilds) guildIdMaybe
+    in
+    D.map6 Channel
+        (D.field "id" D.string)
+        (D.field "name" D.string)
+        (D.field "type" channelTypeDecoder)
+        (D.maybeField "guild_id" D.string |> D.map populateGuild)
+        (D.maybeField "last_message_id" (D.map MessageId D.string))
+        (D.maybeField "fetchStatus" fetchStatusDecoder |> D.map (Maybe.withDefault NeverFetched))
+
+
+channelTypeDecoder : Decoder ChannelType
+channelTypeDecoder =
+    D.int
+        |> D.andThen
+            (\num ->
+                case num of
+                    0 ->
+                        D.succeed GuildText
+
+                    1 ->
+                        D.succeed DM
+
+                    3 ->
+                        D.succeed GroupDM
+
+                    _ ->
+                        D.fail "Invalid ChannelType"
+            )
+
+
+fetchStatusDecoder : Decoder FetchStatus
+fetchStatusDecoder =
+    D.oneOf
+        [ D.tag "NeverFetched" NeverFetched
+        , D.tagged2 "NextFetchAt" NextFetchAt (D.map Time.millisToPosix D.int) backoffFactorDecoder
+        , D.tag "Forbidden" Forbidden
+        ]
+
+
+backoffFactorDecoder : Decoder BackoffFactor
+backoffFactorDecoder =
+    D.oneOf [ D.tag "BF5" BF5, D.tag "BF10" BF10, D.tag "BF30" BF30, D.tag "BF60" BF60, D.tag "BF120" BF120 ]
+
+
+messageDecoder : Decoder Message
+messageDecoder =
+    D.map8 Message
+        (D.field "id" D.string)
+        (D.field "channel_id" D.string)
+        (D.field "guild_id" (D.maybe D.string))
+        authorDecoder
+        (D.field "timestamp" Iso8601.decoder)
+        (D.field "content" D.string)
+        (D.field "embeds" (D.list embedDecoder))
+        (D.field "attachments" (D.list attachmentDecoder))
+
+
+authorDecoder : Decoder Author
+authorDecoder =
+    let
+        decodeFromDiscordApi =
+            D.maybeField "webhook_id" D.string
+                |> D.andThen
+                    (\webhookMaybe ->
+                        D.field "author" userDecoder
+                            |> D.map
+                                (case webhookMaybe of
+                                    Just _ ->
+                                        WebhookAuthor
+
+                                    Nothing ->
+                                        UserAuthor
+                                )
+                    )
+    in
+    D.oneOf
+        [ decodeFromDiscordApi
+        , D.tagged "UserAuthor" UserAuthor userDecoder
+        , D.tagged "WebhookAuthor" WebhookAuthor userDecoder
+        ]
+
+
+embedDecoder : Decoder Embed
+embedDecoder =
+    D.map3 Embed
+        (D.field "title" (D.maybe D.string))
+        (D.field "description" (D.maybe D.string))
+        (D.field "url" (D.maybe D.url))
+
+
+attachmentDecoder : Decoder Attachment
+attachmentDecoder =
+    D.map5 Attachment
+        (D.field "filename" D.string)
+        (D.field "url" D.url)
+        (D.field "proxy_url" D.url)
+        (D.field "height" (D.maybe D.int))
+        (D.field "width" (D.maybe D.int))
 
 
 
@@ -410,16 +633,7 @@ reload discord =
 -- UPDATE
 
 
-type Msg
-    = TokenInput String
-    | CommitToken
-    | Identify User
-    | Hydrate (Dict String Guild) (Dict String Channel)
-    | Rehydrate
-    | APIError Http.Error
-
-
-update : Producer.Update Discord Msg
+update : Producer.Update Message Discord Msg
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
@@ -439,6 +653,9 @@ update msg discordMaybe =
 
         ( Rehydrate, Just discord ) ->
             handleRehydrate discord
+
+        ( Fetched _, Just discord ) ->
+            Debug.todo "TODO"
 
         ( APIError e, Just discord ) ->
             handleAPIError discord e
@@ -465,7 +682,7 @@ tokenInput discord newToken =
             discord
 
 
-commitToken : Discord -> Producer.Yield Discord Msg
+commitToken : Discord -> Producer.Yield Message Discord Msg
 commitToken discord =
     case discord of
         TokenGiven "" ->
@@ -493,7 +710,7 @@ commitToken discord =
             commitToken discord
 
 
-handleIdentify : Discord -> User -> Producer.Yield Discord Msg
+handleIdentify : Discord -> User -> Producer.Yield Message Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
@@ -517,20 +734,20 @@ handleIdentify discord user =
             handleIdentify discord user
 
 
-detectUserSwitch : String -> POV -> User -> Producer.Yield Discord Msg
+detectUserSwitch : String -> POV -> User -> Producer.Yield Message Discord Msg
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
         save (Just (Hydrated token { pov | token = token, user = user }))
 
     else
         -- TODO Insert confirmation phase later
-        { items = [ Item.textOnly ("New User: " ++ user.username) ]
+        { items = []
         , newState = Just (Switching (NewSession token user) pov)
         , cmd = hydrate token
         }
 
 
-handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Discord Msg
+handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Message Discord Msg
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
@@ -548,7 +765,7 @@ handleHydrate discord guilds channels =
             handleHydrate discord guilds channels
 
 
-handleRehydrate : Discord -> Producer.Yield Discord Msg
+handleRehydrate : Discord -> Producer.Yield Message Discord Msg
 handleRehydrate discord =
     case discord of
         Hydrated token pov ->
@@ -559,7 +776,7 @@ handleRehydrate discord =
             handleRehydrate discord
 
 
-handleAPIError : Discord -> Http.Error -> Producer.Yield Discord Msg
+handleAPIError : Discord -> Http.Error -> Producer.Yield Message Discord Msg
 handleAPIError discord error =
     -- Debug here; mostly, unexpected API errors indicate auth error
     -- TODO log some important errors somehow
@@ -649,6 +866,30 @@ hydrateChannels token guilds =
         |> List.map getGuildChannels
         |> Task.sequence
         |> Task.map (intoDict >> Hydrate guilds)
+
+
+initialFetch : String -> Dict String Channel -> ( Dict String Channel, Cmd Msg )
+initialFetch token channels =
+    let
+        targetChannels =
+            channels |> Dict.values |> List.take 5
+
+        updatedChannels =
+            List.foldl
+                (\targetChannel accChannels ->
+                    Dict.update targetChannel.id
+                        (Maybe.map (\c -> { c | fetchStatus = InitialFetching }))
+                        accChannels
+                )
+                channels
+                targetChannels
+    in
+    ( updatedChannels, Cmd.batch (List.map (fetchOne token) targetChannels) )
+
+
+fetchOne : String -> Channel -> Cmd Msg
+fetchOne token channel =
+    Debug.todo "TODO"
 
 
 
@@ -853,7 +1094,7 @@ userNameAndAvatarEl user =
             [ El.width (El.px 32)
             , El.height (El.px 32)
             , BD.rounded 16
-            , BG.uncropped (imageUrl (Just "32") (iod user.discriminator user.avatar))
+            , BG.uncropped (imageUrlWithFallback (Just "32") user.discriminator user.avatar)
             ]
             El.none
         , El.text user.username
@@ -876,7 +1117,7 @@ guildsEl rotating pov =
 
 guildIconEl : Guild -> Element Msg
 guildIconEl guild =
-    squareIconEl 50 guild.name (Maybe.map (I >> imageUrl (Just "64")) guild.icon)
+    squareIconEl 50 guild.name (Maybe.map (imageUrlNoFallback (Just "64")) guild.icon)
 
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
@@ -898,36 +1139,27 @@ rehydrateButtonEl rotating pov =
 -- IMAGE API
 
 
-type ImageOrDiscriminator
-    = I Image
-    | D String
-
-
-iod : String -> Maybe Image -> ImageOrDiscriminator
-iod disc imageMaybe =
-    imageMaybe |> Maybe.map I |> Maybe.withDefault (D disc)
-
-
 imageUrlNoFallback : Maybe String -> Image -> String
 imageUrlNoFallback sizeMaybe image =
-    imageUrl sizeMaybe (I image)
+    imageUrlWithFallback sizeMaybe "" (Just image)
 
 
-imageUrl : Maybe String -> ImageOrDiscriminator -> String
-imageUrl sizeMaybe imageOrDiscriminator =
+imageUrlWithFallback : Maybe String -> String -> Maybe Image -> String
+imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     let
         endpoint =
-            case imageOrDiscriminator of
-                I (Emoji string) ->
+            case ( imageMaybe, discriminator ) of
+                ( Just (Emoji string), _ ) ->
                     "/emojis/" ++ string ++ ".png"
 
-                I (GuildIcon { guildId, hash }) ->
+                ( Just (GuildIcon { guildId, hash }), _ ) ->
                     "/icons/" ++ guildId ++ "/" ++ hash ++ ".png"
 
-                I (UserAvatar { userId, hash }) ->
+                ( Just (UserAvatar { userId, hash }), _ ) ->
+                    -- This includes Webhook avatar
                     "/avatars/" ++ userId ++ "/" ++ hash ++ ".png"
 
-                D disc ->
+                ( Nothing, disc ) ->
                     case String.toInt disc of
                         Just int ->
                             "/embed/avatars/" ++ String.fromInt (modBy int 5) ++ ".png"
@@ -961,7 +1193,7 @@ filterAtomMaterial : Discord -> FilterAtomMaterial
 filterAtomMaterial discord =
     case availablePov discord of
         Just { guilds, channels } ->
-            { isDiscord = Just (ByMetadata IsDiscord)
+            { isDiscord = Just IsDiscord
             , ofDiscordGuild = ofDiscordGuildMaterial guilds
             , ofDiscordChannel = ofDiscordChannelMaterial guilds channels
             }
@@ -977,7 +1209,7 @@ ofDiscordGuildMaterial guilds =
             Nothing
 
         g :: _ ->
-            Just ( ByMetadata (OfDiscordGuild g.id), guilds )
+            Just ( OfDiscordGuild g.id, guilds )
 
 
 ofDiscordChannelMaterial : Dict String Guild -> Dict String Channel -> Maybe ( FilterAtom, Dict String Channel )
@@ -987,7 +1219,7 @@ ofDiscordChannelMaterial guilds channels =
             Nothing
 
         c :: _ ->
-            Just ( ByMetadata (OfDiscordChannel c.id), channels )
+            Just ( OfDiscordChannel c.id, channels )
 
 
 availablePov : Discord -> Maybe POV

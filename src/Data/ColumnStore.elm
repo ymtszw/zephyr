@@ -33,7 +33,7 @@ decoder =
 encode : ColumnStore -> E.Value
 encode { dict, order } =
     E.object
-        [ ( "dict", E.dict identity Column.encoder dict )
+        [ ( "dict", E.dict identity Column.encode dict )
         , ( "order", E.array E.string order )
         ]
 

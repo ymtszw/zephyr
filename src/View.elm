@@ -2,13 +2,14 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
-import Data.Column as Column exposing (Column, Filter(..), FilterAtom(..), MediaFilter(..), MetadataFilter(..))
+import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Item exposing (Item, Media(..), Metadata(..))
+import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
+import Data.Item exposing (Item(..), Media(..))
 import Data.Model exposing (ColumnSwap, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
-import Data.Producer.Discord as Discord exposing (Channel, Guild)
+import Data.Producer.Discord as Discord exposing (Author(..), Channel, FetchStatus(..), Guild)
 import Data.TextRenderer exposing (TextRenderer)
 import Dict exposing (Dict)
 import Element as El exposing (Element)
@@ -214,7 +215,7 @@ notDraggedColumnEl m index column attrs =
         [ columnHeaderEl column
         , columnConfigEl m index column
         , column.items
-            |> List.map itemEl
+            |> List.map (itemEl m)
             |> El.column
                 [ El.width El.fill
                 , El.paddingXY 5 0
@@ -378,8 +379,8 @@ filterGeneratorEl tagger m cId indexFilterMaybe =
                 in
                 El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ] <|
                     List.intersperse (filterLogicSeparator "OR") <|
-                        Column.indexedMapFilter (filterAtomEl filter tagger m filterId) filter
-                            ++ [ newFilterAtomEl (\fa -> tagger (Just (Column.appendToFilter fa filter))) m filterId ]
+                        Filter.indexedMap (filterAtomEl filter tagger m filterId) filter
+                            ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) m filterId ]
 
             Nothing ->
                 El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ]
@@ -414,10 +415,10 @@ filterAtomEl originalFilter tagger m filterId index filterAtom =
             tagger <|
                 case newFilterAtom of
                     RemoveMe ->
-                        Column.removeAtFilter index originalFilter
+                        Filter.removeAt index originalFilter
 
                     _ ->
-                        Just (Column.setAtFilter index newFilterAtom originalFilter)
+                        Just (Filter.setAt index newFilterAtom originalFilter)
     in
     filterAtomInputEl updateAndTag m (filterId ++ "atom" ++ String.fromInt index) (Just filterAtom)
 
@@ -462,16 +463,16 @@ filterAtomTypeOptionEl filterAtom =
             ByMedia _ ->
                 El.text "Attached media..."
 
-            ByMetadata IsDefault ->
+            IsSystem ->
                 El.text "All system message"
 
-            ByMetadata IsDiscord ->
+            IsDiscord ->
                 El.text "All Discord message"
 
-            ByMetadata (OfDiscordGuild _) ->
+            OfDiscordGuild _ ->
                 El.text "Discord message in server..."
 
-            ByMetadata (OfDiscordChannel _) ->
+            OfDiscordChannel _ ->
                 El.text "Discord message in channel..."
 
             RemoveMe ->
@@ -490,7 +491,7 @@ basicFilterAtoms filterAtomMaybe =
     replaceWithSelected filterAtomMaybe
         [ ByMessage "text"
         , ByMedia HasNone
-        , ByMetadata IsDefault
+        , IsSystem
         ]
 
 
@@ -517,16 +518,16 @@ replaceWithSelected filterAtomMaybe filterAtoms =
                         ( ByMedia _, ByMedia _ ) ->
                             selected
 
-                        ( ByMetadata IsDefault, ByMetadata IsDefault ) ->
+                        ( IsSystem, IsSystem ) ->
                             selected
 
-                        ( ByMetadata IsDiscord, ByMetadata IsDiscord ) ->
+                        ( IsDiscord, IsDiscord ) ->
                             selected
 
-                        ( ByMetadata (OfDiscordGuild _), ByMetadata (OfDiscordGuild _) ) ->
+                        ( OfDiscordGuild _, OfDiscordGuild _ ) ->
                             selected
 
-                        ( ByMetadata (OfDiscordChannel _), ByMetadata (OfDiscordChannel _) ) ->
+                        ( OfDiscordChannel _, OfDiscordChannel _ ) ->
                             selected
 
                         _ ->
@@ -548,14 +549,14 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
             filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "variableSelect") mediaType <|
                 ( [ HasNone, HasImage, HasMovie ], mediaTypeOptionEl )
 
-        Just (ByMetadata IsDefault) ->
+        Just IsSystem ->
             El.none
 
-        Just (ByMetadata IsDiscord) ->
+        Just IsDiscord ->
             El.none
 
-        Just (ByMetadata (OfDiscordGuild gId)) ->
-            filterAtomVariableSelectInputEl (tagger << ByMetadata << OfDiscordGuild) selectState (inputId ++ "variableSelect") gId <|
+        Just (OfDiscordGuild gId) ->
+            filterAtomVariableSelectInputEl (tagger << OfDiscordGuild) selectState (inputId ++ "variableSelect") gId <|
                 case discordMaterial.ofDiscordGuild of
                     Just ( _, guilds ) ->
                         ( Dict.values guilds
@@ -567,12 +568,12 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
                     Nothing ->
                         ( [], El.text )
 
-        Just (ByMetadata (OfDiscordChannel cId)) ->
-            filterAtomVariableSelectInputEl (tagger << ByMetadata << OfDiscordChannel) selectState (inputId ++ "variableSelect") cId <|
+        Just (OfDiscordChannel cId) ->
+            filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "variableSelect") cId <|
                 case discordMaterial.ofDiscordChannel of
                     Just ( _, channels ) ->
                         ( Dict.values channels
-                            |> List.filter .readable
+                            |> List.filter (\c -> c.fetchStatus /= Forbidden)
                             |> List.sortBy (.guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~")
                             |> List.map .id
                           -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
@@ -717,8 +718,8 @@ columnDeleteButtonEl index column =
 -- ITEM
 
 
-itemEl : Item -> Element Msg
-itemEl item =
+itemEl : Model -> Item -> Element Msg
+itemEl m item =
     El.row
         [ El.width El.fill
         , El.paddingXY 0 5
@@ -727,31 +728,57 @@ itemEl item =
         , BD.color oneDark.bd
         ]
         [ itemAvatarEl item
-        , itemContentsEl item
+        , itemContentsEl m item
         ]
 
 
 itemAvatarEl : Item -> Element Msg
 itemAvatarEl item =
-    case item.metadata of
-        DiscordMetadata dmd ->
-            squareIconEl 50 dmd.userName dmd.userAvatarUrlMaybe
+    case item of
+        DiscordItem { author } ->
+            let
+                authorIconEl user =
+                    squareIconEl 50 user.username <|
+                        Just (Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar)
+            in
+            case author of
+                UserAuthor user ->
+                    authorIconEl user
 
-        DefaultMetadata ->
+                WebhookAuthor user ->
+                    authorIconEl user
+
+        SystemItem _ ->
             squareIconEl 50 "Zephyr" Nothing
 
 
-itemContentsEl : Item -> Element Msg
-itemContentsEl item =
-    case item.mediaMaybe of
+itemContentsEl : Model -> Item -> Element Msg
+itemContentsEl m item =
+    case item of
+        DiscordItem discordMessage ->
+            discordMessageEl m discordMessage
+
+        SystemItem { message, mediaMaybe } ->
+            defaultItemEl message mediaMaybe
+
+
+discordMessageEl : Model -> Discord.Message -> Element Msg
+discordMessageEl m discordMessage =
+    -- TODO match with official app styling
+    defaultItemEl discordMessage.content Nothing
+
+
+defaultItemEl : String -> Maybe Media -> Element Msg
+defaultItemEl message mediaMaybe =
+    case mediaMaybe of
         Just media ->
             El.textColumn [ El.spacingXY 0 10, El.width El.fill, El.alignTop ]
-                [ messageToParagraph item.message
+                [ messageToParagraph message
                 , mediaEl media
                 ]
 
         Nothing ->
-            El.el [ El.width El.fill, El.alignTop ] (messageToParagraph item.message)
+            El.el [ El.width El.fill, El.alignTop ] (messageToParagraph message)
 
 
 messageToParagraph : String -> Element Msg

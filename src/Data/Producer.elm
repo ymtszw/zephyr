@@ -24,8 +24,8 @@ module Data.Producer exposing
 -}
 
 import Data.ColorTheme exposing (oneDark)
-import Data.Column exposing (FilterAtom)
-import Data.Item exposing (Item)
+import Data.Filter exposing (FilterAtom)
+import Data.Item exposing (Item(..))
 import Data.Producer.Base exposing (Update, Yield)
 import Data.Producer.Discord as Discord exposing (Channel, Discord, Guild)
 import Dict exposing (Dict)
@@ -157,37 +157,43 @@ update : Msg -> ProducerRegistry -> GrossYield
 update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
-            updateProducer "discord" DiscordProducer DiscordMsg (unwrapDiscord >> Discord.update dMsg) producerRegistry
+            updateProducer "discord" DiscordItem DiscordProducer DiscordMsg (unwrapDiscord >> Discord.update dMsg) producerRegistry
 
 
 updateProducer :
     String
+    -> (item -> Item)
     -> (state -> Producer)
     -> (msg -> Msg)
-    -> (Maybe Producer -> Yield state msg)
+    -> (Maybe Producer -> Yield item state msg)
     -> ProducerRegistry
     -> GrossYield
-updateProducer key stateTagger msgTagger producerUpdate producerRegistry =
+updateProducer key itemTagger stateTagger msgTagger producerUpdate producerRegistry =
     producerRegistry
         |> Dict.get key
         |> producerUpdate
-        |> updateProducerRegistry key stateTagger msgTagger producerRegistry
+        |> updateProducerRegistry key itemTagger stateTagger msgTagger producerRegistry
 
 
 updateProducerRegistry :
     String
+    -> (item -> Item)
     -> (state -> Producer)
     -> (msg -> Msg)
     -> ProducerRegistry
-    -> Yield state msg
+    -> Yield item state msg
     -> GrossYield
-updateProducerRegistry key stateTagger msgTagger producerRegistry yield =
+updateProducerRegistry key itemTagger stateTagger msgTagger producerRegistry yield =
     case yield.newState of
         Just state ->
-            GrossYield yield.items (Dict.insert key (stateTagger state) producerRegistry) (Cmd.map msgTagger yield.cmd)
+            GrossYield (List.map itemTagger yield.items)
+                (Dict.insert key (stateTagger state) producerRegistry)
+                (Cmd.map msgTagger yield.cmd)
 
         Nothing ->
-            GrossYield yield.items (Dict.remove key producerRegistry) (Cmd.map msgTagger yield.cmd)
+            GrossYield (List.map itemTagger yield.items)
+                (Dict.remove key producerRegistry)
+                (Cmd.map msgTagger yield.cmd)
 
 
 unwrapDiscord : Maybe Producer -> Maybe Discord
