@@ -75,12 +75,8 @@ update msg ({ viewState, env } as m) =
         ToggleColumnSwappable bool ->
             ( { m | viewState = { viewState | columnSwappable = bool } }, Cmd.none )
 
-        DragStart originalIndex grabbedId ->
-            let
-                columnSwap =
-                    ColumnSwap grabbedId originalIndex m.columnStore.order
-            in
-            ( { m | viewState = { viewState | columnSwapMaybe = Just columnSwap } }, Cmd.none )
+        DragStart originalIndex colId ->
+            ( { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }, Cmd.none )
 
         DragEnter dest ->
             onDragEnter m dest
@@ -92,9 +88,7 @@ update msg ({ viewState, env } as m) =
 
         Load val ->
             -- Persist on Load, migrating to new encoding format if any
-            ( loadSavedState m val, Cmd.none )
-                |> reloadProducers
-                |> persist
+            persist <| reloadProducers <| ( loadSavedState m val, Cmd.none )
 
         ToggleConfig opened ->
             ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
@@ -115,9 +109,7 @@ update msg ({ viewState, env } as m) =
             ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | deleteGate = text }) m.columnStore }, Cmd.none )
 
         ProducerCtrl pctrl ->
-            Producer.update pctrl m.producerRegistry
-                |> applyProducerYield m
-                |> persist
+            persist <| applyProducerYield m <| Producer.update pctrl m.producerRegistry
 
         NoOp ->
             ( m, Cmd.none )
