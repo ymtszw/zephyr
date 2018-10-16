@@ -1,9 +1,11 @@
 module Data.Model exposing (ColumnSwap, Env, Model, ViewState, init, welcomeModel)
 
 import Array exposing (Array)
+import Broker exposing (Broker)
 import Browser.Navigation exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Item as Item exposing (Item)
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
@@ -12,6 +14,7 @@ import View.Select
 
 type alias Model =
     { columnStore : ColumnStore
+    , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
     , idGen : UniqueId.Generator
     , navKey : Key
@@ -51,6 +54,7 @@ initModel : Env -> Key -> Model
 initModel env navKey =
     if env.indexedDBAvailable then
         { columnStore = ColumnStore.init
+        , itemBroker = Item.initBroker
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueId.init
         , navKey = navKey
@@ -79,6 +83,7 @@ welcomeModel env navKey =
                 \newId -> ColumnStore.add (Column.welcome newId) ColumnStore.init
     in
     { columnStore = columnStore
+    , itemBroker = Item.initBroker
     , producerRegistry = Producer.initRegistry
     , idGen = idGen
     , navKey = navKey

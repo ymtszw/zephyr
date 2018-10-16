@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Array
+import Broker exposing (Broker)
 import Browser exposing (UrlRequest(..))
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (Visibility(..), onResize)
@@ -8,11 +9,13 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Item as Item exposing (Item)
 import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import Ports
 import Task
@@ -175,6 +178,7 @@ encodeModel : Model -> E.Value
 encodeModel m =
     E.object
         [ ( "columnStore", ColumnStore.encode m.columnStore )
+        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
         , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
         , ( "idGen", UniqueId.encodeGenerator m.idGen )
         ]
@@ -202,6 +206,7 @@ loadSavedState model value =
 
 type alias SavedState =
     { columnStore : ColumnStore
+    , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
     , idGen : UniqueId.Generator
     }
@@ -219,8 +224,9 @@ savedStateDecoder idGen =
 
 v3StateDecoder : Decoder SavedState
 v3StateDecoder =
-    D.map3 SavedState
+    D.map4 SavedState
         (D.field "columnStore" ColumnStore.decoder)
+        (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault Item.initBroker))
         (D.field "producerRegistry" Producer.registryDecoder)
         (D.field "idGen" UniqueId.generatorDecoder)
 
@@ -235,7 +241,7 @@ v2StateDecoder =
 
 convertFromV2State : ( ColumnStore, UniqueId.Generator ) -> SavedState
 convertFromV2State ( columnStore, idGen ) =
-    SavedState columnStore Producer.initRegistry idGen
+    SavedState columnStore Item.initBroker Producer.initRegistry idGen
 
 
 v1StateDecoder : UniqueId.Generator -> Decoder SavedState
