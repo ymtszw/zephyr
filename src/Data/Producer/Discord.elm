@@ -1,5 +1,5 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), Guild, Channel, FetchStatus(..), Msg(..), decoder, encode
+    ( Discord(..), Guild, Channel, Msg(..), decoder, encode
     , Message, Author(..), encodeMessage, messageDecoder
     , reload, update, configEl
     , imageUrlWithFallback, imageUrlNoFallback
@@ -18,7 +18,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, Guild, Channel, FetchStatus, Msg, decoder, encode
+@docs Discord, Guild, Channel, Msg, decoder, encode
 
 
 ## Message
@@ -44,7 +44,8 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
-import Data.Producer.Base as Producer exposing (save)
+import Data.Producer.Base as Producer exposing (destroy, enter, enterAndFire, setTimeout, yieldAndFire)
+import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
 import Element.Background as BG
@@ -168,37 +169,6 @@ type Image
     = Emoji String
     | GuildIcon { guildId : String, hash : String }
     | UserAvatar { userId : String, hash : String }
-
-
-type FetchStatus
-    = NeverFetched
-    | InitialFetching
-    | NextFetchAt Posix BackoffFactor
-    | Fetching Posix BackoffFactor
-    | Forbidden
-
-
-type BackoffFactor
-    = BF5
-    | BF10
-    | BF30
-    | BF60
-    | BF120
-
-
-type Msg
-    = TokenInput String
-    | CommitToken
-    | Identify User
-    | Hydrate (Dict String Guild) (Dict String Channel)
-    | Rehydrate
-    | Fetched FetchResult
-    | APIError Http.Error
-
-
-type FetchResult
-    = FetchErr Posix Http.Error
-    | FetchOk Posix (List Message)
 
 
 {-| Discord Message Object.
@@ -340,7 +310,7 @@ encodeChannel channel =
         , ( "type", encodeChannelType channel.type_ )
         , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
         , ( "last_message_id", E.maybe (unwrapMessageId >> E.string) channel.lastMessageId ) -- Match field name with Discord's API
-        , ( "fetchStatus", encodeFetchStatus channel.fetchStatus )
+        , ( "fetchStatus", FetchStatus.encode channel.fetchStatus )
         ]
 
 
@@ -357,50 +327,13 @@ encodeChannelType type_ =
             E.int 3
 
 
-encodeFetchStatus : FetchStatus -> E.Value
-encodeFetchStatus fetchStatus =
-    case fetchStatus of
-        NeverFetched ->
-            E.tag "NeverFetched"
-
-        InitialFetching ->
-            E.tag "NeverFetched"
-
-        NextFetchAt posix bf ->
-            E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
-
-        Fetching posix bf ->
-            E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
-
-        Forbidden ->
-            E.tag "Forbidden"
-
-
-encodeBackoffFactor : BackoffFactor -> E.Value
-encodeBackoffFactor bf =
-    case bf of
-        BF5 ->
-            E.tag "BF5"
-
-        BF10 ->
-            E.tag "BF10"
-
-        BF30 ->
-            E.tag "BF30"
-
-        BF60 ->
-            E.tag "BF60"
-
-        BF120 ->
-            E.tag "BF120"
-
-
 encodeMessage : Message -> E.Value
 encodeMessage message =
     E.object
         [ ( "id", E.string message.id )
         , ( "channel_id", E.string message.channelId )
         , ( "guild_id", E.maybe E.string message.guildId )
+        , ( "type", E.int 0 )
         , ( "author", encodeAuthor message.author )
         , ( "timestamp", Iso8601.encode message.timestamp )
         , ( "content", E.string message.content )
@@ -515,7 +448,7 @@ channelDecoder guilds =
         (D.field "type" channelTypeDecoder)
         (D.maybeField "guild_id" D.string |> D.map populateGuild)
         (D.maybeField "last_message_id" (D.map MessageId D.string))
-        (D.maybeField "fetchStatus" fetchStatusDecoder |> D.map (Maybe.withDefault NeverFetched))
+        (D.maybeField "fetchStatus" FetchStatus.decoder |> D.map (Maybe.withDefault NeverFetched))
 
 
 channelTypeDecoder : Decoder ChannelType
@@ -538,31 +471,19 @@ channelTypeDecoder =
             )
 
 
-fetchStatusDecoder : Decoder FetchStatus
-fetchStatusDecoder =
-    D.oneOf
-        [ D.tag "NeverFetched" NeverFetched
-        , D.tagged2 "NextFetchAt" NextFetchAt (D.map Time.millisToPosix D.int) backoffFactorDecoder
-        , D.tag "Forbidden" Forbidden
-        ]
-
-
-backoffFactorDecoder : Decoder BackoffFactor
-backoffFactorDecoder =
-    D.oneOf [ D.tag "BF5" BF5, D.tag "BF10" BF10, D.tag "BF30" BF30, D.tag "BF60" BF60, D.tag "BF120" BF120 ]
-
-
 messageDecoder : Decoder Message
 messageDecoder =
-    D.map8 Message
-        (D.field "id" D.string)
-        (D.field "channel_id" D.string)
-        (D.field "guild_id" (D.maybe D.string))
-        authorDecoder
-        (D.field "timestamp" Iso8601.decoder)
-        (D.field "content" D.string)
-        (D.field "embeds" (D.list embedDecoder))
-        (D.field "attachments" (D.list attachmentDecoder))
+    -- Only care about DEFAULT message type
+    D.when (D.field "type" D.int) ((==) 0) <|
+        D.map8 Message
+            (D.field "id" D.string)
+            (D.field "channel_id" D.string)
+            (D.field "guild_id" (D.maybe D.string))
+            authorDecoder
+            (D.field "timestamp" Iso8601.decoder)
+            (D.field "content" D.string)
+            (D.field "embeds" (D.list embedDecoder))
+            (D.field "attachments" (D.list attachmentDecoder))
 
 
 authorDecoder : Decoder Author
@@ -633,14 +554,30 @@ reload discord =
 -- UPDATE
 
 
+type Msg
+    = TokenInput String
+    | CommitToken
+    | Identify User
+    | Hydrate (Dict String Guild) (Dict String Channel)
+    | Rehydrate
+    | Fetch Posix
+    | Fetched FetchResult
+    | APIError Http.Error
+
+
+type FetchResult
+    = FetchErr String Http.Error
+    | FetchOk String (List Message) Posix
+
+
 update : Producer.Update Message Discord Msg
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            save (Just (tokenInput discord str))
+            enter (tokenInput discord str)
 
         ( TokenInput str, Nothing ) ->
-            save (Just (TokenGiven str))
+            enter (TokenGiven str)
 
         ( CommitToken, Just discord ) ->
             commitToken discord
@@ -654,15 +591,18 @@ update msg discordMaybe =
         ( Rehydrate, Just discord ) ->
             handleRehydrate discord
 
-        ( Fetched _, Just discord ) ->
-            Debug.todo "TODO"
+        ( Fetch posix, Just discord ) ->
+            handleFetch discord posix
+
+        ( Fetched result, Just discord ) ->
+            handleFetched discord result
 
         ( APIError e, Just discord ) ->
             handleAPIError discord e
 
         ( _, Nothing ) ->
-            -- Msg other than TokenInput should not arrive when Discord state is missing.
-            save Nothing
+            -- Timer tick or API response arrived after Discord token is deregistered.
+            destroy
 
 
 tokenInput : Discord -> String -> Discord
@@ -686,24 +626,24 @@ commitToken : Discord -> Producer.Yield Message Discord Msg
 commitToken discord =
     case discord of
         TokenGiven "" ->
-            save Nothing
+            destroy
 
         TokenGiven token ->
-            { items = [], newState = Just (TokenReady token), cmd = identify token }
+            enterAndFire discord (identify token)
 
         Hydrated "" _ ->
             -- TODO Insert confirmation phase later
-            save Nothing
+            destroy
 
-        Hydrated newToken pov ->
-            { items = [], newState = Just discord, cmd = identify newToken }
+        Hydrated newToken _ ->
+            enterAndFire discord (identify newToken)
 
         Expired "" _ ->
             -- TODO Insert confirmation phase later
-            save Nothing
+            destroy
 
-        Expired newToken pov ->
-            { items = [], newState = Just discord, cmd = identify newToken }
+        Expired newToken _ ->
+            enterAndFire discord (identify newToken)
 
         _ ->
             -- Otherwise token input is locked; this should not happen
@@ -714,7 +654,7 @@ handleIdentify : Discord -> User -> Producer.Yield Message Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            { items = [], newState = Just (Identified (NewSession token user)), cmd = hydrate token }
+            enterAndFire (Identified (NewSession token user)) (hydrate token)
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -723,46 +663,120 @@ handleIdentify discord user =
             detectUserSwitch token pov user
 
         Revisit pov ->
-            save (Just (Hydrated pov.token { pov | user = user }))
+            -- Successful reload; TODO start polling timers!!!
+            enter (Hydrated pov.token { pov | user = user })
 
         Switching _ pov ->
-            -- Retry Identify with previous token after error on Switching phase
+            -- Retried Identify with previous token after error on Switching phase
             detectUserSwitch pov.token pov user
 
         _ ->
-            -- Otherwise Identify should not arrive
-            handleIdentify discord user
+            -- Otherwise Identify should not arrive; just keep state
+            enter discord
 
 
 detectUserSwitch : String -> POV -> User -> Producer.Yield Message Discord Msg
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
-        save (Just (Hydrated token { pov | token = token, user = user }))
+        -- TODO restart polling timers, but need to check living timers.
+        enter (Hydrated token { pov | token = token, user = user })
 
     else
         -- TODO Insert confirmation phase later
-        { items = []
-        , newState = Just (Switching (NewSession token user) pov)
-        , cmd = hydrate token
-        }
+        enterAndFire (Switching (NewSession token user) pov) (hydrate token)
 
 
 handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Message Discord Msg
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
-            save (Just (Hydrated token (POV token user guilds channels)))
+            -- Successful register; TODO start polling timer!!!
+            enter (Hydrated token (POV token user guilds channels))
 
         Switching { token, user } _ ->
-            save (Just (Hydrated token (POV token user guilds channels)))
+            -- Successful user switch; TODO restart polling timers, but need to check living timers.
+            enter (Hydrated token (POV token user guilds channels))
 
         Rehydrating token pov ->
-            -- Not diffing against current POV, just overwrite.
-            save (Just (Hydrated token (POV pov.token pov.user guilds channels)))
+            -- Not diffing against current POV, just overwrite. TODO respect existing fetchStatus
+            enter (Hydrated token (POV pov.token pov.user guilds channels))
+
+        Expired token pov ->
+            -- Possibly late arrival. TODO respect existing fetchStatus
+            enter (Expired token (POV pov.token pov.user guilds channels))
 
         _ ->
-            -- Otherwise Hydrate should not arrive
-            handleHydrate discord guilds channels
+            -- Otherwise Hydrate should not arrive; just keep state
+            enter discord
+
+
+{-| Start concurrent fetches.
+
+All periodic fetches are triggered by concurrent timers.
+Maximum total number of timers (= concurrent fetches) is controlled by `fetchConcurrencyFactor`.
+
+This function immediately issues fetches for channels that are `NeverFetched`.
+
+Timers fire `Fetch` msg in relatively small intervals (5 seconds average).
+On every `Fetch` event, it searches channel dictionary for "ready-to-fetch" channel and do work if one found.
+
+If a channel is fetched but not having yielded a message,
+"next fetch time" is near-exponentially backed off, up to 120 seconds.
+If one or more message yielded by a fetch, backoff interval is reset to minimum (5 sec),
+thus next few fetches are likely attempted in minimum intervals. Call it "bursting".
+
+XXX Plugging this function into update makes the application to start fetching Discord messages.
+
+TODO If users attempted token (= login user) change, number of timers could be messed up.
+There must be some kind of "timer counter" to enforce concurrency amount.
+
+-}
+startConcurrentFetch : (POV -> Discord) -> POV -> Producer.Yield Message Discord Msg
+startConcurrentFetch stateTagger pov =
+    let
+        targetChannels =
+            Dict.values pov.channels
+                |> List.filter (.fetchStatus >> (==) NeverFetched)
+                |> List.take fetchConcurrencyFactor
+    in
+    enterAndFire
+        (stateTagger (List.foldl updateChannelBeforeFetch pov targetChannels))
+        (Cmd.batch (List.map (fetchOne pov.token) targetChannels |> fillWithTimers fetchConcurrencyFactor))
+
+
+fetchConcurrencyFactor : Int
+fetchConcurrencyFactor =
+    5
+
+
+updateChannelBeforeFetch : Channel -> POV -> POV
+updateChannelBeforeFetch targetChannel pov =
+    -- This function just transit fetchStatus and update POV, not actually checks the fetchStatus is ready-to-fetch
+    case targetChannel.fetchStatus of
+        NeverFetched ->
+            updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = InitialFetching }
+
+        NextFetchAt posix backoff ->
+            updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = Fetching posix backoff }
+
+        _ ->
+            pov
+
+
+updateChannel : String -> POV -> (Channel -> Channel) -> POV
+updateChannel cId pov updater =
+    { pov | channels = Dict.update cId (Maybe.map updater) pov.channels }
+
+
+fillWithTimers : Int -> List (Cmd Msg) -> List (Cmd Msg)
+fillWithTimers concurrencyFactor cmds =
+    cmds ++ List.repeat (concurrencyFactor - List.length cmds) setFetchTimerOne
+
+
+setFetchTimerOne : Cmd Msg
+setFetchTimerOne =
+    -- XXX: better randomize?
+    setTimeout Fetch 5000
 
 
 handleRehydrate : Discord -> Producer.Yield Message Discord Msg
@@ -770,10 +784,184 @@ handleRehydrate discord =
     case discord of
         Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            { items = [], newState = Just (Rehydrating token pov), cmd = hydrate pov.token }
+            enterAndFire (Rehydrating token pov) (hydrate pov.token)
 
         _ ->
-            handleRehydrate discord
+            enter discord
+
+
+handleFetch : Discord -> Posix -> Producer.Yield Message Discord Msg
+handleFetch discord posix =
+    case discord of
+        Hydrated t pov ->
+            fetchOrSetTimer (Hydrated t) pov posix
+
+        Rehydrating t pov ->
+            fetchOrSetTimer (Rehydrating t) pov posix
+
+        Expired t pov ->
+            -- Effectively killing a timer. Needs to be restarted when new token is regisered.
+            enter discord
+
+        Switching newSession pov ->
+            fetchOrSetTimer (Switching newSession) pov posix
+
+        _ ->
+            -- Otherwise timer tick should not arrive
+            enter discord
+
+
+fetchOrSetTimer : (POV -> Discord) -> POV -> Posix -> Producer.Yield Message Discord Msg
+fetchOrSetTimer stateTagger pov posix =
+    let
+        readyToFetchChannels =
+            Dict.values pov.channels
+                |> List.filter (.fetchStatus >> FetchStatus.lessThan (NextFetchAt posix BO5))
+                |> List.sortWith (\a b -> FetchStatus.compare a.fetchStatus b.fetchStatus)
+    in
+    case readyToFetchChannels of
+        [] ->
+            enterAndFire (stateTagger pov) setFetchTimerOne
+
+        c :: _ ->
+            enterAndFire (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
+
+
+handleFetched : Discord -> FetchResult -> Producer.Yield Message Discord Msg
+handleFetched discord fetchResult =
+    case ( discord, unauthorizedOnFetch fetchResult ) of
+        ( Hydrated t pov, False ) ->
+            handleFetchedImpl (Hydrated t) pov fetchResult
+
+        ( Hydrated t pov, True ) ->
+            enter (Expired t pov)
+
+        ( Rehydrating t pov, False ) ->
+            handleFetchedImpl (Rehydrating t) pov fetchResult
+
+        ( Rehydrating t pov, True ) ->
+            -- Hydrate may arrive later, but it will be handled by handleHydrate even if the state was Expired
+            enter (Expired t pov)
+
+        ( Switching newSession pov, False ) ->
+            handleFetchedImpl (Switching newSession) pov fetchResult
+
+        ( Switching newSession pov, True ) ->
+            -- Hydrate should be going concurrently; let it handle the case
+            enter discord
+
+        ( Expired _ _, _ ) ->
+            -- Regardless of its content, discard fetchResult and keep Expired status as is.
+            -- If the session is restored with new token later, expects retry from previous lastMessageId
+            enter discord
+
+        _ ->
+            -- `Fetched` should not arrive in other status
+            enter discord
+
+
+unauthorizedOnFetch : FetchResult -> Bool
+unauthorizedOnFetch fetchResult =
+    case fetchResult of
+        FetchErr _ (Http.BadStatus { status }) ->
+            status.code == 401
+
+        _ ->
+            False
+
+
+handleFetchedImpl : (POV -> Discord) -> POV -> FetchResult -> Producer.Yield Message Discord Msg
+handleFetchedImpl stateTagger pov fetchResult =
+    case fetchResult of
+        FetchErr cId _ ->
+            nextInitialFetchOrSetTimer [] stateTagger <|
+                updateChannel cId pov <|
+                    \c ->
+                        if forbiddenOnFetch fetchResult then
+                            { c | fetchStatus = Forbidden }
+
+                        else if c.fetchStatus == InitialFetching then
+                            { c | fetchStatus = NeverFetched }
+
+                        else
+                            { c | fetchStatus = nextFetchWithIncrementedBackoff Nothing c.fetchStatus }
+
+        FetchOk cId ms posix ->
+            nextInitialFetchOrSetTimer ms stateTagger <|
+                updateChannel cId pov <|
+                    \c ->
+                        case ms of
+                            [] ->
+                                { c | fetchStatus = nextFetchWithIncrementedBackoff (Just posix) c.fetchStatus }
+
+                            m :: _ ->
+                                { c | fetchStatus = nextFetchWithBaseBackoff posix, lastMessageId = Just (MessageId m.id) }
+
+
+forbiddenOnFetch : FetchResult -> Bool
+forbiddenOnFetch fetchResult =
+    case fetchResult of
+        FetchErr _ (Http.BadStatus { status }) ->
+            -- Other errors are considered transient, excluding Unauthorized (guarded by unauthorizedOnFetch)
+            status.code == 403
+
+        _ ->
+            False
+
+
+nextFetchWithIncrementedBackoff : Maybe Posix -> FetchStatus -> FetchStatus
+nextFetchWithIncrementedBackoff posixMaybe fetchStatus =
+    case fetchStatus of
+        NeverFetched ->
+            Maybe.withDefault NeverFetched (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
+
+        InitialFetching ->
+            Maybe.withDefault NeverFetched (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
+
+        NextFetchAt posix backoff ->
+            nextFetchWithIncrementedBackoffImpl backoff (Maybe.withDefault posix posixMaybe)
+
+        Fetching posix backoff ->
+            nextFetchWithIncrementedBackoffImpl backoff (Maybe.withDefault posix posixMaybe)
+
+        Forbidden ->
+            Forbidden
+
+
+nextFetchWithIncrementedBackoffImpl : Backoff -> Posix -> FetchStatus
+nextFetchWithIncrementedBackoffImpl backoff posix =
+    case backoff of
+        BO5 ->
+            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 5000)) BO10
+
+        BO10 ->
+            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 10000)) BO30
+
+        BO30 ->
+            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 30000)) BO60
+
+        BO60 ->
+            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 60000)) BO120
+
+        BO120 ->
+            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 120000)) BO120
+
+
+nextFetchWithBaseBackoff : Posix -> FetchStatus
+nextFetchWithBaseBackoff posix =
+    NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 5000)) BO5
+
+
+nextInitialFetchOrSetTimer : List Message -> (POV -> Discord) -> POV -> Producer.Yield Message Discord Msg
+nextInitialFetchOrSetTimer items stateTagger pov =
+    -- Issues a fetch for NeverFetched channel immediately, otherwise set timer.
+    -- XXX Consequently, initial fetching sequence becomes very "bursty", potentially resulting in throttling
+    case List.filter (.fetchStatus >> (==) NeverFetched) (Dict.values pov.channels) of
+        [] ->
+            yieldAndFire items (stateTagger pov) setFetchTimerOne
+
+        c :: _ ->
+            yieldAndFire items (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
 
 
 handleAPIError : Discord -> Http.Error -> Producer.Yield Message Discord Msg
@@ -783,57 +971,61 @@ handleAPIError discord error =
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
-            save (Just discord)
+            enter discord
 
         TokenReady _ ->
-            save Nothing
+            -- Identify failure
+            destroy
 
         Identified _ ->
             -- If successfully Identified, basically Hydrate should not fail. Fall back to token input.
-            save Nothing
+            destroy
 
         Hydrated _ pov ->
-            save (Just (Hydrated pov.token pov))
+            enter (Hydrated pov.token pov)
 
         Rehydrating token pov ->
             -- Just fall back to previous Hydrated state.
-            save (Just (Hydrated token pov))
+            enter (Hydrated token pov)
 
         Revisit pov ->
-            save (Just (Expired pov.token pov))
+            -- Identify failure on reload, likely token expiration/revocation
+            enter (Expired pov.token pov)
 
-        Expired token pov ->
-            save (Just discord)
+        Expired _ _ ->
+            -- Somehow token is expired AND any subsequent API requests also failed. Settle at Expired.
+            enter discord
 
         Switching _ pov ->
-            -- Similar to Identified branch. Retry Identify with previous token
-            { items = [], newState = Just discord, cmd = identify pov.token }
+            -- Similar to Identified branch (Hydrate after successful Identify should not basically fail).
+            -- Directly fall back to previous Hydrated state.
+            enter (Hydrated pov.token pov)
 
 
 
 -- REST API CLIENTS
 
 
-apiPath : String -> Url
-apiPath path =
+apiPath : String -> Maybe String -> Url
+apiPath path queryMaybe =
     { protocol = Url.Https
     , host = "discordapp.com"
     , port_ = Nothing
     , path = "/api" ++ path
     , fragment = Nothing
-    , query = Nothing
+    , query = queryMaybe
     }
 
 
 identify : String -> Cmd Msg
 identify token =
-    Http.getWithAuth (apiPath "/users/@me") (Http.auth token) userDecoder
+    Http.getWithAuth (apiPath "/users/@me" Nothing) (Http.auth token) userDecoder
         |> Http.try Identify APIError
 
 
 hydrate : String -> Cmd Msg
 hydrate token =
-    Http.getWithAuth (apiPath "/users/@me/guilds") (Http.auth token) decodeGuildArrayIntoDict
+    Http.getWithAuth (apiPath "/users/@me/guilds" Nothing) (Http.auth token) decodeGuildArrayIntoDict
         |> Task.andThen (hydrateChannels token)
         |> Http.try identity APIError
 
@@ -853,7 +1045,7 @@ hydrateChannels : String -> Dict String Guild -> Task Http.Error Msg
 hydrateChannels token guilds =
     let
         getGuildChannels guildId =
-            Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels"))
+            Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
                 (Http.auth token)
                 (D.leakyList (channelDecoder guilds))
 
@@ -868,28 +1060,29 @@ hydrateChannels token guilds =
         |> Task.map (intoDict >> Hydrate guilds)
 
 
-initialFetch : String -> Dict String Channel -> ( Dict String Channel, Cmd Msg )
-initialFetch token channels =
-    let
-        targetChannels =
-            channels |> Dict.values |> List.take 5
-
-        updatedChannels =
-            List.foldl
-                (\targetChannel accChannels ->
-                    Dict.update targetChannel.id
-                        (Maybe.map (\c -> { c | fetchStatus = InitialFetching }))
-                        accChannels
-                )
-                channels
-                targetChannels
-    in
-    ( updatedChannels, Cmd.batch (List.map (fetchOne token) targetChannels) )
-
-
 fetchOne : String -> Channel -> Cmd Msg
 fetchOne token channel =
-    Debug.todo "TODO"
+    let
+        query =
+            Maybe.map (\(MessageId mId) -> "around=" ++ mId) channel.lastMessageId
+
+        fetchTask =
+            Http.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
+                (Http.auth token)
+                (D.leakyList messageDecoder)
+    in
+    fetchTask
+        |> Task.andThen (\ms -> Task.map (FetchOk channel.id ms) Time.now)
+        |> Task.mapError (FetchErr channel.id)
+        |> Task.attempt
+            (\res ->
+                case res of
+                    Ok ok ->
+                        Fetched ok
+
+                    Err err ->
+                        Fetched err
+            )
 
 
 
@@ -931,7 +1124,7 @@ tokenSubmitButtonEl : Discord -> Element Msg
 tokenSubmitButtonEl discord =
     Element.Input.button
         ([ El.alignRight
-         , El.width (El.shrink |> El.minimum 100)
+         , El.width El.shrink
          , El.padding 10
          , BD.rounded 5
          ]
