@@ -94,19 +94,19 @@ update msg ({ viewState, env } as m) =
             ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
 
         ToggleColumnConfig cId bool ->
-            ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | configOpen = bool, deleteGate = "" }) m.columnStore }, Cmd.none )
+            updateColumn cId m <| \c -> { c | configOpen = bool, deleteGate = "" }
 
         AddColumnFilter cId filter ->
-            persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.push filter c.filters }) m.columnStore }, Cmd.none )
+            persist <| updateColumn cId m <| \c -> { c | filters = Array.push filter c.filters }
 
         SetColumnFilter cId index filter ->
-            persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.set index filter c.filters }) m.columnStore }, Cmd.none )
+            persist <| updateColumn cId m <| \c -> { c | filters = Array.set index filter c.filters }
 
         DelColumnFilter cId index ->
-            persist ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | filters = Array.removeAt index c.filters }) m.columnStore }, Cmd.none )
+            persist <| updateColumn cId m <| \c -> { c | filters = Array.removeAt index c.filters }
 
         ColumnDeleteGateInput cId text ->
-            ( { m | columnStore = ColumnStore.updateById cId (\c -> { c | deleteGate = text }) m.columnStore }, Cmd.none )
+            updateColumn cId m <| \c -> { c | deleteGate = text }
 
         ProducerCtrl pctrl ->
             persist <| applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -140,6 +140,11 @@ onDragEnter m dest =
 
         Nothing ->
             ( m, Cmd.none )
+
+
+updateColumn : String -> Model -> (Column -> Column) -> ( Model, Cmd Msg )
+updateColumn cId m updater =
+    ( { m | columnStore = ColumnStore.updateById cId updater m.columnStore }, Cmd.none )
 
 
 
