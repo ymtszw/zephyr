@@ -4,6 +4,7 @@ import Array exposing (fromList)
 import Data.Array as Array
 import Data.Column
 import Data.Item
+import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueId exposing (Generator)
 import Expect exposing (Expectation)
@@ -12,6 +13,7 @@ import Json.Decode exposing (decodeValue)
 import Parser
 import String exposing (fromInt)
 import Test exposing (..)
+import Time exposing (Posix)
 import Url
 
 
@@ -55,8 +57,8 @@ testSqueeze initial index element expected =
                 |> Expect.equal (fromList expected)
 
 
-arraySuites : Test
-arraySuites =
+arraySuite : Test
+arraySuite =
     describe "Data.Array"
         [ describe "splitAt"
             [ testSplitAt [ 0, 1, 2 ] 0 ( [], [ 0, 1, 2 ] )
@@ -172,8 +174,8 @@ seqGenImpl prefix howMany ( lastResult, accGenerator ) =
         seqGenImpl prefix (howMany - 1) (Data.UniqueId.gen prefix accGenerator)
 
 
-uniqueIdSuites : Test
-uniqueIdSuites =
+uniqueIdSuite : Test
+uniqueIdSuite =
     describe "Data.UniqueId"
         [ describe "gen"
             [ testGen [ ( ( "prefixA", 0 ), "not generated" ) ]
@@ -193,13 +195,13 @@ uniqueIdSuites =
 -- Data.Item
 
 
-itemSuites : Test
-itemSuites =
+itemSuite : Test
+itemSuite =
     describe "Data.Item"
         [ test "encoder/decoder should work" <|
             \_ ->
                 Data.Item.welcome
-                    |> Data.Item.encoder
+                    |> Data.Item.encode
                     |> decodeValue Data.Item.decoder
                     |> Expect.equal (Ok Data.Item.welcome)
         ]
@@ -209,8 +211,8 @@ itemSuites =
 -- Data.Column
 
 
-columnSuites : Test
-columnSuites =
+columnSuite : Test
+columnSuite =
     describe "Data.Column"
         [ test "encoder/decoder should work" <|
             \_ ->
@@ -219,7 +221,7 @@ columnSuites =
                         Data.Column.welcome "test"
                 in
                 welcome
-                    |> Data.Column.encoder
+                    |> Data.Column.encode
                     |> decodeValue Data.Column.decoder
                     |> Expect.equal (Ok { welcome | configOpen = False })
         ]
@@ -238,8 +240,8 @@ testParseIntoStringOrUrlList string expect =
                 |> Expect.equal (Ok expect)
 
 
-textRendererSuites : Test
-textRendererSuites =
+textRendererSuite : Test
+textRendererSuite =
     describe "Data.TextRenderer"
         [ describe "parseIntoStringOrUrlList"
             [ testParseIntoStringOrUrlList "" []
@@ -281,15 +283,83 @@ exampleCom =
 
 
 
+-- Data.Producer.FetchStatus
+
+
+fetchStatusSuite : Test
+fetchStatusSuite =
+    describe "Data.Producer.FetchStatus"
+        [ describe "compare"
+            [ testCompare NeverFetched NeverFetched EQ
+            , testCompare NeverFetched (NextFetchAt (p 1) BO5) LT
+            , testCompare NeverFetched InitialFetching LT
+            , testCompare NeverFetched (Fetching (p 1) BO5) LT
+            , testCompare NeverFetched Forbidden LT
+            , testCompare (NextFetchAt (p 1) BO5) NeverFetched GT
+            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 0) BO5) GT
+            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO5) EQ
+            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO10) EQ
+            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 2) BO5) LT
+            , testCompare (NextFetchAt (p 1) BO5) InitialFetching LT
+            , testCompare (NextFetchAt (p 1) BO5) (Fetching (p 1) BO5) LT
+            , testCompare (NextFetchAt (p 1) BO5) Forbidden LT
+            , testCompare InitialFetching NeverFetched GT
+            , testCompare InitialFetching (NextFetchAt (p 1) BO5) GT
+            , testCompare InitialFetching InitialFetching EQ
+            , testCompare InitialFetching (Fetching (p 1) BO5) LT
+            , testCompare InitialFetching Forbidden LT
+            , testCompare (Fetching (p 1) BO5) NeverFetched GT
+            , testCompare (Fetching (p 1) BO5) (NextFetchAt (p 1) BO5) GT
+            , testCompare (Fetching (p 1) BO5) InitialFetching GT
+            , testCompare (Fetching (p 1) BO5) (Fetching (p 0) BO5) GT
+            , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO5) EQ
+            , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO10) EQ
+            , testCompare (Fetching (p 1) BO5) (Fetching (p 2) BO5) LT
+            , testCompare (Fetching (p 1) BO5) Forbidden LT
+            , testCompare Forbidden NeverFetched GT
+            , testCompare Forbidden (NextFetchAt (p 1) BO5) GT
+            , testCompare Forbidden InitialFetching GT
+            , testCompare Forbidden (Fetching (p 1) BO5) GT
+            , testCompare Forbidden Forbidden EQ
+            ]
+        , describe "lessThan"
+            [ NeverFetched |> testLessThan (NextFetchAt (p 1) BO5)
+            , NextFetchAt (p 0) BO5 |> testLessThan (NextFetchAt (p 1) BO5)
+            ]
+        ]
+
+
+p : Int -> Posix
+p =
+    Time.millisToPosix
+
+
+testCompare : FetchStatus -> FetchStatus -> Order -> Test
+testCompare a b order =
+    test ("'" ++ Debug.toString a ++ "' " ++ Debug.toString order ++ " '" ++ Debug.toString b ++ "'") <|
+        \_ ->
+            FetchStatus.compare a b |> Expect.equal order
+
+
+testLessThan : FetchStatus -> FetchStatus -> Test
+testLessThan a b =
+    test ("'" ++ Debug.toString b ++ "' is lessThan '" ++ Debug.toString a ++ "'") <|
+        \_ ->
+            FetchStatus.lessThan a b
+                |> Expect.true ("'" ++ Debug.toString b ++ "' is NOT lessThan '" ++ Debug.toString a ++ "'")
+
+
+
 -- MAIN
 
 
 suite : Test
 suite =
     describe "test"
-        [ arraySuites
-        , uniqueIdSuites
-        , itemSuites
-        , columnSuites
-        , textRendererSuites
+        [ arraySuite
+        , uniqueIdSuite
+        , itemSuite
+        , columnSuite
+        , textRendererSuite
+        , fetchStatusSuite
         ]
