@@ -44,8 +44,6 @@ type Filter
 type FilterAtom
     = ByMessage String
     | ByMedia MediaFilter
-    | IsDiscord
-    | OfDiscordGuild String
     | OfDiscordChannel String
     | IsSystem
     | RemoveMe -- This is only for deletion from UI, not actually used as filter
@@ -75,12 +73,6 @@ encodeFilterAtom filterAtom =
 
         ByMedia mediaType ->
             E.tagged "ByMedia" (encodeMediaType mediaType)
-
-        IsDiscord ->
-            E.tag "IsDiscord"
-
-        OfDiscordGuild guildId ->
-            E.tagged "OfDiscordGuild" (E.string guildId)
 
         OfDiscordChannel channelId ->
             E.tagged "OfDiscordChannel" (E.string channelId)
@@ -119,13 +111,13 @@ filterAtomDecoder =
     D.oneOf
         [ D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
-        , D.tag "IsDiscord" IsDiscord
-        , D.tagged "OfDiscordGuild" OfDiscordGuild D.string
         , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
         , D.tag "IsSystem" IsSystem
 
         -- Old version
         , D.tagged "ByMetadata" identity oldMetadataFilterDecoder
+        , D.tag "IsDiscord" IsSystem
+        , D.tag "OfDiscordGuild" IsSystem
         ]
 
 
@@ -137,8 +129,8 @@ mediaTypeDecoder =
 oldMetadataFilterDecoder : Decoder FilterAtom
 oldMetadataFilterDecoder =
     D.oneOf
-        [ D.tag "IsDiscord" IsDiscord
-        , D.tagged "OfDiscordGuild" OfDiscordGuild D.string
+        [ D.tag "IsDiscord" IsSystem
+        , D.tag "OfDiscordGuild" IsSystem
         , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
         , D.tag "IsDefault" IsSystem
         ]

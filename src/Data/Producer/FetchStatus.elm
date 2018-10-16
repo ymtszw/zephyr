@@ -1,4 +1,4 @@
-module Data.Producer.FetchStatus exposing (Backoff(..), FetchStatus(..), compare, decoder, encode, lessThan, toString)
+module Data.Producer.FetchStatus exposing (Backoff(..), FetchStatus(..), compare, decoder, encode, lessThan)
 
 import Iso8601
 import Json.Decode as D exposing (Decoder)
@@ -11,8 +11,10 @@ import Time exposing (Posix)
 type FetchStatus
     = NeverFetched
     | InitialFetching
+    | Waiting
     | NextFetchAt Posix Backoff
     | Fetching Posix Backoff
+    | Available
     | Forbidden
 
 
@@ -24,25 +26,6 @@ type Backoff
     | BO120
 
 
-toString : FetchStatus -> String
-toString fetchStatus =
-    case fetchStatus of
-        NeverFetched ->
-            "Never fetched"
-
-        InitialFetching ->
-            "Fetching for the first time"
-
-        NextFetchAt posix _ ->
-            "Next fetch at: " ++ Iso8601.fromTime posix
-
-        Fetching posix _ ->
-            "Fetching: " ++ Iso8601.fromTime posix
-
-        Forbidden ->
-            "Forbidden"
-
-
 encode : FetchStatus -> E.Value
 encode fetchStatus =
     case fetchStatus of
@@ -52,11 +35,17 @@ encode fetchStatus =
         InitialFetching ->
             E.tag "NeverFetched"
 
+        Waiting ->
+            E.tag "Waiting"
+
         NextFetchAt posix bf ->
             E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
 
         Fetching posix bf ->
             E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
+
+        Available ->
+            E.tag "Available"
 
         Forbidden ->
             E.tag "Forbidden"
@@ -85,7 +74,9 @@ decoder : Decoder FetchStatus
 decoder =
     D.oneOf
         [ D.tag "NeverFetched" NeverFetched
+        , D.tag "Waiting" Waiting
         , D.tagged2 "NextFetchAt" NextFetchAt (D.map Time.millisToPosix D.int) backoffFactorDecoder
+        , D.tag "Available" Available
         , D.tag "Forbidden" Forbidden
         ]
 
@@ -107,7 +98,16 @@ compare a b =
             ( NeverFetched, _ ) ->
                 LT
 
+            ( Waiting, NeverFetched ) ->
+                GT
+
+            ( Waiting, _ ) ->
+                LT
+
             ( NextFetchAt _ _, NeverFetched ) ->
+                GT
+
+            ( NextFetchAt _ _, Waiting ) ->
                 GT
 
             ( NextFetchAt p1 _, NextFetchAt p2 _ ) ->
@@ -120,6 +120,9 @@ compare a b =
             ( InitialFetching, Fetching _ _ ) ->
                 LT
 
+            ( InitialFetching, Available ) ->
+                LT
+
             ( InitialFetching, Forbidden ) ->
                 LT
 
@@ -129,10 +132,19 @@ compare a b =
             ( Fetching p1 _, Fetching p2 _ ) ->
                 Basics.compare (Time.posixToMillis p1) (Time.posixToMillis p2)
 
+            ( Fetching _ _, Available ) ->
+                LT
+
             ( Fetching _ _, Forbidden ) ->
                 LT
 
             ( Fetching _ _, _ ) ->
+                GT
+
+            ( Available, Forbidden ) ->
+                LT
+
+            ( Available, _ ) ->
                 GT
 
             ( Forbidden, _ ) ->

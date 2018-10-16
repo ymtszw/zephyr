@@ -890,11 +890,17 @@ handleFetchedImpl stateTagger pov fetchResult =
             nextInitialFetchOrSetTimer ms stateTagger <|
                 updateChannel cId pov <|
                     \c ->
-                        case ms of
-                            [] ->
+                        case ( ms, c.fetchStatus ) of
+                            ( [], InitialFetching ) ->
+                                { c | fetchStatus = Available }
+
+                            ( m :: _, InitialFetching ) ->
+                                { c | fetchStatus = Available, lastMessageId = Just (MessageId m.id) }
+
+                            ( [], _ ) ->
                                 { c | fetchStatus = nextFetchWithIncrementedBackoff (Just posix) c.fetchStatus }
 
-                            m :: _ ->
+                            ( m :: _, _ ) ->
                                 { c | fetchStatus = nextFetchWithBaseBackoff posix, lastMessageId = Just (MessageId m.id) }
 
 
@@ -918,11 +924,17 @@ nextFetchWithIncrementedBackoff posixMaybe fetchStatus =
         InitialFetching ->
             Maybe.withDefault NeverFetched (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
 
+        Waiting ->
+            Maybe.withDefault Waiting (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
+
         NextFetchAt posix backoff ->
             nextFetchWithIncrementedBackoffImpl backoff (Maybe.withDefault posix posixMaybe)
 
         Fetching posix backoff ->
             nextFetchWithIncrementedBackoffImpl backoff (Maybe.withDefault posix posixMaybe)
+
+        Available ->
+            Available
 
         Forbidden ->
             Forbidden
@@ -1376,43 +1388,22 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
 
 
 type alias FilterAtomMaterial =
-    { isDiscord : Maybe FilterAtom
-    , ofDiscordGuild : Maybe ( FilterAtom, Dict String Guild )
-    , ofDiscordChannel : Maybe ( FilterAtom, Dict String Channel )
-    }
+    Maybe ( FilterAtom, Dict String Channel )
 
 
 filterAtomMaterial : Discord -> FilterAtomMaterial
 filterAtomMaterial discord =
     case availablePov discord of
-        Just { guilds, channels } ->
-            { isDiscord = Just IsDiscord
-            , ofDiscordGuild = ofDiscordGuildMaterial guilds
-            , ofDiscordChannel = ofDiscordChannelMaterial guilds channels
-            }
+        Just { channels } ->
+            case Dict.values channels of
+                [] ->
+                    Nothing
+
+                c :: _ ->
+                    Just ( OfDiscordChannel c.id, channels )
 
         Nothing ->
-            { isDiscord = Nothing, ofDiscordGuild = Nothing, ofDiscordChannel = Nothing }
-
-
-ofDiscordGuildMaterial : Dict String Guild -> Maybe ( FilterAtom, Dict String Guild )
-ofDiscordGuildMaterial guilds =
-    case Dict.values guilds of
-        [] ->
             Nothing
-
-        g :: _ ->
-            Just ( OfDiscordGuild g.id, guilds )
-
-
-ofDiscordChannelMaterial : Dict String Guild -> Dict String Channel -> Maybe ( FilterAtom, Dict String Channel )
-ofDiscordChannelMaterial guilds channels =
-    case Dict.values channels of
-        [] ->
-            Nothing
-
-        c :: _ ->
-            Just ( OfDiscordChannel c.id, channels )
 
 
 availablePov : Discord -> Maybe POV

@@ -255,4 +255,4 @@ discordFilterAtomMaterial producerRegistry =
             Discord.filterAtomMaterial discord
 
         _ ->
-            { isDiscord = Nothing, ofDiscordGuild = Nothing, ofDiscordChannel = Nothing }
+            Nothing

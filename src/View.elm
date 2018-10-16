@@ -467,12 +467,6 @@ filterAtomTypeOptionEl filterAtom =
             IsSystem ->
                 El.text "All system message"
 
-            IsDiscord ->
-                El.text "All Discord message"
-
-            OfDiscordGuild _ ->
-                El.text "Discord message in server..."
-
             OfDiscordChannel _ ->
                 El.text "Discord message in channel..."
 
@@ -497,13 +491,10 @@ basicFilterAtoms filterAtomMaybe =
 
 
 discordFilterAtoms : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
-discordFilterAtoms { isDiscord, ofDiscordGuild, ofDiscordChannel } filterAtomMaybe =
+discordFilterAtoms ofDiscordChannel filterAtomMaybe =
     replaceWithSelected filterAtomMaybe <|
         List.filterMap identity <|
-            [ isDiscord
-            , Maybe.map Tuple.first ofDiscordGuild
-            , Maybe.map Tuple.first ofDiscordChannel
-            ]
+            [ Maybe.map Tuple.first ofDiscordChannel ]
 
 
 replaceWithSelected : Maybe FilterAtom -> List FilterAtom -> List FilterAtom
@@ -520,12 +511,6 @@ replaceWithSelected filterAtomMaybe filterAtoms =
                             selected
 
                         ( IsSystem, IsSystem ) ->
-                            selected
-
-                        ( IsDiscord, IsDiscord ) ->
-                            selected
-
-                        ( OfDiscordGuild _, OfDiscordGuild _ ) ->
                             selected
 
                         ( OfDiscordChannel _, OfDiscordChannel _ ) ->
@@ -553,25 +538,9 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
         Just IsSystem ->
             El.none
 
-        Just IsDiscord ->
-            El.none
-
-        Just (OfDiscordGuild gId) ->
-            filterAtomVariableSelectInputEl (tagger << OfDiscordGuild) selectState (inputId ++ "variableSelect") gId <|
-                case discordMaterial.ofDiscordGuild of
-                    Just ( _, guilds ) ->
-                        ( Dict.values guilds
-                            |> List.sortBy .name
-                            |> List.map .id
-                        , discordGuildOptionEl guilds
-                        )
-
-                    Nothing ->
-                        ( [], El.text )
-
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "variableSelect") cId <|
-                case discordMaterial.ofDiscordChannel of
+                case discordMaterial of
                     Just ( _, channels ) ->
                         ( Dict.values channels
                             |> List.filter (\c -> c.fetchStatus /= Forbidden)
