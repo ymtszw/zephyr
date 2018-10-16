@@ -1,7 +1,7 @@
 module Data.Producer exposing
     ( ProducerRegistry, Msg(..), GrossYield, encodeRegistry, registryDecoder
     , initRegistry, reloadAll, update, configsEl
-    , discordFilterAtomMaterial
+    , discordFilterAtomMaterial, discordSetChannelFetchStatus
     )
 
 {-| Types and functions representing data produecr in Zephyr.
@@ -19,7 +19,7 @@ module Data.Producer exposing
 
 ## Runtime APIs
 
-@docs discordFilterAtomMaterial
+@docs discordFilterAtomMaterial, discordSetChannelFetchStatus
 
 -}
 
@@ -256,3 +256,8 @@ discordFilterAtomMaterial producerRegistry =
 
         _ ->
             Nothing
+
+
+discordSetChannelFetchStatus : List String -> ProducerRegistry -> ProducerRegistry
+discordSetChannelFetchStatus channelIds producerRegistry =
+    Dict.update "discord" (unwrapDiscord >> Maybe.map (Discord.setChannelFetchStatus channelIds >> DiscordProducer)) producerRegistry

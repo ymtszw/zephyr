@@ -543,10 +543,9 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
                 case discordMaterial of
                     Just ( _, channels ) ->
                         ( Dict.values channels
-                            |> List.filter (\c -> c.fetchStatus /= Forbidden)
+                            -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
                             |> List.sortBy (.guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~")
                             |> List.map .id
-                          -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
                         , discordChannelOptionEl channels
                         )
 

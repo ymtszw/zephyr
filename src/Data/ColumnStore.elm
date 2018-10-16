@@ -1,20 +1,47 @@
-module Data.ColumnStore exposing (ColumnStore, add, applyOrder, decoder, encode, get, indexedMap, init, pushToFirstColumn, removeAt, updateById)
+module Data.ColumnStore exposing
+    ( ColumnStore, init, encode, decoder
+    , add, get, indexedMap, removeAt, updateById, applyOrder
+    , discordChannelIds
+    , pushToFirstColumn
+    )
 
 {-| Order-aware Column storage.
 
 Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
+
+## Types
+
+@docs ColumnStore, init, encode, decoder
+
+
+## APIs
+
+@docs add, get, indexedMap, removeAt, updateById, applyOrder
+
+
+## Producer APIs
+
+@docs discordChannelIds
+
+
+## Debug
+
+@docs pushToFirstColumn
+
 -}
 
 import Array exposing (Array)
 import Data.Array as Array
 import Data.Column as Column exposing (Column)
+import Data.Filter exposing (FilterAtom(..))
 import Data.Item exposing (Item)
 import Data.UniqueId
 import Dict exposing (Dict)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
+import Set
 
 
 type alias ColumnStore =
@@ -108,6 +135,30 @@ indexedMapImpl mapper dict idList index acc =
 applyOrder : Array String -> ColumnStore -> ColumnStore
 applyOrder order columnStore =
     { columnStore | order = order }
+
+
+
+-- Producer APIs
+
+
+{-| Enumerate Discord channel IDs which are currently subscribed.
+-}
+discordChannelIds : ColumnStore -> List String
+discordChannelIds columnStore =
+    let
+        channelIdInFilterAtom filterAtom accSet =
+            case filterAtom of
+                OfDiscordChannel cId ->
+                    Set.insert cId accSet
+
+                _ ->
+                    accSet
+    in
+    columnStore.dict
+        |> Dict.foldl
+            (\_ c s -> Array.foldl (\f ss -> Data.Filter.fold channelIdInFilterAtom ss f) s c.filters)
+            Set.empty
+        |> Set.toList
 
 
 

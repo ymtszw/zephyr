@@ -2,8 +2,7 @@ module Data.Producer.Discord exposing
     ( Discord(..), Guild, Channel, Msg(..), decoder, encode
     , Message, Author(..), encodeMessage, messageDecoder
     , reload, update, configEl
-    , imageUrlWithFallback, imageUrlNoFallback
-    , FilterAtomMaterial, filterAtomMaterial
+    , FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
     )
 
 {-| Polling Producer for Discord.
@@ -33,12 +32,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs imageUrlWithFallback, imageUrlNoFallback
-
-
-## Filter related
-
-@docs FilterAtomMaterial, filterAtomMaterial
+@docs FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
 
 -}
 
@@ -1341,7 +1335,7 @@ rehydrateButtonEl rotating pov =
 
 
 
--- IMAGE API
+-- RUNTIME APIs
 
 
 imageUrlNoFallback : Maybe String -> Image -> String
@@ -1383,10 +1377,6 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     "https://cdn.discordapp.com" ++ endpoint ++ size
 
 
-
--- RUNTIME APIs
-
-
 type alias FilterAtomMaterial =
     Maybe ( FilterAtom, Dict String Channel )
 
@@ -1395,12 +1385,16 @@ filterAtomMaterial : Discord -> FilterAtomMaterial
 filterAtomMaterial discord =
     case availablePov discord of
         Just { channels } ->
-            case Dict.values channels of
+            let
+                filtered =
+                    Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
+            in
+            case Dict.values filtered of
                 [] ->
                     Nothing
 
                 c :: _ ->
-                    Just ( OfDiscordChannel c.id, channels )
+                    Just ( OfDiscordChannel c.id, filtered )
 
         Nothing ->
             Nothing
@@ -1432,3 +1426,49 @@ availablePov discord =
 
         Switching _ pov ->
             Just pov
+
+
+setChannelFetchStatus : List String -> Discord -> Discord
+setChannelFetchStatus subs discord =
+    case discord of
+        Hydrated t pov ->
+            setChannelFetchStatusImpl (Hydrated t) subs pov
+
+        Rehydrating t pov ->
+            setChannelFetchStatusImpl (Rehydrating t) subs pov
+
+        Revisit pov ->
+            setChannelFetchStatusImpl Revisit subs pov
+
+        Expired t pov ->
+            setChannelFetchStatusImpl (Expired t) subs pov
+
+        Switching newSession pov ->
+            setChannelFetchStatusImpl (Switching newSession) subs pov
+
+        _ ->
+            discord
+
+
+setChannelFetchStatusImpl : (POV -> Discord) -> List String -> POV -> Discord
+setChannelFetchStatusImpl tagger subs pov =
+    let
+        newChannels =
+            pov.channels
+                |> Dict.map
+                    (\cId c ->
+                        case ( List.member cId subs, FetchStatus.isActive c.fetchStatus ) of
+                            ( True, True ) ->
+                                c
+
+                            ( True, False ) ->
+                                { c | fetchStatus = Waiting }
+
+                            ( False, True ) ->
+                                { c | fetchStatus = Available }
+
+                            ( False, False ) ->
+                                c
+                    )
+    in
+    tagger { pov | channels = newChannels }

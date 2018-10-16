@@ -147,7 +147,14 @@ onDragEnter m dest =
 
 updateColumn : String -> Model -> (Column -> Column) -> ( Model, Cmd Msg )
 updateColumn cId m updater =
-    ( { m | columnStore = ColumnStore.updateById cId updater m.columnStore }, Cmd.none )
+    let
+        newColumnStore =
+            ColumnStore.updateById cId updater m.columnStore
+
+        newProducerRegistry =
+            Producer.discordSetChannelFetchStatus (ColumnStore.discordChannelIds newColumnStore) m.producerRegistry
+    in
+    ( { m | columnStore = newColumnStore, producerRegistry = newProducerRegistry }, Cmd.none )
 
 
 

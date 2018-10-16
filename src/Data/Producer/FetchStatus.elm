@@ -1,4 +1,4 @@
-module Data.Producer.FetchStatus exposing (Backoff(..), FetchStatus(..), compare, decoder, encode, lessThan)
+module Data.Producer.FetchStatus exposing (Backoff(..), FetchStatus(..), compare, decoder, encode, isActive, isAvailable, lessThan)
 
 import Iso8601
 import Json.Decode as D exposing (Decoder)
@@ -156,3 +156,33 @@ compare a b =
 lessThan : FetchStatus -> FetchStatus -> Bool
 lessThan a b =
     compare b a == LT
+
+
+isActive : FetchStatus -> Bool
+isActive fetchStatus =
+    case fetchStatus of
+        NeverFetched ->
+            False
+
+        InitialFetching ->
+            False
+
+        Waiting ->
+            True
+
+        NextFetchAt _ _ ->
+            True
+
+        Fetching _ _ ->
+            True
+
+        Available ->
+            False
+
+        Forbidden ->
+            False
+
+
+isAvailable : FetchStatus -> Bool
+isAvailable fetchStatus =
+    fetchStatus == Available || isActive fetchStatus
