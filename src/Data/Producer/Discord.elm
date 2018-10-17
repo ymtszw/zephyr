@@ -1070,7 +1070,18 @@ fetchOne : String -> Channel -> Cmd Msg
 fetchOne token channel =
     let
         query =
-            Maybe.map (\(MessageId mId) -> "around=" ++ mId) channel.lastMessageId
+            case ( channel.fetchStatus, channel.lastMessageId ) of
+                ( NeverFetched, Just (MessageId mId) ) ->
+                    Just ("around=" ++ mId)
+
+                ( NeverFetched, Nothing ) ->
+                    Nothing
+
+                ( _, Just (MessageId mId) ) ->
+                    Just ("after=" ++ mId)
+
+                _ ->
+                    Nothing
 
         fetchTask =
             Http.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
