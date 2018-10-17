@@ -40,7 +40,9 @@ Each `state` can be arbitrary data structure. Though usually they take forms of 
 
 In state machine terminology, `state` is literally state machine "states",
 and `cmd` corresponds to "events".
+
 Generated `items` are considered side-effect of state machine transitions.
+Items must be ordered **from oldest to latest**.
 
 -}
 type alias Yield item state msg =

@@ -884,6 +884,7 @@ handleFetchedImpl stateTagger pov fetchResult =
             nextInitialFetchOrSetTimer ms stateTagger <|
                 updateChannel cId pov <|
                     \c ->
+                        -- Messages from /messages API are sorted from latest to oldest
                         case ( ms, c.fetchStatus ) of
                             ( [], InitialFetching ) ->
                                 { c | fetchStatus = Available }
@@ -962,12 +963,13 @@ nextInitialFetchOrSetTimer : List Message -> (POV -> Discord) -> POV -> Producer
 nextInitialFetchOrSetTimer items stateTagger pov =
     -- Issues a fetch for NeverFetched channel immediately, otherwise set timer.
     -- XXX Consequently, initial fetching sequence becomes very "bursty", potentially resulting in throttling
+    -- Note: reversing items since /messages API sorts messages from latest to oldest
     case List.filter (.fetchStatus >> (==) NeverFetched) (Dict.values pov.channels) of
         [] ->
-            yieldAndFire items (stateTagger pov) setFetchTimerOne
+            yieldAndFire (List.reverse items) (stateTagger pov) setFetchTimerOne
 
         c :: _ ->
-            yieldAndFire items (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
+            yieldAndFire (List.reverse items) (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
 
 
 handleAPIError : Discord -> Http.Error -> Producer.Yield Message Discord Msg
@@ -1084,6 +1086,7 @@ fetchOne token channel =
                     Nothing
 
         fetchTask =
+            -- Note that /messages API returns messages from latest to oldest
             Http.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
                 (Http.auth token)
                 (D.leakyList messageDecoder)

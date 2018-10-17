@@ -2,7 +2,6 @@ module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder
     , add, get, indexedMap, removeAt, updateById, applyOrder
     , discordChannelIds
-    , pushToFirstColumn
     )
 
 {-| Order-aware Column storage.
@@ -24,11 +23,6 @@ whereas their order is stored in Array of IDs.
 ## Producer APIs
 
 @docs discordChannelIds
-
-
-## Debug
-
-@docs pushToFirstColumn
 
 -}
 
@@ -159,27 +153,3 @@ discordChannelIds columnStore =
             (\_ c s -> Array.foldl (\f ss -> Data.Filter.fold channelIdInFilterAtom ss f) s c.filters)
             Set.empty
         |> Set.toList
-
-
-
--- DEBUG
-
-
-{-| TODO Use Broker and Consumer (Column) read/filter mechanism.
-
-This is mostly for debugging purposes; take list of Items, push them all to the leftmost Column.
-If there is no Column in ColumnStore, generate one.
-
--}
-pushToFirstColumn : Data.UniqueId.Generator -> List Item -> ColumnStore -> ( ColumnStore, Data.UniqueId.Generator )
-pushToFirstColumn idGen items columnStore =
-    case get 0 columnStore of
-        Just column ->
-            ( { columnStore | dict = Dict.insert column.id { column | items = List.reverse items ++ column.items } columnStore.dict }, idGen )
-
-        Nothing ->
-            let
-                ( id, newIdGen ) =
-                    Data.UniqueId.gen "column" idGen
-            in
-            ( add (Column id (List.reverse items) Array.empty Nothing False "") columnStore, newIdGen )

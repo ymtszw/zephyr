@@ -301,15 +301,9 @@ applyProducerYield model gy =
             ( { model | producerRegistry = gy.producerRegistry }, Cmd.map ProducerCtrl gy.cmd )
 
         nonEmptyYields ->
-            let
-                ( newColumnStore, newIdGen ) =
-                    -- XXX Just for debugging. They should go to data broker eventually.
-                    ColumnStore.pushToFirstColumn model.idGen nonEmptyYields model.columnStore
-            in
             ( { model
-                | columnStore = newColumnStore
+                | itemBroker = ItemBroker.bulkAppend nonEmptyYields model.itemBroker
                 , producerRegistry = gy.producerRegistry
-                , idGen = newIdGen
               }
             , Cmd.map ProducerCtrl gy.cmd
             )
