@@ -10,6 +10,7 @@ module Data.Column exposing (Column, welcome, new, encode, decoder)
 -}
 
 import Array exposing (Array)
+import Broker exposing (Offset)
 import Data.Filter as Filter exposing (Filter)
 import Data.Item as Item exposing (Item)
 import Json.Decode as D exposing (Decoder)
@@ -22,22 +23,25 @@ type alias Column =
     { id : String
     , items : List Item
     , filters : Array Filter
+    , offset : Maybe Offset
     , configOpen : Bool
     , deleteGate : String
     }
 
 
+encode : Column -> E.Value
+encode c =
+    E.object
+        [ ( "id", E.string c.id )
+        , ( "items", E.list Item.encode c.items )
+        , ( "filters", E.array Filter.encode c.filters )
+        , ( "offset", E.maybe (E.string << Broker.offsetToString) c.offset )
+        ]
+
+
 decoder : Decoder Column
 decoder =
-    D.map3
-        (\id items filters ->
-            { id = id
-            , items = items
-            , filters = filters
-            , configOpen = False
-            , deleteGate = ""
-            }
-        )
+    D.map4 (\id items filters offset -> Column id items filters offset False "")
         (D.field "id" D.string)
         (D.field "items" (D.list Item.decoder))
         (D.oneOf
@@ -45,15 +49,21 @@ decoder =
             , D.succeed Array.empty -- Migration
             ]
         )
+        (D.maybeField "offset" offsetDecoder)
 
 
-encode : Column -> E.Value
-encode { id, items, filters } =
-    E.object
-        [ ( "id", E.string id )
-        , ( "items", E.list Item.encode items )
-        , ( "filters", E.array Filter.encode filters )
-        ]
+offsetDecoder : Decoder Offset
+offsetDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case Broker.offsetFromString s of
+                    Just offset ->
+                        D.succeed offset
+
+                    Nothing ->
+                        D.fail ("Invalid Broker.Offset: " ++ s)
+            )
 
 
 welcome : String -> Column
@@ -64,6 +74,7 @@ welcome id =
         , Item.textOnly "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
         ]
     , filters = Array.empty
+    , offset = Nothing
     , configOpen = True
     , deleteGate = ""
     }
@@ -74,6 +85,7 @@ new id =
     { id = id
     , items = [ Item.textOnly "New column created! Let's configure filters above!" ]
     , filters = Array.empty
+    , offset = Nothing
     , configOpen = True
     , deleteGate = ""
     }

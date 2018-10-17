@@ -165,8 +165,11 @@ discordChannelIds columnStore =
 -- DEBUG
 
 
-{-| TODO This is mostly for debugging purposes; take list of Items, push them all to the leftmost Column.
+{-| TODO Use Broker and Consumer (Column) read/filter mechanism.
+
+This is mostly for debugging purposes; take list of Items, push them all to the leftmost Column.
 If there is no Column in ColumnStore, generate one.
+
 -}
 pushToFirstColumn : Data.UniqueId.Generator -> List Item -> ColumnStore -> ( ColumnStore, Data.UniqueId.Generator )
 pushToFirstColumn idGen items columnStore =
@@ -179,4 +182,4 @@ pushToFirstColumn idGen items columnStore =
                 ( id, newIdGen ) =
                     Data.UniqueId.gen "column" idGen
             in
-            ( add (Column id (List.reverse items) Array.empty False "") columnStore, newIdGen )
+            ( add (Column id (List.reverse items) Array.empty Nothing False "") columnStore, newIdGen )

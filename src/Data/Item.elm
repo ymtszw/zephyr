@@ -1,6 +1,5 @@
-module Data.Item exposing (Item(..), Media(..), decoder, encode, initBroker, textOnly, welcome)
+module Data.Item exposing (Item(..), Media(..), decoder, encode, textOnly, welcome)
 
-import Broker exposing (Broker)
 import Data.Producer.Discord as Discord
 import Element.Font
 import Json.Decode as D exposing (Decoder)
@@ -115,8 +114,3 @@ welcome =
                     , query = Nothing
                     }
         }
-
-
-initBroker : Broker Item
-initBroker =
-    Broker.initialize { numSegments = 100, segmentSize = 1000 }

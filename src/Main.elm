@@ -10,6 +10,7 @@ import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item as Item exposing (Item)
+import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
@@ -233,7 +234,7 @@ v3StateDecoder : Decoder SavedState
 v3StateDecoder =
     D.map4 SavedState
         (D.field "columnStore" ColumnStore.decoder)
-        (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault Item.initBroker))
+        (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
         (D.field "producerRegistry" Producer.registryDecoder)
         (D.field "idGen" UniqueId.generatorDecoder)
 
@@ -248,7 +249,7 @@ v2StateDecoder =
 
 convertFromV2State : ( ColumnStore, UniqueId.Generator ) -> SavedState
 convertFromV2State ( columnStore, idGen ) =
-    SavedState columnStore Item.initBroker Producer.initRegistry idGen
+    SavedState columnStore ItemBroker.init Producer.initRegistry idGen
 
 
 v1StateDecoder : UniqueId.Generator -> Decoder SavedState
