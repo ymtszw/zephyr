@@ -38,7 +38,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
-import Data.Producer.Base as Producer exposing (destroy, enter, enterAndFire, setTimeout, yieldAndFire)
+import Data.Producer.Base as Producer exposing (destroy, enter, enterAndFire, yieldAndFire)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Dict exposing (Dict)
 import Element as El exposing (Element)
@@ -47,7 +47,7 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Extra exposing (ite)
+import Extra exposing (ite, setTimeout)
 import Html.Attributes
 import Http
 import HttpExtra as Http

@@ -1,7 +1,6 @@
 module Data.Producer.Base exposing
     ( Yield, Update, Reload
     , enter, enterAndFire, yield, yieldAndFire, destroy
-    , setTimeout
     )
 
 {-| Defines types and helpers used by Producers.
@@ -20,16 +19,7 @@ There could be Hybrid Producer introduced later.
 
 @docs enter, enterAndFire, yield, yieldAndFire, destroy
 
-
-## Event helper
-
-@docs setTimeout
-
 -}
-
-import Process
-import Task
-import Time exposing (Posix)
 
 
 {-| Return type of Producer's update function.
@@ -97,15 +87,3 @@ type alias Update item state msg =
 -}
 type alias Reload state msg =
     state -> ( state, Cmd msg )
-
-
-{-| Convenient timer.
-
-Sleep for a set amount of time, then fire event with current posix time.
-
--}
-setTimeout : (Posix -> msg) -> Float -> Cmd msg
-setTimeout timeoutMsg timeout =
-    Process.sleep 5000
-        |> Task.andThen (\() -> Time.now)
-        |> Task.perform timeoutMsg
