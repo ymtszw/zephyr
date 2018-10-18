@@ -78,7 +78,7 @@ encodeFilterAtom filterAtom =
             E.tagged "OfDiscordChannel" (E.string channelId)
 
         IsSystem ->
-            E.tag "IsDefault"
+            E.tag "IsSystem"
 
         RemoveMe ->
             -- Should not be stored in Filter
