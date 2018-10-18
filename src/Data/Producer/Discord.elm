@@ -878,25 +878,12 @@ handleFetchedImpl stateTagger pov fetchResult =
                             { c | fetchStatus = NeverFetched }
 
                         else
-                            { c | fetchStatus = nextFetchWithIncrementedBackoff Nothing c.fetchStatus }
+                            proceedFetchStatus Nothing [] c
 
         FetchOk cId ms posix ->
             nextInitialFetchOrSetTimer ms stateTagger <|
                 updateChannel cId pov <|
-                    \c ->
-                        -- Messages from /messages API are sorted from latest to oldest
-                        case ( ms, c.fetchStatus ) of
-                            ( [], InitialFetching ) ->
-                                { c | fetchStatus = Available }
-
-                            ( m :: _, InitialFetching ) ->
-                                { c | fetchStatus = Available, lastMessageId = Just (MessageId m.id) }
-
-                            ( [], _ ) ->
-                                { c | fetchStatus = nextFetchWithIncrementedBackoff (Just posix) c.fetchStatus }
-
-                            ( m :: _, _ ) ->
-                                { c | fetchStatus = nextFetchWithBaseBackoff posix, lastMessageId = Just (MessageId m.id) }
+                    proceedFetchStatus (Just posix) ms
 
 
 forbiddenOnFetch : FetchResult -> Bool
@@ -910,33 +897,34 @@ forbiddenOnFetch fetchResult =
             False
 
 
-nextFetchWithIncrementedBackoff : Maybe Posix -> FetchStatus -> FetchStatus
-nextFetchWithIncrementedBackoff posixMaybe fetchStatus =
-    case fetchStatus of
-        NeverFetched ->
-            Maybe.withDefault NeverFetched (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
+proceedFetchStatus : Maybe Posix -> List Message -> Channel -> Channel
+proceedFetchStatus posixMaybe ms c =
+    -- Messages from /messages API are sorted from latest to oldest
+    case ( ms, c.fetchStatus ) of
+        ( [], InitialFetching ) ->
+            { c | fetchStatus = Available }
 
-        InitialFetching ->
-            Maybe.withDefault NeverFetched (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
+        ( m :: _, InitialFetching ) ->
+            { c | fetchStatus = Available, lastMessageId = Just (MessageId m.id) }
 
-        Waiting ->
-            Maybe.withDefault Waiting (Maybe.map (nextFetchWithIncrementedBackoffImpl BO5) posixMaybe)
+        ( [], Fetching posix backoff ) ->
+            { c | fetchStatus = incrementBackoff backoff (Maybe.withDefault posix posixMaybe) }
 
-        NextFetchAt posix backoff ->
-            nextFetchWithIncrementedBackoffImpl backoff (Maybe.withDefault posix posixMaybe)
+        ( m :: _, Fetching posix backoff ) ->
+            { c
+                | fetchStatus = NextFetchAt (Time.millisToPosix (Time.posixToMillis (Maybe.withDefault posix posixMaybe) + 5000)) BO5
+                , lastMessageId = Just (MessageId m.id)
+            }
 
-        Fetching posix backoff ->
-            nextFetchWithIncrementedBackoffImpl backoff (Maybe.withDefault posix posixMaybe)
+        ( [], _ ) ->
+            c
 
-        Available ->
-            Available
-
-        Forbidden ->
-            Forbidden
+        ( m :: _, _ ) ->
+            { c | lastMessageId = Just (MessageId m.id) }
 
 
-nextFetchWithIncrementedBackoffImpl : Backoff -> Posix -> FetchStatus
-nextFetchWithIncrementedBackoffImpl backoff posix =
+incrementBackoff : Backoff -> Posix -> FetchStatus
+incrementBackoff backoff posix =
     case backoff of
         BO5 ->
             NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 5000)) BO10
