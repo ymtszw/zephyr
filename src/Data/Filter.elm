@@ -1,6 +1,6 @@
 module Data.Filter exposing
     ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder
-    , append, setAt, removeAt, updateAt, fold, map, indexedMap
+    , append, setAt, removeAt, updateAt, any, fold, map, indexedMap
     )
 
 {-| Filter to narrow down Items flowing into a Column.
@@ -26,7 +26,7 @@ For that, this module reluctantly exposes `append` API.
 
 ## APIs
 
-@docs append, setAt, removeAt, updateAt, fold, map, indexedMap
+@docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap
 
 -}
 
@@ -129,11 +129,26 @@ mediaTypeDecoder =
 oldMetadataFilterDecoder : Decoder FilterAtom
 oldMetadataFilterDecoder =
     D.oneOf
-        [ D.tag "IsDiscord" IsSystem
-        , D.tag "OfDiscordGuild" IsSystem
+        [ D.tag "IsDiscord" (ByMessage "system")
+        , D.tag "OfDiscordGuild" (ByMessage "system")
         , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
-        , D.tag "IsDefault" IsSystem
+        , D.tag "IsDefault" (ByMessage "system")
         ]
+
+
+any : (FilterAtom -> Bool) -> Filter -> Bool
+any check filter =
+    case filter of
+        Singular filterAtom ->
+            check filterAtom
+
+        Or filterAtom otherFilter ->
+            -- Ensure TCO; avoid `check filterAtom || any check otherFilter`
+            if check filterAtom then
+                True
+
+            else
+                any check otherFilter
 
 
 fold : (FilterAtom -> a -> a) -> a -> Filter -> a
