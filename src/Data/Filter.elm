@@ -45,7 +45,6 @@ type FilterAtom
     = ByMessage String
     | ByMedia MediaFilter
     | OfDiscordChannel String
-    | IsSystem
     | RemoveMe -- This is only for deletion from UI, not actually used as filter
 
 
@@ -76,9 +75,6 @@ encodeFilterAtom filterAtom =
 
         OfDiscordChannel channelId ->
             E.tagged "OfDiscordChannel" (E.string channelId)
-
-        IsSystem ->
-            E.tag "IsSystem"
 
         RemoveMe ->
             -- Should not be stored in Filter
@@ -112,12 +108,12 @@ filterAtomDecoder =
         [ D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
         , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
-        , D.tag "IsSystem" IsSystem
 
-        -- Old version
+        -- Old format
+        , D.tag "IsSystem" (ByMessage "system")
         , D.tagged "ByMetadata" identity oldMetadataFilterDecoder
-        , D.tag "IsDiscord" IsSystem
-        , D.tag "OfDiscordGuild" IsSystem
+        , D.tag "IsDiscord" (ByMessage "system")
+        , D.tag "OfDiscordGuild" (ByMessage "system")
         ]
 
 

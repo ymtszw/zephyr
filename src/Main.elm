@@ -1,12 +1,12 @@
 module Main exposing (main)
 
 import Array
+import ArrayExtra as Array
 import Broker exposing (Broker)
 import Browser exposing (UrlRequest(..))
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (Visibility(..), onResize)
 import Browser.Navigation as Nav exposing (Key)
-import Data.Array as Array
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item as Item exposing (Item)
@@ -15,6 +15,7 @@ import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
+import Extra exposing (setTimeout)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -32,12 +33,35 @@ import View.Select
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
     Model.init env navKey
-        |> Tuple.mapSecond (\cmd -> Cmd.batch [ cmd, adjustMaxHeight ])
+        |> Tuple.mapSecond (\cmd -> Cmd.batch [ cmd, adjustMaxHeight, scheduleNextScan ])
 
 
 adjustMaxHeight : Cmd Msg
 adjustMaxHeight =
     Task.perform GetViewport getViewport
+
+
+scheduleNextScan : Cmd Msg
+scheduleNextScan =
+    -- Not using Time.every subscription since Column updating may take longer time occasionally,
+    -- in such events fixed ticks may interfare with the adjacent ticks.
+    -- Chained timers can always ensure next processing is AFTER the previous one had done.
+    setTimeout ScanBroker scanIntervalMillis
+
+
+{-| Dictates how often Columns are updated (i.e. the Broker is scanned).
+
+XXX We may have to dynamically adjust scanIntervalMillis and brokerScanChunkAmount
+according to the flow rate of the Broker. Or, instruct users about how to configure Columns so they are not overloaded.
+Since it is possible for Producers to produce Items way faster than Consumers (Columns) can consume.
+
+Due to the "buffer" nature of the Broker, the application itself should continue to run,
+though older Items may be evicted BEFORE consumed by Columns, effectively causing "skip" or "loss" of data.
+
+-}
+scanIntervalMillis : Float
+scanIntervalMillis =
+    100
 
 
 
@@ -115,6 +139,9 @@ update msg ({ viewState, env } as m) =
         ProducerCtrl pctrl ->
             persist <| applyProducerYield m <| Producer.update pctrl m.producerRegistry
 
+        ScanBroker _ ->
+            persist <| scanBroker m
+
         NoOp ->
             ( m, Cmd.none )
 
@@ -156,6 +183,18 @@ updateColumn cId m updater =
             Producer.discordSetChannelFetchStatus (ColumnStore.discordChannelIds newColumnStore) m.producerRegistry
     in
     ( { m | columnStore = newColumnStore, producerRegistry = newProducerRegistry }, Cmd.none )
+
+
+scanBroker : Model -> ( Model, Cmd Msg )
+scanBroker m =
+    ( { m | columnStore = ColumnStore.consumeBroker brokerScanChunkAmount m.itemBroker m.columnStore }
+    , scheduleNextScan
+    )
+
+
+brokerScanChunkAmount : Int
+brokerScanChunkAmount =
+    50
 
 
 

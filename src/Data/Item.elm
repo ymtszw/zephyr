@@ -1,5 +1,6 @@
-module Data.Item exposing (Item(..), Media(..), decoder, encode, textOnly, welcome)
+module Data.Item exposing (Item(..), decoder, encode, matchFilter)
 
+import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
 import Element.Font
 import Json.Decode as D exposing (Decoder)
@@ -11,20 +12,6 @@ import Url
 
 type Item
     = DiscordItem Discord.Message
-    | SystemItem
-        { message : String
-        , mediaMaybe : Maybe Media
-        }
-
-
-textOnly : String -> Item
-textOnly message =
-    SystemItem { message = message, mediaMaybe = Nothing }
-
-
-type Media
-    = Image Url.Url
-    | Movie Url.Url
 
 
 encode : Item -> E.Value
@@ -33,84 +20,94 @@ encode item =
         DiscordItem discordMessage ->
             E.tagged "DiscordItem" (Discord.encodeMessage discordMessage)
 
-        SystemItem { message, mediaMaybe } ->
-            E.tagged "SystemItem" <|
-                E.object
-                    [ ( "message", E.string message )
-                    , ( "media", E.maybe encodeMedia mediaMaybe )
-                    ]
-
-
-encodeMedia : Media -> E.Value
-encodeMedia media =
-    case media of
-        Image url ->
-            E.tagged "Image" (E.string (Url.toString url))
-
-        Movie url ->
-            E.tagged "Movie" (E.string (Url.toString url))
-
 
 decoder : Decoder Item
 decoder =
     D.oneOf
         [ D.tagged "DiscordItem" DiscordItem Discord.messageDecoder
-        , D.tagged "SystemItem" SystemItem systemMessageDecoder
-
-        -- Old version
-        , D.map SystemItem systemMessageDecoder
         ]
 
 
-systemMessageDecoder : Decoder { message : String, mediaMaybe : Maybe Media }
-systemMessageDecoder =
-    D.map2 (\a b -> { message = a, mediaMaybe = b })
-        (D.field "message" D.string)
-        (D.field "media" (D.maybe mediaDecoder))
+matchFilter : Item -> Filter -> Bool
+matchFilter item filter =
+    Filter.any (matchAtom item) filter
 
 
-mediaDecoder : Decoder Media
-mediaDecoder =
-    D.oneOf
-        [ D.tagged "Image" Image D.url
-        , D.tagged "Movie" Movie D.url
-        , mediaDecoderOld -- To be removed after migration
-        ]
+matchAtom : Item -> FilterAtom -> Bool
+matchAtom item filterAtom =
+    case ( filterAtom, item ) of
+        ( ByMessage text, DiscordItem { content, embeds } ) ->
+            String.contains text content || List.any (discordEmbedHasText text) embeds
+
+        ( ByMedia filter, DiscordItem discordMessage ) ->
+            discordMessageHasMedia filter discordMessage
+
+        ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
+            cId == channelId
+
+        ( RemoveMe, _ ) ->
+            False
 
 
-mediaDecoderOld : Decoder Media
-mediaDecoderOld =
-    D.string
-        |> D.andThen
-            (\str ->
-                case Url.fromString (String.dropLeft 5 str) of
-                    Just url ->
-                        if String.startsWith "IMAGE" str then
-                            D.succeed (Image url)
+discordEmbedHasText : String -> Discord.Embed -> Bool
+discordEmbedHasText text embed =
+    case embed.title of
+        Just title ->
+            String.contains text title
 
-                        else if String.startsWith "MOVIE" str then
-                            D.succeed (Movie url)
+        Nothing ->
+            case embed.description of
+                Just desc ->
+                    String.contains text desc
 
-                        else
-                            D.fail ("Media URL is serialized incorrectly: " ++ str)
+                Nothing ->
+                    case embed.url of
+                        Just url ->
+                            String.contains text (Url.toString url)
 
-                    Nothing ->
-                        D.fail ("Invalid media URL: " ++ str)
-            )
+                        Nothing ->
+                            False
 
 
-welcome : Item
-welcome =
-    SystemItem
-        { message = "Welcome to Zephyr app! 🚀\n\nThis is Elm-powered multi-service feed reader!\n\nLet's start with configuring column filters above!"
-        , mediaMaybe =
-            Just <|
-                Image
-                    { protocol = Url.Https
-                    , host = "cdn.dribbble.com"
-                    , port_ = Nothing
-                    , path = "/users/27231/screenshots/2432051/welcome.gif"
-                    , fragment = Nothing
-                    , query = Nothing
-                    }
-        }
+discordMessageHasMedia : MediaFilter -> Discord.Message -> Bool
+discordMessageHasMedia mediaFilter dm =
+    case mediaFilter of
+        HasImage ->
+            List.any (\a -> isImageFile a.url.path) dm.attachments || List.any discordEmbedHasImage dm.embeds
+
+        HasMovie ->
+            List.any (\a -> isMovieFile a.url.path) dm.attachments || List.any discordEmbedHasMovie dm.embeds
+
+        HasNone ->
+            not <|
+                List.any (\a -> isImageFile a.url.path || isMovieFile a.url.path) dm.attachments
+                    || List.any (\e -> discordEmbedHasImage e || discordEmbedHasMovie e) dm.embeds
+
+
+isImageFile : String -> Bool
+isImageFile filename =
+    String.endsWith ".jpg" filename
+        || String.endsWith ".png" filename
+        || String.endsWith ".gif" filename
+        || String.endsWith ".webp" filename
+
+
+isMovieFile : String -> Bool
+isMovieFile filename =
+    String.endsWith ".mp4" filename
+        || String.endsWith ".ogg" filename
+        || String.endsWith ".ogv" filename
+        || String.endsWith ".webm" filename
+
+
+discordEmbedHasImage : Discord.Embed -> Bool
+discordEmbedHasImage embed =
+    -- Not counting thumbnail as image
+    -- TODO impl here
+    False
+
+
+discordEmbedHasMovie : Discord.Embed -> Bool
+discordEmbedHasMovie embed =
+    -- TODO impl here
+    False

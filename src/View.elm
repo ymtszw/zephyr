@@ -2,10 +2,10 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
-import Data.Column as Column exposing (Column)
+import Data.Column as Column exposing (Column, ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
-import Data.Item exposing (Item(..), Media(..))
+import Data.Item exposing (Item(..))
 import Data.Model exposing (ColumnSwap, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
@@ -464,9 +464,6 @@ filterAtomTypeOptionEl filterAtom =
             ByMedia _ ->
                 El.text "Attached media..."
 
-            IsSystem ->
-                El.text "All system message"
-
             OfDiscordChannel _ ->
                 El.text "Discord message in channel..."
 
@@ -486,7 +483,6 @@ basicFilterAtoms filterAtomMaybe =
     replaceWithSelected filterAtomMaybe
         [ ByMessage "text"
         , ByMedia HasNone
-        , IsSystem
         ]
 
 
@@ -510,9 +506,6 @@ replaceWithSelected filterAtomMaybe filterAtoms =
                         ( ByMedia _, ByMedia _ ) ->
                             selected
 
-                        ( IsSystem, IsSystem ) ->
-                            selected
-
                         ( OfDiscordChannel _, OfDiscordChannel _ ) ->
                             selected
 
@@ -534,9 +527,6 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
         Just (ByMedia mediaType) ->
             filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "variableSelect") mediaType <|
                 ( [ HasNone, HasImage, HasMovie ], mediaTypeOptionEl )
-
-        Just IsSystem ->
-            El.none
 
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "variableSelect") cId <|
@@ -687,7 +677,7 @@ columnDeleteButtonEl index column =
 -- ITEM
 
 
-itemEl : Model -> Item -> Element Msg
+itemEl : Model -> ColumnItem -> Element Msg
 itemEl m item =
     El.row
         [ El.width El.fill
@@ -701,10 +691,10 @@ itemEl m item =
         ]
 
 
-itemAvatarEl : Item -> Element Msg
+itemAvatarEl : ColumnItem -> Element Msg
 itemAvatarEl item =
     case item of
-        DiscordItem { author } ->
+        Product _ (DiscordItem { author }) ->
             let
                 authorIconEl user =
                     squareIconEl 50 user.username <|
@@ -717,17 +707,17 @@ itemAvatarEl item =
                 WebhookAuthor user ->
                     authorIconEl user
 
-        SystemItem _ ->
+        System _ ->
             squareIconEl 50 "Zephyr" Nothing
 
 
-itemContentsEl : Model -> Item -> Element Msg
+itemContentsEl : Model -> ColumnItem -> Element Msg
 itemContentsEl m item =
     case item of
-        DiscordItem discordMessage ->
+        Product _ (DiscordItem discordMessage) ->
             discordMessageEl m discordMessage
 
-        SystemItem { message, mediaMaybe } ->
+        System { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
 
 

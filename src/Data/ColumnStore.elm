@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder
     , add, get, indexedMap, removeAt, updateById, applyOrder
-    , discordChannelIds
+    , discordChannelIds, consumeBroker
     )
 
 {-| Order-aware Column storage.
@@ -20,14 +20,15 @@ whereas their order is stored in Array of IDs.
 @docs add, get, indexedMap, removeAt, updateById, applyOrder
 
 
-## Producer APIs
+## Producer/Consumer APIs
 
-@docs discordChannelIds
+@docs discordChannelIds, consumeBroker
 
 -}
 
 import Array exposing (Array)
-import Data.Array as Array
+import ArrayExtra as Array
+import Broker exposing (Broker)
 import Data.Column as Column exposing (Column)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Item exposing (Item)
@@ -129,6 +130,11 @@ indexedMapImpl mapper dict idList index acc =
 applyOrder : Array String -> ColumnStore -> ColumnStore
 applyOrder order columnStore =
     { columnStore | order = order }
+
+
+consumeBroker : Int -> Broker Item -> ColumnStore -> ColumnStore
+consumeBroker maxCount broker columnStore =
+    { columnStore | dict = Dict.map (\_ column -> Column.consumeBroker maxCount broker column) columnStore.dict }
 
 
 

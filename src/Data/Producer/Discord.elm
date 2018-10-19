@@ -1,6 +1,6 @@
 module Data.Producer.Discord exposing
     ( Discord(..), Guild, Channel, Msg(..), decoder, encode
-    , Message, Author(..), encodeMessage, messageDecoder
+    , Message, Author(..), Embed, Attachment, encodeMessage, messageDecoder
     , reload, update, configEl
     , FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
     )
@@ -22,7 +22,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Message
 
-@docs Message, Author, encodeMessage, messageDecoder
+@docs Message, Author, Embed, Attachment, encodeMessage, messageDecoder
 
 
 ## Component APIs

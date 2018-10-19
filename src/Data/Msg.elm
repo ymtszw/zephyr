@@ -5,6 +5,7 @@ import Browser.Dom
 import Data.Filter
 import Data.Producer
 import Json.Decode
+import Time exposing (Posix)
 
 
 type Msg
@@ -28,3 +29,4 @@ type Msg
     | DelColumnFilter String Int
     | ColumnDeleteGateInput String String
     | ProducerCtrl Data.Producer.Msg
+    | ScanBroker Posix
