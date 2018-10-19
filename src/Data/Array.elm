@@ -1,6 +1,36 @@
-module Data.Array exposing (moveFromTo, removeAt, splitAt, squeeze, update)
+module Data.Array exposing (all, moveFromTo, removeAt, splitAt, squeeze, update)
 
 import Array exposing (Array, empty, slice)
+
+
+all : (a -> Bool) -> Array a -> Bool
+all check array =
+    case Array.length array of
+        0 ->
+            True
+
+        len ->
+            allImpl check (len - 1) array
+
+
+allImpl : (a -> Bool) -> Int -> Array a -> Bool
+allImpl check index array =
+    case Array.get index array of
+        Just item ->
+            -- Enfore TCO
+            if check item then
+                if index > 0 then
+                    allImpl check (index - 1) array
+
+                else
+                    True
+
+            else
+                False
+
+        Nothing ->
+            -- Should not happen
+            allImpl check index array
 
 
 update : Int -> (a -> a) -> Array a -> Array a

@@ -57,6 +57,15 @@ testSqueeze initial index element expected =
                 |> Expect.equal (fromList expected)
 
 
+testAll : List a -> (a -> Bool) -> Bool -> Test
+testAll initial check expected =
+    test ("should work with Array: " ++ Debug.toString initial) <|
+        \_ ->
+            fromList initial
+                |> Array.all check
+                |> Expect.equal expected
+
+
 arraySuite : Test
 arraySuite =
     describe "Data.Array"
@@ -124,6 +133,16 @@ arraySuite =
             , testSqueeze [ 0, 1, 2, 3 ] -2 9 [ 0, 1, 9, 2, 3 ]
             , testSqueeze [ 0, 1, 2, 3 ] -3 9 [ 0, 9, 1, 2, 3 ]
             , testSqueeze [ 0, 1, 2, 3 ] -4 9 [ 9, 0, 1, 2, 3 ]
+            ]
+        , let
+            isEven i =
+                modBy 2 i == 0
+          in
+          describe "all"
+            [ testAll [ 0, 2, 4 ] isEven True
+            , testAll [ 0 ] isEven True
+            , testAll [] isEven True
+            , testAll [ 0, 1, 2 ] isEven False
             ]
         ]
 
