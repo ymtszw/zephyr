@@ -1,7 +1,7 @@
 module Examples exposing (suite)
 
 import Array exposing (fromList)
-import Data.Array as Array
+import ArrayExtra as Array
 import Data.Column
 import Data.Item
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
@@ -18,7 +18,7 @@ import Url
 
 
 
--- Data.Array
+-- ArrayExtra
 
 
 testSplitAt : List a -> Int -> ( List a, List a ) -> Test

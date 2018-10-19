@@ -1,4 +1,4 @@
-module Data.Array exposing (all, moveFromTo, removeAt, splitAt, squeeze, update)
+module ArrayExtra exposing (all, moveFromTo, removeAt, splitAt, squeeze, update)
 
 import Array exposing (..)
 
