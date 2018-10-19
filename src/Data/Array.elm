@@ -1,11 +1,11 @@
 module Data.Array exposing (all, moveFromTo, removeAt, splitAt, squeeze, update)
 
-import Array exposing (Array, empty, slice)
+import Array exposing (..)
 
 
 all : (a -> Bool) -> Array a -> Bool
 all check array =
-    case Array.length array of
+    case length array of
         0 ->
             True
 
@@ -15,7 +15,7 @@ all check array =
 
 allImpl : (a -> Bool) -> Int -> Array a -> Bool
 allImpl check index array =
-    case Array.get index array of
+    case get index array of
         Just item ->
             -- Enfore TCO
             if check item then
@@ -35,9 +35,9 @@ allImpl check index array =
 
 update : Int -> (a -> a) -> Array a -> Array a
 update index fun array =
-    case Array.get index array of
+    case get index array of
         Just e ->
-            Array.set index (fun e) array
+            set index (fun e) array
 
         Nothing ->
             array
@@ -49,7 +49,7 @@ splitAt : Int -> Array a -> ( Array a, Array a )
 splitAt index array =
     let
         len =
-            Array.length array
+            length array
     in
     case ( index >= 0, abs index < len ) of
         ( True, True ) ->
@@ -72,7 +72,7 @@ removeAt index array =
             splitAt index array
 
         lenRear =
-            Array.length rear
+            length rear
     in
     if lenRear == 0 then
         front
@@ -81,7 +81,7 @@ removeAt index array =
         array
 
     else
-        Array.append front (slice 1 lenRear rear)
+        append front (slice 1 lenRear rear)
 
 
 moveFromTo : Int -> Int -> Array a -> Array a
@@ -90,7 +90,7 @@ moveFromTo from to array =
         array
 
     else
-        case Array.get from array of
+        case get from array of
             Just moving ->
                 if from < to then
                     moveToRight from to moving array
@@ -100,7 +100,7 @@ moveFromTo from to array =
 
                 else
                     -- In this case we always move target to 0
-                    Array.append (Array.fromList [ moving ]) (removeAt from array)
+                    append (fromList [ moving ]) (removeAt from array)
 
             Nothing ->
                 array
@@ -110,7 +110,7 @@ moveToRight : Int -> Int -> a -> Array a -> Array a
 moveToRight from to moving array =
     let
         len =
-            Array.length array
+            length array
 
         leading =
             slice 0 from array
@@ -121,14 +121,14 @@ moveToRight from to moving array =
         trailing =
             slice (to + 1) len array
     in
-    Array.append leading (Array.append (Array.push moving leftShifted) trailing)
+    append leading (append (push moving leftShifted) trailing)
 
 
 moveToLeft : Int -> Int -> a -> Array a -> Array a
 moveToLeft from to moving array =
     let
         len =
-            Array.length array
+            length array
 
         leading =
             slice 0 to array
@@ -139,7 +139,7 @@ moveToLeft from to moving array =
         trailing =
             slice (from + 1) len array
     in
-    Array.append (Array.push moving leading) (Array.append rightShifted trailing)
+    append (push moving leading) (append rightShifted trailing)
 
 
 squeeze : Int -> a -> Array a -> Array a
@@ -148,4 +148,4 @@ squeeze index element array =
         ( front, rear ) =
             splitAt index array
     in
-    Array.append (Array.push element front) rear
+    append (push element front) rear
