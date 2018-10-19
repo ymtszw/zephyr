@@ -29,6 +29,6 @@ Sleep for a set amount of time, then fire event with current posix time.
 -}
 setTimeout : (Posix -> msg) -> Float -> Cmd msg
 setTimeout timeoutMsg timeout =
-    Process.sleep 5000
+    Process.sleep timeout
         |> Task.andThen (\() -> Time.now)
         |> Task.perform timeoutMsg
