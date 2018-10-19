@@ -3,7 +3,6 @@ module Examples exposing (suite)
 import Array exposing (fromList)
 import ArrayExtra as Array
 import Data.Column
-import Data.Item
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueId exposing (Generator)
@@ -211,22 +210,6 @@ uniqueIdSuite =
 
 
 
--- Data.Item
-
-
-itemSuite : Test
-itemSuite =
-    describe "Data.Item"
-        [ test "encoder/decoder should work" <|
-            \_ ->
-                Data.Item.welcome
-                    |> Data.Item.encode
-                    |> decodeValue Data.Item.decoder
-                    |> Expect.equal (Ok Data.Item.welcome)
-        ]
-
-
-
 -- Data.Column
 
 
@@ -401,7 +384,6 @@ suite =
     describe "test"
         [ arraySuite
         , uniqueIdSuite
-        , itemSuite
         , columnSuite
         , textRendererSuite
         , fetchStatusSuite
