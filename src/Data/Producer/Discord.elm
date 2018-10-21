@@ -127,7 +127,7 @@ type alias User =
     { id : String
     , username : String
     , discriminator : String
-    , email : String
+    , email : Maybe String
     , avatar : Maybe Image
     }
 
@@ -172,6 +172,7 @@ type Image
 {-| Discord Message Object.
 
 Only interested in "type: 0" (DEFAULT) messages.
+`guild_id` is somewhat missing, though it can be derived from Channel anyway.
 
 <https://discordapp.com/developers/docs/resources/channel#message-object>
 
@@ -181,7 +182,6 @@ TODO use reactions, with introducing delayed update mechanism
 type alias Message =
     { id : String
     , channelId : String
-    , guildId : Maybe String
     , author : Author
     , timestamp : Posix
     , content : String
@@ -290,7 +290,7 @@ encodeUser user =
         [ ( "id", E.string user.id )
         , ( "username", E.string user.username )
         , ( "discriminator", E.string user.discriminator )
-        , ( "email", E.string user.email )
+        , ( "email", E.maybe E.string user.email )
         , ( "avatar", E.maybe encodeImage user.avatar )
         ]
 
@@ -361,7 +361,6 @@ encodeMessage message =
     E.object
         [ ( "id", E.string message.id )
         , ( "channel_id", E.string message.channelId )
-        , ( "guild_id", E.maybe E.string message.guildId )
         , ( "type", E.int 0 )
         , ( "author", encodeAuthor message.author )
         , ( "timestamp", Iso8601.encode message.timestamp )
@@ -485,7 +484,7 @@ userDecoder =
             D.map4 (User id)
                 (D.field "username" D.string)
                 (D.field "discriminator" D.string)
-                (D.field "email" D.string)
+                (D.maybeField "email" D.string)
                 (D.field "avatar" (D.maybe (D.map (toUserAvatar id) D.string)))
 
         toUserAvatar id hash =
@@ -547,10 +546,9 @@ messageDecoder : Decoder Message
 messageDecoder =
     -- Only care about DEFAULT message type
     D.when (D.field "type" D.int) ((==) 0) <|
-        D.map8 Message
+        D.map7 Message
             (D.field "id" D.string)
             (D.field "channel_id" D.string)
-            (D.field "guild_id" (D.maybe D.string))
             authorDecoder
             (D.field "timestamp" Iso8601.decoder)
             (D.field "content" D.string)
@@ -752,7 +750,7 @@ commitToken discord =
             destroy
 
         TokenGiven token ->
-            enterAndFire discord (identify token)
+            enterAndFire (TokenReady token) (identify token)
 
         Hydrated "" _ ->
             destroy
@@ -1514,7 +1512,7 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
                 ( Nothing, disc ) ->
                     case String.toInt disc of
                         Just int ->
-                            "/embed/avatars/" ++ String.fromInt (modBy int 5) ++ ".png"
+                            "/embed/avatars/" ++ String.fromInt (modBy 5 int) ++ ".png"
 
                         Nothing ->
                             "/embed/avatars/0.png"
