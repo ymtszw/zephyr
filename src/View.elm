@@ -232,13 +232,18 @@ draggedColumnEl clientHeight =
 
 columnBaseAttrs : Int -> List (El.Attribute Msg)
 columnBaseAttrs clientHeight =
-    [ El.width (El.px 350)
+    [ El.width (El.px fixedColumnWidth)
     , El.height (El.fill |> El.maximum clientHeight)
     , BG.color oneDark.main
     , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
     , BD.color oneDark.bg
     , Font.color oneDark.text
     ]
+
+
+fixedColumnWidth : Int
+fixedColumnWidth =
+    350
 
 
 onDragStart : Int -> String -> Decoder Msg
@@ -697,7 +702,7 @@ itemAvatarEl item =
         Product _ (DiscordItem { author }) ->
             let
                 authorIconEl user =
-                    squareIconEl 50 user.username <|
+                    squareIconEl avatarSize user.username <|
                         Just (Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar)
             in
             case author of
@@ -708,7 +713,12 @@ itemAvatarEl item =
                     authorIconEl user
 
         System _ ->
-            squareIconEl 50 "Zephyr" Nothing
+            squareIconEl avatarSize "Zephyr" Nothing
+
+
+avatarSize : Int
+avatarSize =
+    50
 
 
 itemContentsEl : Model -> ColumnItem -> Element Msg
@@ -724,7 +734,23 @@ itemContentsEl m item =
 discordMessageEl : Model -> Discord.Message -> Element Msg
 discordMessageEl m discordMessage =
     -- TODO match with official app styling
-    defaultItemEl discordMessage.content Nothing
+    El.column [ El.width El.fill ]
+        [ El.row []
+            [ discordMessageAuthorEl discordMessage ]
+        , El.textColumn [ El.spacingXY 0 10, El.width El.fill, El.alignTop ]
+            [ messageToParagraph discordMessage.content
+            ]
+        ]
+
+
+discordMessageAuthorEl : Discord.Message -> Element Msg
+discordMessageAuthorEl { author } =
+    case author of
+        UserAuthor user ->
+            El.el [ Font.bold ] (El.text user.username)
+
+        WebhookAuthor user ->
+            El.el [ Font.bold ] (El.text user.username)
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
@@ -753,13 +779,29 @@ mediaEl : Media -> Element Msg
 mediaEl media =
     case media of
         Image url ->
-            El.image [ El.width El.fill ]
-                -- TODO pass description
-                { src = Url.toString url, description = "Welcome image" }
+            imageEl "Image" url
 
-        Movie _ ->
-            -- Placeholder
-            El.none
+        Movie url ->
+            videoEl url
+
+
+imageEl : String -> Url.Url -> Element Msg
+imageEl desc url =
+    El.image [ El.width El.fill ] { src = Url.toString url, description = desc }
+
+
+videoEl : Url.Url -> Element Msg
+videoEl url =
+    El.el [ El.width El.fill, El.centerX ] <|
+        El.html <|
+            Html.video
+                [ Html.Attributes.controls True
+                , Html.Attributes.width (fixedColumnWidth - avatarSize - 10)
+                , Html.Attributes.src (Url.toString url)
+                ]
+                [ Html.text "Embedded video not supported."
+                , Html.a [ Html.Attributes.href (Url.toString url) ] [ Html.text "[Source]" ]
+                ]
 
 
 

@@ -1,6 +1,6 @@
 module Data.Producer.Discord exposing
     ( Discord(..), Guild, Channel, Msg(..), decoder, encode
-    , Message, Author(..), Embed, Attachment, encodeMessage, messageDecoder
+    , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment, encodeMessage, messageDecoder
     , reload, update, configEl
     , FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
     )
@@ -22,7 +22,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Message
 
-@docs Message, Author, Embed, Attachment, encodeMessage, messageDecoder
+@docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment, encodeMessage, messageDecoder
 
 
 ## Component APIs
@@ -41,13 +41,13 @@ import Data.Filter exposing (FilterAtom(..))
 import Data.Producer.Base as Producer exposing (destroy, enter, enterAndFire, yieldAndFire)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Dict exposing (Dict)
-import Element as El exposing (Element)
+import Element as El exposing (Color, Element)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Extra exposing (ite, setTimeout)
+import Extra exposing (divMod, ite, setTimeout)
 import Html.Attributes
 import Http
 import HttpExtra as Http
@@ -67,7 +67,7 @@ import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareI
 -- TYPES
 
 
-{-| Discord state itself is a custom type that represents authentication status.
+{-| A state machine for Discord that represents authentication status.
 
   - When a user starts filling in token form for the first time, it becomes `TokenGiven` state
   - When the above submitted, changes to `TokenReady`
@@ -77,10 +77,11 @@ import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareI
     When they are all ready, it becomes `Hydrated`.
       - Form is unlocked then.
       - Once fully-hydrated state will be saved to IndexedDB.
+      - Message fetching timers start at this point, with fixed amount of concurrency.
   - Upon application reload, it starts with `Revisit` status,
-    then become `Hydrated` again if the token successfully confirmed.
+    then become `Hydrated` again if the token successfully re-confirmed.
       - If not, it becomes `Expired` (it could also mean the token is revoked by the server)
-  - When token is changed to one for another user, it stops at `Switching` state,
+  - TODO When token is changed to one for another user, it stops at `Switching` state,
     requesting user confirmation, then move to `Identified`, discarding old Config.
 
 -}
@@ -169,6 +170,10 @@ type Image
 
 Only interested in "type: 0" (DEFAULT) messages.
 
+<https://discordapp.com/developers/docs/resources/channel#message-object>
+
+TODO use reactions, with introducing delayed update mechanism
+
 -}
 type alias Message =
     { id : String
@@ -191,15 +196,42 @@ type alias Embed =
     { title : Maybe String
     , description : Maybe String
     , url : Maybe Url
+    , color : Maybe Color
+    , image : Maybe EmbedImage
+    , thumbnail : Maybe EmbedImage -- Embed thumbnail and image are identical in structure
+    , video : Maybe EmbedVideo
+    , author : Maybe EmbedAuthor
+    }
 
-    -- TODO add other properties
+
+type alias EmbedImage =
+    -- XXX Embed can use attachment via attachment ID as url. Might support later.
+    { url : Url
+    , proxyUrl : Maybe Url
+    , height : Maybe Int
+    , width : Maybe Int
+    }
+
+
+type alias EmbedVideo =
+    { url : Url
+    , height : Maybe Int
+    , width : Maybe Int
+    }
+
+
+type alias EmbedAuthor =
+    { name : String
+    , url : Maybe Url
+    , iconUrl : Maybe Url
+    , proxyIconUrl : Maybe Url
     }
 
 
 type alias Attachment =
     { filename : String
     , url : Url
-    , proxy_url : Url
+    , proxyUrl : Url
     , height : Maybe Int
     , width : Maybe Int
     }
@@ -351,7 +383,50 @@ encodeEmbed embed =
     E.object
         [ ( "title", E.maybe E.string embed.title )
         , ( "description", E.maybe E.string embed.description )
-        , ( "url", E.maybe (Url.toString >> E.string) embed.url )
+        , ( "url", E.maybe E.url embed.url )
+        , ( "color", E.maybe encodeColor embed.color )
+        , ( "image", E.maybe encodeEmbedImage embed.image )
+        , ( "thumbnail", E.maybe encodeEmbedImage embed.thumbnail )
+        , ( "video", E.maybe encodeEmbedVideo embed.video )
+        , ( "author", E.maybe encodeEmbedAuthor embed.author )
+        ]
+
+
+encodeColor : Color -> E.Value
+encodeColor color =
+    let
+        { red, green, blue } =
+            El.toRgb color
+    in
+    E.int (floor red * 0x00010000 + floor green * 0x0100 + floor blue)
+
+
+encodeEmbedImage : EmbedImage -> E.Value
+encodeEmbedImage eImage =
+    E.object
+        [ ( "url", E.url eImage.url )
+        , ( "proxy_url", E.maybe E.url eImage.proxyUrl )
+        , ( "height", E.maybe E.int eImage.height )
+        , ( "width", E.maybe E.int eImage.width )
+        ]
+
+
+encodeEmbedVideo : EmbedVideo -> E.Value
+encodeEmbedVideo eVideo =
+    E.object
+        [ ( "url", E.url eVideo.url )
+        , ( "height", E.maybe E.int eVideo.height )
+        , ( "width", E.maybe E.int eVideo.width )
+        ]
+
+
+encodeEmbedAuthor : EmbedAuthor -> E.Value
+encodeEmbedAuthor eAuthor =
+    E.object
+        [ ( "name", E.string eAuthor.name )
+        , ( "url", E.maybe E.url eAuthor.url )
+        , ( "icon_url", E.maybe E.url eAuthor.iconUrl )
+        , ( "proxy_icon_url", E.maybe E.url eAuthor.proxyIconUrl )
         ]
 
 
@@ -360,7 +435,7 @@ encodeAttachment attachment =
     E.object
         [ ( "filename", E.string attachment.filename )
         , ( "url", E.string (Url.toString attachment.url) )
-        , ( "proxy_url", E.string (Url.toString attachment.proxy_url) )
+        , ( "proxy_url", E.string (Url.toString attachment.proxyUrl) )
         , ( "height", E.maybe E.int attachment.height )
         , ( "width", E.maybe E.int attachment.width )
         ]
@@ -507,10 +582,61 @@ authorDecoder =
 
 embedDecoder : Decoder Embed
 embedDecoder =
-    D.map3 Embed
+    D.map8 Embed
         (D.field "title" (D.maybe D.string))
         (D.field "description" (D.maybe D.string))
         (D.field "url" (D.maybe D.url))
+        (D.maybeField "color" colorDecoder)
+        (D.maybeField "image" embedImageDecoder)
+        (D.maybeField "thumbnail" embedImageDecoder)
+        (D.maybeField "video" embedVideoDecoder)
+        (D.maybeField "author" embedAuthorDecoder)
+
+
+colorDecoder : Decoder Color
+colorDecoder =
+    D.int
+        |> D.andThen
+            (\int ->
+                let
+                    ( div256, b ) =
+                        divMod 256 int
+
+                    ( r, g ) =
+                        divMod 256 div256
+                in
+                if 0 <= r && r < 256 && 0 <= g && g < 256 && 0 <= b && b < 256 then
+                    D.succeed (El.rgb255 r g b)
+
+                else
+                    D.fail "Invalid color integer"
+            )
+
+
+embedImageDecoder : Decoder EmbedImage
+embedImageDecoder =
+    D.map4 EmbedImage
+        (D.field "url" D.url)
+        (D.maybeField "proxy_url" D.url)
+        (D.maybeField "height" D.int)
+        (D.maybeField "width" D.int)
+
+
+embedVideoDecoder : Decoder EmbedVideo
+embedVideoDecoder =
+    D.map3 EmbedVideo
+        (D.field "url" D.url)
+        (D.maybeField "height" D.int)
+        (D.maybeField "width" D.int)
+
+
+embedAuthorDecoder : Decoder EmbedAuthor
+embedAuthorDecoder =
+    D.map4 EmbedAuthor
+        (D.field "name" D.string)
+        (D.maybeField "url" D.url)
+        (D.maybeField "icon_url" D.url)
+        (D.maybeField "proxy_icon_url" D.url)
 
 
 attachmentDecoder : Decoder Attachment
@@ -519,8 +645,8 @@ attachmentDecoder =
         (D.field "filename" D.string)
         (D.field "url" D.url)
         (D.field "proxy_url" D.url)
-        (D.field "height" (D.maybe D.int))
-        (D.field "width" (D.maybe D.int))
+        (D.maybeField "height" D.int)
+        (D.maybeField "width" D.int)
 
 
 
@@ -692,16 +818,33 @@ handleHydrate discord guilds channels =
             enter (Hydrated token (POV token user guilds channels))
 
         Rehydrating token pov ->
-            -- Not diffing against current POV, just overwrite. TODO respect existing fetchStatus
-            enter (Hydrated token (POV pov.token pov.user guilds channels))
+            -- Not diffing against current POV, just overwrite.
+            enter (Hydrated token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
 
         Expired token pov ->
-            -- Possibly late arrival. TODO respect existing fetchStatus
-            enter (Expired token (POV pov.token pov.user guilds channels))
+            -- Possibly late arrival.
+            enter (Expired token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
 
         _ ->
             -- Otherwise Hydrate should not arrive; just keep state
             enter discord
+
+
+mergeChannels : Dict String Channel -> Dict String Channel -> Dict String Channel
+mergeChannels oldChannels newChannels =
+    let
+        foundOnlyInOld _ _ acc =
+            -- Deleting now unreachable (deleted/banned) Channel
+            acc
+
+        foundInBoth cId oldChannel newChannel acc =
+            -- Using newChannel's last_message_id (can cause skip/dupelication)
+            Dict.insert cId { newChannel | fetchStatus = oldChannel.fetchStatus } acc
+
+        foundOnlyInNew cId newChannel acc =
+            Dict.insert cId newChannel acc
+    in
+    Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldChannels newChannels Dict.empty
 
 
 {-| Start concurrent fetches.
@@ -769,7 +912,7 @@ fillWithTimers concurrencyFactor cmds =
 
 setFetchTimerOne : Cmd Msg
 setFetchTimerOne =
-    -- XXX: better randomize?
+    -- We may randomize interval, but each timer drifts naturally so let it be so.
     setTimeout Fetch 5000
 
 
@@ -784,6 +927,17 @@ handleRehydrate discord =
             enter discord
 
 
+{-| Handles Fetch event caused by fetch timers.
+
+THIS is where timers are primarily continued/killed.
+
+Timers are:
+
+  - killed if the current token is somehow deemed Expired
+  - killed if Fetch event arrived to unexpected states (failsafe, should not happen)
+  - otherwise continued
+
+-}
 handleFetch : Discord -> Posix -> Producer.Yield Message Discord Msg
 handleFetch discord posix =
     case discord of
@@ -801,7 +955,7 @@ handleFetch discord posix =
             fetchOrSetTimer (Switching newSession) pov posix
 
         _ ->
-            -- Otherwise timer tick should not arrive
+            -- Timer tick should not arrive in other states
             enter discord
 
 

@@ -1,4 +1,4 @@
-module Extra exposing (ite, setTimeout)
+module Extra exposing (divMod, ite, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
@@ -20,6 +20,20 @@ ite condition then_ else_ =
 
     else
         else_
+
+
+{-| Integer division and modBy at once.
+
+    divMod 2 5 == ( 2, 1 )
+
+    divMod 25 100 == ( 4, 0 )
+
+    divMod 4 -3 == ( 0, 1 )
+
+-}
+divMod : Int -> Int -> ( Int, Int )
+divMod divisor dividend =
+    ( dividend // divisor, modBy divisor dividend )
 
 
 {-| Convenient timer.

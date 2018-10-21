@@ -5,9 +5,11 @@ module Data.Producer.Base exposing
 
 {-| Defines types and helpers used by Producers.
 
-Producers can be of two types: Polling and Realtime.
-Realtime Producer is based on Websocket event handling (TODO when elm/websocket is ready).
-There could be Hybrid Producer introduced later.
+Currently Producers work by polling their API endpoints.
+
+Realtime Producers could be implemented based on Websocket event handling.
+Also there could be Hybrid of the two, utilizing both downstream event handling
+AND stateless API requests.
 
 
 ## Types

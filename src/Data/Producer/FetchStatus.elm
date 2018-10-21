@@ -88,7 +88,6 @@ backoffFactorDecoder =
 
 compare : FetchStatus -> FetchStatus -> Order
 compare a b =
-    -- XXX demands tests!
     -- Note: List.sortWith sorts items from lowest to hightest
     if a == b then
         EQ

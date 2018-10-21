@@ -103,11 +103,19 @@ isMovieFile filename =
 discordEmbedHasImage : Discord.Embed -> Bool
 discordEmbedHasImage embed =
     -- Not counting thumbnail as image
-    -- TODO impl here
-    False
+    case embed.image of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
 
 
 discordEmbedHasMovie : Discord.Embed -> Bool
 discordEmbedHasMovie embed =
-    -- TODO impl here
-    False
+    case embed.video of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
