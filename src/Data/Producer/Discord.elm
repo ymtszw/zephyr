@@ -81,8 +81,11 @@ import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareI
   - Upon application reload, it starts with `Revisit` status,
     then become `Hydrated` again if the token successfully re-confirmed.
       - If not, it becomes `Expired` (it could also mean the token is revoked by the server)
-  - TODO When token is changed to one for another user, it stops at `Switching` state,
+  - When token is changed to one for another user, it stops at `Switching` state,
     requesting user confirmation, then move to `Identified`, discarding old Config.
+      - TODO Implement confirmation
+  - If empty string is submitted as token, the whole state machine is discarded
+      - TODO Implement confirmation
 
 -}
 type Discord
@@ -752,14 +755,12 @@ commitToken discord =
             enterAndFire discord (identify token)
 
         Hydrated "" _ ->
-            -- TODO Insert confirmation phase later
             destroy
 
         Hydrated newToken _ ->
             enterAndFire discord (identify newToken)
 
         Expired "" _ ->
-            -- TODO Insert confirmation phase later
             destroy
 
         Expired newToken _ ->
@@ -783,8 +784,8 @@ handleIdentify discord user =
             detectUserSwitch token pov user
 
         Revisit pov ->
-            -- Successful reload; TODO start polling timers!!!
-            enter (Hydrated pov.token { pov | user = user })
+            -- Successful reload
+            startConcurrentFetch (Hydrated pov.token) { pov | user = user }
 
         Switching _ pov ->
             -- Retried Identify with previous token after error on Switching phase
@@ -798,11 +799,10 @@ handleIdentify discord user =
 detectUserSwitch : String -> POV -> User -> Producer.Yield Message Discord Msg
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
-        -- TODO restart polling timers, but need to check living timers.
+        -- TODO restart polling timers if token was Expired. Need to check living timers.
         enter (Hydrated token { pov | token = token, user = user })
 
     else
-        -- TODO Insert confirmation phase later
         enterAndFire (Switching (NewSession token user) pov) (hydrate token)
 
 
@@ -810,11 +810,11 @@ handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.
 handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
-            -- Successful register; TODO start polling timer!!!
-            enter (Hydrated token (POV token user guilds channels))
+            -- Successful register
+            startConcurrentFetch (Hydrated token) (POV token user guilds channels)
 
         Switching { token, user } _ ->
-            -- Successful user switch; TODO restart polling timers, but need to check living timers.
+            -- Successful user switch; TODO restart polling timers if token was Expired. Need to check living timers.
             enter (Hydrated token (POV token user guilds channels))
 
         Rehydrating token pov ->
@@ -861,8 +861,6 @@ If a channel is fetched but not having yielded a message,
 "next fetch time" is near-exponentially backed off, up to 120 seconds.
 If one or more message yielded by a fetch, backoff interval is reset to minimum (5 sec),
 thus next few fetches are likely attempted in minimum intervals. Call it "bursting".
-
-XXX Plugging this function into update makes the application to start fetching Discord messages.
 
 TODO If users attempted token (= login user) change, number of timers could be messed up.
 There must be some kind of "timer counter" to enforce concurrency amount.
@@ -1432,7 +1430,6 @@ currentStateEl discord =
             ]
 
         Switching newSession pov ->
-            -- TODO User switching confirmation
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
             ]
