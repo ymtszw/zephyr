@@ -25,6 +25,7 @@ import Html
 import Html.Attributes exposing (draggable, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
+import Logger
 import Octicons
 import String exposing (fromFloat)
 import Url
@@ -771,6 +772,7 @@ messageToParagraph message =
     El.paragraph
         [ Font.size (scale12 2)
         , El.htmlAttribute (style "white-space" "pre-wrap")
+        , El.htmlAttribute (style "word-break" "break-all")
         ]
         (Data.TextRenderer.default oneDark message)
 
@@ -825,8 +827,11 @@ configInnerEl m =
     El.column
         [ El.width El.fill
         , El.height El.fill
+        , El.spacing 10
         ]
         [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
+        , El.el [ El.width El.fill, El.alignBottom, El.height El.shrink ] <|
+            Logger.historyEl m.log
         ]
 
 

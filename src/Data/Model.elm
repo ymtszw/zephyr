@@ -10,6 +10,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
+import Logger
 import View.Select
 
 
@@ -18,6 +19,7 @@ type alias Model =
     , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
     , idGen : UniqueId.Generator
+    , log : Logger.History
     , navKey : Key
     , viewState : ViewState
     , env : Env
@@ -58,6 +60,7 @@ initModel env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueId.init
+        , log = Logger.init
         , navKey = navKey
         , viewState = defaultViewState
         , env = env
@@ -87,6 +90,7 @@ welcomeModel env navKey =
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
     , idGen = idGen
+    , log = Logger.init
     , navKey = navKey
     , viewState = defaultViewState
     , env = env

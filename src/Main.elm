@@ -14,13 +14,17 @@ import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
-import Extra exposing (setTimeout)
+import Extra exposing (ite, setTimeout)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import Logger exposing (Entry)
 import Ports
+import String exposing (fromInt)
 import Task
+import Time
 import Url
 import View
 import View.Select
@@ -243,12 +247,17 @@ loadSavedState model value =
         Ok savedState ->
             { model
                 | columnStore = savedState.columnStore
+                , itemBroker = savedState.itemBroker
                 , producerRegistry = savedState.producerRegistry
                 , idGen = savedState.idGen
             }
 
-        _ ->
-            welcomeModel model.env model.navKey
+        Err err ->
+            let
+                m =
+                    welcomeModel model.env model.navKey
+            in
+            { m | log = Logger.rec m.log (Entry "Error - loadSavedState" [ D.errorToString err ]) }
 
 
 type alias SavedState =
@@ -400,8 +409,110 @@ main =
     Browser.application
         { init = init
         , view = view
-        , update = update
+        , update = log update
         , subscriptions = sub
         , onUrlRequest = LinkClicked
         , onUrlChange = \_ -> NoOp
         }
+
+
+log : (Msg -> Model -> ( Model, Cmd Msg )) -> Msg -> Model -> ( Model, Cmd Msg )
+log u msg m =
+    u msg { m | log = Logger.rec m.log (msgToLogEntry msg) }
+
+
+msgToLogEntry : Msg -> Entry
+msgToLogEntry msg =
+    case msg of
+        NoOp ->
+            Entry "NoOp" []
+
+        Resize x y ->
+            Entry "Resize" [ fromInt x, fromInt y ]
+
+        GetViewport vp ->
+            Entry "GetViewport" [ Debug.toString vp ]
+
+        LinkClicked req ->
+            Entry "LinkClicked" [ Debug.toString req ]
+
+        SelectToggle sId bool ->
+            Entry "SelectToggle" [ sId, ite bool "True" "False" ]
+
+        SelectPick _ ->
+            Entry "SelectPick" [ "<msg>" ]
+
+        AddColumn ->
+            Entry "AddColumn" []
+
+        DelColumn index ->
+            Entry "DelColumn" [ fromInt index ]
+
+        ToggleColumnSwappable bool ->
+            Entry "ToggleColumnSwappable" [ ite bool "True" "False" ]
+
+        DragStart index cId ->
+            Entry "DragStart" [ fromInt index, cId ]
+
+        DragEnter index ->
+            Entry "DragEnter" [ fromInt index ]
+
+        DragEnd ->
+            Entry "DragEnd" []
+
+        Load _ ->
+            Entry "Load" [ "<savedState>" ]
+
+        ToggleConfig bool ->
+            Entry "ToggleConfig" [ ite bool "True" "False" ]
+
+        ToggleColumnConfig cId bool ->
+            Entry "ToggleColumnConfig" [ cId, ite bool "True" "False" ]
+
+        AddColumnFilter cId filter ->
+            Entry "AddColumnFilter" [ cId, Debug.toString filter ]
+
+        SetColumnFilter cId index filter ->
+            Entry "SetColumnFilter" [ cId, fromInt index, Debug.toString filter ]
+
+        DelColumnFilter cId index ->
+            Entry "DelColumnFilter" [ cId, fromInt index ]
+
+        ColumnDeleteGateInput cId input ->
+            Entry "ColumnDeleteGateInput" [ cId, input ]
+
+        ProducerCtrl pMsg ->
+            producerMsgToEntry pMsg
+
+        ScanBroker posix ->
+            Entry "ScanBroker" [ fromInt (Time.posixToMillis posix) ]
+
+
+producerMsgToEntry : Producer.Msg -> Entry
+producerMsgToEntry pMsg =
+    case pMsg of
+        Producer.DiscordMsg msgDiscord ->
+            case msgDiscord of
+                Discord.TokenInput input ->
+                    Entry "Discord - TokenInput" [ input ]
+
+                Discord.CommitToken ->
+                    Entry "Discord - CommitToken" []
+
+                Discord.Identify user ->
+                    Entry "Discord - Identify" [ Debug.toString user ]
+
+                Discord.Hydrate _ _ ->
+                    Entry "Discord - Hydrate" [ "<Hydrate>" ]
+
+                Discord.Rehydrate ->
+                    Entry "Discord - Rehydrate" []
+
+                Discord.Fetch posix ->
+                    Entry "Discord - Fetch" [ fromInt (Time.posixToMillis posix) ]
+
+                Discord.Fetched fres ->
+                    Entry "Discord - Fetched" [ Debug.toString fres ]
+
+                Discord.APIError e ->
+                    Entry "Discord - APIError" [ Debug.toString e ]
