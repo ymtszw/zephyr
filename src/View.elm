@@ -615,15 +615,10 @@ discordGuildOptionEl guilds gId =
     case Dict.get gId guilds of
         Just guild ->
             El.row [ El.width El.fill, El.spacing 3 ]
-                [ discordGuildSmallIconEl guild, El.text guild.name ]
+                [ Discord.guildSmallIconEl guild, El.text guild.name ]
 
         Nothing ->
             El.text gId
-
-
-discordGuildSmallIconEl : Guild -> Element msg
-discordGuildSmallIconEl guild =
-    squareIconEl 20 guild.name (Maybe.map (Discord.imageUrlNoFallback (Just "16")) guild.icon)
 
 
 discordChannelOptionEl : Dict String Channel -> String -> Element msg
@@ -633,7 +628,7 @@ discordChannelOptionEl channels cId =
             case channel.guildMaybe of
                 Just guild ->
                     El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
-                        [ discordGuildSmallIconEl guild
+                        [ Discord.guildSmallIconEl guild
                         , El.text ("#" ++ channel.name)
                         ]
 

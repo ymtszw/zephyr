@@ -3,6 +3,7 @@ module Data.Producer.Discord exposing
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment, encodeMessage, messageDecoder
     , reload, update, configEl
     , FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
+    , guildSmallIconEl
     )
 
 {-| Polling Producer for Discord.
@@ -33,6 +34,11 @@ full-privilege personal token for a Discord user. Discuss in private.
 ## Runtime APIs
 
 @docs FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
+
+
+## View APIs
+
+@docs guildSmallIconEl
 
 -}
 
@@ -1424,26 +1430,31 @@ currentStateEl discord =
         Hydrated _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
+            , subbedChannelsEl pov
             ]
 
         Rehydrating _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl True pov
+            , subbedChannelsEl pov
             ]
 
         Revisit pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
+            , subbedChannelsEl pov
             ]
 
         Expired _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
+            , subbedChannelsEl pov
             ]
 
         Switching newSession pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
+            , subbedChannelsEl pov
             ]
 
         _ ->
@@ -1497,6 +1508,58 @@ rehydrateButtonEl rotating pov =
         { onPress = ite rotating Nothing (Just Rehydrate)
         , label = octiconEl Octicons.sync
         }
+
+
+subbedChannelsEl : POV -> Element Msg
+subbedChannelsEl pov =
+    El.row [ El.width El.fill, El.spacing 5 ]
+        [ El.column [ El.alignTop, El.spacing 5 ] [ El.text "Channels: " ]
+        , { data =
+                pov.channels
+                    |> Dict.values
+                    |> List.filter (.fetchStatus >> FetchStatus.isActive)
+          , columns = [ subbedChannelEl, nextFetchEl ]
+          }
+            |> El.table [ El.width El.fill, El.spacing 5 ]
+        ]
+
+
+subbedChannelEl : El.Column Channel Msg
+subbedChannelEl =
+    { header = El.el [ BG.color oneDark.note ] (El.text "Next Fetch")
+    , width = El.fill
+    , view =
+        \c ->
+            El.row [ El.width El.fill, El.clipX ]
+                [ c.guildMaybe |> Maybe.map guildSmallIconEl |> Maybe.withDefault El.none
+                , El.text ("#" ++ c.name)
+                ]
+    }
+
+
+nextFetchEl : El.Column Channel Msg
+nextFetchEl =
+    { header = El.el [ BG.color oneDark.note ] (El.text "Next Fetch")
+    , width = El.fill
+    , view =
+        \c ->
+            El.text <|
+                case c.fetchStatus of
+                    Waiting ->
+                        "Soon"
+
+                    ResumeFetching ->
+                        "Fetching..."
+
+                    NextFetchAt posix _ ->
+                        Iso8601.fromTime posix
+
+                    Fetching _ _ ->
+                        "Fetching..."
+
+                    _ ->
+                        "Not active"
+    }
 
 
 
@@ -1637,3 +1700,12 @@ setChannelFetchStatusImpl tagger subs pov =
                     )
     in
     tagger { pov | channels = newChannels }
+
+
+
+-- View APIs
+
+
+guildSmallIconEl : Guild -> Element msg
+guildSmallIconEl guild =
+    squareIconEl 20 guild.name (Maybe.map (imageUrlNoFallback (Just "16")) guild.icon)
