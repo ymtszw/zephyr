@@ -9,6 +9,7 @@ import Browser.Events exposing (Visibility(..), onResize)
 import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Filter as Filter
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
@@ -437,17 +438,20 @@ msgToLogEntry msg =
         Resize x y ->
             Entry "Resize" [ fromInt x, fromInt y ]
 
-        GetViewport vp ->
-            Entry "GetViewport" [ Debug.toString vp ]
+        GetViewport _ ->
+            Entry "GetViewport" [ "<viewport>" ]
 
-        LinkClicked req ->
-            Entry "LinkClicked" [ Debug.toString req ]
+        LinkClicked (Internal url) ->
+            Entry "LinkClicked - Internal" [ Url.toString url ]
+
+        LinkClicked (External str) ->
+            Entry "LinkClicked - External" [ str ]
 
         SelectToggle sId bool ->
             Entry "SelectToggle" [ sId, ite bool "True" "False" ]
 
-        SelectPick _ ->
-            Entry "SelectPick" [ "<msg>" ]
+        SelectPick sMsg ->
+            msgToLogEntry sMsg
 
         AddColumn ->
             Entry "AddColumn" []
@@ -477,10 +481,10 @@ msgToLogEntry msg =
             Entry "ToggleColumnConfig" [ cId, ite bool "True" "False" ]
 
         AddColumnFilter cId filter ->
-            Entry "AddColumnFilter" [ cId, Debug.toString filter ]
+            Entry "AddColumnFilter" [ cId, Filter.toString filter ]
 
         SetColumnFilter cId index filter ->
-            Entry "SetColumnFilter" [ cId, fromInt index, Debug.toString filter ]
+            Entry "SetColumnFilter" [ cId, fromInt index, Filter.toString filter ]
 
         DelColumnFilter cId index ->
             Entry "DelColumnFilter" [ cId, fromInt index ]

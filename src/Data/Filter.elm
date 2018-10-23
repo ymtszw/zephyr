@@ -1,5 +1,5 @@
 module Data.Filter exposing
-    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder
+    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder, toString
     , append, setAt, removeAt, updateAt, any, fold, map, indexedMap
     )
 
@@ -21,7 +21,7 @@ For that, this module reluctantly exposes `append` API.
 
 ## Types
 
-@docs Filter, FilterAtom, MediaFilter, encode, decoder
+@docs Filter, FilterAtom, MediaFilter, encode, decoder, toString
 
 
 ## APIs
@@ -281,3 +281,40 @@ updateAtImpl targetIndex update index reversedFilterAtoms filter =
 
             Or filterAtom rest ->
                 updateAtImpl targetIndex update (index + 1) (filterAtom :: reversedFilterAtoms) rest
+
+
+toString : Filter -> String
+toString f =
+    toStringImpl f ""
+
+
+toStringImpl : Filter -> String -> String
+toStringImpl f acc =
+    case f of
+        Singular fa ->
+            acc ++ atomToString fa
+
+        Or fa fs ->
+            toStringImpl fs (acc ++ atomToString fa ++ ", OR ")
+
+
+atomToString : FilterAtom -> String
+atomToString fa =
+    case fa of
+        ByMessage query ->
+            "Contains: " ++ query
+
+        ByMedia HasNone ->
+            "Has no media"
+
+        ByMedia HasImage ->
+            "Has images"
+
+        ByMedia HasMovie ->
+            "Has movies"
+
+        OfDiscordChannel cId ->
+            "Discord Ch: " ++ cId
+
+        RemoveMe ->
+            ""
