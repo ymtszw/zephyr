@@ -576,17 +576,20 @@ authorDecoder =
     in
     D.oneOf
         [ decodeFromDiscordApi
-        , D.tagged "UserAuthor" UserAuthor userDecoder
-        , D.tagged "WebhookAuthor" WebhookAuthor userDecoder
+        , D.field "author" <|
+            D.oneOf
+                [ D.tagged "UserAuthor" UserAuthor userDecoder
+                , D.tagged "WebhookAuthor" WebhookAuthor userDecoder
+                ]
         ]
 
 
 embedDecoder : Decoder Embed
 embedDecoder =
     D.map8 Embed
-        (D.field "title" (D.maybe D.string))
-        (D.field "description" (D.maybe D.string))
-        (D.field "url" (D.maybe D.url))
+        (D.maybeField "title" D.string)
+        (D.maybeField "description" D.string)
+        (D.maybeField "url" D.url)
         (D.maybeField "color" colorDecoder)
         (D.maybeField "image" embedImageDecoder)
         (D.maybeField "thumbnail" embedImageDecoder)
