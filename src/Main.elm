@@ -17,6 +17,7 @@ import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
 import Extra exposing (ite, setTimeout)
+import HttpExtra
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -506,7 +507,7 @@ producerMsgToEntry pMsg =
                     Entry "Discord - CommitToken" []
 
                 Discord.Identify user ->
-                    Entry "Discord - Identify" [ Debug.toString user ]
+                    Entry "Discord - Identify" [ E.encode 2 (Discord.encodeUser user) ]
 
                 Discord.Hydrate _ _ ->
                     Entry "Discord - Hydrate" [ "<Hydrate>" ]
@@ -517,8 +518,11 @@ producerMsgToEntry pMsg =
                 Discord.Fetch posix ->
                     Entry "Discord - Fetch" [ Iso8601.fromTime posix ]
 
-                Discord.Fetched fres ->
-                    Entry "Discord - Fetched" [ Debug.toString fres ]
+                Discord.Fetched (Discord.FetchOk cId ms posix) ->
+                    Entry "Discord - FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
+
+                Discord.Fetched (Discord.FetchErr cId e) ->
+                    Entry "Discord - FetchErr" [ cId, HttpExtra.errorToString e ]
 
                 Discord.APIError e ->
-                    Entry "Discord - APIError" [ Debug.toString e ]
+                    Entry "Discord - APIError" [ HttpExtra.errorToString e ]

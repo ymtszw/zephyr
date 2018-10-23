@@ -1,7 +1,8 @@
-module HttpExtra exposing (auth, getWithAuth, try)
+module HttpExtra exposing (auth, errorToString, getWithAuth, try)
 
+import Dict
 import Http
-import Json.Decode exposing (Decoder)
+import Json.Decode exposing (Decoder, errorToString)
 import Task exposing (Task)
 import Url exposing (Url)
 
@@ -49,3 +50,34 @@ try fromOk fromErr task =
                     fromErr httpError
     in
     Task.attempt fromRes task
+
+
+errorToString : Http.Error -> String
+errorToString e =
+    (++) "[HTTP]" <|
+        case e of
+            Http.BadUrl badUrl ->
+                "Bad URL: " ++ badUrl
+
+            Http.Timeout ->
+                "Timeout"
+
+            Http.NetworkError ->
+                "Network Error"
+
+            Http.BadStatus r ->
+                ("Bad status: " ++ r.status.message) :: responseToString r |> String.join "\n"
+
+            Http.BadPayload decodeErr r ->
+                ("Bad payload: " ++ decodeErr) :: responseToString r |> String.join "\n"
+
+
+responseToString : Http.Response String -> List String
+responseToString r =
+    [ "URL: " ++ r.url
+    , "Code: " ++ String.fromInt r.status.code ++ " " ++ r.status.message
+    , "Headers:"
+    , r.headers |> Dict.toList |> List.map (\( k, v ) -> "  " ++ k ++ " : " ++ v) |> String.join "\n"
+    , "Body:"
+    , r.body
+    ]
