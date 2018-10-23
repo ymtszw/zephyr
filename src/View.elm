@@ -708,25 +708,48 @@ itemAvatarEl : ColumnItem -> Element Msg
 itemAvatarEl item =
     case item of
         Product _ (DiscordItem { author }) ->
-            let
-                authorIconEl user =
-                    squareIconEl avatarSize user.username <|
-                        Just (Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar)
-            in
             case author of
                 UserAuthor user ->
-                    authorIconEl user
+                    avatarWithBadgeEl
+                        { badge = Nothing
+                        , fallback = user.username
+                        , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        }
 
                 WebhookAuthor user ->
-                    authorIconEl user
+                    avatarWithBadgeEl
+                        { badge = Just botIconEl
+                        , fallback = user.username
+                        , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        }
 
         System _ ->
-            squareIconEl avatarSize "Zephyr" Nothing
+            avatarWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing }
 
 
 avatarSize : Int
 avatarSize =
-    50
+    40
+
+
+avatarWithBadgeEl : { badge : Maybe (Element Msg), fallback : String, url : Maybe String } -> Element Msg
+avatarWithBadgeEl { badge, fallback, url } =
+    let
+        bottomRightBadge =
+            case badge of
+                Just badgeEl ->
+                    [ El.alignTop, El.inFront <| El.el [ El.alignBottom, El.alignRight ] <| badgeEl ]
+
+                Nothing ->
+                    [ El.alignTop ]
+    in
+    El.el bottomRightBadge <| El.el [ El.padding 2 ] <| squareIconEl avatarSize fallback <| url
+
+
+botIconEl : Element Msg
+botIconEl =
+    El.el [ El.padding 1, BG.color oneDark.succ, BD.rounded 2 ] <|
+        octiconFreeSizeEl 12 Octicons.zap
 
 
 itemContentsEl : Model -> ColumnItem -> Element Msg
@@ -742,10 +765,10 @@ itemContentsEl m item =
 discordMessageEl : Model -> Discord.Message -> Element Msg
 discordMessageEl m discordMessage =
     -- TODO match with official app styling
-    El.column [ El.width El.fill ]
+    El.column [ El.width El.fill, El.spacing 5, El.alignTop ]
         [ El.row []
             [ discordMessageAuthorEl discordMessage ]
-        , El.textColumn [ El.spacingXY 0 10, El.width El.fill, El.alignTop ]
+        , El.textColumn [ El.spacingXY 0 10, El.width El.fill ]
             [ messageToParagraph discordMessage.content
             ]
         ]
@@ -753,12 +776,16 @@ discordMessageEl m discordMessage =
 
 discordMessageAuthorEl : Discord.Message -> Element Msg
 discordMessageAuthorEl { author } =
+    let
+        userTextEl user =
+            El.el [ Font.bold, Font.size (scale12 2) ] (El.text user.username)
+    in
     case author of
         UserAuthor user ->
-            El.el [ Font.bold ] (El.text user.username)
+            userTextEl user
 
         WebhookAuthor user ->
-            El.el [ Font.bold ] (El.text user.username)
+            userTextEl user
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
@@ -777,7 +804,7 @@ defaultItemEl message mediaMaybe =
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
     El.paragraph
-        [ Font.size (scale12 2)
+        [ Font.size (scale12 1)
         , El.htmlAttribute (style "white-space" "pre-wrap")
         , El.htmlAttribute (style "word-break" "break-all")
         ]
