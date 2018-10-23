@@ -19,7 +19,8 @@ type FetchStatus
 
 
 type Backoff
-    = BO5
+    = BO2
+    | BO5
     | BO10
     | BO30
     | BO60
@@ -54,6 +55,9 @@ encode fetchStatus =
 encodeBackoffFactor : Backoff -> E.Value
 encodeBackoffFactor bf =
     case bf of
+        BO2 ->
+            E.tag "BO2"
+
         BO5 ->
             E.tag "BO5"
 
@@ -83,7 +87,7 @@ decoder =
 
 backoffFactorDecoder : Decoder Backoff
 backoffFactorDecoder =
-    D.oneOf [ D.tag "BO5" BO5, D.tag "BO10" BO10, D.tag "BO30" BO30, D.tag "BO60" BO60, D.tag "BO120" BO120 ]
+    D.oneOf [ D.tag "BO2" BO2, D.tag "BO5" BO5, D.tag "BO10" BO10, D.tag "BO30" BO30, D.tag "BO60" BO60, D.tag "BO120" BO120 ]
 
 
 compare : FetchStatus -> FetchStatus -> Order

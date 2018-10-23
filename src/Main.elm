@@ -65,7 +65,7 @@ though older Items may be evicted BEFORE consumed by Columns, effectively causin
 -}
 scanIntervalMillis : Float
 scanIntervalMillis =
-    100
+    500
 
 
 
@@ -129,13 +129,13 @@ update msg ({ viewState, env } as m) =
             updateColumn cId m <| \c -> { c | configOpen = bool, deleteGate = "" }
 
         AddColumnFilter cId filter ->
-            persist <| updateColumn cId m <| \c -> { c | filters = Array.push filter c.filters }
+            persist <| updateColumn cId m <| \c -> { c | filters = Array.push filter c.filters, offset = Nothing, items = [] }
 
         SetColumnFilter cId index filter ->
-            persist <| updateColumn cId m <| \c -> { c | filters = Array.set index filter c.filters }
+            persist <| updateColumn cId m <| \c -> { c | filters = Array.set index filter c.filters, offset = Nothing, items = [] }
 
         DelColumnFilter cId index ->
-            persist <| updateColumn cId m <| \c -> { c | filters = Array.removeAt index c.filters }
+            persist <| updateColumn cId m <| \c -> { c | filters = Array.removeAt index c.filters, offset = Nothing, items = [] }
 
         ColumnDeleteGateInput cId text ->
             updateColumn cId m <| \c -> { c | deleteGate = text }
@@ -198,7 +198,7 @@ scanBroker m =
 
 brokerScanChunkAmount : Int
 brokerScanChunkAmount =
-    50
+    500
 
 
 

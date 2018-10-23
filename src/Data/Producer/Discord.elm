@@ -879,7 +879,7 @@ startConcurrentFetch stateTagger pov =
 
 fetchConcurrencyFactor : Int
 fetchConcurrencyFactor =
-    5
+    1
 
 
 updateChannelBeforeFetch : Channel -> POV -> POV
@@ -909,7 +909,7 @@ fillWithTimers concurrencyFactor cmds =
 setFetchTimerOne : Cmd Msg
 setFetchTimerOne =
     -- We may randomize interval, but each timer drifts naturally so let it be so.
-    setTimeout Fetch 5000
+    setTimeout Fetch 2000
 
 
 handleRehydrate : Discord -> Producer.Yield Message Discord Msg
@@ -1062,7 +1062,7 @@ proceedFetchStatus posixMaybe ms c =
 
         ( m :: _, Fetching posix backoff ) ->
             { c
-                | fetchStatus = NextFetchAt (Time.millisToPosix (Time.posixToMillis (Maybe.withDefault posix posixMaybe) + 5000)) BO5
+                | fetchStatus = NextFetchAt (Time.millisToPosix (Time.posixToMillis (Maybe.withDefault posix posixMaybe) + 2000)) BO2
                 , lastMessageId = Just (MessageId m.id)
             }
 
@@ -1076,6 +1076,9 @@ proceedFetchStatus posixMaybe ms c =
 incrementBackoff : Backoff -> Posix -> FetchStatus
 incrementBackoff backoff posix =
     case backoff of
+        BO2 ->
+            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 2000)) BO5
+
         BO5 ->
             NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 5000)) BO10
 
@@ -1090,11 +1093,6 @@ incrementBackoff backoff posix =
 
         BO120 ->
             NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 120000)) BO120
-
-
-nextFetchWithBaseBackoff : Posix -> FetchStatus
-nextFetchWithBaseBackoff posix =
-    NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 5000)) BO5
 
 
 nextInitialFetchOrSetTimer : List Message -> (POV -> Discord) -> POV -> Producer.Yield Message Discord Msg
