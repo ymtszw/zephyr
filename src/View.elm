@@ -538,10 +538,7 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "variableSelect") cId <|
                 case discordMaterial of
                     Just ( _, channels ) ->
-                        ( Dict.values channels
-                            -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
-                            |> List.sortBy (.guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~")
-                            |> List.map .id
+                        ( Dict.values channels |> List.sortWith channelSorter |> List.map .id
                         , discordChannelOptionEl channels
                         )
 
@@ -554,6 +551,21 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
 
         Nothing ->
             El.none
+
+
+channelSorter : Channel -> Channel -> Order
+channelSorter a b =
+    let
+        gName =
+            -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
+            .guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~"
+    in
+    case compare (gName a) (gName b) of
+        EQ ->
+            compare a.name b.name
+
+        diff ->
+            diff
 
 
 filterAtomVariableTextInputEl : (String -> Msg) -> String -> Element Msg
