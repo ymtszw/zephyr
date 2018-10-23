@@ -17,6 +17,7 @@ import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
 import Extra exposing (ite, setTimeout)
+import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -24,7 +25,6 @@ import Logger exposing (Entry)
 import Ports
 import String exposing (fromInt)
 import Task
-import Time
 import Url
 import View
 import View.Select
@@ -144,7 +144,7 @@ update msg ({ viewState, env } as m) =
             persist <| applyProducerYield m <| Producer.update pctrl m.producerRegistry
 
         ScanBroker _ ->
-            persist <| scanBroker m
+            persist <| scanBroker <| updateProducerFetchStatuses m
 
         NoOp ->
             ( m, Cmd.none )
@@ -179,14 +179,20 @@ onDragEnter m dest =
 
 updateColumn : String -> Model -> (Column -> Column) -> ( Model, Cmd Msg )
 updateColumn cId m updater =
-    let
-        newColumnStore =
-            ColumnStore.updateById cId updater m.columnStore
+    ( { m | columnStore = ColumnStore.updateById cId updater m.columnStore }
+        |> updateProducerFetchStatuses
+    , Cmd.none
+    )
 
-        newProducerRegistry =
-            Producer.discordSetChannelFetchStatus (ColumnStore.discordChannelIds newColumnStore) m.producerRegistry
-    in
-    ( { m | columnStore = newColumnStore, producerRegistry = newProducerRegistry }, Cmd.none )
+
+updateProducerFetchStatuses : Model -> Model
+updateProducerFetchStatuses m =
+    -- This function should "fix" corrupted Producer statuses.
+    { m
+        | producerRegistry =
+            m.producerRegistry
+                |> Producer.discordSetChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore)
+    }
 
 
 scanBroker : Model -> ( Model, Cmd Msg )
@@ -485,7 +491,7 @@ msgToLogEntry msg =
             producerMsgToEntry pMsg
 
         ScanBroker posix ->
-            Entry "ScanBroker" [ fromInt (Time.posixToMillis posix) ]
+            Entry "ScanBroker" [ Iso8601.fromTime posix ]
 
 
 producerMsgToEntry : Producer.Msg -> Entry
@@ -509,7 +515,7 @@ producerMsgToEntry pMsg =
                     Entry "Discord - Rehydrate" []
 
                 Discord.Fetch posix ->
-                    Entry "Discord - Fetch" [ fromInt (Time.posixToMillis posix) ]
+                    Entry "Discord - Fetch" [ Iso8601.fromTime posix ]
 
                 Discord.Fetched fres ->
                     Entry "Discord - Fetched" [ Debug.toString fres ]
