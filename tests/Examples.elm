@@ -296,6 +296,7 @@ fetchStatusSuite =
             , testCompare NeverFetched Waiting LT
             , testCompare NeverFetched (NextFetchAt (p 1) BO5) LT
             , testCompare NeverFetched InitialFetching LT
+            , testCompare NeverFetched ResumeFetching LT
             , testCompare NeverFetched (Fetching (p 1) BO5) LT
             , testCompare NeverFetched Available LT
             , testCompare NeverFetched Forbidden LT
@@ -303,6 +304,7 @@ fetchStatusSuite =
             , testCompare Waiting Waiting EQ
             , testCompare Waiting (NextFetchAt (p 1) BO5) LT
             , testCompare Waiting InitialFetching LT
+            , testCompare Waiting ResumeFetching LT
             , testCompare Waiting (Fetching (p 1) BO5) LT
             , testCompare Waiting Available LT
             , testCompare Waiting Forbidden LT
@@ -313,6 +315,7 @@ fetchStatusSuite =
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO10) EQ
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 2) BO5) LT
             , testCompare (NextFetchAt (p 1) BO5) InitialFetching LT
+            , testCompare (NextFetchAt (p 1) BO5) ResumeFetching LT
             , testCompare (NextFetchAt (p 1) BO5) (Fetching (p 1) BO5) LT
             , testCompare (NextFetchAt (p 1) BO5) Available LT
             , testCompare (NextFetchAt (p 1) BO5) Forbidden LT
@@ -320,13 +323,23 @@ fetchStatusSuite =
             , testCompare InitialFetching Waiting GT
             , testCompare InitialFetching (NextFetchAt (p 1) BO5) GT
             , testCompare InitialFetching InitialFetching EQ
+            , testCompare InitialFetching ResumeFetching LT
             , testCompare InitialFetching (Fetching (p 1) BO5) LT
             , testCompare InitialFetching Available LT
             , testCompare InitialFetching Forbidden LT
+            , testCompare ResumeFetching NeverFetched GT
+            , testCompare ResumeFetching Waiting GT
+            , testCompare ResumeFetching (NextFetchAt (p 1) BO5) GT
+            , testCompare ResumeFetching InitialFetching GT
+            , testCompare ResumeFetching ResumeFetching EQ
+            , testCompare ResumeFetching (Fetching (p 1) BO5) LT
+            , testCompare ResumeFetching Available LT
+            , testCompare ResumeFetching Forbidden LT
             , testCompare (Fetching (p 1) BO5) NeverFetched GT
             , testCompare (Fetching (p 1) BO5) Waiting GT
             , testCompare (Fetching (p 1) BO5) (NextFetchAt (p 1) BO5) GT
             , testCompare (Fetching (p 1) BO5) InitialFetching GT
+            , testCompare (Fetching (p 1) BO5) ResumeFetching GT
             , testCompare (Fetching (p 1) BO5) (Fetching (p 0) BO5) GT
             , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO5) EQ
             , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO10) EQ
@@ -337,6 +350,7 @@ fetchStatusSuite =
             , testCompare Available Waiting GT
             , testCompare Available (NextFetchAt (p 1) BO5) GT
             , testCompare Available InitialFetching GT
+            , testCompare Available ResumeFetching GT
             , testCompare Available (Fetching (p 1) BO5) GT
             , testCompare Available Available EQ
             , testCompare Available Forbidden LT
@@ -344,6 +358,7 @@ fetchStatusSuite =
             , testCompare Forbidden Waiting GT
             , testCompare Forbidden (NextFetchAt (p 1) BO5) GT
             , testCompare Forbidden InitialFetching GT
+            , testCompare Forbidden ResumeFetching GT
             , testCompare Forbidden (Fetching (p 1) BO5) GT
             , testCompare Forbidden Available GT
             , testCompare Forbidden Forbidden EQ

@@ -10,9 +10,10 @@ import Time exposing (Posix)
 
 type FetchStatus
     = NeverFetched
-    | InitialFetching
     | Waiting
     | NextFetchAt Posix Backoff
+    | InitialFetching
+    | ResumeFetching
     | Fetching Posix Backoff
     | Available
     | Forbidden
@@ -33,17 +34,21 @@ encode fetchStatus =
         NeverFetched ->
             E.tag "NeverFetched"
 
-        InitialFetching ->
-            E.tag "NeverFetched"
-
         Waiting ->
             E.tag "Waiting"
 
         NextFetchAt posix bf ->
-            E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
+            -- Roll back to Waiting, enforce immediate fetching on next reload
+            E.tag "Waiting"
+
+        InitialFetching ->
+            E.tag "NeverFetched"
+
+        ResumeFetching ->
+            E.tag "Waiting"
 
         Fetching posix bf ->
-            E.tagged2 "NextFetchAt" (E.int (Time.posixToMillis posix)) (encodeBackoffFactor bf)
+            E.tag "Waiting"
 
         Available ->
             E.tag "Available"
@@ -52,42 +57,17 @@ encode fetchStatus =
             E.tag "Forbidden"
 
 
-encodeBackoffFactor : Backoff -> E.Value
-encodeBackoffFactor bf =
-    case bf of
-        BO2 ->
-            E.tag "BO2"
-
-        BO5 ->
-            E.tag "BO5"
-
-        BO10 ->
-            E.tag "BO10"
-
-        BO30 ->
-            E.tag "BO30"
-
-        BO60 ->
-            E.tag "BO60"
-
-        BO120 ->
-            E.tag "BO120"
-
-
 decoder : Decoder FetchStatus
 decoder =
     D.oneOf
         [ D.tag "NeverFetched" NeverFetched
         , D.tag "Waiting" Waiting
-        , D.tagged2 "NextFetchAt" NextFetchAt (D.map Time.millisToPosix D.int) backoffFactorDecoder
         , D.tag "Available" Available
         , D.tag "Forbidden" Forbidden
+
+        -- Old pattern
+        , D.tag "NextFetchAt" Waiting
         ]
-
-
-backoffFactorDecoder : Decoder Backoff
-backoffFactorDecoder =
-    D.oneOf [ D.tag "BO2" BO2, D.tag "BO5" BO5, D.tag "BO10" BO10, D.tag "BO30" BO30, D.tag "BO60" BO60, D.tag "BO120" BO120 ]
 
 
 compare : FetchStatus -> FetchStatus -> Order
@@ -120,16 +100,28 @@ compare a b =
             ( NextFetchAt _ _, _ ) ->
                 LT
 
-            ( InitialFetching, Fetching _ _ ) ->
-                LT
+            ( InitialFetching, NeverFetched ) ->
+                GT
 
-            ( InitialFetching, Available ) ->
-                LT
+            ( InitialFetching, Waiting ) ->
+                GT
 
-            ( InitialFetching, Forbidden ) ->
-                LT
+            ( InitialFetching, NextFetchAt _ _ ) ->
+                GT
 
             ( InitialFetching, _ ) ->
+                LT
+
+            ( ResumeFetching, Fetching _ _ ) ->
+                LT
+
+            ( ResumeFetching, Available ) ->
+                LT
+
+            ( ResumeFetching, Forbidden ) ->
+                LT
+
+            ( ResumeFetching, _ ) ->
                 GT
 
             ( Fetching p1 _, Fetching p2 _ ) ->
@@ -167,13 +159,16 @@ isActive fetchStatus =
         NeverFetched ->
             False
 
-        InitialFetching ->
-            False
-
         Waiting ->
             True
 
         NextFetchAt _ _ ->
+            True
+
+        InitialFetching ->
+            False
+
+        ResumeFetching ->
             True
 
         Fetching _ _ ->

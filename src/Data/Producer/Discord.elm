@@ -59,6 +59,7 @@ import Json.EncodeExtra as E
 import Octicons
 import Task exposing (Task)
 import Time exposing (Posix)
+import TimeExtra as Time exposing (posix)
 import Url exposing (Url)
 import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareIconEl)
 
@@ -892,6 +893,9 @@ updateChannelBeforeFetch targetChannel pov =
         NeverFetched ->
             updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = InitialFetching }
 
+        Waiting ->
+            updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = ResumeFetching }
+
         NextFetchAt posix backoff ->
             updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = Fetching posix backoff }
 
@@ -963,7 +967,7 @@ fetchOrSetTimer stateTagger pov posix =
     let
         readyToFetchChannels =
             Dict.values pov.channels
-                |> List.filter (.fetchStatus >> FetchStatus.lessThan (NextFetchAt posix BO5))
+                |> List.filter (.fetchStatus >> FetchStatus.lessThan (NextFetchAt posix BO2))
                 |> List.sortWith (\a b -> FetchStatus.compare a.fetchStatus b.fetchStatus)
     in
     case readyToFetchChannels of
@@ -1060,12 +1064,21 @@ proceedFetchStatus posixMaybe ms c =
         ( m :: _, InitialFetching ) ->
             { c | fetchStatus = Available, lastMessageId = Just (MessageId m.id) }
 
+        ( [], ResumeFetching ) ->
+            { c | fetchStatus = NextFetchAt (Maybe.withDefault (posix 0) posixMaybe |> Time.add 2000) BO2 }
+
+        ( m :: _, ResumeFetching ) ->
+            { c
+                | fetchStatus = NextFetchAt (Maybe.withDefault (posix 0) posixMaybe |> Time.add 2000) BO2
+                , lastMessageId = Just (MessageId m.id)
+            }
+
         ( [], Fetching posix backoff ) ->
             { c | fetchStatus = incrementBackoff backoff (Maybe.withDefault posix posixMaybe) }
 
         ( m :: _, Fetching posix backoff ) ->
             { c
-                | fetchStatus = NextFetchAt (Time.millisToPosix (Time.posixToMillis (Maybe.withDefault posix posixMaybe) + 2000)) BO2
+                | fetchStatus = NextFetchAt (Maybe.withDefault posix posixMaybe |> Time.add 2000) BO2
                 , lastMessageId = Just (MessageId m.id)
             }
 
@@ -1080,22 +1093,22 @@ incrementBackoff : Backoff -> Posix -> FetchStatus
 incrementBackoff backoff posix =
     case backoff of
         BO2 ->
-            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 2000)) BO5
+            NextFetchAt (Time.add 2000 posix) BO5
 
         BO5 ->
-            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 5000)) BO10
+            NextFetchAt (Time.add 5000 posix) BO10
 
         BO10 ->
-            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 10000)) BO30
+            NextFetchAt (Time.add 10000 posix) BO30
 
         BO30 ->
-            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 30000)) BO60
+            NextFetchAt (Time.add 30000 posix) BO60
 
         BO60 ->
-            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 60000)) BO120
+            NextFetchAt (Time.add 60000 posix) BO120
 
         BO120 ->
-            NextFetchAt (Time.millisToPosix (Time.posixToMillis posix + 120000)) BO120
+            NextFetchAt (Time.add 120000 posix) BO120
 
 
 nextInitialFetchOrSetTimer : List Message -> (POV -> Discord) -> POV -> Producer.Yield Message Discord Msg
