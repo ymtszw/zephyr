@@ -8,13 +8,19 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font exposing (bold)
 import Element.Input
-import Extra exposing (doAfter)
+import Extra exposing (doAfter, ite)
 import Html.Attributes exposing (id, readonly, style, tabindex)
 import Html.Events
 import Json.Decode as D
+import Octicons
+import StringExtra
 import Task
 import Time exposing (Posix)
-import View.Parts exposing (noneAttr, scale12)
+import View.Parts exposing (noneAttr, octiconFreeSizeEl, scale12)
+
+
+
+-- Types
 
 
 type History
@@ -22,11 +28,12 @@ type History
         { buffer : BoundedDeque Entry
         , pending : List Entry
         , scroll : Scroll
+        , filter : String
         }
 
 
 type alias Entry =
-    { ctor : String
+    { ctor : String -- Must not include whitespaces
     , payload : List String
     }
 
@@ -41,6 +48,9 @@ type Msg
     = ScrollStart
     | ViewportResult (Result Browser.Dom.Error ( Posix, Viewport ))
     | BackToTop
+    | FilterInput String
+    | SetPosFilter String Bool
+    | SetNegFilter String Bool
     | NoOp
 
 
@@ -50,12 +60,17 @@ init =
         { buffer = BoundedDeque.empty historyLimit
         , pending = []
         , scroll = AtTop
+        , filter = ""
         }
 
 
 historyLimit : Int
 historyLimit =
     1000
+
+
+
+-- Component
 
 
 update : Msg -> History -> ( History, Cmd Msg )
@@ -90,6 +105,15 @@ update msg (History h) =
         ( ViewportResult (Err _), _ ) ->
             ( History { h | scroll = AtTop }, Cmd.none )
 
+        ( FilterInput f, _ ) ->
+            ( History { h | filter = f }, Cmd.none )
+
+        ( SetPosFilter f isAdd, _ ) ->
+            ( setFilter True f isAdd (History h), Cmd.none )
+
+        ( SetNegFilter f isAdd, _ ) ->
+            ( setFilter False f isAdd (History h), Cmd.none )
+
         ( NoOp, _ ) ->
             ( History h, Cmd.none )
 
@@ -108,14 +132,76 @@ pendingToBuffer (History h) =
         }
 
 
+setFilter : Bool -> String -> Bool -> History -> History
+setFilter isPos f isAdd (History h) =
+    History <|
+        case ( isPos, isAdd ) of
+            ( True, True ) ->
+                if hasPosFilter f (History h) then
+                    h
+
+                else if hasNegFilter f (History h) then
+                    { h | filter = String.replace ("-" ++ f) f h.filter }
+
+                else
+                    { h | filter = StringExtra.appendWithSpace h.filter f }
+
+            ( False, True ) ->
+                if hasNegFilter f (History h) then
+                    h
+
+                else if hasPosFilter f (History h) then
+                    { h | filter = String.replace f ("-" ++ f) h.filter }
+
+                else
+                    { h | filter = StringExtra.appendWithSpace h.filter ("-" ++ f) }
+
+            ( True, False ) ->
+                if hasPosFilter f (History h) then
+                    { h | filter = h.filter |> String.replace (f ++ " ") "" |> String.replace (" " ++ f) "" |> String.replace f "" }
+
+                else
+                    h
+
+            ( False, False ) ->
+                if hasNegFilter f (History h) then
+                    { h | filter = h.filter |> String.replace ("-" ++ f ++ " ") "" |> String.replace (" -" ++ f) "" |> String.replace ("-" ++ f) "" }
+
+                else
+                    h
+
+
+hasNegFilter : String -> History -> Bool
+hasNegFilter f (History h) =
+    String.contains ("-" ++ f) h.filter
+
+
+hasPosFilter : String -> History -> Bool
+hasPosFilter f (History h) =
+    not (hasNegFilter f (History h)) && String.contains f h.filter
+
+
+
+-- APIs
+
+
 rec : History -> Entry -> History
 rec (History h) e =
+    let
+        sanitized =
+            sanitizeCtor e
+    in
     case h.scroll of
         AtTop ->
-            pendingToBuffer (History h) |> pushToBuffer e
+            pendingToBuffer (History h) |> pushToBuffer sanitized
 
         _ ->
-            pushToPending e (History h)
+            pushToPending sanitized (History h)
+
+
+sanitizeCtor : Entry -> Entry
+sanitizeCtor e =
+    { e | ctor = String.replace " " "" e.ctor }
 
 
 pushToBuffer : Entry -> History -> History
@@ -148,8 +234,28 @@ pushToPending e (History h) =
                     { h | pending = e :: h.pending }
 
 
+
+-- View
+
+
 historyEl : History -> Element Msg
-historyEl (History h) =
+historyEl h =
+    column
+        [ width fill
+        , padding 10
+        , spacing 5
+        , BD.rounded 5
+        , BG.color oneDark.sub
+        , Font.size (scale12 1)
+        , inFront (newEntryEl h)
+        ]
+        [ historyTableEl h
+        , historyFilterInputEl h
+        ]
+
+
+historyTableEl : History -> Element Msg
+historyTableEl (History h) =
     table
         [ width fill
         , height (shrink |> maximum 400)
@@ -160,17 +266,9 @@ historyEl (History h) =
         , htmlAttribute (id historyElementId)
         , detectScroll (History h)
         ]
-        { data = BoundedDeque.toList h.buffer
-        , columns = [ ctorColumnEl, payloadColumnEl ]
+        { data = BoundedDeque.toList h.buffer |> List.filter (filterEntryBy h.filter)
+        , columns = [ ctorColumnEl (History h), payloadColumnEl ]
         }
-        |> el
-            [ width fill
-            , padding 10
-            , BD.rounded 5
-            , BG.color oneDark.sub
-            , Font.size (scale12 1)
-            , inFront (newEntryEl (History h))
-            ]
 
 
 historyElementId : String
@@ -191,6 +289,48 @@ detectScroll (History h) =
             noneAttr
 
 
+filterEntryBy : String -> Entry -> Bool
+filterEntryBy filter e =
+    let
+        queries =
+            String.split " " filter |> List.filter (not << String.isEmpty)
+    in
+    -- Ensure TCO <https://github.com/elm/compiler/issues/1770>
+    filterEntryImpl e [] queries
+
+
+filterEntryImpl : Entry -> List Bool -> List String -> Bool
+filterEntryImpl e posAcc queries =
+    case queries of
+        [] ->
+            case posAcc of
+                [] ->
+                    True
+
+                _ ->
+                    List.any identity posAcc
+
+        q :: qs ->
+            case StringExtra.splitAt 1 q of
+                [ "-" ] ->
+                    filterEntryImpl e posAcc qs
+
+                [ "-", negQ ] ->
+                    if String.contains negQ e.ctor || List.any (String.contains negQ) e.payload then
+                        -- Negative filter has precedence, so it can exit early. Otherwise check for positive filters.
+                        False
+
+                    else
+                        filterEntryImpl e posAcc qs
+
+                _ ->
+                    if String.contains q e.ctor || List.any (String.contains q) e.payload then
+                        filterEntryImpl e (True :: posAcc) qs
+
+                    else
+                        filterEntryImpl e (False :: posAcc) qs
+
+
 newEntryEl : History -> Element Msg
 newEntryEl (History h) =
     case h.pending of
@@ -205,11 +345,35 @@ newEntryEl (History h) =
                     }
 
 
-ctorColumnEl : Column Entry Msg
-ctorColumnEl =
+ctorColumnEl : History -> Column Entry Msg
+ctorColumnEl h =
     { header = el [ BG.color oneDark.note ] <| text "Msg"
     , width = fill
-    , view = \entry -> el [ bold ] (text entry.ctor)
+    , view =
+        \entry ->
+            row [ spacing 5 ]
+                [ el [ bold ] (text entry.ctor)
+                , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
+                    if hasPosFilter entry.ctor h then
+                        { onPress = Just (SetPosFilter entry.ctor False)
+                        , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
+                        }
+
+                    else
+                        { onPress = Just (SetPosFilter entry.ctor True)
+                        , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
+                        }
+                , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
+                    if hasNegFilter entry.ctor h then
+                        { onPress = Just (SetNegFilter entry.ctor False)
+                        , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
+                        }
+
+                    else
+                        { onPress = Just (SetNegFilter entry.ctor True)
+                        , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
+                        }
+                ]
     }
 
 
@@ -243,3 +407,23 @@ payloadEl raw =
             , label = Element.Input.labelHidden "Payload"
             , spellcheck = False
             }
+
+
+historyFilterInputEl : History -> Element Msg
+historyFilterInputEl (History h) =
+    Element.Input.text
+        [ width fill
+        , padding 5
+        , BD.width 0
+        , BG.color oneDark.note
+        , Font.size (scale12 2)
+        ]
+        { onChange = FilterInput
+        , text = h.filter
+        , placeholder =
+            Just <|
+                Element.Input.placeholder [] <|
+                    el [ centerY ] <|
+                        text "OR Filter (Space-delimited, Case-sensitive, Negate with '-' prefix)"
+        , label = Element.Input.labelHidden "Log Entry Filter"
+        }

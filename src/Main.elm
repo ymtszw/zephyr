@@ -268,7 +268,7 @@ loadSavedState model value =
                 m =
                     welcomeModel model.env model.navKey
             in
-            { m | log = Logger.rec m.log (Entry "Error - loadSavedState" [ D.errorToString err ]) }
+            { m | log = Logger.rec m.log (Entry "Error.loadSavedState" [ D.errorToString err ]) }
 
 
 type alias SavedState =
@@ -448,10 +448,10 @@ msgToLogEntry msg =
             loggerMsgToEntry lMsg
 
         LinkClicked (Internal url) ->
-            Entry "LinkClicked - Internal" [ Url.toString url ]
+            Entry "LinkClicked.Internal" [ Url.toString url ]
 
         LinkClicked (External str) ->
-            Entry "LinkClicked - External" [ str ]
+            Entry "LinkClicked.External" [ str ]
 
         SelectToggle sId bool ->
             Entry "SelectToggle" [ sId, ite bool "True" "False" ]
@@ -528,19 +528,28 @@ loggerMsgToEntry : Logger.Msg -> Entry
 loggerMsgToEntry lMsg =
     case lMsg of
         Logger.ScrollStart ->
-            Entry "Logger - ScrollStart" []
+            Entry "Logger.ScrollStart" []
 
         Logger.BackToTop ->
-            Entry "Logger - BackToTop" []
+            Entry "Logger.BackToTop" []
 
         Logger.ViewportResult (Ok ( _, vp )) ->
-            Entry "Logger - ViewportOk" [ viewportToString vp ]
+            Entry "Logger.ViewportOk" [ viewportToString vp ]
 
         Logger.ViewportResult (Err _) ->
-            Entry "Logger - ViewportNotFound" []
+            Entry "Logger.ViewportNotFound" []
+
+        Logger.FilterInput query ->
+            Entry "Logger.FilterInput" [ query ]
+
+        Logger.SetPosFilter query isAdd ->
+            Entry "Logger.SetPosFilter" [ query, ite isAdd "True" "False" ]
+
+        Logger.SetNegFilter query isAdd ->
+            Entry "Logger.SetNegFilter" [ query, ite isAdd "True" "False" ]
 
         Logger.NoOp ->
-            Entry "Logger - NoOp" []
+            Entry "Logger.NoOp" []
 
 
 producerMsgToEntry : Producer.Msg -> Entry
@@ -549,28 +558,28 @@ producerMsgToEntry pMsg =
         Producer.DiscordMsg msgDiscord ->
             case msgDiscord of
                 Discord.TokenInput input ->
-                    Entry "Discord - TokenInput" [ input ]
+                    Entry "Discord.TokenInput" [ input ]
 
                 Discord.CommitToken ->
-                    Entry "Discord - CommitToken" []
+                    Entry "Discord.CommitToken" []
 
                 Discord.Identify user ->
-                    Entry "Discord - Identify" [ E.encode 2 (Discord.encodeUser user) ]
+                    Entry "Discord.Identify" [ E.encode 2 (Discord.encodeUser user) ]
 
                 Discord.Hydrate _ _ ->
-                    Entry "Discord - Hydrate" [ "<Hydrate>" ]
+                    Entry "Discord.Hydrate" [ "<Hydrate>" ]
 
                 Discord.Rehydrate ->
-                    Entry "Discord - Rehydrate" []
+                    Entry "Discord.Rehydrate" []
 
                 Discord.Fetch posix ->
-                    Entry "Discord - Fetch" [ Iso8601.fromTime posix ]
+                    Entry "Discord.Fetch" [ Iso8601.fromTime posix ]
 
                 Discord.Fetched (Discord.FetchOk cId ms posix) ->
-                    Entry "Discord - FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
+                    Entry "Discord.FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
 
                 Discord.Fetched (Discord.FetchErr cId e) ->
-                    Entry "Discord - FetchErr" [ cId, HttpExtra.errorToString e ]
+                    Entry "Discord.FetchErr" [ cId, HttpExtra.errorToString e ]
 
                 Discord.APIError e ->
-                    Entry "Discord - APIError" [ HttpExtra.errorToString e ]
+                    Entry "Discord.APIError" [ HttpExtra.errorToString e ]
