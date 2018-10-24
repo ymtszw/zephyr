@@ -54,7 +54,7 @@ try fromOk fromErr task =
 
 errorToString : Http.Error -> String
 errorToString e =
-    (++) "[HTTP]" <|
+    (++) "[HTTP] " <|
         case e of
             Http.BadUrl badUrl ->
                 "Bad URL: " ++ badUrl
@@ -66,7 +66,7 @@ errorToString e =
                 "Network Error"
 
             Http.BadStatus r ->
-                ("Bad status: " ++ r.status.message) :: responseToString r |> String.join "\n"
+                ("Bad status: " ++ statusToString r.status) :: responseToString r |> String.join "\n"
 
             Http.BadPayload decodeErr r ->
                 ("Bad payload: " ++ decodeErr) :: responseToString r |> String.join "\n"
@@ -75,9 +75,14 @@ errorToString e =
 responseToString : Http.Response String -> List String
 responseToString r =
     [ "URL: " ++ r.url
-    , "Code: " ++ String.fromInt r.status.code ++ " " ++ r.status.message
+    , "Code: " ++ statusToString r.status
     , "Headers:"
     , r.headers |> Dict.toList |> List.map (\( k, v ) -> "  " ++ k ++ " : " ++ v) |> String.join "\n"
     , "Body:"
     , r.body
     ]
+
+
+statusToString : { code : Int, message : String } -> String
+statusToString status =
+    String.fromInt status.code ++ " " ++ status.message

@@ -2,11 +2,13 @@ module Logger exposing (Entry, History, historyEl, init, rec)
 
 import BoundedDeque exposing (BoundedDeque)
 import Data.ColorTheme exposing (oneDark)
+import Data.Msg exposing (Msg(..))
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font exposing (bold)
-import Html.Attributes exposing (style)
+import Element.Input
+import Html.Attributes exposing (readonly, style, tabindex)
 import View.Parts exposing (scale12)
 
 
@@ -45,7 +47,7 @@ rec (History q) e =
                 BoundedDeque.pushFront e q
 
 
-historyEl : History -> Element msg
+historyEl : History -> Element Msg
 historyEl (History history) =
     table
         [ width fill
@@ -67,7 +69,7 @@ historyEl (History history) =
             ]
 
 
-ctorColumnEl : Column Entry msg
+ctorColumnEl : Column Entry Msg
 ctorColumnEl =
     { header = el [ BG.color oneDark.note ] <| text "Msg"
     , width = fill
@@ -75,7 +77,7 @@ ctorColumnEl =
     }
 
 
-payloadColumnEl : Column Entry msg
+payloadColumnEl : Column Entry Msg
 payloadColumnEl =
     { header = el [ BG.color oneDark.note ] <| text "Payload"
     , width = fill
@@ -85,11 +87,21 @@ payloadColumnEl =
     }
 
 
-preEl : String -> Element msg
+preEl : String -> Element Msg
 preEl raw =
-    paragraph
+    Element.Input.multiline
         [ width fill
+        , height shrink
+        , padding 0
         , BG.color oneDark.bg
+        , BD.width 0
         , Font.family [ Font.typeface "consolas", Font.monospace ]
+        , htmlAttribute (readonly True)
+        , htmlAttribute (tabindex -1)
         ]
-        [ text raw ]
+        { onChange = always NoOp
+        , text = raw
+        , placeholder = Nothing
+        , label = Element.Input.labelHidden "Payload"
+        , spellcheck = False
+        }
