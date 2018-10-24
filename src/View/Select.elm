@@ -12,7 +12,7 @@ import Extra exposing (ite)
 import Html.Attributes exposing (tabindex)
 import Octicons
 import Set exposing (Set)
-import View.Parts exposing (defaultFocusStyle, octiconFreeSizeEl, scale12)
+import View.Parts exposing (octiconFreeSizeEl, scale12)
 
 
 {-| Global state of select input elements.
