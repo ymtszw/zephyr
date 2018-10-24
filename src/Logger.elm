@@ -219,25 +219,27 @@ payloadColumnEl =
     , width = fillPortion 2
     , view =
         \entry ->
-            column [ width fill ] (List.map preEl entry.payload)
+            column [ width fill, spacing 2 ] (List.map payloadEl entry.payload)
     }
 
 
-preEl : String -> Element Msg
-preEl raw =
-    Element.Input.multiline
-        [ width fill
-        , height shrink
-        , padding 0
-        , BG.color oneDark.bg
-        , BD.width 0
-        , Font.family [ Font.typeface "consolas", Font.monospace ]
-        , htmlAttribute (readonly True)
-        , htmlAttribute (tabindex -1)
-        ]
-        { onChange = always NoOp
-        , text = raw
-        , placeholder = Nothing
-        , label = Element.Input.labelHidden "Payload"
-        , spellcheck = False
-        }
+payloadEl : String -> Element Msg
+payloadEl raw =
+    el [ width fill, padding 5, BG.color oneDark.bg ] <|
+        Element.Input.multiline
+            [ width fill
+            , height (shrink |> minimum 16 |> maximum 100)
+            , padding 0
+            , focused []
+            , BD.width 0
+            , BG.color oneDark.bg
+            , Font.family [ Font.typeface "consolas", Font.monospace ]
+            , htmlAttribute (readonly True)
+            , htmlAttribute (tabindex -1)
+            ]
+            { onChange = always NoOp
+            , text = raw
+            , placeholder = Nothing
+            , label = Element.Input.labelHidden "Payload"
+            , spellcheck = False
+            }
