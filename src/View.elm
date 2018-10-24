@@ -29,13 +29,13 @@ import Logger
 import Octicons
 import String exposing (fromFloat)
 import Url
-import View.Parts exposing (octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
+import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
 import View.Select as Select
 
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ El.layout (dragEventHandlers m.viewState.columnSwapMaybe) (bodyEl m)
+    [ El.layout [ dragEventHandlers m.viewState.columnSwapMaybe ] (bodyEl m)
     , fancyScroll
     ]
 
@@ -75,17 +75,14 @@ backgroundEl contents =
         ]
 
 
-dragEventHandlers : Maybe ColumnSwap -> List (El.Attribute Msg)
+dragEventHandlers : Maybe ColumnSwap -> El.Attribute Msg
 dragEventHandlers columnSwapMaybe =
     case columnSwapMaybe of
         Just _ ->
-            [ El.htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
-            , El.htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
-            , El.htmlAttribute (Html.Events.preventDefaultOn "drop" (D.succeed ( NoOp, True )))
-            ]
+            El.htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
 
         Nothing ->
-            []
+            noneAttr
 
 
 
