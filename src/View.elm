@@ -213,14 +213,20 @@ notDraggedColumnEl m index column attrs =
         (columnBaseAttrs m.env.clientHeight ++ attrs)
         [ columnHeaderEl column
         , columnConfigEl m index column
-        , column.items
-            |> List.map (itemEl m)
-            |> El.column
-                [ El.width El.fill
-                , El.paddingXY 5 0
-                , El.scrollbarY
-                ]
+        , case column.items of
+            [] ->
+                waitingForFirstItemEl
+
+            items ->
+                El.column [ El.width El.fill, El.paddingXY 5 0, El.scrollbarY ] (List.map (itemEl m) items)
         ]
+
+
+waitingForFirstItemEl : Element Msg
+waitingForFirstItemEl =
+    El.el [ El.width El.fill, El.height (El.px 50), El.paddingXY 5 0 ] <|
+        El.el [ El.centerX, El.centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
+            El.text "Waiting for messages..."
 
 
 draggedColumnEl : Int -> Element Msg
