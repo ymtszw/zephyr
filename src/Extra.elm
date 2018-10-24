@@ -1,10 +1,10 @@
-module Extra exposing (divMod, ite, setTimeout)
+module Extra exposing (divMod, doAfter, ite, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
 
 import Process
-import Task
+import Task exposing (Task)
 import Time exposing (Posix)
 
 
@@ -46,3 +46,15 @@ setTimeout timeoutMsg timeout =
     Process.sleep timeout
         |> Task.andThen (\() -> Time.now)
         |> Task.perform timeoutMsg
+
+
+{-| Do a Task after a set amount of time.
+-}
+doAfter : Float -> (Result x ( Posix, a ) -> msg) -> Task x a -> Cmd msg
+doAfter timeout toMsg taskOnTimeout =
+    Task.map3
+        (\() posix succ -> ( posix, succ ))
+        (Process.sleep timeout)
+        Time.now
+        taskOnTimeout
+        |> Task.attempt toMsg
