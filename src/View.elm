@@ -385,7 +385,7 @@ filterGeneratorEl tagger m cId indexFilterMaybe =
             Just ( index, filter ) ->
                 let
                     filterId =
-                        cId ++ "filter" ++ String.fromInt index
+                        cId ++ "-filter_" ++ String.fromInt index
                 in
                 El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ] <|
                     List.intersperse (filterLogicSeparator "OR") <|
@@ -430,7 +430,7 @@ filterAtomEl originalFilter tagger m filterId index filterAtom =
                     _ ->
                         Just (Filter.setAt index newFilterAtom originalFilter)
     in
-    filterAtomInputEl updateAndTag m (filterId ++ "atom" ++ String.fromInt index) (Just filterAtom)
+    filterAtomInputEl updateAndTag m (filterId ++ "-atom_" ++ String.fromInt index) (Just filterAtom)
 
 
 newFilterAtomEl : (FilterAtom -> Msg) -> Model -> String -> Element Msg
@@ -445,8 +445,8 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
             Producer.discordFilterAtomMaterial m.producerRegistry
     in
     El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
-        [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "variableInput") filterAtomMaybe
+        [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
+        , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
 
 
@@ -534,11 +534,11 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
             filterAtomVariableTextInputEl (tagger << ByMessage) query
 
         Just (ByMedia mediaType) ->
-            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "variableSelect") mediaType <|
+            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
                 ( [ HasNone, HasImage, HasMovie ], mediaTypeOptionEl )
 
         Just (OfDiscordChannel cId) ->
-            filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "variableSelect") cId <|
+            filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
                 case discordMaterial of
                     Just ( _, channels ) ->
                         ( Dict.values channels |> List.sortWith channelSorter |> List.map .id
