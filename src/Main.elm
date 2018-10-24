@@ -4,7 +4,7 @@ import Array
 import ArrayExtra as Array
 import Broker exposing (Broker)
 import Browser exposing (UrlRequest(..))
-import Browser.Dom exposing (getViewport)
+import Browser.Dom exposing (Viewport, getViewport)
 import Browser.Events exposing (Visibility(..), onResize)
 import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column exposing (Column)
@@ -84,6 +84,9 @@ update msg ({ viewState, env } as m) =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
             ( { m | env = { env | clientHeight = round viewport.height } }, Cmd.none )
+
+        LoggerCtrl lMsg ->
+            Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl)
 
         LinkClicked (Internal url) ->
             ( m, Nav.pushUrl m.navKey (Url.toString url) )
@@ -438,8 +441,11 @@ msgToLogEntry msg =
         Resize x y ->
             Entry "Resize" [ fromInt x, fromInt y ]
 
-        GetViewport _ ->
-            Entry "GetViewport" [ "<viewport>" ]
+        GetViewport vp ->
+            Entry "GetViewport" [ viewportToString vp ]
+
+        LoggerCtrl lMsg ->
+            loggerMsgToEntry lMsg
 
         LinkClicked (Internal url) ->
             Entry "LinkClicked - Internal" [ Url.toString url ]
@@ -497,6 +503,44 @@ msgToLogEntry msg =
 
         ScanBroker posix ->
             Entry "ScanBroker" [ Iso8601.fromTime posix ]
+
+
+viewportToString : Viewport -> String
+viewportToString vp =
+    E.encode 2 <|
+        E.object
+            [ Tuple.pair "scene" <|
+                E.object
+                    [ ( "width", E.float vp.scene.width )
+                    , ( "height", E.float vp.scene.height )
+                    ]
+            , Tuple.pair "viewport" <|
+                E.object
+                    [ ( "width", E.float vp.viewport.width )
+                    , ( "height", E.float vp.viewport.height )
+                    , ( "x", E.float vp.viewport.x )
+                    , ( "y", E.float vp.viewport.y )
+                    ]
+            ]
+
+
+loggerMsgToEntry : Logger.Msg -> Entry
+loggerMsgToEntry lMsg =
+    case lMsg of
+        Logger.ScrollStart ->
+            Entry "Logger - ScrollStart" []
+
+        Logger.BackToTop ->
+            Entry "Logger - BackToTop" []
+
+        Logger.ViewportResult (Ok ( _, vp )) ->
+            Entry "Logger - ViewportOk" [ viewportToString vp ]
+
+        Logger.ViewportResult (Err _) ->
+            Entry "Logger - ViewportNotFound" []
+
+        Logger.NoOp ->
+            Entry "Logger - NoOp" []
 
 
 producerMsgToEntry : Producer.Msg -> Entry

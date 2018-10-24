@@ -865,7 +865,8 @@ configInnerEl m =
         ]
         [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
         , El.el [ El.width El.fill, El.alignBottom, El.height El.shrink ] <|
-            Logger.historyEl m.log
+            El.map LoggerCtrl <|
+                Logger.historyEl m.log
         ]
 
 

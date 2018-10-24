@@ -5,6 +5,7 @@ import Browser.Dom
 import Data.Filter
 import Data.Producer
 import Json.Decode
+import Logger
 import Time exposing (Posix)
 
 
@@ -12,6 +13,7 @@ type Msg
     = NoOp
     | Resize Int Int
     | GetViewport Browser.Dom.Viewport
+    | LoggerCtrl Logger.Msg
     | LinkClicked Browser.UrlRequest
     | SelectToggle String Bool
     | SelectPick Msg
