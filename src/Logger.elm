@@ -1,17 +1,17 @@
 module Logger exposing (Entry, History, historyEl, init, rec)
 
+import BoundedDeque exposing (BoundedDeque)
 import Data.ColorTheme exposing (oneDark)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font exposing (bold)
 import Html.Attributes exposing (style)
-import Ring exposing (Ring(..))
 import View.Parts exposing (scale12)
 
 
 type History
-    = History (Ring Entry)
+    = History (BoundedDeque Entry)
 
 
 type alias Entry =
@@ -22,7 +22,7 @@ type alias Entry =
 
 init : History
 init =
-    History (Ring.init historyLimit)
+    History (BoundedDeque.empty historyLimit)
 
 
 historyLimit : Int
@@ -31,8 +31,18 @@ historyLimit =
 
 
 rec : History -> Entry -> History
-rec (History r) e =
-    History <| Ring.consIf (\e1 e2 -> e1.ctor /= e2.ctor) e r
+rec (History q) e =
+    History <|
+        case BoundedDeque.popFront q of
+            ( Just h, popped ) ->
+                if h.ctor == e.ctor then
+                    BoundedDeque.pushFront e popped
+
+                else
+                    BoundedDeque.pushFront e q
+
+            ( Nothing, _ ) ->
+                BoundedDeque.pushFront e q
 
 
 historyEl : History -> Element msg
@@ -45,7 +55,7 @@ historyEl (History history) =
         , clipX
         , BG.color oneDark.main
         ]
-        { data = Ring.toList history
+        { data = BoundedDeque.toList history
         , columns = [ ctorColumnEl, payloadColumnEl ]
         }
         |> el

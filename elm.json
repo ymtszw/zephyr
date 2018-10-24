@@ -15,6 +15,7 @@
             "elm/parser": "1.1.0",
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
+            "folkertdev/elm-deque": "3.0.0",
             "mdgriffith/elm-ui": "1.1.0",
             "rtfeldman/elm-iso8601-date-strings": "1.1.2",
             "ymtszw/elm-broker": "1.0.0"
