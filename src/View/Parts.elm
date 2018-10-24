@@ -1,4 +1,4 @@
-module View.Parts exposing (disabled, disabledColor, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
+module View.Parts exposing (disabled, disabledColor, noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
 
 import Data.ColorTheme exposing (oneDark)
 import Element as El exposing (Element)
@@ -7,7 +7,13 @@ import Element.Border as BD
 import Element.Font as Font
 import Html
 import Html.Attributes
+import Json.Encode
 import Octicons
+
+
+noneAttr : El.Attribute msg
+noneAttr =
+    El.htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
 
 
 disabled : Bool -> List (El.Attribute msg) -> List (El.Attribute msg)
