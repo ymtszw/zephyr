@@ -385,10 +385,10 @@ toggleColumnSwap : Bool -> Sub Msg
 toggleColumnSwap swappable =
     Sub.batch
         [ if not swappable then
-            Browser.Events.onKeyDown (D.field "altKey" D.bool |> D.map ToggleColumnSwappable)
+            Browser.Events.onKeyDown (D.when (D.field "altKey" D.bool) identity (D.succeed (ToggleColumnSwappable True)))
 
           else
-            Browser.Events.onKeyUp (D.field "altKey" D.bool |> D.map ToggleColumnSwappable)
+            Browser.Events.onKeyUp (D.when (D.field "altKey" D.bool) not (D.succeed (ToggleColumnSwappable False)))
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 case visibility of
