@@ -9,10 +9,10 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Extra exposing (ite)
-import Html.Attributes
+import Html.Attributes exposing (tabindex)
 import Octicons
 import Set exposing (Set)
-import View.Parts exposing (octiconFreeSizeEl, scale12)
+import View.Parts exposing (defaultFocusStyle, octiconFreeSizeEl, scale12)
 
 
 {-| Global state of select input elements.
@@ -80,22 +80,24 @@ el { id, onSelect, selectedOption, noMsgOptionEl } state options =
 
 headerEl : Msg -> Maybe a -> (a -> Element Msg) -> Element Msg
 headerEl onPress selectedOption noMsgOptionEl =
-    El.row
+    Element.Input.button
         [ El.width El.fill
         , El.spacing 3
         , El.padding 5
         , BD.rounded 5
         , BG.color oneDark.note
-        , Element.Events.onClick onPress
-        , El.pointer
         ]
-        [ -- `El.minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
-          -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
-          El.el [ El.width (El.fill |> El.minimum 0), El.clipX ] <|
-            Maybe.withDefault (El.text "Select...") (Maybe.map noMsgOptionEl selectedOption)
-        , El.el [ El.width (El.px 20), El.alignRight, BG.color oneDark.sub ] <|
-            octiconFreeSizeEl 20 Octicons.chevronDown
-        ]
+        { onPress = Just onPress
+        , label =
+            El.row [ El.width El.fill ]
+                [ -- `El.minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
+                  -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
+                  El.el [ El.width (El.fill |> El.minimum 0), El.clipX ] <|
+                    Maybe.withDefault (El.text "Select...") (Maybe.map noMsgOptionEl selectedOption)
+                , El.el [ El.width (El.px 20), El.alignRight, BG.color oneDark.sub ] <|
+                    octiconFreeSizeEl 20 Octicons.chevronDown
+                ]
+        }
 
 
 optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List a -> Element Msg
@@ -126,13 +128,13 @@ optionEl onSelect noMsgOptionEl selectedOption option =
         selectedStyle =
             ite (selectedOption == Just option) [ BG.color oneDark.active ] []
     in
-    El.el
+    Element.Input.button
         (selectedStyle
             ++ [ El.width El.fill
                , El.padding 5
                , El.mouseOver [ BG.color oneDark.sub ]
-               , El.pointer
-               , Element.Events.onClick (SelectPick (onSelect option))
                ]
         )
-        (noMsgOptionEl option)
+        { onPress = Just (SelectPick (onSelect option))
+        , label = noMsgOptionEl option
+        }

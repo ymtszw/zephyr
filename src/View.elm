@@ -403,16 +403,17 @@ deleteFilterButtonEl : String -> Maybe ( Int, Filter ) -> Element Msg
 deleteFilterButtonEl cId indexFilterMaybe =
     case indexFilterMaybe of
         Just ( index, _ ) ->
-            El.el
+            Element.Input.button
                 [ El.width (El.px 20)
                 , El.height El.fill
                 , El.mouseOver [ BG.color oneDark.err ]
+                , El.focused [ BG.color oneDark.err ]
                 , El.alignRight
                 , BD.roundEach { topLeft = 0, topRight = 5, bottomRight = 5, bottomLeft = 0 }
-                , Element.Events.onClick (DelColumnFilter cId index)
-                , El.pointer
                 ]
-                (El.el [ El.centerY, El.centerX ] <| octiconFreeSizeEl 16 Octicons.trashcan)
+                { onPress = Just (DelColumnFilter cId index)
+                , label = El.el [ El.centerY, El.centerX ] <| octiconFreeSizeEl 16 Octicons.trashcan
+                }
 
         Nothing ->
             El.none
