@@ -1,19 +1,28 @@
-module Logger exposing (Entry, History, historyEl, init, rec)
+module Logger exposing (Entry, History, Msg(..), historyEl, init, rec, update)
 
 import BoundedDeque exposing (BoundedDeque)
+import Browser.Dom exposing (Viewport, getViewportOf, setViewportOf)
 import Data.ColorTheme exposing (oneDark)
-import Data.Msg exposing (Msg(..))
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font exposing (bold)
 import Element.Input
-import Html.Attributes exposing (readonly, style, tabindex)
-import View.Parts exposing (scale12)
+import Extra exposing (doAfter)
+import Html.Attributes exposing (id, readonly, style, tabindex)
+import Html.Events
+import Json.Decode as D
+import Task
+import Time exposing (Posix)
+import View.Parts exposing (noneAttr, scale12)
 
 
 type History
-    = History (BoundedDeque Entry)
+    = History
+        { buffer : BoundedDeque Entry
+        , pending : List Entry
+        , scroll : Scroll
+        }
 
 
 type alias Entry =
@@ -22,9 +31,26 @@ type alias Entry =
     }
 
 
+type Scroll
+    = Scrolling Viewport
+    | OffTheTop Viewport
+    | AtTop
+
+
+type Msg
+    = ScrollStart
+    | ViewportResult (Result Browser.Dom.Error ( Posix, Viewport ))
+    | BackToTop
+    | NoOp
+
+
 init : History
 init =
-    History (BoundedDeque.empty historyLimit)
+    History
+        { buffer = BoundedDeque.empty historyLimit
+        , pending = []
+        , scroll = AtTop
+        }
 
 
 historyLimit : Int
@@ -32,23 +58,98 @@ historyLimit =
     1000
 
 
-rec : History -> Entry -> History
-rec (History q) e =
+update : Msg -> History -> ( History, Cmd Msg )
+update msg (History h) =
+    case ( msg, h.scroll ) of
+        ( ScrollStart, OffTheTop vp ) ->
+            ( History { h | scroll = Scrolling vp }, queryViewport )
+
+        ( ScrollStart, _ ) ->
+            ( History h, queryViewport )
+
+        ( BackToTop, _ ) ->
+            ( History h, setViewportOf historyElementId 0 0 |> Task.attempt (\_ -> ScrollStart) )
+
+        ( ViewportResult (Ok ( _, newVp )), Scrolling oldVp ) ->
+            if newVp.viewport.y == 0 then
+                ( History { h | scroll = AtTop } |> pendingToBuffer, Cmd.none )
+
+            else if newVp == oldVp then
+                ( History { h | scroll = OffTheTop newVp }, Cmd.none )
+
+            else
+                ( History { h | scroll = Scrolling newVp }, queryViewport )
+
+        ( ViewportResult (Ok ( _, newVp )), _ ) ->
+            if newVp.viewport.y == 0 then
+                ( History { h | scroll = AtTop } |> pendingToBuffer, Cmd.none )
+
+            else
+                ( History { h | scroll = OffTheTop newVp }, Cmd.none )
+
+        ( ViewportResult (Err _), _ ) ->
+            ( History { h | scroll = AtTop }, Cmd.none )
+
+        ( NoOp, _ ) ->
+            ( History h, Cmd.none )
+
+
+queryViewport : Cmd Msg
+queryViewport =
+    doAfter 50 ViewportResult (getViewportOf historyElementId)
+
+
+pendingToBuffer : History -> History
+pendingToBuffer (History h) =
     History <|
-        case BoundedDeque.popFront q of
-            ( Just h, popped ) ->
-                if h.ctor == e.ctor then
-                    BoundedDeque.pushFront e popped
+        { h
+            | buffer = List.foldr BoundedDeque.pushFront h.buffer h.pending
+            , pending = []
+        }
+
+
+rec : History -> Entry -> History
+rec (History h) e =
+    case h.scroll of
+        AtTop ->
+            pendingToBuffer (History h) |> pushToBuffer e
+
+        _ ->
+            pushToPending e (History h)
+
+
+pushToBuffer : Entry -> History -> History
+pushToBuffer e (History h) =
+    History <|
+        case BoundedDeque.popFront h.buffer of
+            ( Just top, popped ) ->
+                if top.ctor == e.ctor then
+                    { h | buffer = BoundedDeque.pushFront e popped }
 
                 else
-                    BoundedDeque.pushFront e q
+                    { h | buffer = BoundedDeque.pushFront e h.buffer }
 
             ( Nothing, _ ) ->
-                BoundedDeque.pushFront e q
+                { h | buffer = BoundedDeque.pushFront e h.buffer }
+
+
+pushToPending : Entry -> History -> History
+pushToPending e (History h) =
+    History <|
+        case h.pending of
+            [] ->
+                { h | pending = [ e ] }
+
+            p :: ps ->
+                if p.ctor == e.ctor then
+                    { h | pending = e :: ps }
+
+                else
+                    { h | pending = e :: h.pending }
 
 
 historyEl : History -> Element Msg
-historyEl (History history) =
+historyEl (History h) =
     table
         [ width fill
         , height (shrink |> maximum 400)
@@ -56,8 +157,10 @@ historyEl (History history) =
         , spacing 2
         , clipX
         , BG.color oneDark.main
+        , htmlAttribute (id historyElementId)
+        , detectScroll (History h)
         ]
-        { data = BoundedDeque.toList history
+        { data = BoundedDeque.toList h.buffer
         , columns = [ ctorColumnEl, payloadColumnEl ]
         }
         |> el
@@ -66,7 +169,40 @@ historyEl (History history) =
             , BD.rounded 5
             , BG.color oneDark.sub
             , Font.size (scale12 1)
+            , inFront (newEntryEl (History h))
             ]
+
+
+historyElementId : String
+historyElementId =
+    "loggerHistory"
+
+
+detectScroll : History -> Element.Attribute Msg
+detectScroll (History h) =
+    case h.scroll of
+        AtTop ->
+            htmlAttribute <| Html.Events.on "scroll" (D.succeed ScrollStart)
+
+        OffTheTop _ ->
+            htmlAttribute <| Html.Events.on "scroll" (D.succeed ScrollStart)
+
+        Scrolling _ ->
+            noneAttr
+
+
+newEntryEl : History -> Element Msg
+newEntryEl (History h) =
+    case h.pending of
+        [] ->
+            none
+
+        ps ->
+            el [ width fill, alignTop, padding 10 ] <|
+                Element.Input.button [ width fill, padding 5, BG.color oneDark.succ ]
+                    { onPress = Just BackToTop
+                    , label = el [ centerX ] <| text ("New Log Entry (" ++ String.fromInt (List.length ps) ++ ")")
+                    }
 
 
 ctorColumnEl : Column Entry Msg
@@ -80,7 +216,7 @@ ctorColumnEl =
 payloadColumnEl : Column Entry Msg
 payloadColumnEl =
     { header = el [ BG.color oneDark.note ] <| text "Payload"
-    , width = fill
+    , width = fillPortion 2
     , view =
         \entry ->
             column [ width fill ] (List.map preEl entry.payload)
