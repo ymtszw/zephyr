@@ -11,17 +11,47 @@ import Fuzz
 import Json.Decode exposing (decodeValue)
 import Parser
 import String exposing (fromInt)
+import StringExtra
 import Test exposing (..)
 import Time exposing (Posix)
 import Url
 
 
 
+-- StringExtra
+
+
+testStringSplitAt : String -> Int -> List String -> Test
+testStringSplitAt initial index expected =
+    test ("should split '" ++ initial ++ "' at: " ++ fromInt index) <|
+        \_ ->
+            initial |> StringExtra.splitAt index |> Expect.equal expected
+
+
+stringSuite : Test
+stringSuite =
+    describe "StringExtra"
+        [ describe "splitAt"
+            [ testStringSplitAt "initial" 0 [ "initial" ]
+            , testStringSplitAt "initial" 1 [ "i", "nitial" ]
+            , testStringSplitAt "initial" 2 [ "in", "itial" ]
+            , testStringSplitAt "initial" 3 [ "ini", "tial" ]
+            , testStringSplitAt "initial" 4 [ "init", "ial" ]
+            , testStringSplitAt "initial" 5 [ "initi", "al" ]
+            , testStringSplitAt "initial" 6 [ "initia", "l" ]
+            , testStringSplitAt "initial" 7 [ "initial" ]
+            , testStringSplitAt "initial" -1 [ "initial" ]
+            , testStringSplitAt "" 0 [ "" ]
+            ]
+        ]
+
+
+
 -- ArrayExtra
 
 
-testSplitAt : List a -> Int -> ( List a, List a ) -> Test
-testSplitAt initial index ( expectFront, expectRear ) =
+testArraySplitAt : List a -> Int -> ( List a, List a ) -> Test
+testArraySplitAt initial index ( expectFront, expectRear ) =
     test ("should work with size:" ++ fromInt (List.length initial) ++ ", index:" ++ fromInt index) <|
         \_ ->
             fromList initial
@@ -67,20 +97,20 @@ testAll initial check expected =
 
 arraySuite : Test
 arraySuite =
-    describe "Data.Array"
+    describe "ArrayExtra"
         [ describe "splitAt"
-            [ testSplitAt [ 0, 1, 2 ] 0 ( [], [ 0, 1, 2 ] )
-            , testSplitAt [ 0, 1, 2 ] 1 ( [ 0 ], [ 1, 2 ] )
-            , testSplitAt [ 0, 1, 2 ] 2 ( [ 0, 1 ], [ 2 ] )
-            , testSplitAt [ 0, 1, 2 ] 3 ( [ 0, 1, 2 ], [] )
-            , testSplitAt [ 0, 1, 2 ] 4 ( [ 0, 1, 2 ], [] )
-            , testSplitAt [ 0, 1, 2 ] -1 ( [ 0, 1 ], [ 2 ] )
-            , testSplitAt [ 0, 1, 2 ] -2 ( [ 0 ], [ 1, 2 ] )
-            , testSplitAt [ 0, 1, 2 ] -3 ( [], [ 0, 1, 2 ] )
-            , testSplitAt [ 0, 1, 2 ] -4 ( [], [ 0, 1, 2 ] )
-            , testSplitAt [] 0 ( [], [] )
-            , testSplitAt [] 1 ( [], [] )
-            , testSplitAt [] -1 ( [], [] )
+            [ testArraySplitAt [ 0, 1, 2 ] 0 ( [], [ 0, 1, 2 ] )
+            , testArraySplitAt [ 0, 1, 2 ] 1 ( [ 0 ], [ 1, 2 ] )
+            , testArraySplitAt [ 0, 1, 2 ] 2 ( [ 0, 1 ], [ 2 ] )
+            , testArraySplitAt [ 0, 1, 2 ] 3 ( [ 0, 1, 2 ], [] )
+            , testArraySplitAt [ 0, 1, 2 ] 4 ( [ 0, 1, 2 ], [] )
+            , testArraySplitAt [ 0, 1, 2 ] -1 ( [ 0, 1 ], [ 2 ] )
+            , testArraySplitAt [ 0, 1, 2 ] -2 ( [ 0 ], [ 1, 2 ] )
+            , testArraySplitAt [ 0, 1, 2 ] -3 ( [], [ 0, 1, 2 ] )
+            , testArraySplitAt [ 0, 1, 2 ] -4 ( [], [ 0, 1, 2 ] )
+            , testArraySplitAt [] 0 ( [], [] )
+            , testArraySplitAt [] 1 ( [], [] )
+            , testArraySplitAt [] -1 ( [], [] )
             ]
         , describe "removeAt"
             [ testRemoveAt [ 0, 1, 2 ] 0 [ 1, 2 ]
@@ -397,7 +427,8 @@ testLessThan a b =
 suite : Test
 suite =
     describe "test"
-        [ arraySuite
+        [ stringSuite
+        , arraySuite
         , uniqueIdSuite
         , columnSuite
         , textRendererSuite
