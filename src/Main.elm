@@ -542,11 +542,11 @@ loggerMsgToEntry lMsg =
         Logger.FilterInput query ->
             Entry "Logger.FilterInput" [ query ]
 
-        Logger.SetPosFilter query isAdd ->
-            Entry "Logger.SetPosFilter" [ query, ite isAdd "True" "False" ]
+        Logger.SetMsgFilter (Logger.MsgFilter isPos ctor) ->
+            Entry "Logger.SetMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
 
-        Logger.SetNegFilter query isAdd ->
-            Entry "Logger.SetNegFilter" [ query, ite isAdd "True" "False" ]
+        Logger.DelMsgFilter (Logger.MsgFilter isPos ctor) ->
+            Entry "Logger.DelMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
 
         Logger.NoOp ->
             Entry "Logger.NoOp" []

@@ -1,4 +1,4 @@
-module Logger exposing (Entry, History, Msg(..), historyEl, init, rec, update)
+module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, rec, update)
 
 import BoundedDeque exposing (BoundedDeque)
 import Browser.Dom exposing (Viewport, getViewportOf, setViewportOf)
@@ -28,7 +28,8 @@ type History
         { buffer : BoundedDeque Entry
         , pending : List Entry
         , scroll : Scroll
-        , filter : String
+        , payloadFilter : String
+        , msgFilters : List MsgFilter
         }
 
 
@@ -49,9 +50,13 @@ type Msg
     | ViewportResult (Result Browser.Dom.Error ( Posix, Viewport ))
     | BackToTop
     | FilterInput String
-    | SetPosFilter String Bool
-    | SetNegFilter String Bool
+    | SetMsgFilter MsgFilter
+    | DelMsgFilter MsgFilter
     | NoOp
+
+
+type MsgFilter
+    = MsgFilter Bool String
 
 
 init : History
@@ -60,7 +65,8 @@ init =
         { buffer = BoundedDeque.empty historyLimit
         , pending = []
         , scroll = AtTop
-        , filter = ""
+        , payloadFilter = ""
+        , msgFilters = []
         }
 
 
@@ -105,14 +111,14 @@ update msg (History h) =
         ( ViewportResult (Err _), _ ) ->
             ( History { h | scroll = AtTop }, Cmd.none )
 
-        ( FilterInput f, _ ) ->
-            ( History { h | filter = f }, Cmd.none )
+        ( FilterInput pf, _ ) ->
+            ( History { h | payloadFilter = pf }, Cmd.none )
 
-        ( SetPosFilter f isAdd, _ ) ->
-            ( setFilter True f isAdd (History h), Cmd.none )
+        ( SetMsgFilter mf, _ ) ->
+            ( setMsgFilter mf (History h), Cmd.none )
 
-        ( SetNegFilter f isAdd, _ ) ->
-            ( setFilter False f isAdd (History h), Cmd.none )
+        ( DelMsgFilter mf, _ ) ->
+            ( History { h | msgFilters = List.filter ((/=) mf) h.msgFilters }, Cmd.none )
 
         ( NoOp, _ ) ->
             ( History h, Cmd.none )
@@ -132,53 +138,22 @@ pendingToBuffer (History h) =
         }
 
 
-setFilter : Bool -> String -> Bool -> History -> History
-setFilter isPos f isAdd (History h) =
+setMsgFilter : MsgFilter -> History -> History
+setMsgFilter ((MsgFilter isPos msg) as mf) (History h) =
     History <|
-        case ( isPos, isAdd ) of
-            ( True, True ) ->
-                if hasPosFilter f (History h) then
-                    h
+        if List.member mf h.msgFilters then
+            h
 
-                else if hasNegFilter f (History h) then
-                    { h | filter = String.replace ("-" ++ f) f h.filter }
+        else if List.member (MsgFilter (not isPos) msg) h.msgFilters then
+            { h
+                | msgFilters =
+                    h.msgFilters
+                        |> List.filter ((/=) (MsgFilter (not isPos) msg))
+                        |> (::) mf
+            }
 
-                else
-                    { h | filter = StringExtra.appendWithSpace h.filter f }
-
-            ( False, True ) ->
-                if hasNegFilter f (History h) then
-                    h
-
-                else if hasPosFilter f (History h) then
-                    { h | filter = String.replace f ("-" ++ f) h.filter }
-
-                else
-                    { h | filter = StringExtra.appendWithSpace h.filter ("-" ++ f) }
-
-            ( True, False ) ->
-                if hasPosFilter f (History h) then
-                    { h | filter = h.filter |> String.replace (f ++ " ") "" |> String.replace (" " ++ f) "" |> String.replace f "" }
-
-                else
-                    h
-
-            ( False, False ) ->
-                if hasNegFilter f (History h) then
-                    { h | filter = h.filter |> String.replace ("-" ++ f ++ " ") "" |> String.replace (" -" ++ f) "" |> String.replace ("-" ++ f) "" }
-
-                else
-                    h
-
-
-hasNegFilter : String -> History -> Bool
-hasNegFilter f (History h) =
-    String.contains ("-" ++ f) h.filter
-
-
-hasPosFilter : String -> History -> Bool
-hasPosFilter f (History h) =
-    not (hasNegFilter f (History h)) && String.contains f h.filter
+        else
+            { h | msgFilters = mf :: h.msgFilters }
 
 
 
@@ -250,7 +225,8 @@ historyEl h =
         , inFront (newEntryEl h)
         ]
         [ historyTableEl h
-        , historyFilterInputEl h
+        , msgFiltersEl h
+        , payloadFilterInputEl h
         ]
 
 
@@ -266,7 +242,16 @@ historyTableEl (History h) =
         , htmlAttribute (id historyElementId)
         , detectScroll (History h)
         ]
-        { data = BoundedDeque.toList h.buffer |> List.filter (filterEntryBy h.filter)
+        { data =
+            let
+                ( negMsgFilters, posMsgFilters ) =
+                    List.partition (\(MsgFilter isPos _) -> not isPos) h.msgFilters
+
+                payloadQueries =
+                    h.payloadFilter |> String.split " " |> List.filter (not << String.isEmpty)
+            in
+            BoundedDeque.toList h.buffer
+                |> List.filter (filterEntry negMsgFilters posMsgFilters payloadQueries)
         , columns = [ ctorColumnEl (History h), payloadColumnEl ]
         }
 
@@ -289,46 +274,17 @@ detectScroll (History h) =
             noneAttr
 
 
-filterEntryBy : String -> Entry -> Bool
-filterEntryBy filter e =
-    let
-        queries =
-            String.split " " filter |> List.filter (not << String.isEmpty)
-    in
-    -- Ensure TCO <https://github.com/elm/compiler/issues/1770>
-    filterEntryImpl e [] queries
+filterEntry : List MsgFilter -> List MsgFilter -> List String -> Entry -> Bool
+filterEntry negMsgFilters posMsgFilters payloadQueries e =
+    if negMsgFilters == [] || not (List.member (MsgFilter False e.ctor) negMsgFilters) then
+        if posMsgFilters == [] || List.member (MsgFilter True e.ctor) posMsgFilters then
+            payloadQueries == [] || List.any (\q -> List.any (String.contains q) e.payload) payloadQueries
 
+        else
+            False
 
-filterEntryImpl : Entry -> List Bool -> List String -> Bool
-filterEntryImpl e posAcc queries =
-    case queries of
-        [] ->
-            case posAcc of
-                [] ->
-                    True
-
-                _ ->
-                    List.any identity posAcc
-
-        q :: qs ->
-            case StringExtra.splitAt 1 q of
-                [ "-" ] ->
-                    filterEntryImpl e posAcc qs
-
-                [ "-", negQ ] ->
-                    if String.contains negQ e.ctor || List.any (String.contains negQ) e.payload then
-                        -- Negative filter has precedence, so it can exit early. Otherwise check for positive filters.
-                        False
-
-                    else
-                        filterEntryImpl e posAcc qs
-
-                _ ->
-                    if String.contains q e.ctor || List.any (String.contains q) e.payload then
-                        filterEntryImpl e (True :: posAcc) qs
-
-                    else
-                        filterEntryImpl e (False :: posAcc) qs
+    else
+        False
 
 
 newEntryEl : History -> Element Msg
@@ -346,7 +302,7 @@ newEntryEl (History h) =
 
 
 ctorColumnEl : History -> Column Entry Msg
-ctorColumnEl h =
+ctorColumnEl (History h) =
     { header = el [ BG.color oneDark.note ] <| text "Msg"
     , width = fill
     , view =
@@ -354,25 +310,20 @@ ctorColumnEl h =
             row [ spacing 5 ]
                 [ el [ bold ] (text entry.ctor)
                 , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
-                    if hasPosFilter entry.ctor h then
-                        { onPress = Just (SetPosFilter entry.ctor False)
+                    if List.member (MsgFilter True entry.ctor) h.msgFilters then
+                        { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
                         , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
                         }
 
                     else
-                        { onPress = Just (SetPosFilter entry.ctor True)
+                        { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
                         , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
                         }
                 , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
-                    if hasNegFilter entry.ctor h then
-                        { onPress = Just (SetNegFilter entry.ctor False)
-                        , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
-                        }
-
-                    else
-                        { onPress = Just (SetNegFilter entry.ctor True)
-                        , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
-                        }
+                    -- No need for switch since if Negative Filter is set, this entry should be invisible
+                    { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
+                    , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
+                    }
                 ]
     }
 
@@ -409,8 +360,38 @@ payloadEl raw =
             }
 
 
-historyFilterInputEl : History -> Element Msg
-historyFilterInputEl (History h) =
+msgFiltersEl : History -> Element Msg
+msgFiltersEl (History h) =
+    wrappedRow [ width fill, spacing 5 ] <|
+        List.map msgFilterEl h.msgFilters
+
+
+msgFilterEl : MsgFilter -> Element Msg
+msgFilterEl ((MsgFilter isPos ctor) as mf) =
+    row
+        [ width shrink
+        , BD.rounded 5
+        , BG.color (ite isPos oneDark.succ oneDark.err)
+        ]
+        [ el
+            [ padding 2
+            , BD.roundEach { topLeft = 5, bottomLeft = 5, topRight = 0, bottomRight = 0 }
+            ]
+            (text ctor)
+        , Element.Input.button
+            [ padding 2
+            , focused []
+            , htmlAttribute (tabindex -1)
+            , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = 5, bottomRight = 5 }
+            ]
+            { onPress = Just (DelMsgFilter mf)
+            , label = octiconFreeSizeEl (scale12 2) Octicons.trashcan
+            }
+        ]
+
+
+payloadFilterInputEl : History -> Element Msg
+payloadFilterInputEl (History h) =
     Element.Input.text
         [ width fill
         , padding 5
@@ -419,11 +400,11 @@ historyFilterInputEl (History h) =
         , Font.size (scale12 2)
         ]
         { onChange = FilterInput
-        , text = h.filter
+        , text = h.payloadFilter
         , placeholder =
             Just <|
                 Element.Input.placeholder [] <|
                     el [ centerY ] <|
-                        text "OR Filter (Space-delimited, Case-sensitive, Negate with '-' prefix)"
+                        text "Payload OR Filter (Space-delimited, Case-sensitive)"
         , label = Element.Input.labelHidden "Log Entry Filter"
         }
