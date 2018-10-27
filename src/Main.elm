@@ -17,7 +17,7 @@ import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
-import Extra exposing (ite, setTimeout)
+import Extra exposing (andDo, ite, setTimeout)
 import HttpExtra
 import Iso8601
 import Json.Decode as D exposing (Decoder)
@@ -27,6 +27,8 @@ import Logger exposing (Entry)
 import Ports
 import String exposing (fromInt)
 import Task
+import Time
+import TimeZone
 import Url
 import View
 import View.Select
@@ -39,12 +41,25 @@ import View.Select
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
     Model.init env navKey
-        |> Tuple.mapSecond (\cmd -> Cmd.batch [ cmd, adjustMaxHeight, scheduleNextScan ])
+        |> andDo
+            [ adjustMaxHeight
+            , getTimeZone
+            , scheduleNextScan
+            ]
 
 
 adjustMaxHeight : Cmd Msg
 adjustMaxHeight =
     Task.perform GetViewport getViewport
+
+
+getTimeZone : Cmd Msg
+getTimeZone =
+    let
+        fallbackToUtc =
+            Result.withDefault ( "UTC", Time.utc ) >> GetTimeZone
+    in
+    TimeZone.getZone |> Task.attempt fallbackToUtc
 
 
 scheduleNextScan : Cmd Msg
@@ -84,6 +99,9 @@ update msg ({ viewState, env } as m) =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
             ( { m | env = { env | clientHeight = round viewport.height } }, Cmd.none )
+
+        GetTimeZone ( _, zone ) ->
+            ( { m | viewState = { viewState | timezone = zone } }, Cmd.none )
 
         LoggerCtrl lMsg ->
             Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl)
@@ -443,6 +461,9 @@ msgToLogEntry msg =
 
         GetViewport vp ->
             Entry "GetViewport" [ viewportToString vp ]
+
+        GetTimeZone ( name, _ ) ->
+            Entry "GetTimeZone" [ name ]
 
         LoggerCtrl lMsg ->
             loggerMsgToEntry lMsg

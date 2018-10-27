@@ -1,4 +1,4 @@
-module Extra exposing (divMod, doAfter, ite, setTimeout)
+module Extra exposing (andDo, divMod, doAfter, ite, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
@@ -6,6 +6,13 @@ module Extra exposing (divMod, doAfter, ite, setTimeout)
 import Process
 import Task exposing (Task)
 import Time exposing (Posix)
+
+
+{-| Replacement of (!) in 0.18.
+-}
+andDo : List (Cmd msg) -> model -> ( model, Cmd msg )
+andDo cmds model =
+    ( model, Cmd.batch cmds )
 
 
 {-| Oneline if-then-else.

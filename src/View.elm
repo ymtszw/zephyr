@@ -31,7 +31,7 @@ import ListExtra as List
 import Logger
 import Octicons
 import String exposing (fromFloat)
-import TimeExtra exposing (ms)
+import TimeExtra as Time exposing (ms)
 import Url
 import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
 import View.Select as Select
@@ -837,7 +837,8 @@ discordMessageHeaderEl m { author, timestamp } =
     in
     El.row [ El.spacing 5 ]
         [ userNameEl
-        , El.el [ Font.color oneDark.note, Font.size (scale12 1) ] (El.text (Iso8601.fromTime timestamp))
+        , El.el [ Font.color oneDark.note, Font.size (scale12 1) ] <|
+            El.text (Time.local m.viewState.timezone timestamp)
         ]
 
 

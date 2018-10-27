@@ -11,6 +11,7 @@ import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
 import Logger
+import Time exposing (Zone)
 import View.Select
 
 
@@ -31,6 +32,7 @@ type alias ViewState =
     , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
+    , timezone : Zone
     }
 
 
@@ -48,9 +50,9 @@ type alias Env =
     }
 
 
-init : Env -> Key -> ( Model, Cmd Msg )
+init : Env -> Key -> Model
 init env navKey =
-    ( initModel env navKey, Cmd.none )
+    initModel env navKey
 
 
 initModel : Env -> Key -> Model
@@ -76,6 +78,7 @@ defaultViewState =
     , columnSwappable = False
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
+    , timezone = Time.utc
     }
 
 

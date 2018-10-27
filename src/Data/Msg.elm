@@ -6,13 +6,14 @@ import Data.Filter
 import Data.Producer
 import Json.Decode
 import Logger
-import Time exposing (Posix)
+import Time exposing (Posix, Zone)
 
 
 type Msg
     = NoOp
     | Resize Int Int
     | GetViewport Browser.Dom.Viewport
+    | GetTimeZone ( String, Zone )
     | LoggerCtrl Logger.Msg
     | LinkClicked Browser.UrlRequest
     | SelectToggle String Bool
