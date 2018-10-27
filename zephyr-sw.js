@@ -3,7 +3,7 @@
 
 log('ServiceWorker script loaded!')
 
-const STORAGE = 'zephyr_v17' // increment version to enforce old cache deletion
+const STORAGE = 'zephyr_v18' // increment version to enforce old cache deletion
 const APPSHELL = [
   '/',
   '/index.html',
