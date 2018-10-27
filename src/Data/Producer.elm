@@ -29,7 +29,7 @@ import Data.Item exposing (Item(..))
 import Data.Producer.Base exposing (Update, Yield)
 import Data.Producer.Discord as Discord exposing (Channel, Discord, Guild)
 import Dict exposing (Dict)
-import Element as El exposing (Element)
+import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
@@ -212,10 +212,10 @@ unwrapDiscord producerMaybe =
 
 configsEl : ProducerRegistry -> Element Msg
 configsEl producerRegistry =
-    El.column
-        [ El.width El.fill
-        , El.padding 10
-        , El.spacingXY 0 20
+    column
+        [ width fill
+        , padding 10
+        , spacingXY 0 20
         , BG.color oneDark.main
         , BD.rounded 10
         , Font.size (scale12 2)
@@ -229,15 +229,15 @@ configsEl producerRegistry =
 
 configWrapEl : (msg -> Msg) -> String -> Element msg -> Element Msg
 configWrapEl tagger title element =
-    El.map tagger <|
-        El.column [ El.width El.fill, El.spacingXY 0 5 ]
-            [ El.el
-                [ El.width El.fill
+    map tagger <|
+        column [ width fill, spacingXY 0 5 ]
+            [ el
+                [ width fill
                 , Font.bold
                 , Font.size (scale12 3)
                 , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
                 ]
-                (El.text title)
+                (text title)
             , element
             ]
 

@@ -3,7 +3,7 @@ module View exposing (body)
 import Array exposing (Array)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
-import Data.Column as Column exposing (Column, ColumnItem(..), Media(..))
+import Data.Column as Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
 import Data.Item exposing (Item(..))
@@ -14,7 +14,7 @@ import Data.Producer.Discord as Discord exposing (Author(..), Channel, Guild)
 import Data.Producer.FetchStatus exposing (FetchStatus(..))
 import Data.TextRenderer exposing (TextRenderer)
 import Dict exposing (Dict)
-import Element as El exposing (Element)
+import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Events
@@ -34,12 +34,12 @@ import String exposing (fromFloat)
 import TimeExtra as Time exposing (ms)
 import Url
 import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
-import View.Select as Select
+import View.Select as Select exposing (select)
 
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ El.layout [ dragEventHandlers m.viewState.columnSwapMaybe ] (bodyEl m)
+    [ layout [ dragEventHandlers m.viewState.columnSwapMaybe ] (bodyEl m)
     , fancyScroll
     ]
 
@@ -47,43 +47,43 @@ body m =
 bodyEl : Model -> Element Msg
 bodyEl model =
     backgroundEl <|
-        El.row [ El.width El.fill, El.height El.fill, El.clipY ]
+        row [ width fill, height fill, clipY ]
             [ sidebarEl model
             , if model.viewState.configOpen then
                 configPaneEl model
 
               else
-                El.none
+                none
             , columnsEl model
             ]
 
 
 backgroundEl : Element Msg -> Element Msg
 backgroundEl contents =
-    El.row
+    row
         [ BG.color oneDark.bg
-        , El.width El.fill
-        , El.height El.fill
-        , El.inFront contents
+        , width fill
+        , height fill
+        , inFront contents
         ]
-        [ El.el
-            [ El.centerY
-            , El.centerX
+        [ el
+            [ centerY
+            , centerX
             , Font.bold
             , Font.color oneDark.sub
             , Font.size (scale12 12)
             , Font.center
             , Font.family [ Font.serif ]
             ]
-            (El.text "Zephyr")
+            (text "Zephyr")
         ]
 
 
-dragEventHandlers : Maybe ColumnSwap -> El.Attribute Msg
+dragEventHandlers : Maybe ColumnSwap -> Attribute Msg
 dragEventHandlers columnSwapMaybe =
     case columnSwapMaybe of
         Just _ ->
-            El.htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
+            htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
 
         Nothing ->
             noneAttr
@@ -95,80 +95,80 @@ dragEventHandlers columnSwapMaybe =
 
 sidebarEl : Model -> Element Msg
 sidebarEl { columnStore, viewState, env } =
-    El.column
-        [ El.width (El.px 50)
-        , El.height (El.fill |> El.maximum env.clientHeight)
-        , El.paddingXY 0 10
+    column
+        [ width (px 50)
+        , height (fill |> maximum env.clientHeight)
+        , paddingXY 0 10
         , BG.color oneDark.bg
         ]
-        [ El.el [ El.width El.fill, El.alignTop ] (columnButtonsEl columnStore)
-        , El.el [ El.width El.fill, El.alignBottom ] (otherButtonsEl viewState)
+        [ el [ width fill, alignTop ] (columnButtonsEl columnStore)
+        , el [ width fill, alignBottom ] (otherButtonsEl viewState)
         ]
 
 
 columnButtonsEl : ColumnStore -> Element Msg
 columnButtonsEl columnStore =
     List.append (ColumnStore.indexedMap columnButtonEl columnStore) [ ( "columnAddButton", columnAddButtonEl ) ]
-        |> Element.Keyed.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
+        |> Element.Keyed.column [ width fill, padding 5, spacingXY 0 10 ]
 
 
-columnButtonEl : Int -> Column -> ( String, Element Msg )
+columnButtonEl : Int -> Column.Column -> ( String, Element Msg )
 columnButtonEl index { id } =
     ( "sidebarButton_" ++ id
-    , El.el [ El.width El.fill ] <|
+    , el [ width fill ] <|
         Element.Input.button
-            [ El.width (El.px 40)
-            , El.height (El.px 40)
-            , El.clip
+            [ width (px 40)
+            , height (px 40)
+            , clip
             , Font.color oneDark.note
             , BD.width 1
             , BD.color oneDark.note
             , BD.rounded 10
             ]
-            { onPress = Just (DelColumn index), label = El.el [ El.centerX, El.centerY ] <| El.text "×" }
+            { onPress = Just (DelColumn index), label = el [ centerX, centerY ] <| text "×" }
     )
 
 
 columnAddButtonEl : Element Msg
 columnAddButtonEl =
-    El.el [ El.width El.fill ] <|
+    el [ width fill ] <|
         Element.Input.button
-            [ El.width (El.px 40)
-            , El.height (El.px 40)
-            , El.clip
+            [ width (px 40)
+            , height (px 40)
+            , clip
             , Font.color oneDark.note
             , BD.dashed
             , BD.width 1
             , BD.color oneDark.note
             , BD.rounded 10
             ]
-            { onPress = Just AddColumn, label = El.el [ El.centerX, El.centerY ] <| El.text "+" }
+            { onPress = Just AddColumn, label = el [ centerX, centerY ] <| text "+" }
 
 
 otherButtonsEl : ViewState -> Element Msg
 otherButtonsEl viewState =
-    El.column [ El.width El.fill, El.padding 5, El.spacingXY 0 10 ]
+    column [ width fill, padding 5, spacingXY 0 10 ]
         [ Element.Input.button
-            [ El.width (El.px 40)
-            , El.height (El.px 40)
+            [ width (px 40)
+            , height (px 40)
             , BD.rounded 10
             , if viewState.configOpen then
                 BG.color oneDark.main
 
               else
-                El.mouseOver [ BG.color oneDark.main ]
+                mouseOver [ BG.color oneDark.main ]
             ]
             { onPress = Just (ToggleConfig (not viewState.configOpen))
-            , label = El.el [ El.centerX, El.centerY ] <| octiconEl Octicons.gear
+            , label = el [ centerX, centerY ] <| octiconEl Octicons.gear
             }
-        , El.link
-            [ El.width (El.px 40)
-            , El.height (El.px 40)
+        , link
+            [ width (px 40)
+            , height (px 40)
             , BD.rounded 10
             , BG.color oneDark.sub
             ]
             { url = "https://github.com/ymtszw/zephyr"
-            , label = El.el [ El.centerX, El.centerY ] <| octiconEl Octicons.markGithub
+            , label = el [ centerX, centerY ] <| octiconEl Octicons.markGithub
             }
         ]
 
@@ -180,23 +180,23 @@ otherButtonsEl viewState =
 columnsEl : Model -> Element Msg
 columnsEl m =
     Element.Keyed.row
-        [ El.width El.fill
-        , El.height (El.fill |> El.maximum m.env.clientHeight)
+        [ width fill
+        , height (fill |> maximum m.env.clientHeight)
         , Font.regular
         ]
         (ColumnStore.indexedMap (columnKeyEl m) m.columnStore)
 
 
-columnKeyEl : Model -> Int -> Column -> ( String, Element Msg )
+columnKeyEl : Model -> Int -> Column.Column -> ( String, Element Msg )
 columnKeyEl m index column =
     Tuple.pair ("column_" ++ column.id) <|
         case m.viewState.columnSwapMaybe of
             Nothing ->
                 notDraggedColumnEl m index column <|
                     if m.viewState.columnSwappable then
-                        [ El.htmlAttribute (draggable "true")
-                        , El.htmlAttribute (style "cursor" "all-scroll")
-                        , El.htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
+                        [ htmlAttribute (draggable "true")
+                        , htmlAttribute (style "cursor" "all-scroll")
+                        , htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
                         ]
 
                     else
@@ -208,16 +208,16 @@ columnKeyEl m index column =
 
                 else
                     notDraggedColumnEl m index column <|
-                        [ El.htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter index, True ))) ]
+                        [ htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter index, True ))) ]
 
 
-notDraggedColumnEl : Model -> Int -> Column -> List (El.Attribute Msg) -> Element Msg
-notDraggedColumnEl m index column attrs =
-    El.column
+notDraggedColumnEl : Model -> Int -> Column.Column -> List (Attribute Msg) -> Element Msg
+notDraggedColumnEl m index c attrs =
+    column
         (columnBaseAttrs m.env.clientHeight ++ attrs)
-        [ columnHeaderEl column
-        , columnConfigEl m index column
-        , case column.items of
+        [ columnHeaderEl c
+        , columnConfigEl m index c
+        , case c.items of
             [] ->
                 waitingForFirstItemEl
 
@@ -226,15 +226,15 @@ notDraggedColumnEl m index column attrs =
                 items
                     |> List.groupWhile shouldGroup
                     |> List.map (itemEl m)
-                    |> El.column [ El.width El.fill, El.paddingXY 5 0, El.scrollbarY ]
+                    |> column [ width fill, paddingXY 5 0, scrollbarY ]
         ]
 
 
 waitingForFirstItemEl : Element Msg
 waitingForFirstItemEl =
-    El.el [ El.width El.fill, El.height (El.px 50), El.paddingXY 5 0 ] <|
-        El.el [ El.centerX, El.centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
-            El.text "Waiting for messages..."
+    el [ width fill, height (px 50), paddingXY 5 0 ] <|
+        el [ centerX, centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
+            text "Waiting for messages..."
 
 
 shouldGroup : ColumnItem -> ColumnItem -> Bool
@@ -259,13 +259,13 @@ shouldGroupDiscordMessage dNewer dOlder =
 
 draggedColumnEl : Int -> Element Msg
 draggedColumnEl clientHeight =
-    El.el (columnBaseAttrs clientHeight ++ [ BG.color oneDark.bg ]) El.none
+    el (columnBaseAttrs clientHeight ++ [ BG.color oneDark.bg ]) none
 
 
-columnBaseAttrs : Int -> List (El.Attribute Msg)
+columnBaseAttrs : Int -> List (Attribute Msg)
 columnBaseAttrs clientHeight =
-    [ El.width (El.px fixedColumnWidth)
-    , El.height (El.fill |> El.maximum clientHeight)
+    [ width (px fixedColumnWidth)
+    , height (fill |> maximum clientHeight)
     , BG.color oneDark.main
     , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
     , BD.color oneDark.bg
@@ -295,67 +295,67 @@ onDragStart index id =
         |> D.andThen fireDependingOnDataTransfer
 
 
-columnHeaderEl : Column -> Element Msg
+columnHeaderEl : Column.Column -> Element Msg
 columnHeaderEl column =
-    El.row
-        [ El.width El.fill
-        , El.padding 10
+    row
+        [ width fill
+        , padding 10
         , BG.color oneDark.sub
         ]
-        [ El.text ("[PH] " ++ column.id)
-        , Element.Input.button [ El.alignRight ]
+        [ text ("[PH] " ++ column.id)
+        , Element.Input.button [ alignRight ]
             { onPress = Just (ToggleColumnConfig column.id (not column.configOpen))
             , label = octiconEl Octicons.settings
             }
         ]
 
 
-columnConfigEl : Model -> Int -> Column -> Element Msg
-columnConfigEl m index column =
-    if column.configOpen then
-        El.column
-            [ El.width El.fill
-            , El.padding 5
-            , El.spacing 3
+columnConfigEl : Model -> Int -> Column.Column -> Element Msg
+columnConfigEl m index c =
+    if c.configOpen then
+        column
+            [ width fill
+            , padding 5
+            , spacing 3
             , BG.color oneDark.sub
             , BD.width 1
             , BD.color oneDark.note
             ]
             [ columnConfigTitleEl "Filter Rules"
-            , filtersEl m column
+            , filtersEl m c
             , columnConfigTitleEl "Danger Zone"
-            , columnDeleteEl index column
-            , Element.Input.button [ El.width El.fill, BG.color oneDark.sub ]
-                { onPress = Just (ToggleColumnConfig column.id False)
+            , columnDeleteEl index c
+            , Element.Input.button [ width fill, BG.color oneDark.sub ]
+                { onPress = Just (ToggleColumnConfig c.id False)
                 , label = octiconFreeSizeEl 24 Octicons.triangleUp
                 }
             ]
 
     else
-        El.none
+        none
 
 
 columnConfigTitleEl : String -> Element Msg
 columnConfigTitleEl title =
-    El.el
-        [ El.width El.fill
+    el
+        [ width fill
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size (scale12 3)
         , Font.color oneDark.note
         ]
-        (El.text title)
+        (text title)
 
 
-filtersEl : Model -> Column -> Element Msg
-filtersEl m column =
-    Array.indexedMap (filterEl m column.id) column.filters
-        |> Array.push (addNewFilterEl m column.id)
+filtersEl : Model -> Column.Column -> Element Msg
+filtersEl m c =
+    Array.indexedMap (filterEl m c.id) c.filters
+        |> Array.push (addNewFilterEl m c.id)
         |> Array.toList
         |> List.intersperse (filterLogicSeparator "AND")
-        |> El.column
-            [ El.width (El.fill |> El.minimum 0)
-            , El.padding 5
-            , El.spacing 3
+        |> column
+            [ width (fill |> minimum 0)
+            , padding 5
+            , spacing 3
             , BD.rounded 5
             , BG.color oneDark.main
             ]
@@ -391,20 +391,20 @@ addNewFilterEl m cId =
 
 
 filterLogicSeparator : String -> Element msg
-filterLogicSeparator text =
-    El.el
-        [ El.width (El.fill |> El.minimum 0)
-        , El.padding 3
+filterLogicSeparator operator =
+    el
+        [ width (fill |> minimum 0)
+        , padding 3
         , Font.size (scale12 2)
         , Font.color oneDark.note
         ]
-        (El.el [ El.centerX ] (El.text text))
+        (el [ centerX ] (text operator))
 
 
 filterGeneratorEl : (Maybe Filter -> Msg) -> Model -> String -> Maybe ( Int, Filter ) -> Element Msg
 filterGeneratorEl tagger m cId indexFilterMaybe =
-    El.row
-        [ El.width El.fill
+    row
+        [ width fill
         , BD.width 1
         , BD.rounded 5
         , BD.color oneDark.note
@@ -415,13 +415,13 @@ filterGeneratorEl tagger m cId indexFilterMaybe =
                     filterId =
                         cId ++ "-filter_" ++ String.fromInt index
                 in
-                El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ] <|
+                column [ width (fill |> minimum 0), padding 5 ] <|
                     List.intersperse (filterLogicSeparator "OR") <|
                         Filter.indexedMap (filterAtomEl filter tagger m filterId) filter
                             ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) m filterId ]
 
             Nothing ->
-                El.column [ El.width (El.fill |> El.minimum 0), El.padding 5 ]
+                column [ width (fill |> minimum 0), padding 5 ]
                     [ newFilterAtomEl (tagger << Just << Singular) m (cId ++ "addNewFilter") ]
         , deleteFilterButtonEl cId indexFilterMaybe
         ]
@@ -432,19 +432,19 @@ deleteFilterButtonEl cId indexFilterMaybe =
     case indexFilterMaybe of
         Just ( index, _ ) ->
             Element.Input.button
-                [ El.width (El.px 20)
-                , El.height El.fill
-                , El.mouseOver [ BG.color oneDark.err ]
-                , El.focused [ BG.color oneDark.err ]
-                , El.alignRight
+                [ width (px 20)
+                , height fill
+                , mouseOver [ BG.color oneDark.err ]
+                , focused [ BG.color oneDark.err ]
+                , alignRight
                 , BD.roundEach { topLeft = 0, topRight = 5, bottomRight = 5, bottomLeft = 0 }
                 ]
                 { onPress = Just (DelColumnFilter cId index)
-                , label = El.el [ El.centerY, El.centerX ] <| octiconFreeSizeEl 16 Octicons.trashcan
+                , label = el [ centerY, centerX ] <| octiconFreeSizeEl 16 Octicons.trashcan
                 }
 
         Nothing ->
-            El.none
+            none
 
 
 filterAtomEl : Filter -> (Maybe Filter -> Msg) -> Model -> String -> Int -> FilterAtom -> Element Msg
@@ -473,7 +473,7 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
         discordMaterial =
             Producer.discordFilterAtomMaterial m.producerRegistry
     in
-    El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
+    row [ width (fill |> minimum 0), spacing 3 ]
         [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
@@ -481,8 +481,8 @@ filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
 
 filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMaybe =
-    El.el [ El.width (El.fill |> El.maximum 120) ] <|
-        Select.el
+    el [ width (fill |> maximum 120) ] <|
+        select
             { id = selectId
             , onSelect = tagger
             , selectedOption = filterAtomMaybe
@@ -494,19 +494,19 @@ filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMay
 
 filterAtomTypeOptionEl : FilterAtom -> Element msg
 filterAtomTypeOptionEl filterAtom =
-    El.el [ Font.size (scale12 1) ] <|
+    el [ Font.size (scale12 1) ] <|
         case filterAtom of
             ByMessage _ ->
-                El.text "Message contains..."
+                text "Message contains..."
 
             ByMedia _ ->
-                El.text "Attached media..."
+                text "Attached media..."
 
             OfDiscordChannel _ ->
-                El.text "Discord message in channel..."
+                text "Discord message in channel..."
 
             RemoveMe ->
-                El.text "Remove this filter"
+                text "Remove this filter"
 
 
 availableFilterAtomsWithDefaultArguments : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
@@ -575,14 +575,14 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
                         )
 
                     Nothing ->
-                        ( [], El.text )
+                        ( [], text )
 
         Just RemoveMe ->
             -- Should not happen
-            El.none
+            none
 
         Nothing ->
-            El.none
+            none
 
 
 channelSorter : Channel -> Channel -> Order
@@ -603,9 +603,9 @@ channelSorter a b =
 filterAtomVariableTextInputEl : (String -> Msg) -> String -> Element Msg
 filterAtomVariableTextInputEl tagger text =
     Element.Input.text
-        [ El.width El.fill
-        , El.height (El.px 30) -- Match with select input height
-        , El.padding 5
+        [ width fill
+        , height (px 30) -- Match with select input height
+        , padding 5
         , BG.color oneDark.note
         , BD.width 0
         , Font.size (scale12 1)
@@ -619,11 +619,11 @@ filterAtomVariableTextInputEl tagger text =
 
 filterAtomVariableSelectInputEl : (a -> Msg) -> Select.State -> String -> a -> ( List a, a -> Element Msg ) -> Element Msg
 filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, optionEl ) =
-    Select.el
+    select
         { id = selectId
         , onSelect = tagger
         , selectedOption = Just selected
-        , noMsgOptionEl = El.el [ Font.size (scale12 1) ] << optionEl
+        , noMsgOptionEl = el [ Font.size (scale12 1) ] << optionEl
         }
         selectState
         options
@@ -633,24 +633,24 @@ mediaTypeOptionEl : MediaFilter -> Element msg
 mediaTypeOptionEl mediaType =
     case mediaType of
         HasNone ->
-            El.text "None"
+            text "None"
 
         HasImage ->
-            El.text "Image"
+            text "Image"
 
         HasMovie ->
-            El.text "Movie"
+            text "Movie"
 
 
 discordGuildOptionEl : Dict String Guild -> String -> Element msg
 discordGuildOptionEl guilds gId =
     case Dict.get gId guilds of
         Just guild ->
-            El.row [ El.width El.fill, El.spacing 3 ]
-                [ Discord.guildSmallIconEl guild, El.text guild.name ]
+            row [ width fill, spacing 3 ]
+                [ Discord.guildSmallIconEl guild, text guild.name ]
 
         Nothing ->
-            El.text gId
+            text gId
 
 
 discordChannelOptionEl : Dict String Channel -> String -> Element msg
@@ -659,33 +659,33 @@ discordChannelOptionEl channels cId =
         Just channel ->
             case channel.guildMaybe of
                 Just guild ->
-                    El.row [ El.width (El.fill |> El.minimum 0), El.spacing 3 ]
+                    row [ width (fill |> minimum 0), spacing 3 ]
                         [ Discord.guildSmallIconEl guild
-                        , El.text ("#" ++ channel.name)
+                        , text ("#" ++ channel.name)
                         ]
 
                 Nothing ->
                     -- Mostly DM
-                    El.text channel.name
+                    text channel.name
 
         Nothing ->
-            El.text cId
+            text cId
 
 
-columnDeleteEl : Int -> Column -> Element Msg
+columnDeleteEl : Int -> Column.Column -> Element Msg
 columnDeleteEl index column =
-    El.row [ El.width El.fill, El.spacing 5, El.padding 10 ]
+    row [ width fill, spacing 5, padding 10 ]
         [ columnDeleteGateEl column
         , columnDeleteButtonEl index column
         ]
 
 
-columnDeleteGateEl : Column -> Element Msg
+columnDeleteGateEl : Column.Column -> Element Msg
 columnDeleteGateEl column =
     Element.Input.text
-        [ El.width El.fill
-        , El.height (El.px 30) -- Match with select input height
-        , El.padding 5
+        [ width fill
+        , height (px 30) -- Match with select input height
+        , padding 5
         , BG.color oneDark.note
         , BD.width 0
         , Font.size (scale12 1)
@@ -695,27 +695,27 @@ columnDeleteGateEl column =
         , placeholder =
             Just <|
                 Element.Input.placeholder [] <|
-                    El.el [ El.centerY ] (El.text "Type DELETE to delete this column")
+                    el [ centerY ] (text "Type DELETE to delete this column")
         , label = Element.Input.labelHidden "Delete Gate"
         }
 
 
-columnDeleteButtonEl : Int -> Column -> Element Msg
+columnDeleteButtonEl : Int -> Column.Column -> Element Msg
 columnDeleteButtonEl index column =
-    El.el [ El.width (El.px 100) ] <|
+    el [ width (px 100) ] <|
         if String.toLower column.deleteGate == "delete" then
             Element.Input.button
-                [ El.width El.fill
-                , El.height (El.px 30)
+                [ width fill
+                , height (px 30)
                 , BD.rounded 5
                 , BG.color oneDark.err
                 ]
                 { onPress = Just (DelColumn index)
-                , label = El.el [ El.centerX ] (El.text "Delete!")
+                , label = el [ centerX ] (text "Delete!")
                 }
 
         else
-            El.none
+            none
 
 
 
@@ -728,13 +728,13 @@ itemEl m closeItems =
     case List.reverse closeItems of
         [] ->
             -- Should not happen
-            El.none
+            none
 
         item :: items ->
-            El.row
-                [ El.width El.fill
-                , El.paddingXY 0 5
-                , El.spacing 5
+            row
+                [ width fill
+                , paddingXY 0 5
+                , spacing 5
                 , BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }
                 , BD.color oneDark.bd
                 ]
@@ -772,12 +772,12 @@ avatarWithBadgeEl { badge, fallback, url } =
         bottomRightBadge =
             case badge of
                 Just badgeEl ->
-                    [ El.alignTop, El.inFront <| El.el [ El.alignBottom, El.alignRight ] <| badgeEl ]
+                    [ alignTop, inFront <| el [ alignBottom, alignRight ] <| badgeEl ]
 
                 Nothing ->
-                    [ El.alignTop ]
+                    [ alignTop ]
     in
-    El.el bottomRightBadge <| El.el [ El.padding 2 ] <| squareIconEl avatarSize fallback <| url
+    el bottomRightBadge <| el [ padding 2 ] <| squareIconEl avatarSize fallback <| url
 
 
 avatarSize : Int
@@ -787,7 +787,7 @@ avatarSize =
 
 botIconEl : Element Msg
 botIconEl =
-    El.el [ El.padding 1, BG.color oneDark.succ, BD.rounded 2 ] <|
+    el [ padding 1, BG.color oneDark.succ, BD.rounded 2 ] <|
         octiconFreeSizeEl 12 Octicons.zap
 
 
@@ -815,7 +815,7 @@ itemContentsEl m item closeItems =
 discordMessageEl : Model -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
 discordMessageEl m ( discordMessage, _ ) closeMessages =
     -- TODO match with official app styling
-    El.column [ El.width El.fill, El.spacing 5, El.alignTop ] <|
+    column [ width fill, spacing 5, alignTop ] <|
         (::) (discordMessageHeaderEl m discordMessage) <|
             List.map (discordMessageBodyEl m) <|
                 (::) discordMessage <|
@@ -826,8 +826,8 @@ discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
 discordMessageHeaderEl m { author, timestamp } =
     let
         userNameEl =
-            El.el [ Font.bold, Font.size (scale12 2) ] <|
-                El.text <|
+            el [ Font.bold, Font.size (scale12 2) ] <|
+                text <|
                     case author of
                         UserAuthor user ->
                             user.username
@@ -835,16 +835,16 @@ discordMessageHeaderEl m { author, timestamp } =
                         WebhookAuthor user ->
                             user.username
     in
-    El.row [ El.spacing 5 ]
+    row [ spacing 5 ]
         [ userNameEl
-        , El.el [ Font.color oneDark.note, Font.size (scale12 1) ] <|
-            El.text (Time.local m.viewState.timezone timestamp)
+        , el [ Font.color oneDark.note, Font.size (scale12 1) ] <|
+            text (Time.local m.viewState.timezone timestamp)
         ]
 
 
 discordMessageBodyEl : Model -> Discord.Message -> Element Msg
 discordMessageBodyEl m discordMessage =
-    El.textColumn [ El.spacingXY 0 10, El.width El.fill ]
+    textColumn [ spacingXY 0 10, width fill ]
         [ messageToParagraph discordMessage.content
         ]
 
@@ -853,21 +853,21 @@ defaultItemEl : String -> Maybe Media -> Element Msg
 defaultItemEl message mediaMaybe =
     case mediaMaybe of
         Just media ->
-            El.textColumn [ El.spacingXY 0 10, El.width El.fill, El.alignTop ]
+            textColumn [ spacingXY 0 10, width fill, alignTop ]
                 [ messageToParagraph message
                 , mediaEl media
                 ]
 
         Nothing ->
-            El.el [ El.width El.fill, El.alignTop ] (messageToParagraph message)
+            el [ width fill, alignTop ] (messageToParagraph message)
 
 
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
-    El.paragraph
+    paragraph
         [ Font.size (scale12 1)
-        , El.htmlAttribute (style "white-space" "pre-wrap")
-        , El.htmlAttribute (style "word-break" "break-all")
+        , htmlAttribute (style "white-space" "pre-wrap")
+        , htmlAttribute (style "word-break" "break-all")
         ]
         (Data.TextRenderer.default oneDark message)
 
@@ -884,13 +884,13 @@ mediaEl media =
 
 imageEl : String -> Url.Url -> Element Msg
 imageEl desc url =
-    El.image [ El.width El.fill ] { src = Url.toString url, description = desc }
+    image [ width fill ] { src = Url.toString url, description = desc }
 
 
 videoEl : Url.Url -> Element Msg
 videoEl url =
-    El.el [ El.width El.fill, El.centerX ] <|
-        El.html <|
+    el [ width fill, centerX ] <|
+        html <|
             Html.video
                 [ Html.Attributes.controls True
                 , Html.Attributes.width (fixedColumnWidth - avatarSize - 10)
@@ -907,11 +907,11 @@ videoEl url =
 
 configPaneEl : Model -> Element Msg
 configPaneEl m =
-    El.el
-        [ El.width (El.fill |> El.minimum 480 |> El.maximum 860)
-        , El.height (El.fill |> El.maximum m.env.clientHeight)
-        , El.padding 15
-        , El.scrollbarY
+    el
+        [ width (fill |> minimum 480 |> maximum 860)
+        , height (fill |> maximum m.env.clientHeight)
+        , padding 15
+        , scrollbarY
         , Font.color oneDark.text
         ]
         (configInnerEl m)
@@ -919,19 +919,19 @@ configPaneEl m =
 
 configInnerEl : Model -> Element Msg
 configInnerEl m =
-    El.column
-        [ El.width El.fill
-        , El.height El.fill
-        , El.spacing 10
+    column
+        [ width fill
+        , height fill
+        , spacing 10
         ]
-        [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
+        [ map ProducerCtrl <| Producer.configsEl m.producerRegistry
         , if m.env.isLocalDevelopment then
-            El.el [ El.width El.fill, El.alignBottom, El.height El.shrink ] <|
-                El.map LoggerCtrl <|
+            el [ width fill, alignBottom, height shrink ] <|
+                map LoggerCtrl <|
                     Logger.historyEl m.log
 
           else
-            El.none
+            none
         ]
 
 

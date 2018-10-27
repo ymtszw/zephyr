@@ -1,7 +1,7 @@
 module View.Parts exposing (disabled, disabledColor, noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
 
 import Data.ColorTheme exposing (oneDark)
-import Element as El exposing (Element)
+import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
@@ -11,16 +11,16 @@ import Json.Encode
 import Octicons
 
 
-noneAttr : El.Attribute msg
+noneAttr : Attribute msg
 noneAttr =
-    El.htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
+    htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
 
 
-disabled : Bool -> List (El.Attribute msg) -> List (El.Attribute msg)
+disabled : Bool -> List (Attribute msg) -> List (Attribute msg)
 disabled isDisabled attrs =
     if isDisabled then
-        [ El.htmlAttribute (Html.Attributes.disabled isDisabled)
-        , El.htmlAttribute (Html.Attributes.style "cursor" "default")
+        [ htmlAttribute (Html.Attributes.disabled isDisabled)
+        , htmlAttribute (Html.Attributes.style "cursor" "default")
         ]
             ++ attrs
 
@@ -28,7 +28,7 @@ disabled isDisabled attrs =
         attrs
 
 
-disabledColor : Bool -> List (El.Attribute msg) -> List (El.Attribute msg)
+disabledColor : Bool -> List (Attribute msg) -> List (Attribute msg)
 disabledColor isDisabled attrs =
     if isDisabled then
         [ BG.color oneDark.sub, Font.color oneDark.note ] ++ attrs
@@ -46,7 +46,7 @@ octiconFreeSizeEl : Int -> (Octicons.Options -> Html.Html msg) -> Element msg
 octiconFreeSizeEl size octicon =
     let
         { red, green, blue } =
-            El.toRgb oneDark.note
+            toRgb oneDark.note
 
         colorStr =
             "rgb("
@@ -61,31 +61,31 @@ octiconFreeSizeEl size octicon =
         |> Octicons.color colorStr
         |> Octicons.size size
         |> octicon
-        |> El.html
+        |> html
 
 
 squareIconEl : Int -> String -> Maybe String -> Element msg
 squareIconEl size name urlMaybe =
     let
-        ( attr, el ) =
+        ( attr, fallbackContent ) =
             case urlMaybe of
                 Just url ->
-                    ( BG.uncropped url, El.none )
+                    ( BG.uncropped url, none )
 
                 Nothing ->
-                    ( Font.size (size // 2), El.el [ El.centerX, El.centerY ] (El.text (String.left 1 name)) )
+                    ( Font.size (size // 2), el [ centerX, centerY ] (text (String.left 1 name)) )
     in
-    El.el
+    el
         [ BG.color oneDark.bg
-        , El.width (El.px size)
-        , El.height (El.px size)
-        , El.alignTop
+        , width (px size)
+        , height (px size)
+        , alignTop
         , BD.rounded 5
-        , El.htmlAttribute (Html.Attributes.title name)
-        , El.pointer
+        , htmlAttribute (Html.Attributes.title name)
+        , pointer
         , attr
         ]
-        el
+        fallbackContent
 
 
 
@@ -94,4 +94,4 @@ squareIconEl size name urlMaybe =
 
 scale12 : Int -> Int
 scale12 =
-    El.modular 12 1.25 >> round
+    modular 12 1.25 >> round

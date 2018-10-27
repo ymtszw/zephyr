@@ -47,7 +47,7 @@ import Data.Filter exposing (FilterAtom(..))
 import Data.Producer.Base as Producer exposing (destroy, enter, enterAndFire, yieldAndFire)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Dict exposing (Dict)
-import Element as El exposing (Color, Element)
+import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
@@ -405,7 +405,7 @@ encodeColor : Color -> E.Value
 encodeColor color =
     let
         { red, green, blue } =
-            El.toRgb color
+            toRgb color
     in
     E.int (floor red * 0x00010000 + floor green * 0x0100 + floor blue)
 
@@ -617,7 +617,7 @@ colorDecoder =
                         divMod 256 div256
                 in
                 if 0 <= r && r < 256 && 0 <= g && g < 256 && 0 <= b && b < 256 then
-                    D.succeed (El.rgb255 r g b)
+                    D.succeed (rgb255 r g b)
 
                 else
                     D.fail "Invalid color integer"
@@ -1279,11 +1279,11 @@ configEl discordMaybe =
 
 tokenFormEl : Discord -> Element Msg
 tokenFormEl discord =
-    El.column [ El.width El.fill, El.spacing 5 ] <|
+    column [ width fill, spacing 5 ] <|
         [ Element.Input.text
             (disabled (shouldLockInput discord)
-                [ El.width El.fill
-                , El.padding 5
+                [ width fill
+                , padding 5
                 , BG.color oneDark.note
                 , BD.width 0
                 ]
@@ -1301,16 +1301,16 @@ tokenFormEl discord =
 tokenSubmitButtonEl : Discord -> Element Msg
 tokenSubmitButtonEl discord =
     Element.Input.button
-        ([ El.alignRight
-         , El.width El.shrink
-         , El.padding 10
+        ([ alignRight
+         , width shrink
+         , padding 10
          , BD.rounded 5
          ]
             |> disabled (shouldLockButton discord)
             |> disabledColor (shouldLockButton discord)
         )
         { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
-        , label = El.text (tokenInputButtonLabel discord)
+        , label = text (tokenInputButtonLabel discord)
         }
 
 
@@ -1382,10 +1382,10 @@ tokenText discord =
 tokenLabelEl : Element.Input.Label msg
 tokenLabelEl =
     Element.Input.labelAbove [] <|
-        El.column [ El.spacing 5 ]
-            [ El.el [] (El.text "Token")
-            , El.paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
-                [ El.text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
+        column [ spacing 5 ]
+            [ el [] (text "Token")
+            , paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
+                [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
             ]
 
 
@@ -1463,30 +1463,30 @@ currentStateEl discord =
 
 userNameAndAvatarEl : User -> Element Msg
 userNameAndAvatarEl user =
-    El.row [ El.width El.fill, El.spacing 5 ]
-        [ El.el [] (El.text "User: ")
-        , El.el
-            [ El.width (El.px 32)
-            , El.height (El.px 32)
+    row [ width fill, spacing 5 ]
+        [ el [] (text "User: ")
+        , el
+            [ width (px 32)
+            , height (px 32)
             , BD.rounded 16
             , BG.uncropped (imageUrlWithFallback (Just "32") user.discriminator user.avatar)
             ]
-            El.none
-        , El.text user.username
-        , El.el [ El.centerY, Font.size (scale12 1), Font.color oneDark.note ] (El.text ("#" ++ user.discriminator))
+            none
+        , text user.username
+        , el [ centerY, Font.size (scale12 1), Font.color oneDark.note ] (text ("#" ++ user.discriminator))
         ]
 
 
 guildsEl : Bool -> POV -> Element Msg
 guildsEl rotating pov =
-    El.row [ El.width El.fill, El.spacing 5 ]
-        [ El.column [ El.alignTop, El.spacing 5 ]
-            [ El.text "Servers: "
+    row [ width fill, spacing 5 ]
+        [ column [ alignTop, spacing 5 ]
+            [ text "Servers: "
             , rehydrateButtonEl rotating pov
             ]
         , pov.guilds
             |> Dict.foldl (\_ guild acc -> guildIconEl guild :: acc) []
-            |> El.wrappedRow [ El.width El.fill, El.spacing 5 ]
+            |> wrappedRow [ width fill, spacing 5 ]
         ]
 
 
@@ -1499,8 +1499,8 @@ rehydrateButtonEl : Bool -> POV -> Element Msg
 rehydrateButtonEl rotating pov =
     Element.Input.button
         (disabled rotating
-            [ El.alignLeft
-            , El.height El.fill
+            [ alignLeft
+            , height fill
             , BD.rounded 30
             , BG.color oneDark.main
             ]
@@ -1512,38 +1512,38 @@ rehydrateButtonEl rotating pov =
 
 subbedChannelsEl : POV -> Element Msg
 subbedChannelsEl pov =
-    El.row [ El.width El.fill, El.spacing 5 ]
-        [ El.column [ El.alignTop, El.spacing 5 ] [ El.text "Channels: " ]
+    row [ width fill, spacing 5 ]
+        [ column [ alignTop, spacing 5 ] [ text "Channels: " ]
         , { data =
                 pov.channels
                     |> Dict.values
                     |> List.filter (.fetchStatus >> FetchStatus.isActive)
           , columns = [ subbedChannelEl, nextFetchEl ]
           }
-            |> El.table [ El.width El.fill, El.spacing 5 ]
+            |> table [ width fill, spacing 5 ]
         ]
 
 
-subbedChannelEl : El.Column Channel Msg
+subbedChannelEl : Column Channel Msg
 subbedChannelEl =
-    { header = El.el [ BG.color oneDark.note ] (El.text "Name")
-    , width = El.fill
+    { header = el [ BG.color oneDark.note ] (text "Name")
+    , width = fill
     , view =
         \c ->
-            El.row [ El.width El.fill, El.clipX ]
-                [ c.guildMaybe |> Maybe.map guildSmallIconEl |> Maybe.withDefault El.none
-                , El.text ("#" ++ c.name)
+            row [ width fill, clipX ]
+                [ c.guildMaybe |> Maybe.map guildSmallIconEl |> Maybe.withDefault none
+                , text ("#" ++ c.name)
                 ]
     }
 
 
-nextFetchEl : El.Column Channel Msg
+nextFetchEl : Column Channel Msg
 nextFetchEl =
-    { header = El.el [ BG.color oneDark.note ] (El.text "Next Fetch")
-    , width = El.fill
+    { header = el [ BG.color oneDark.note ] (text "Next Fetch")
+    , width = fill
     , view =
         \c ->
-            El.text <|
+            text <|
                 case c.fetchStatus of
                     Waiting ->
                         "Soon"

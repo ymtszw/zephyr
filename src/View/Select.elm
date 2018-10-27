@@ -1,8 +1,8 @@
-module View.Select exposing (State, close, el, init, isOpen, open)
+module View.Select exposing (State, close, init, isOpen, open, select)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Msg exposing (Msg(..))
-import Element as El exposing (Element)
+import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Events
@@ -56,7 +56,7 @@ isOpen id state =
 Require `id` and `state` to control open/closed status.
 
 -}
-el :
+select :
     { id : String
     , onSelect : a -> Msg
     , selectedOption : Maybe a
@@ -65,14 +65,14 @@ el :
     -> State
     -> List a
     -> Element Msg
-el { id, onSelect, selectedOption, noMsgOptionEl } state options =
+select { id, onSelect, selectedOption, noMsgOptionEl } state options =
     let
         opened =
             isOpen id state
     in
-    El.el
-        [ El.width (El.fill |> El.minimum 0)
-        , El.below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) El.none)
+    el
+        [ width (fill |> minimum 0)
+        , below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) none)
         , Font.size (scale12 2)
         ]
         (headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
@@ -81,20 +81,20 @@ el { id, onSelect, selectedOption, noMsgOptionEl } state options =
 headerEl : Msg -> Maybe a -> (a -> Element Msg) -> Element Msg
 headerEl onPress selectedOption noMsgOptionEl =
     Element.Input.button
-        [ El.width El.fill
-        , El.spacing 3
-        , El.padding 5
+        [ width fill
+        , spacing 3
+        , padding 5
         , BD.rounded 5
         , BG.color oneDark.note
         ]
         { onPress = Just onPress
         , label =
-            El.row [ El.width El.fill ]
-                [ -- `El.minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
+            row [ width fill ]
+                [ -- `minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
                   -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
-                  El.el [ El.width (El.fill |> El.minimum 0), El.clipX ] <|
-                    Maybe.withDefault (El.text "Select...") (Maybe.map noMsgOptionEl selectedOption)
-                , El.el [ El.width (El.px 20), El.alignRight, BG.color oneDark.sub ] <|
+                  el [ width (fill |> minimum 0), clipX ] <|
+                    Maybe.withDefault (text "Select...") (Maybe.map noMsgOptionEl selectedOption)
+                , el [ width (px 20), alignRight, BG.color oneDark.sub ] <|
                     octiconFreeSizeEl 20 Octicons.chevronDown
                 ]
         }
@@ -104,10 +104,10 @@ optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List a -> Element Msg
 optionsEl onSelect noMsgOptionEl selectedOption options =
     options
         |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
-        |> El.column
-            [ El.width (El.fill |> El.minimum 100)
-            , El.paddingXY 0 5
-            , El.scrollbarY
+        |> column
+            [ width (fill |> minimum 100)
+            , paddingXY 0 5
+            , scrollbarY
             , BD.width 1
             , BD.rounded 5
             , BD.color oneDark.bd
@@ -119,7 +119,7 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
                 }
             , BG.color oneDark.note
             ]
-        |> El.el [ El.height (El.fill |> El.maximum 300) ]
+        |> el [ height (fill |> maximum 300) ]
 
 
 optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> a -> Element Msg
@@ -130,9 +130,9 @@ optionEl onSelect noMsgOptionEl selectedOption option =
     in
     Element.Input.button
         (selectedStyle
-            ++ [ El.width El.fill
-               , El.padding 5
-               , El.mouseOver [ BG.color oneDark.sub ]
+            ++ [ width fill
+               , padding 5
+               , mouseOver [ BG.color oneDark.sub ]
                ]
         )
         { onPress = Just (SelectPick (onSelect option))
