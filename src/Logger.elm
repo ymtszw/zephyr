@@ -66,13 +66,21 @@ init =
         , pending = []
         , scroll = AtTop
         , payloadFilter = ""
-        , msgFilters = []
+        , msgFilters = defaultFilters
         }
 
 
 historyLimit : Int
 historyLimit =
     1000
+
+
+defaultFilters : List MsgFilter
+defaultFilters =
+    -- Timer ticks are good candidates of default filters
+    [ MsgFilter False "ScanBroker"
+    , MsgFilter False "Discord.Fetch"
+    ]
 
 
 

@@ -922,7 +922,7 @@ fillWithTimers concurrencyFactor cmds =
 setFetchTimerOne : Cmd Msg
 setFetchTimerOne =
     -- We may randomize interval, but each timer drifts naturally so let it be so.
-    setTimeout Fetch 2000
+    setTimeout Fetch 500
 
 
 handleRehydrate : Discord -> Producer.Yield Message Discord Msg
@@ -1526,7 +1526,7 @@ subbedChannelsEl pov =
 
 subbedChannelEl : El.Column Channel Msg
 subbedChannelEl =
-    { header = El.el [ BG.color oneDark.note ] (El.text "Next Fetch")
+    { header = El.el [ BG.color oneDark.note ] (El.text "Name")
     , width = El.fill
     , view =
         \c ->
