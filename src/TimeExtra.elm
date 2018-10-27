@@ -27,9 +27,9 @@ local z po =
         , "/"
         , Time.toDay z po |> String.fromInt
         , " "
-        , Time.toHour z po |> String.fromInt
+        , Time.toHour z po |> String.fromInt |> String.padLeft 2 '0'
         , ":"
-        , Time.toMinute z po |> String.fromInt
+        , Time.toMinute z po |> String.fromInt |> String.padLeft 2 '0'
         ]
 
 
