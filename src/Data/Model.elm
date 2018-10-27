@@ -46,6 +46,7 @@ type alias ColumnSwap =
 type alias Env =
     { serviceWorkerAvailable : Bool
     , indexedDBAvailable : Bool
+    , isLocalDevelopment : Bool
     , clientHeight : Int
     }
 

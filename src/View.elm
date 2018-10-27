@@ -925,9 +925,13 @@ configInnerEl m =
         , El.spacing 10
         ]
         [ El.map ProducerCtrl <| Producer.configsEl m.producerRegistry
-        , El.el [ El.width El.fill, El.alignBottom, El.height El.shrink ] <|
-            El.map LoggerCtrl <|
-                Logger.historyEl m.log
+        , if m.env.isLocalDevelopment then
+            El.el [ El.width El.fill, El.alignBottom, El.height El.shrink ] <|
+                El.map LoggerCtrl <|
+                    Logger.historyEl m.log
+
+          else
+            El.none
         ]
 
 

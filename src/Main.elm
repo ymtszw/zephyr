@@ -447,7 +447,12 @@ main =
 
 log : (Msg -> Model -> ( Model, Cmd Msg )) -> Msg -> Model -> ( Model, Cmd Msg )
 log u msg m =
-    u msg { m | log = Logger.rec m.log (msgToLogEntry msg) }
+    u msg <|
+        if m.env.isLocalDevelopment then
+            { m | log = Logger.rec m.log (msgToLogEntry msg) }
+
+        else
+            m
 
 
 msgToLogEntry : Msg -> Entry
