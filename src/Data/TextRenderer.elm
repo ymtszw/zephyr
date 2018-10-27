@@ -4,6 +4,7 @@ import Data.ColorTheme exposing (ColorTheme)
 import Data.Msg exposing (Msg)
 import Element exposing (Element)
 import Element.Font as Font
+import Html
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
 
@@ -32,7 +33,7 @@ stringOrUrlEl : ColorTheme -> StringOrUrl -> Element Msg
 stringOrUrlEl theme stringOrUrl =
     case stringOrUrl of
         S string ->
-            Element.text string
+            Element.html (Html.text string)
 
         U url ->
             let

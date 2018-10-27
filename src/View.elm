@@ -731,11 +731,6 @@ itemAvatarEl item =
             avatarWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing }
 
 
-avatarSize : Int
-avatarSize =
-    40
-
-
 avatarWithBadgeEl : { badge : Maybe (Element Msg), fallback : String, url : Maybe String } -> Element Msg
 avatarWithBadgeEl { badge, fallback, url } =
     let
@@ -748,6 +743,11 @@ avatarWithBadgeEl { badge, fallback, url } =
                     [ El.alignTop ]
     in
     El.el bottomRightBadge <| El.el [ El.padding 2 ] <| squareIconEl avatarSize fallback <| url
+
+
+avatarSize : Int
+avatarSize =
+    40
 
 
 botIconEl : Element Msg
