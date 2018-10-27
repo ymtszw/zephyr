@@ -1,6 +1,7 @@
 module View exposing (body)
 
 import Array exposing (Array)
+import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column exposing (Column, ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
@@ -24,10 +25,13 @@ import Element.Region exposing (description)
 import Html
 import Html.Attributes exposing (draggable, style)
 import Html.Events
+import Iso8601
 import Json.Decode as D exposing (Decoder)
+import ListExtra as List
 import Logger
 import Octicons
 import String exposing (fromFloat)
+import TimeExtra exposing (ms)
 import Url
 import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
 import View.Select as Select
@@ -218,7 +222,11 @@ notDraggedColumnEl m index column attrs =
                 waitingForFirstItemEl
 
             items ->
-                El.column [ El.width El.fill, El.paddingXY 5 0, El.scrollbarY ] (List.map (itemEl m) items)
+                -- Do note that items are sorted from latest to oldest
+                items
+                    |> List.groupWhile shouldGroup
+                    |> List.map (itemEl m)
+                    |> El.column [ El.width El.fill, El.paddingXY 5 0, El.scrollbarY ]
         ]
 
 
@@ -227,6 +235,26 @@ waitingForFirstItemEl =
     El.el [ El.width El.fill, El.height (El.px 50), El.paddingXY 5 0 ] <|
         El.el [ El.centerX, El.centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
             El.text "Waiting for messages..."
+
+
+shouldGroup : ColumnItem -> ColumnItem -> Bool
+shouldGroup newer older =
+    case ( newer, older ) of
+        ( System _, _ ) ->
+            False
+
+        ( _, System _ ) ->
+            False
+
+        ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
+            shouldGroupDiscordMessage dNewer dOlder
+
+
+shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool
+shouldGroupDiscordMessage dNewer dOlder =
+    (dNewer.channelId == dOlder.channelId)
+        && (dNewer.author == dOlder.author)
+        && (ms dOlder.timestamp + 60000 > ms dNewer.timestamp)
 
 
 draggedColumnEl : Int -> Element Msg
@@ -694,18 +722,25 @@ columnDeleteButtonEl index column =
 -- ITEM
 
 
-itemEl : Model -> ColumnItem -> Element Msg
-itemEl m item =
-    El.row
-        [ El.width El.fill
-        , El.paddingXY 0 5
-        , El.spacing 5
-        , BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }
-        , BD.color oneDark.bd
-        ]
-        [ itemAvatarEl item
-        , itemContentsEl m item
-        ]
+itemEl : Model -> List ColumnItem -> Element Msg
+itemEl m closeItems =
+    -- Reverse, since we want to show closeItems in oldest to latest, opposite from other places
+    case List.reverse closeItems of
+        [] ->
+            -- Should not happen
+            El.none
+
+        item :: items ->
+            El.row
+                [ El.width El.fill
+                , El.paddingXY 0 5
+                , El.spacing 5
+                , BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }
+                , BD.color oneDark.bd
+                ]
+                [ itemAvatarEl item
+                , itemContentsEl m item items
+                ]
 
 
 itemAvatarEl : ColumnItem -> Element Msg
@@ -756,40 +791,61 @@ botIconEl =
         octiconFreeSizeEl 12 Octicons.zap
 
 
-itemContentsEl : Model -> ColumnItem -> Element Msg
-itemContentsEl m item =
+itemContentsEl : Model -> ColumnItem -> List ColumnItem -> Element Msg
+itemContentsEl m item closeItems =
     case item of
-        Product _ (DiscordItem discordMessage) ->
-            discordMessageEl m discordMessage
+        Product offset (DiscordItem discordMessage) ->
+            let
+                unwrap cItem =
+                    case cItem of
+                        Product o (DiscordItem dm) ->
+                            Just ( dm, o )
+
+                        _ ->
+                            Nothing
+            in
+            closeItems
+                |> List.filterMap unwrap
+                |> discordMessageEl m ( discordMessage, offset )
 
         System { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
 
 
-discordMessageEl : Model -> Discord.Message -> Element Msg
-discordMessageEl m discordMessage =
+discordMessageEl : Model -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
+discordMessageEl m ( discordMessage, _ ) closeMessages =
     -- TODO match with official app styling
-    El.column [ El.width El.fill, El.spacing 5, El.alignTop ]
-        [ El.row []
-            [ discordMessageAuthorEl discordMessage ]
-        , El.textColumn [ El.spacingXY 0 10, El.width El.fill ]
-            [ messageToParagraph discordMessage.content
-            ]
+    El.column [ El.width El.fill, El.spacing 5, El.alignTop ] <|
+        (::) (discordMessageHeaderEl m discordMessage) <|
+            List.map (discordMessageBodyEl m) <|
+                (::) discordMessage <|
+                    List.map Tuple.first closeMessages
+
+
+discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
+discordMessageHeaderEl m { author, timestamp } =
+    let
+        userNameEl =
+            El.el [ Font.bold, Font.size (scale12 2) ] <|
+                El.text <|
+                    case author of
+                        UserAuthor user ->
+                            user.username
+
+                        WebhookAuthor user ->
+                            user.username
+    in
+    El.row [ El.spacing 5 ]
+        [ userNameEl
+        , El.el [ Font.color oneDark.note, Font.size (scale12 1) ] (El.text (Iso8601.fromTime timestamp))
         ]
 
 
-discordMessageAuthorEl : Discord.Message -> Element Msg
-discordMessageAuthorEl { author } =
-    let
-        userTextEl user =
-            El.el [ Font.bold, Font.size (scale12 2) ] (El.text user.username)
-    in
-    case author of
-        UserAuthor user ->
-            userTextEl user
-
-        WebhookAuthor user ->
-            userTextEl user
+discordMessageBodyEl : Model -> Discord.Message -> Element Msg
+discordMessageBodyEl m discordMessage =
+    El.textColumn [ El.spacingXY 0 10, El.width El.fill ]
+        [ messageToParagraph discordMessage.content
+        ]
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
