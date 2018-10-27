@@ -9,12 +9,47 @@ import Data.UniqueId exposing (Generator)
 import Expect exposing (Expectation)
 import Fuzz
 import Json.Decode exposing (decodeValue)
+import ListExtra
 import Parser
 import String exposing (fromInt)
 import StringExtra
 import Test exposing (..)
 import Time exposing (Posix)
 import Url
+
+
+
+-- ListExtra
+
+
+testGroupWhile : (Int -> Int -> Bool) -> List Int -> List (List Int) -> Test
+testGroupWhile checker initial expected =
+    test ("should group " ++ Debug.toString initial ++ " to " ++ Debug.toString expected) <|
+        \_ ->
+            initial
+                |> ListExtra.groupWhile checker
+                |> Expect.all
+                    [ Expect.equal expected
+                    , List.concat >> Expect.equal initial
+                    ]
+
+
+listSuite : Test
+listSuite =
+    describe "ListExtra"
+        [ describe "groupWhile"
+            [ testGroupWhile (==) [] []
+            , testGroupWhile (==) [ 0 ] [ [ 0 ] ]
+            , testGroupWhile (==) [ 0, 1, 2 ] [ [ 0 ], [ 1 ], [ 2 ] ]
+            , testGroupWhile (==) [ 0, 0, 2 ] [ [ 0, 0 ], [ 2 ] ]
+            , testGroupWhile (==) [ 0, 1, 1 ] [ [ 0 ], [ 1, 1 ] ]
+            , testGroupWhile (==) [ 0, 1, 0 ] [ [ 0 ], [ 1 ], [ 0 ] ]
+            , testGroupWhile (<) [ 0, 1, 2 ] [ [ 0, 1, 2 ] ]
+            , testGroupWhile (<) [ 0, 1, 0 ] [ [ 0, 1 ], [ 0 ] ]
+            , testGroupWhile (<) [ 2, 1, 0 ] [ [ 2 ], [ 1 ], [ 0 ] ]
+            , testGroupWhile (<) [ 2, 1, 2 ] [ [ 2 ], [ 1, 2 ] ]
+            ]
+        ]
 
 
 
@@ -427,7 +462,8 @@ testLessThan a b =
 suite : Test
 suite =
     describe "test"
-        [ stringSuite
+        [ listSuite
+        , stringSuite
         , arraySuite
         , uniqueIdSuite
         , columnSuite
