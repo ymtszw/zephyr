@@ -8,6 +8,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font exposing (bold)
 import Element.Input
+import Element.Lazy exposing (lazy)
 import Extra exposing (doAfter, ite)
 import Html.Attributes exposing (id, readonly, style, tabindex)
 import Html.Events
@@ -80,6 +81,8 @@ defaultFilters =
     -- Timer ticks are good candidates of default filters
     [ MsgFilter False "ScanBroker"
     , MsgFilter False "Discord.Fetch"
+    , MsgFilter False "Logger.ScrollStart"
+    , MsgFilter False "Logger.ViewportOk"
     ]
 
 
@@ -341,8 +344,9 @@ payloadColumnEl =
     { header = el [ BG.color oneDark.note ] <| text "Payload"
     , width = fillPortion 2
     , view =
-        \entry ->
-            column [ width fill, spacing 2 ] (List.map payloadEl entry.payload)
+        lazy <|
+            \entry ->
+                column [ width fill, spacing 2 ] (List.map payloadEl entry.payload)
     }
 
 
