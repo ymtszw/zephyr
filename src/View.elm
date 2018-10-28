@@ -854,15 +854,36 @@ discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
     textColumn
         [ width fill
-        , BD.color (Maybe.withDefault oneDark.sub embed.color)
+        , padding 5
+        , spacing 5
+        , BD.color (Maybe.withDefault oneDark.active embed.color)
         , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
+        , BD.rounded 3
         , BG.color (brightness -2 oneDark.main)
         , Font.size (scale12 1)
         , htmlAttribute (style "white-space" "pre-wrap")
         , htmlAttribute (style "word-break" "break-all")
         ]
-        [ embed.description |> Maybe.map messageToParagraph |> Maybe.withDefault none
+        [ embed.author |> Maybe.map embedAuthorEl |> Maybe.withDefault none
+        , embed.description |> Maybe.map messageToParagraph |> Maybe.withDefault none
         ]
+
+
+embedAuthorEl : Discord.EmbedAuthor -> Element Msg
+embedAuthorEl author =
+    let
+        authorRow =
+            row [ spacing 5, Font.bold ]
+                [ squareIconEl (avatarSize // 2) author.name (Maybe.map Url.toString author.proxyIconUrl)
+                , text author.name
+                ]
+    in
+    case author.url of
+        Just url ->
+            link [] { url = Url.toString url, label = authorRow }
+
+        Nothing ->
+            authorRow
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
