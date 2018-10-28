@@ -30,7 +30,7 @@ import Json.Decode as D exposing (Decoder)
 import ListExtra as List
 import Logger
 import Octicons
-import String exposing (fromFloat)
+import String exposing (fromFloat, fromInt)
 import TimeExtra as Time exposing (ms)
 import Url
 import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
@@ -877,40 +877,45 @@ discordMessageBodyEl m discordMessage =
 
 discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
-    [ embed.author |> Maybe.map discordEmbedAuthorEl
-    , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
-    , embed.description |> Maybe.map messageToParagraph
-    ]
-        |> List.filterMap identity
-        |> textColumn
-            [ width fill
-            , padding 5
-            , spacing 5
-            , BD.color (Maybe.withDefault oneDark.active embed.color)
-            , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
-            , BD.rounded 3
-            , BG.color (brightness -2 oneDark.main)
-            , Font.size (scale12 1)
-            , htmlAttribute (style "white-space" "pre-wrap")
-            , htmlAttribute (style "word-break" "break-all")
-            ]
+    row
+        [ padding 5
+        , spacing 5
+        , BG.color (brightness -2 oneDark.main)
+        , BD.color (Maybe.withDefault oneDark.active embed.color)
+        , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
+        , BD.rounded 3
+        ]
+        [ [ embed.author |> Maybe.map discordEmbedAuthorEl
+          , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
+          , embed.description |> Maybe.map messageToParagraph
+          ]
+            |> List.filterMap identity
+            |> textColumn
+                [ width fill
+                , spacing 5
+                , Font.size (scale12 1)
+                , htmlAttribute (style "white-space" "pre-wrap")
+                , htmlAttribute (style "word-break" "break-all")
+                ]
+        , embed.thumbnail |> Maybe.map discordEmbedThumbnailEl |> Maybe.withDefault none
+        ]
 
 
 discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
 discordEmbedAuthorEl author =
     let
-        authorRow =
-            row [ spacing 5, Font.bold ]
-                [ squareIconEl (avatarSize // 2) author.name (Maybe.map Url.toString author.proxyIconUrl)
-                , paragraph [] [ text author.name ]
-                ]
-    in
-    case author.url of
-        Just url ->
-            link [] { url = Url.toString url, label = authorRow }
+        wrapWithLink element =
+            case author.url of
+                Just url ->
+                    link [] { url = Url.toString url, label = element }
 
-        Nothing ->
-            authorRow
+                Nothing ->
+                    element
+    in
+    row [ spacing 5, Font.bold ]
+        [ wrapWithLink <| squareIconEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
+        , paragraph [] [ wrapWithLink <| text author.name ]
+        ]
 
 
 discordEmbedTitleEl : Maybe Url.Url -> String -> Element Msg
@@ -923,6 +928,40 @@ discordEmbedTitleEl urlMaybe title =
             Nothing ->
                 text title
         ]
+
+
+discordEmbedThumbnailEl : Discord.EmbedImage -> Element Msg
+discordEmbedThumbnailEl embedImage =
+    let
+        src =
+            embedImage.proxyUrl |> Maybe.withDefault embedImage.url
+
+        thumbnail =
+            case ( embedImage.width, embedImage.height ) of
+                ( Just w, Just h ) ->
+                    let
+                        ( queryW, queryH ) =
+                            if w <= maxThumbnailWidth then
+                                ( w, h )
+
+                            else
+                                ( maxThumbnailWidth, round <| toFloat h * (toFloat maxThumbnailWidth / toFloat w) )
+                    in
+                    image [ width (px queryW), height shrink ]
+                        { src = Url.toString src ++ "?width=" ++ fromInt queryW ++ "&height=" ++ fromInt queryH
+                        , description = "Thumbnail"
+                        }
+
+                _ ->
+                    image [ width (shrink |> maximum maxThumbnailWidth) ]
+                        { src = Url.toString src, description = "Thumbnail" }
+    in
+    link [ alignTop, alignRight ] { url = Url.toString embedImage.url, label = thumbnail }
+
+
+maxThumbnailWidth : Int
+maxThumbnailWidth =
+    60
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
