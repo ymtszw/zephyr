@@ -1,4 +1,4 @@
-module Json.DecodeExtra exposing (conditional, leakyList, maybeField, succeedIf, tag, tagged, tagged2, tagged3, url, when)
+module Json.DecodeExtra exposing (conditional, fromResult, leakyList, maybeField, succeedIf, tag, tagged, tagged2, tagged3, url, when)
 
 import Json.Decode exposing (..)
 import Url
@@ -143,3 +143,13 @@ url =
                     Nothing ->
                         fail ("URL is serialized incorrectly: " ++ urlString)
             )
+
+
+fromResult : String -> Result x a -> Decoder a
+fromResult message result =
+    case result of
+        Ok a ->
+            succeed a
+
+        Err _ ->
+            fail message
