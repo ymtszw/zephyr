@@ -10,8 +10,8 @@ import Data.Item exposing (Item(..))
 import Data.Model exposing (ColumnSwap, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
-import Data.Producer.Discord as Discord exposing (Author(..), Channel, Guild)
-import Data.Producer.FetchStatus exposing (FetchStatus(..))
+import Data.Producer.Discord as Discord
+import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Data.TextRenderer exposing (TextRenderer)
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -470,17 +470,43 @@ newFilterAtomEl tagger m filterId =
 filterAtomInputEl : (FilterAtom -> Msg) -> Model -> String -> Maybe FilterAtom -> Element Msg
 filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
     let
-        discordMaterial =
-            Producer.discordFilterAtomMaterial m.producerRegistry
+        material =
+            filterAtomMaterial m.producerRegistry
     in
     row [ width (fill |> minimum 0), spacing 3 ]
-        [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
+        [ filterAtomTypeSelectEl tagger m.viewState.selectState material (filterAtomId ++ "-typeSelect") filterAtomMaybe
+        , filterAtomVariableInputEl tagger m.viewState.selectState material (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
 
 
-filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMaybe =
+type alias FilterAtomMaterial =
+    { ofDiscordChannel : Maybe ( FilterAtom, Dict String Discord.Channel )
+    }
+
+
+filterAtomMaterial : ProducerRegistry -> FilterAtomMaterial
+filterAtomMaterial producerRegistry =
+    { ofDiscordChannel =
+        case producerRegistry |> Producer.getDiscord |> Maybe.andThen Discord.getPov of
+            Just { channels } ->
+                let
+                    filtered =
+                        Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
+                in
+                case Dict.values filtered of
+                    [] ->
+                        Nothing
+
+                    c :: _ ->
+                        Just ( OfDiscordChannel c.id, filtered )
+
+            Nothing ->
+                Nothing
+    }
+
+
+filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
+filterAtomTypeSelectEl tagger selectState material selectId filterAtomMaybe =
     el [ width (fill |> maximum 120) ] <|
         select
             { id = selectId
@@ -489,7 +515,7 @@ filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMay
             , noMsgOptionEl = filterAtomTypeOptionEl
             }
             selectState
-            (availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe)
+            (availableFilterAtomsWithDefaultArguments material filterAtomMaybe)
 
 
 filterAtomTypeOptionEl : FilterAtom -> Element msg
@@ -509,26 +535,25 @@ filterAtomTypeOptionEl filterAtom =
                 text "Remove this filter"
 
 
-availableFilterAtomsWithDefaultArguments : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
-availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe =
-    basicFilterAtoms filterAtomMaybe
-        ++ discordFilterAtoms discordMaterial filterAtomMaybe
+availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
+availableFilterAtomsWithDefaultArguments material filterAtomMaybe =
+    replaceWithSelected filterAtomMaybe
+        (basicFilterAtoms ++ materialToDefaultFilterAtoms material)
         ++ Maybe.withDefault [] (Maybe.map (always [ RemoveMe ]) filterAtomMaybe)
 
 
-basicFilterAtoms : Maybe FilterAtom -> List FilterAtom
-basicFilterAtoms filterAtomMaybe =
-    replaceWithSelected filterAtomMaybe
-        [ ByMessage "text"
-        , ByMedia HasNone
+basicFilterAtoms : List FilterAtom
+basicFilterAtoms =
+    [ ByMessage "text"
+    , ByMedia HasNone
+    ]
+
+
+materialToDefaultFilterAtoms : FilterAtomMaterial -> List FilterAtom
+materialToDefaultFilterAtoms material =
+    List.filterMap identity
+        [ Maybe.map Tuple.first material.ofDiscordChannel
         ]
-
-
-discordFilterAtoms : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
-discordFilterAtoms ofDiscordChannel filterAtomMaybe =
-    replaceWithSelected filterAtomMaybe <|
-        List.filterMap identity <|
-            [ Maybe.map Tuple.first ofDiscordChannel ]
 
 
 replaceWithSelected : Maybe FilterAtom -> List FilterAtom -> List FilterAtom
@@ -556,8 +581,8 @@ replaceWithSelected filterAtomMaybe filterAtoms =
             filterAtoms
 
 
-filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomMaybe =
+filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
+filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
     case filterAtomMaybe of
         Just (ByMessage query) ->
             filterAtomVariableTextInputEl (tagger << ByMessage) query
@@ -568,10 +593,10 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
 
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
-                case discordMaterial of
+                case material.ofDiscordChannel of
                     Just ( _, channels ) ->
-                        ( Dict.values channels |> List.sortWith channelSorter |> List.map .id
-                        , discordChannelOptionEl channels
+                        ( Dict.values channels |> List.sortWith discordChannelSorter |> List.map .id
+                        , discordChannelWithGuildIconEl channels
                         )
 
                     Nothing ->
@@ -585,8 +610,8 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
             none
 
 
-channelSorter : Channel -> Channel -> Order
-channelSorter a b =
+discordChannelSorter : Discord.Channel -> Discord.Channel -> Order
+discordChannelSorter a b =
     let
         gName =
             -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
@@ -642,7 +667,7 @@ mediaTypeOptionEl mediaType =
             text "Movie"
 
 
-discordGuildOptionEl : Dict String Guild -> String -> Element msg
+discordGuildOptionEl : Dict String Discord.Guild -> String -> Element msg
 discordGuildOptionEl guilds gId =
     case Dict.get gId guilds of
         Just guild ->
@@ -653,8 +678,8 @@ discordGuildOptionEl guilds gId =
             text gId
 
 
-discordChannelOptionEl : Dict String Channel -> String -> Element msg
-discordChannelOptionEl channels cId =
+discordChannelWithGuildIconEl : Dict String Discord.Channel -> String -> Element msg
+discordChannelWithGuildIconEl channels cId =
     case Dict.get cId channels of
         Just channel ->
             case channel.guildMaybe of
@@ -748,14 +773,14 @@ itemAvatarEl item =
     case item of
         Product _ (DiscordItem { author }) ->
             case author of
-                UserAuthor user ->
+                Discord.UserAuthor user ->
                     avatarWithBadgeEl
                         { badge = Nothing
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
                         }
 
-                WebhookAuthor user ->
+                Discord.WebhookAuthor user ->
                     avatarWithBadgeEl
                         { badge = Just botIconEl
                         , fallback = user.username
@@ -823,16 +848,16 @@ discordMessageEl m ( discordMessage, _ ) closeMessages =
 
 
 discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
-discordMessageHeaderEl m { author, timestamp } =
+discordMessageHeaderEl m { author, timestamp, channelId } =
     let
         userNameEl =
             el [ Font.bold, Font.size (scale12 2) ] <|
                 text <|
                     case author of
-                        UserAuthor user ->
+                        Discord.UserAuthor user ->
                             user.username
 
-                        WebhookAuthor user ->
+                        Discord.WebhookAuthor user ->
                             user.username
     in
     row [ spacing 5 ]

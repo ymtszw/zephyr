@@ -3,7 +3,7 @@ module Data.Producer.Discord exposing
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update, configEl
-    , FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
+    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus
     , guildSmallIconEl
     )
 
@@ -35,7 +35,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
+@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus
 
 
 ## View APIs
@@ -1614,31 +1614,8 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     "https://cdn.discordapp.com" ++ endpoint ++ size
 
 
-type alias FilterAtomMaterial =
-    Maybe ( FilterAtom, Dict String Channel )
-
-
-filterAtomMaterial : Discord -> FilterAtomMaterial
-filterAtomMaterial discord =
-    case availablePov discord of
-        Just { channels } ->
-            let
-                filtered =
-                    Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
-            in
-            case Dict.values filtered of
-                [] ->
-                    Nothing
-
-                c :: _ ->
-                    Just ( OfDiscordChannel c.id, filtered )
-
-        Nothing ->
-            Nothing
-
-
-availablePov : Discord -> Maybe POV
-availablePov discord =
+getPov : Discord -> Maybe POV
+getPov discord =
     case discord of
         TokenGiven _ ->
             Nothing

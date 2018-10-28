@@ -214,7 +214,7 @@ updateProducerFetchStatuses m =
     { m
         | producerRegistry =
             m.producerRegistry
-                |> Producer.discordSetChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore)
+                |> Producer.setDiscordChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore)
     }
 
 

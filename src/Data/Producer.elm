@@ -1,7 +1,7 @@
 module Data.Producer exposing
     ( ProducerRegistry, Msg(..), GrossYield, encodeRegistry, registryDecoder
     , initRegistry, reloadAll, update, configsEl
-    , discordFilterAtomMaterial, discordSetChannelFetchStatus
+    , getDiscord, setDiscordChannelFetchStatus
     )
 
 {-| Types and functions representing data produecr in Zephyr.
@@ -19,7 +19,7 @@ module Data.Producer exposing
 
 ## Runtime APIs
 
-@docs discordFilterAtomMaterial, discordSetChannelFetchStatus
+@docs getDiscord, setDiscordChannelFetchStatus
 
 -}
 
@@ -246,16 +246,15 @@ configWrapEl tagger title element =
 -- RUNTIME APIs
 
 
-discordFilterAtomMaterial : ProducerRegistry -> Discord.FilterAtomMaterial
-discordFilterAtomMaterial producerRegistry =
-    case Dict.get "discord" producerRegistry of
-        Just (DiscordProducer discord) ->
-            Discord.filterAtomMaterial discord
-
-        _ ->
-            Nothing
+getDiscord : ProducerRegistry -> Maybe Discord
+getDiscord producerRegistry =
+    producerRegistry |> Dict.get "discord" |> unwrapDiscord
 
 
-discordSetChannelFetchStatus : List String -> ProducerRegistry -> ProducerRegistry
-discordSetChannelFetchStatus channelIds producerRegistry =
-    Dict.update "discord" (unwrapDiscord >> Maybe.map (Discord.setChannelFetchStatus channelIds >> DiscordProducer)) producerRegistry
+setDiscordChannelFetchStatus : List String -> ProducerRegistry -> ProducerRegistry
+setDiscordChannelFetchStatus channelIds producerRegistry =
+    let
+        updater =
+            unwrapDiscord >> Maybe.map (Discord.setChannelFetchStatus channelIds >> DiscordProducer)
+    in
+    Dict.update "discord" updater producerRegistry
