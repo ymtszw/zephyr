@@ -44,7 +44,7 @@ init env _ navKey =
         |> andDo
             [ adjustMaxHeight
             , getTimeZone
-            , scheduleNextScan
+            , ite env.indexedDBAvailable Cmd.none scheduleNextScan -- Wait scanning until Load
             ]
 
 
@@ -143,7 +143,7 @@ update msg ({ viewState, env } as m) =
 
         Load val ->
             -- Persist on Load, migrating to new encoding format if any
-            persist <| reloadProducers <| ( loadSavedState m val, Cmd.none )
+            persist <| reloadProducers <| ( loadSavedState m val, ite m.env.indexedDBAvailable scheduleNextScan Cmd.none )
 
         ToggleConfig opened ->
             ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
@@ -209,12 +209,15 @@ updateColumn cId m updater =
 
 
 updateProducerFetchStatuses : Model -> Model
-updateProducerFetchStatuses m =
+updateProducerFetchStatuses ({ producerRegistry } as m) =
     -- This function should "fix" corrupted Producer statuses.
     { m
         | producerRegistry =
-            m.producerRegistry
-                |> Producer.setDiscordChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore)
+            { producerRegistry
+                | discord =
+                    producerRegistry.discord
+                        |> Maybe.map (Discord.setChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore))
+            }
     }
 
 

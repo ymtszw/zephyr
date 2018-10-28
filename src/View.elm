@@ -487,7 +487,7 @@ type alias FilterAtomMaterial =
 filterAtomMaterial : ProducerRegistry -> FilterAtomMaterial
 filterAtomMaterial producerRegistry =
     { ofDiscordChannel =
-        case producerRegistry |> Producer.getDiscord |> Maybe.andThen Discord.getPov of
+        case producerRegistry.discord |> Maybe.andThen Discord.getPov of
             Just { channels } ->
                 let
                     filtered =

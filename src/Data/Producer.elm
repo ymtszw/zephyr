@@ -1,7 +1,6 @@
 module Data.Producer exposing
     ( ProducerRegistry, Msg(..), GrossYield, encodeRegistry, registryDecoder
     , initRegistry, reloadAll, update, configsEl
-    , getDiscord, setDiscordChannelFetchStatus
     )
 
 {-| Types and functions representing data produecr in Zephyr.
@@ -15,11 +14,6 @@ module Data.Producer exposing
 ## Component APIs
 
 @docs initRegistry, reloadAll, update, configsEl
-
-
-## Runtime APIs
-
-@docs getDiscord, setDiscordChannelFetchStatus
 
 -}
 
@@ -46,60 +40,50 @@ import View.Parts exposing (scale12)
 -- MODEL
 
 
-{-| Runtime dictionary of registered Producers.
-
-Websocket message routing mechanism itself is determined at compile-time,
-though messages at runtime are dispatched to respective handlers
-ONLY WHEN corresponding Producers are actaully registered.
-
--}
 type alias ProducerRegistry =
-    Dict String Producer
-
-
-type Producer
-    = DiscordProducer Discord
+    { discord : Maybe Discord
+    }
 
 
 registryDecoder : Decoder ProducerRegistry
 registryDecoder =
-    D.list keyProducerDecoder |> D.map Dict.fromList
-
-
-keyProducerDecoder : Decoder ( String, Producer )
-keyProducerDecoder =
     D.oneOf
-        [ D.tagged "Discord" (DiscordProducer >> Tuple.pair "discord") Discord.decoder
-
-        -- Old version; to be removed after migration
-        , Discord.decoder |> D.map (DiscordProducer >> Tuple.pair "discord")
+        [ D.map ProducerRegistry (D.maybeField "discord" Discord.decoder)
+        , D.map ProducerRegistry oldRegistryDecoder -- Migration
         ]
 
 
-{-| Encode ProducerRegistry.
+oldRegistryDecoder : Decoder (Maybe Discord)
+oldRegistryDecoder =
+    D.list oldProducerDecoder
+        |> D.andThen
+            (\producers ->
+                case producers of
+                    discord :: _ ->
+                        D.succeed (Just discord)
 
-Notice that we encode Dict into JSArray.
-This is to ensure Dict key always properly represents its value Producer.
-(e.g. key MUST be "discord" if the JSObject was decoded into DiscordProducer)
+                    _ ->
+                        D.succeed Nothing
+            )
 
--}
+
+oldProducerDecoder : Decoder Discord
+oldProducerDecoder =
+    D.oneOf
+        [ D.tagged "Discord" identity Discord.decoder
+        , Discord.decoder
+        ]
+
+
 encodeRegistry : ProducerRegistry -> E.Value
 encodeRegistry producerRegistry =
-    producerRegistry
-        |> Dict.toList
-        |> E.list encodeProducer
-
-
-encodeProducer : ( String, Producer ) -> E.Value
-encodeProducer ( _, producer ) =
-    case producer of
-        DiscordProducer discord ->
-            E.tagged "Discord" (Discord.encode discord)
+    E.object
+        [ ( "discord", E.maybe Discord.encode producerRegistry.discord ) ]
 
 
 initRegistry : ProducerRegistry
 initRegistry =
-    Dict.empty
+    { discord = Nothing }
 
 
 
@@ -110,27 +94,12 @@ initRegistry =
 -}
 reloadAll : ProducerRegistry -> ( ProducerRegistry, Cmd Msg )
 reloadAll producerRegistry =
-    Dict.foldl reloadOne ( Dict.empty, Cmd.none ) producerRegistry
+    case Maybe.map Discord.reload producerRegistry.discord of
+        Just ( newDiscord, discordCmd ) ->
+            ( { producerRegistry | discord = Just newDiscord }, Cmd.map DiscordMsg discordCmd )
 
-
-reloadOne : String -> Producer -> ( ProducerRegistry, Cmd Msg ) -> ( ProducerRegistry, Cmd Msg )
-reloadOne key producer prev =
-    -- Currently there is no Realtime Producer
-    -- And it is impossible to deregister Producer on reload (reload API not accepting `Maybe state`, just `state`)
-    case producer of
-        DiscordProducer discord ->
-            Discord.reload discord |> saveStateAndBatchCmd key DiscordProducer DiscordMsg prev
-
-
-saveStateAndBatchCmd :
-    String
-    -> (state -> Producer)
-    -> (msg -> Msg)
-    -> ( ProducerRegistry, Cmd Msg )
-    -> ( state, Cmd msg )
-    -> ( ProducerRegistry, Cmd Msg )
-saveStateAndBatchCmd key stateTagger msgTagger ( prevRegistry, prevCmd ) ( state, cmd ) =
-    ( Dict.insert key (stateTagger state) prevRegistry, Cmd.batch [ Cmd.map msgTagger cmd, prevCmd ] )
+        Nothing ->
+            ( producerRegistry, Cmd.none )
 
 
 
@@ -157,53 +126,13 @@ update : Msg -> ProducerRegistry -> GrossYield
 update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
-            updateProducer "discord" DiscordItem DiscordProducer DiscordMsg (unwrapDiscord >> Discord.update dMsg) producerRegistry
-
-
-updateProducer :
-    String
-    -> (item -> Item)
-    -> (state -> Producer)
-    -> (msg -> Msg)
-    -> (Maybe Producer -> Yield item state msg)
-    -> ProducerRegistry
-    -> GrossYield
-updateProducer key itemTagger stateTagger msgTagger producerUpdate producerRegistry =
-    producerRegistry
-        |> Dict.get key
-        |> producerUpdate
-        |> updateProducerRegistry key itemTagger stateTagger msgTagger producerRegistry
-
-
-updateProducerRegistry :
-    String
-    -> (item -> Item)
-    -> (state -> Producer)
-    -> (msg -> Msg)
-    -> ProducerRegistry
-    -> Yield item state msg
-    -> GrossYield
-updateProducerRegistry key itemTagger stateTagger msgTagger producerRegistry yield =
-    case yield.newState of
-        Just state ->
-            GrossYield (List.map itemTagger yield.items)
-                (Dict.insert key (stateTagger state) producerRegistry)
-                (Cmd.map msgTagger yield.cmd)
-
-        Nothing ->
-            GrossYield (List.map itemTagger yield.items)
-                (Dict.remove key producerRegistry)
-                (Cmd.map msgTagger yield.cmd)
-
-
-unwrapDiscord : Maybe Producer -> Maybe Discord
-unwrapDiscord producerMaybe =
-    case producerMaybe of
-        Just (DiscordProducer discord) ->
-            Just discord
-
-        _ ->
-            Nothing
+            let
+                discordYield =
+                    Discord.update dMsg producerRegistry.discord
+            in
+            GrossYield (List.map DiscordItem discordYield.items)
+                { producerRegistry | discord = discordYield.newState }
+                (Cmd.map DiscordMsg discordYield.cmd)
 
 
 
@@ -220,10 +149,7 @@ configsEl producerRegistry =
         , BD.rounded 10
         , Font.size (scale12 2)
         ]
-        [ Dict.get "discord" producerRegistry
-            |> unwrapDiscord
-            |> Discord.configEl
-            |> configWrapEl DiscordMsg "Discord"
+        [ configWrapEl DiscordMsg "Discord" <| Discord.configEl producerRegistry.discord
         ]
 
 
@@ -240,21 +166,3 @@ configWrapEl tagger title element =
                 (text title)
             , element
             ]
-
-
-
--- RUNTIME APIs
-
-
-getDiscord : ProducerRegistry -> Maybe Discord
-getDiscord producerRegistry =
-    producerRegistry |> Dict.get "discord" |> unwrapDiscord
-
-
-setDiscordChannelFetchStatus : List String -> ProducerRegistry -> ProducerRegistry
-setDiscordChannelFetchStatus channelIds producerRegistry =
-    let
-        updater =
-            unwrapDiscord >> Maybe.map (Discord.setChannelFetchStatus channelIds >> DiscordProducer)
-    in
-    Dict.update "discord" updater producerRegistry
