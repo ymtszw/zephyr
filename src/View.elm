@@ -23,7 +23,7 @@ import Element.Input
 import Element.Keyed
 import Element.Region exposing (description)
 import Html
-import Html.Attributes exposing (draggable, style)
+import Html.Attributes exposing (draggable, style, title)
 import Html.Events
 import Iso8601
 import Json.Decode as D exposing (Decoder)
@@ -812,7 +812,7 @@ avatarSize =
 
 botIconEl : Element Msg
 botIconEl =
-    el [ padding 1, BG.color oneDark.succ, BD.rounded 2 ] <|
+    el [ padding 1, BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
         octiconFreeSizeEl 12 Octicons.zap
 
 
@@ -877,30 +877,32 @@ discordMessageBodyEl m discordMessage =
 
 discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
-    textColumn
-        [ width fill
-        , padding 5
-        , spacing 5
-        , BD.color (Maybe.withDefault oneDark.active embed.color)
-        , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
-        , BD.rounded 3
-        , BG.color (brightness -2 oneDark.main)
-        , Font.size (scale12 1)
-        , htmlAttribute (style "white-space" "pre-wrap")
-        , htmlAttribute (style "word-break" "break-all")
-        ]
-        [ embed.author |> Maybe.map embedAuthorEl |> Maybe.withDefault none
-        , embed.description |> Maybe.map messageToParagraph |> Maybe.withDefault none
-        ]
+    [ embed.author |> Maybe.map discordEmbedAuthorEl
+    , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
+    , embed.description |> Maybe.map messageToParagraph
+    ]
+        |> List.filterMap identity
+        |> textColumn
+            [ width fill
+            , padding 5
+            , spacing 5
+            , BD.color (Maybe.withDefault oneDark.active embed.color)
+            , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
+            , BD.rounded 3
+            , BG.color (brightness -2 oneDark.main)
+            , Font.size (scale12 1)
+            , htmlAttribute (style "white-space" "pre-wrap")
+            , htmlAttribute (style "word-break" "break-all")
+            ]
 
 
-embedAuthorEl : Discord.EmbedAuthor -> Element Msg
-embedAuthorEl author =
+discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
+discordEmbedAuthorEl author =
     let
         authorRow =
             row [ spacing 5, Font.bold ]
                 [ squareIconEl (avatarSize // 2) author.name (Maybe.map Url.toString author.proxyIconUrl)
-                , text author.name
+                , paragraph [] [ text author.name ]
                 ]
     in
     case author.url of
@@ -909,6 +911,18 @@ embedAuthorEl author =
 
         Nothing ->
             authorRow
+
+
+discordEmbedTitleEl : Maybe Url.Url -> String -> Element Msg
+discordEmbedTitleEl urlMaybe title =
+    paragraph [ Font.color oneDark.link ]
+        [ case urlMaybe of
+            Just url ->
+                link [] { url = Url.toString url, label = text title }
+
+            Nothing ->
+                text title
+        ]
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg

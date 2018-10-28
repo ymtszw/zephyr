@@ -69,7 +69,6 @@ squareIconEl size name urlMaybe =
         , alignTop
         , BD.rounded 5
         , htmlAttribute (Html.Attributes.title name)
-        , pointer
         , attr
         ]
         fallbackContent
