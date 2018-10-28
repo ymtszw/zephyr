@@ -1239,7 +1239,9 @@ fetchOne token channel =
         query =
             case ( channel.fetchStatus, channel.lastMessageId ) of
                 ( NeverFetched, Just (MessageId mId) ) ->
-                    Just ("around=" ++ mId)
+                    -- Retrive messages greedily on initial fetch; 100 is the maximum
+                    -- <https://discordapp.com/developers/docs/resources/channel#get-channel-messages>
+                    Just ("limit=100&before=" ++ mId)
 
                 ( NeverFetched, Nothing ) ->
                     Nothing
