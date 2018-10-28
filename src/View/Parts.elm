@@ -1,6 +1,6 @@
 module View.Parts exposing (disabled, disabledColor, noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
 
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (css, oneDark)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -44,21 +44,8 @@ octiconEl =
 
 octiconFreeSizeEl : Int -> (Octicons.Options -> Html.Html msg) -> Element msg
 octiconFreeSizeEl size octicon =
-    let
-        { red, green, blue } =
-            toRgb oneDark.note
-
-        colorStr =
-            "rgb("
-                ++ String.fromFloat (255 * red)
-                ++ ","
-                ++ String.fromFloat (255 * green)
-                ++ ","
-                ++ String.fromFloat (255 * blue)
-                ++ ")"
-    in
     Octicons.defaultOptions
-        |> Octicons.color colorStr
+        |> Octicons.color (css oneDark.note)
         |> Octicons.size size
         |> octicon
         |> html
