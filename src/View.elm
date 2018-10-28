@@ -880,8 +880,8 @@ discordEmbedEl embed =
     row
         [ padding 5
         , spacing 5
-        , BG.color (brightness -2 oneDark.main)
-        , BD.color (Maybe.withDefault oneDark.active embed.color)
+        , BG.color (brightness -1 oneDark.main)
+        , BD.color (Maybe.withDefault oneDark.bg embed.color)
         , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
         , BD.rounded 3
         ]
