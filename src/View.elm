@@ -2,7 +2,7 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Broker exposing (Offset)
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (brightness, oneDark)
 import Data.Column as Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
@@ -846,6 +846,22 @@ discordMessageBodyEl : Model -> Discord.Message -> Element Msg
 discordMessageBodyEl m discordMessage =
     textColumn [ spacingXY 0 10, width fill ]
         [ messageToParagraph discordMessage.content
+        , column [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
+        ]
+
+
+discordEmbedEl : Discord.Embed -> Element Msg
+discordEmbedEl embed =
+    textColumn
+        [ width fill
+        , BD.color (Maybe.withDefault oneDark.sub embed.color)
+        , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
+        , BG.color (brightness -2 oneDark.main)
+        , Font.size (scale12 1)
+        , htmlAttribute (style "white-space" "pre-wrap")
+        , htmlAttribute (style "word-break" "break-all")
+        ]
+        [ embed.description |> Maybe.map messageToParagraph |> Maybe.withDefault none
         ]
 
 
@@ -864,12 +880,14 @@ defaultItemEl message mediaMaybe =
 
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
-    paragraph
-        [ Font.size (scale12 1)
-        , htmlAttribute (style "white-space" "pre-wrap")
-        , htmlAttribute (style "word-break" "break-all")
-        ]
-        (Data.TextRenderer.default oneDark message)
+    message
+        |> Data.TextRenderer.default oneDark
+        |> List.map html
+        |> paragraph
+            [ Font.size (scale12 1)
+            , htmlAttribute (style "white-space" "pre-wrap")
+            , htmlAttribute (style "word-break" "break-all")
+            ]
 
 
 mediaEl : Media -> Element Msg
