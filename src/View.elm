@@ -33,14 +33,14 @@ import Octicons
 import String exposing (fromFloat, fromInt)
 import TimeExtra as Time exposing (ms)
 import Url
-import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
+import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
 
 body : Model -> List (Html.Html Msg)
 body m =
     [ layout [ dragEventHandlers m.viewState.columnSwapMaybe ] (bodyEl m)
-    , fancyScroll
+    , manualStyle
     ]
 
 
@@ -851,14 +851,19 @@ discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
 discordMessageHeaderEl m { author, timestamp, channelId } =
     let
         userNameEl =
-            paragraph [ alignLeft, Font.bold, Font.size (scale12 2) ]
-                [ text <|
-                    case author of
-                        Discord.UserAuthor user ->
-                            user.username
+            breakP
+                [ alignLeft
+                , Font.bold
+                , Font.size (scale12 2)
+                ]
+                [ html <|
+                    Html.text <|
+                        case author of
+                            Discord.UserAuthor user ->
+                                user.username
 
-                        Discord.WebhookAuthor user ->
-                            user.username
+                            Discord.WebhookAuthor user ->
+                                user.username
                 ]
     in
     row [ width fill, spacing 5 ]
@@ -884,12 +889,10 @@ discordEmbedEl embed =
     , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth embed.url)
     ]
         |> List.filterMap identity
-        |> textColumn
+        |> breakTColumn
             [ width fill
             , spacing 5
             , Font.size (scale12 1)
-            , htmlAttribute (style "white-space" "pre-wrap")
-            , htmlAttribute (style "word-break" "break-all")
             ]
         |> discordSmartThumbnailEl embed
 
@@ -1032,11 +1035,7 @@ messageToParagraph message =
     message
         |> Data.TextRenderer.default oneDark
         |> List.map html
-        |> paragraph
-            [ Font.size (scale12 1)
-            , htmlAttribute (style "white-space" "pre-wrap")
-            , htmlAttribute (style "word-break" "break-all")
-            ]
+        |> breakP [ Font.size (scale12 1) ]
 
 
 mediaEl : Media -> Element Msg
@@ -1105,12 +1104,3 @@ configInnerEl m =
           else
             none
         ]
-
-
-
--- UNSAFE STYLE
-
-
-fancyScroll : Html.Html Msg
-fancyScroll =
-    Html.node "style" [] [ Html.text "::-webkit-scrollbar{display:none;}" ]

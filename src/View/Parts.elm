@@ -1,4 +1,27 @@
-module View.Parts exposing (disabled, disabledColor, noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
+module View.Parts exposing
+    ( noneAttr, breakP, breakT, breakTColumn
+    , octiconEl, octiconFreeSizeEl, squareIconEl
+    , disabled, disabledColor, scale12, manualStyle
+    )
+
+{-| View parts, complementing Element and Html.
+
+
+## Essenstials
+
+@docs noneAttr, breakP, breakT, breakTColumn
+
+
+## Icons
+
+@docs octiconEl, octiconFreeSizeEl, squareIconEl
+
+
+## Styles
+
+@docs disabled, disabledColor, scale12, manualStyle
+
+-}
 
 import Data.ColorTheme exposing (css, oneDark)
 import Element exposing (..)
@@ -6,7 +29,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Html
-import Html.Attributes
+import Html.Attributes exposing (class, style)
 import Json.Encode
 import Octicons
 
@@ -74,6 +97,39 @@ squareIconEl size name urlMaybe =
         fallbackContent
 
 
+{-| Text that can break on parent inline element width.
+Respects "word-break" and "white-space" styles.
+
+This is a workaround for <https://github.com/mdgriffith/elm-ui/issues/49>
+
+-}
+breakT : String -> Element msg
+breakT =
+    Html.text >> html
+
+
+{-| `paragraph` with "word-break: break-all" and "white-space: pre-wrap".
+
+Suitable for user-generated texts. Use with `breakT`.
+
+-}
+breakP : List (Attribute msg) -> List (Element msg) -> Element msg
+breakP attrs =
+    paragraph <| attrs ++ [ htmlAttribute (class breakClassName) ]
+
+
+breakClassName : String
+breakClassName =
+    "breakEl"
+
+
+{-| `textColumn` with "word-break: break-all" and "white-space: pre-wrap".
+-}
+breakTColumn : List (Attribute msg) -> List (Element msg) -> Element msg
+breakTColumn attrs =
+    textColumn <| htmlAttribute (class breakClassName) :: attrs
+
+
 
 -- FONT SIZE
 
@@ -81,3 +137,16 @@ squareIconEl size name urlMaybe =
 scale12 : Int -> Int
 scale12 =
     modular 12 1.25 >> round
+
+
+
+-- MANUAL STYLE
+
+
+manualStyle : Html.Html msg
+manualStyle =
+    Html.node "style"
+        []
+        [ Html.text "::-webkit-scrollbar{display:none;}"
+        , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}"
+        ]
