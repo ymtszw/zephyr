@@ -2,7 +2,7 @@ module View exposing (body)
 
 import Array exposing (Array)
 import Broker exposing (Offset)
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (brightness, oneDark)
 import Data.Column as Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
@@ -10,8 +10,8 @@ import Data.Item exposing (Item(..))
 import Data.Model exposing (ColumnSwap, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
-import Data.Producer.Discord as Discord exposing (Author(..), Channel, Guild)
-import Data.Producer.FetchStatus exposing (FetchStatus(..))
+import Data.Producer.Discord as Discord
+import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Data.TextRenderer exposing (TextRenderer)
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -23,24 +23,24 @@ import Element.Input
 import Element.Keyed
 import Element.Region exposing (description)
 import Html
-import Html.Attributes exposing (draggable, style)
+import Html.Attributes exposing (draggable, style, title)
 import Html.Events
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import ListExtra as List
 import Logger
 import Octicons
-import String exposing (fromFloat)
+import String exposing (fromFloat, fromInt)
 import TimeExtra as Time exposing (ms)
 import Url
-import View.Parts exposing (noneAttr, octiconEl, octiconFreeSizeEl, scale12, squareIconEl)
+import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
 
 body : Model -> List (Html.Html Msg)
 body m =
     [ layout [ dragEventHandlers m.viewState.columnSwapMaybe ] (bodyEl m)
-    , fancyScroll
+    , manualStyle
     ]
 
 
@@ -161,7 +161,7 @@ otherButtonsEl viewState =
             { onPress = Just (ToggleConfig (not viewState.configOpen))
             , label = el [ centerX, centerY ] <| octiconEl Octicons.gear
             }
-        , link
+        , newTabLink
             [ width (px 40)
             , height (px 40)
             , BD.rounded 10
@@ -470,17 +470,43 @@ newFilterAtomEl tagger m filterId =
 filterAtomInputEl : (FilterAtom -> Msg) -> Model -> String -> Maybe FilterAtom -> Element Msg
 filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
     let
-        discordMaterial =
-            Producer.discordFilterAtomMaterial m.producerRegistry
+        material =
+            filterAtomMaterial m.producerRegistry
     in
     row [ width (fill |> minimum 0), spacing 3 ]
-        [ filterAtomTypeSelectEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger m.viewState.selectState discordMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
+        [ filterAtomTypeSelectEl tagger m.viewState.selectState material (filterAtomId ++ "-typeSelect") filterAtomMaybe
+        , filterAtomVariableInputEl tagger m.viewState.selectState material (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
 
 
-filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMaybe =
+type alias FilterAtomMaterial =
+    { ofDiscordChannel : Maybe ( FilterAtom, Dict String Discord.Channel )
+    }
+
+
+filterAtomMaterial : ProducerRegistry -> FilterAtomMaterial
+filterAtomMaterial producerRegistry =
+    { ofDiscordChannel =
+        case producerRegistry.discord |> Maybe.andThen Discord.getPov of
+            Just { channels } ->
+                let
+                    filtered =
+                        Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
+                in
+                case Dict.values filtered of
+                    [] ->
+                        Nothing
+
+                    c :: _ ->
+                        Just ( OfDiscordChannel c.id, filtered )
+
+            Nothing ->
+                Nothing
+    }
+
+
+filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
+filterAtomTypeSelectEl tagger selectState material selectId filterAtomMaybe =
     el [ width (fill |> maximum 120) ] <|
         select
             { id = selectId
@@ -489,7 +515,7 @@ filterAtomTypeSelectEl tagger selectState discordMaterial selectId filterAtomMay
             , noMsgOptionEl = filterAtomTypeOptionEl
             }
             selectState
-            (availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe)
+            (availableFilterAtomsWithDefaultArguments material filterAtomMaybe)
 
 
 filterAtomTypeOptionEl : FilterAtom -> Element msg
@@ -509,26 +535,25 @@ filterAtomTypeOptionEl filterAtom =
                 text "Remove this filter"
 
 
-availableFilterAtomsWithDefaultArguments : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
-availableFilterAtomsWithDefaultArguments discordMaterial filterAtomMaybe =
-    basicFilterAtoms filterAtomMaybe
-        ++ discordFilterAtoms discordMaterial filterAtomMaybe
+availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
+availableFilterAtomsWithDefaultArguments material filterAtomMaybe =
+    replaceWithSelected filterAtomMaybe
+        (basicFilterAtoms ++ materialToDefaultFilterAtoms material)
         ++ Maybe.withDefault [] (Maybe.map (always [ RemoveMe ]) filterAtomMaybe)
 
 
-basicFilterAtoms : Maybe FilterAtom -> List FilterAtom
-basicFilterAtoms filterAtomMaybe =
-    replaceWithSelected filterAtomMaybe
-        [ ByMessage "text"
-        , ByMedia HasNone
+basicFilterAtoms : List FilterAtom
+basicFilterAtoms =
+    [ ByMessage "text"
+    , ByMedia HasNone
+    ]
+
+
+materialToDefaultFilterAtoms : FilterAtomMaterial -> List FilterAtom
+materialToDefaultFilterAtoms material =
+    List.filterMap identity
+        [ Maybe.map Tuple.first material.ofDiscordChannel
         ]
-
-
-discordFilterAtoms : Discord.FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
-discordFilterAtoms ofDiscordChannel filterAtomMaybe =
-    replaceWithSelected filterAtomMaybe <|
-        List.filterMap identity <|
-            [ Maybe.map Tuple.first ofDiscordChannel ]
 
 
 replaceWithSelected : Maybe FilterAtom -> List FilterAtom -> List FilterAtom
@@ -556,8 +581,8 @@ replaceWithSelected filterAtomMaybe filterAtoms =
             filterAtoms
 
 
-filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> Discord.FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomMaybe =
+filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
+filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
     case filterAtomMaybe of
         Just (ByMessage query) ->
             filterAtomVariableTextInputEl (tagger << ByMessage) query
@@ -568,10 +593,10 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
 
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
-                case discordMaterial of
+                case material.ofDiscordChannel of
                     Just ( _, channels ) ->
-                        ( Dict.values channels |> List.sortWith channelSorter |> List.map .id
-                        , discordChannelOptionEl channels
+                        ( Dict.values channels |> List.sortWith discordChannelSorter |> List.map .id
+                        , discordChannelWithGuildIconEl channels
                         )
 
                     Nothing ->
@@ -585,8 +610,8 @@ filterAtomVariableInputEl tagger selectState discordMaterial inputId filterAtomM
             none
 
 
-channelSorter : Channel -> Channel -> Order
-channelSorter a b =
+discordChannelSorter : Discord.Channel -> Discord.Channel -> Order
+discordChannelSorter a b =
     let
         gName =
             -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
@@ -642,7 +667,7 @@ mediaTypeOptionEl mediaType =
             text "Movie"
 
 
-discordGuildOptionEl : Dict String Guild -> String -> Element msg
+discordGuildOptionEl : Dict String Discord.Guild -> String -> Element msg
 discordGuildOptionEl guilds gId =
     case Dict.get gId guilds of
         Just guild ->
@@ -653,8 +678,8 @@ discordGuildOptionEl guilds gId =
             text gId
 
 
-discordChannelOptionEl : Dict String Channel -> String -> Element msg
-discordChannelOptionEl channels cId =
+discordChannelWithGuildIconEl : Dict String Discord.Channel -> String -> Element msg
+discordChannelWithGuildIconEl channels cId =
     case Dict.get cId channels of
         Just channel ->
             case channel.guildMaybe of
@@ -748,14 +773,14 @@ itemAvatarEl item =
     case item of
         Product _ (DiscordItem { author }) ->
             case author of
-                UserAuthor user ->
+                Discord.UserAuthor user ->
                     avatarWithBadgeEl
                         { badge = Nothing
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
                         }
 
-                WebhookAuthor user ->
+                Discord.WebhookAuthor user ->
                     avatarWithBadgeEl
                         { badge = Just botIconEl
                         , fallback = user.username
@@ -787,7 +812,7 @@ avatarSize =
 
 botIconEl : Element Msg
 botIconEl =
-    el [ padding 1, BG.color oneDark.succ, BD.rounded 2 ] <|
+    el [ padding 1, BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
         octiconFreeSizeEl 12 Octicons.zap
 
 
@@ -823,30 +848,208 @@ discordMessageEl m ( discordMessage, _ ) closeMessages =
 
 
 discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
-discordMessageHeaderEl m { author, timestamp } =
+discordMessageHeaderEl m { author, timestamp, channelId } =
     let
         userNameEl =
-            el [ Font.bold, Font.size (scale12 2) ] <|
-                text <|
-                    case author of
-                        UserAuthor user ->
-                            user.username
+            breakP
+                [ alignLeft
+                , Font.bold
+                , Font.size (scale12 2)
+                ]
+                [ html <|
+                    Html.text <|
+                        case author of
+                            Discord.UserAuthor user ->
+                                user.username
 
-                        WebhookAuthor user ->
-                            user.username
+                            Discord.WebhookAuthor user ->
+                                user.username
+                ]
     in
-    row [ spacing 5 ]
+    row [ width fill, spacing 5 ]
         [ userNameEl
-        , el [ Font.color oneDark.note, Font.size (scale12 1) ] <|
+        , el [ alignRight, Font.color oneDark.note, Font.size (scale12 1) ] <|
             text (Time.local m.viewState.timezone timestamp)
         ]
 
 
 discordMessageBodyEl : Model -> Discord.Message -> Element Msg
 discordMessageBodyEl m discordMessage =
-    textColumn [ spacingXY 0 10, width fill ]
+    column [ spacingXY 0 5, width fill ]
         [ messageToParagraph discordMessage.content
+        , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
+        , collapsingColumn [ width fill, spacing 5 ] <| List.map discordAttachmentEl discordMessage.attachments
         ]
+
+
+discordEmbedEl : Discord.Embed -> Element Msg
+discordEmbedEl embed =
+    [ embed.author |> Maybe.map discordEmbedAuthorEl
+    , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
+    , embed.description |> Maybe.map messageToParagraph
+    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth embed.url)
+    ]
+        |> List.filterMap identity
+        |> breakTColumn
+            [ width fill
+            , spacing 5
+            , Font.size (scale12 1)
+            ]
+        |> discordSmartThumbnailEl embed
+
+
+maxEmbeddedMediaWidth : Int
+maxEmbeddedMediaWidth =
+    maxMediaWidth - 25
+
+
+discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
+discordEmbedAuthorEl author =
+    let
+        wrapWithLink element =
+            case author.url of
+                Just url ->
+                    newTabLink [] { url = Url.toString url, label = element }
+
+                Nothing ->
+                    element
+    in
+    row [ spacing 5, Font.bold ]
+        [ wrapWithLink <| squareIconEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
+        , paragraph [] [ wrapWithLink <| text author.name ]
+        ]
+
+
+discordEmbedTitleEl : Maybe Url.Url -> String -> Element Msg
+discordEmbedTitleEl urlMaybe title =
+    paragraph [ Font.color oneDark.link ]
+        [ case urlMaybe of
+            Just url ->
+                newTabLink [] { url = Url.toString url, label = text title }
+
+            Nothing ->
+                text title
+        ]
+
+
+discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
+discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
+    newTabLink []
+        { url = Url.toString (Maybe.withDefault embedImage.url linkUrlMaybe)
+        , label =
+            image [ width (shrink |> maximum maxWidth) ]
+                { src =
+                    embedImage.proxyUrl
+                        |> Maybe.withDefault embedImage.url
+                        |> addDimensionQuery maxWidth embedImage.width embedImage.height
+                        |> Url.toString
+                , description = "Thumbnail"
+                }
+        }
+
+
+addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
+addDimensionQuery maxWidth widthMaybe heightMaybe =
+    Maybe.map2 (fitDimensionToWidth maxWidth) widthMaybe heightMaybe
+        |> Maybe.map urlWithDimensionQuery
+        |> Maybe.withDefault identity
+
+
+fitDimensionToWidth : Int -> Int -> Int -> ( Int, Int )
+fitDimensionToWidth maxWidth w h =
+    if w <= maxWidth then
+        ( w, h )
+
+    else
+        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
+
+
+urlWithDimensionQuery : ( Int, Int ) -> Url.Url -> Url.Url
+urlWithDimensionQuery ( queryWidth, queryHeight ) src =
+    { src | query = Just ("width=" ++ fromInt queryWidth ++ "&height=" ++ fromInt queryHeight) }
+
+
+discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
+discordSmartThumbnailEl embed element =
+    let
+        wrapperAttrs =
+            [ padding 5
+            , spacing 5
+            , BG.color (brightness -1 oneDark.main)
+            , BD.color (Maybe.withDefault oneDark.bg embed.color)
+            , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
+            , BD.rounded 3
+            ]
+
+        linkUrlMaybe =
+            case ( embed.video, embed.url ) of
+                ( Just ev, _ ) ->
+                    Just ev.url
+
+                ( _, eu ) ->
+                    eu
+    in
+    case embed.thumbnail of
+        Just embedImage ->
+            -- Assuming embed.video always comes with embed.thumbnail
+            -- TODO load embedded players on click
+            if iconLike embedImage.width embedImage.height then
+                row wrapperAttrs
+                    [ element
+                    , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth linkUrlMaybe embedImage
+                    ]
+
+            else
+                column wrapperAttrs
+                    [ element
+                    , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe embedImage
+                    ]
+
+        Nothing ->
+            row wrapperAttrs [ element ]
+
+
+iconLike : Maybe Int -> Maybe Int -> Bool
+iconLike widthMaybe heightMaybe =
+    let
+        mapper w h =
+            w == h || w <= maxThumbnailWidth
+    in
+    Maybe.map2 mapper widthMaybe heightMaybe
+        |> Maybe.withDefault False
+
+
+maxThumbnailWidth : Int
+maxThumbnailWidth =
+    60
+
+
+discordAttachmentEl : Discord.Attachment -> Element Msg
+discordAttachmentEl attachment =
+    if Data.Item.isImageFile attachment.filename then
+        newTabLink []
+            { url = Url.toString attachment.url
+            , label =
+                imageEl attachment.filename <|
+                    addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
+            }
+
+    else
+        -- TODO use video tag on video files
+        download [ width fill ]
+            { url = Url.toString attachment.proxyUrl
+            , label =
+                row
+                    [ width fill
+                    , padding 5
+                    , spacing 5
+                    , BG.color (brightness -1 oneDark.main)
+                    , BD.rounded 3
+                    ]
+                    [ breakP [ Font.size (scale12 2), Font.color oneDark.link ] [ breakT attachment.filename ]
+                    , el [ alignRight ] <| octiconFreeSizeEl 20 Octicons.cloudDownload
+                    ]
+            }
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
@@ -864,12 +1067,14 @@ defaultItemEl message mediaMaybe =
 
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
-    paragraph
-        [ Font.size (scale12 1)
-        , htmlAttribute (style "white-space" "pre-wrap")
-        , htmlAttribute (style "word-break" "break-all")
-        ]
-        (Data.TextRenderer.default oneDark message)
+    if String.isEmpty message then
+        none
+
+    else
+        message
+            |> Data.TextRenderer.default oneDark
+            |> List.map html
+            |> breakP [ Font.size (scale12 1) ]
 
 
 mediaEl : Media -> Element Msg
@@ -884,7 +1089,12 @@ mediaEl media =
 
 imageEl : String -> Url.Url -> Element Msg
 imageEl desc url =
-    image [ width fill ] { src = Url.toString url, description = desc }
+    image [ width (fill |> maximum maxMediaWidth) ] { src = Url.toString url, description = desc }
+
+
+maxMediaWidth : Int
+maxMediaWidth =
+    fixedColumnWidth - avatarSize - 10
 
 
 videoEl : Url.Url -> Element Msg
@@ -893,7 +1103,7 @@ videoEl url =
         html <|
             Html.video
                 [ Html.Attributes.controls True
-                , Html.Attributes.width (fixedColumnWidth - avatarSize - 10)
+                , Html.Attributes.width maxMediaWidth
                 , Html.Attributes.src (Url.toString url)
                 ]
                 [ Html.text "Embedded video not supported."
@@ -933,12 +1143,3 @@ configInnerEl m =
           else
             none
         ]
-
-
-
--- UNSAFE STYLE
-
-
-fancyScroll : Html.Html Msg
-fancyScroll =
-    Html.node "style" [] [ Html.text "::-webkit-scrollbar{display:none;}" ]

@@ -1,4 +1,4 @@
-module Data.Item exposing (Item(..), decoder, encode, matchFilter)
+module Data.Item exposing (Item(..), decoder, encode, isImageFile, isMovieFile, matchFilter)
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord

@@ -1,8 +1,9 @@
 module Data.Producer.Discord exposing
     ( Discord(..), Guild, Channel, Msg(..), FetchResult(..), decoder, encode, encodeUser
-    , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment, encodeMessage, messageDecoder
+    , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
+    , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update, configEl
-    , FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
+    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus
     , guildSmallIconEl
     )
 
@@ -23,7 +24,8 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Message
 
-@docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment, encodeMessage, messageDecoder
+@docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
+@docs encodeMessage, messageDecoder, colorDecoder, encodeColor
 
 
 ## Component APIs
@@ -33,7 +35,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs FilterAtomMaterial, imageUrlWithFallback, imageUrlNoFallback, filterAtomMaterial, setChannelFetchStatus
+@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus
 
 
 ## View APIs
@@ -54,6 +56,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Extra exposing (divMod, ite, setTimeout)
+import Hex
 import Html.Attributes
 import Http
 import HttpExtra as Http
@@ -406,8 +409,17 @@ encodeColor color =
     let
         { red, green, blue } =
             toRgb color
+
+        hex2 =
+            floor >> Hex.toString >> String.padLeft 2 '0'
     in
-    E.int (floor red * 0x00010000 + floor green * 0x0100 + floor blue)
+    case Hex.fromString <| hex2 (red * 255) ++ hex2 (green * 255) ++ hex2 (blue * 255) of
+        Ok decimal ->
+            E.int decimal
+
+        Err _ ->
+            -- Should not happen
+            encodeColor color
 
 
 encodeEmbedImage : EmbedImage -> E.Value
@@ -606,22 +618,17 @@ embedDecoder =
 
 colorDecoder : Decoder Color
 colorDecoder =
-    D.int
-        |> D.andThen
-            (\int ->
-                let
-                    ( div256, b ) =
-                        divMod 256 int
+    let
+        decimalIntToHex =
+            Hex.toString >> String.padLeft 6 '0'
 
-                    ( r, g ) =
-                        divMod 256 div256
-                in
-                if 0 <= r && r < 256 && 0 <= g && g < 256 && 0 <= b && b < 256 then
-                    D.succeed (rgb255 r g b)
-
-                else
-                    D.fail "Invalid color integer"
-            )
+        hexToColor hex =
+            Result.map3 rgb255
+                (hex |> String.slice 0 2 |> Hex.fromString)
+                (hex |> String.slice 2 4 |> Hex.fromString)
+                (hex |> String.slice 4 6 |> Hex.fromString)
+    in
+    D.int |> D.andThen (decimalIntToHex >> hexToColor >> D.fromResult "Invalid Color")
 
 
 embedImageDecoder : Decoder EmbedImage
@@ -922,7 +929,12 @@ fillWithTimers concurrencyFactor cmds =
 setFetchTimerOne : Cmd Msg
 setFetchTimerOne =
     -- We may randomize interval, but each timer drifts naturally so let it be so.
-    setTimeout Fetch 500
+    setTimeout Fetch fetchInterval
+
+
+fetchInterval : Float
+fetchInterval =
+    1000
 
 
 handleRehydrate : Discord -> Producer.Yield Message Discord Msg
@@ -1232,7 +1244,9 @@ fetchOne token channel =
         query =
             case ( channel.fetchStatus, channel.lastMessageId ) of
                 ( NeverFetched, Just (MessageId mId) ) ->
-                    Just ("around=" ++ mId)
+                    -- Retrive messages greedily on initial fetch; 100 is the maximum
+                    -- <https://discordapp.com/developers/docs/resources/channel#get-channel-messages>
+                    Just ("limit=100&before=" ++ mId)
 
                 ( NeverFetched, Nothing ) ->
                     Nothing
@@ -1605,31 +1619,8 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     "https://cdn.discordapp.com" ++ endpoint ++ size
 
 
-type alias FilterAtomMaterial =
-    Maybe ( FilterAtom, Dict String Channel )
-
-
-filterAtomMaterial : Discord -> FilterAtomMaterial
-filterAtomMaterial discord =
-    case availablePov discord of
-        Just { channels } ->
-            let
-                filtered =
-                    Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
-            in
-            case Dict.values filtered of
-                [] ->
-                    Nothing
-
-                c :: _ ->
-                    Just ( OfDiscordChannel c.id, filtered )
-
-        Nothing ->
-            Nothing
-
-
-availablePov : Discord -> Maybe POV
-availablePov discord =
+getPov : Discord -> Maybe POV
+getPov discord =
     case discord of
         TokenGiven _ ->
             Nothing

@@ -3,15 +3,19 @@ module Examples exposing (suite)
 import Array exposing (fromList)
 import ArrayExtra as Array
 import Data.Column
+import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueId exposing (Generator)
+import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
-import Json.Decode exposing (decodeValue)
+import Hex
+import Json.Decode exposing (decodeString, decodeValue)
+import Json.Encode exposing (encode)
 import ListExtra
 import Parser
-import String exposing (fromInt)
+import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
 import Time exposing (Posix)
@@ -456,6 +460,47 @@ testLessThan a b =
 
 
 
+-- Data.Producer.Discord
+
+
+testColorSerDe : Int -> String -> Test
+testColorSerDe colorNum expectedHex =
+    test ("should decode/encode color integer " ++ fromInt colorNum) <|
+        \_ ->
+            let
+                expectedColor =
+                    Result.map3 rgb255
+                        (expectedHex |> String.slice 0 2 |> Hex.fromString)
+                        (expectedHex |> String.slice 2 4 |> Hex.fromString)
+                        (expectedHex |> String.slice 4 6 |> Hex.fromString)
+                        |> Result.withDefault (rgb255 0 0 0)
+            in
+            colorNum
+                |> fromInt
+                |> decodeString Data.Producer.Discord.colorDecoder
+                |> Expect.all
+                    [ Expect.equal (Ok expectedColor)
+                    , Result.map (Data.Producer.Discord.encodeColor >> encode 0 >> toInt)
+                        >> Expect.equal (Ok (Just colorNum))
+                    ]
+
+
+discordSuite : Test
+discordSuite =
+    describe "Data.Producer.Discord"
+        [ describe "colorDecoder/encodeColor"
+            [ testColorSerDe 0 "000000"
+            , testColorSerDe 15 "00000f"
+            , testColorSerDe 255 "0000ff"
+            , testColorSerDe 4095 "000fff"
+            , testColorSerDe 65535 "00ffff"
+            , testColorSerDe 1048575 "0fffff"
+            , testColorSerDe 16777215 "ffffff"
+            ]
+        ]
+
+
+
 -- MAIN
 
 
@@ -469,4 +514,5 @@ suite =
         , columnSuite
         , textRendererSuite
         , fetchStatusSuite
+        , discordSuite
         ]

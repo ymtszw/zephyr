@@ -1,16 +1,42 @@
-module Data.TextRenderer exposing (StringOrUrl(..), TextRenderer, default, parseIntoStringOrUrlList)
+module Data.TextRenderer exposing
+    ( TextRenderer
+    , default
+    , StringOrUrl(..), parseIntoStringOrUrlList
+    )
 
-import Data.ColorTheme exposing (ColorTheme)
+{-| Render user-generated texts into Html.
+
+In order to use other rendering libraries,
+this module generates plain old Html Msg.
+They must be converted to Element Msg by callers.
+
+
+## Types
+
+@docs TextRenderer
+
+
+## APIs
+
+@docs default
+
+
+## Exposed for tests
+
+@docs StringOrUrl, parseIntoStringOrUrlList
+
+-}
+
+import Data.ColorTheme exposing (ColorTheme, css)
 import Data.Msg exposing (Msg)
-import Element exposing (Element)
-import Element.Font as Font
-import Html
+import Html exposing (..)
+import Html.Attributes exposing (href, style, target)
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
 
 
 type alias TextRenderer =
-    String -> List (Element Msg)
+    String -> List (Html Msg)
 
 
 {-| Default text renderer.
@@ -29,11 +55,11 @@ default theme message =
             [ stringOrUrlEl theme (S message) ]
 
 
-stringOrUrlEl : ColorTheme -> StringOrUrl -> Element Msg
+stringOrUrlEl : ColorTheme -> StringOrUrl -> Html Msg
 stringOrUrlEl theme stringOrUrl =
     case stringOrUrl of
         S string ->
-            Element.html (Html.text string)
+            text string
 
         U url ->
             let
@@ -47,11 +73,12 @@ stringOrUrlEl theme stringOrUrl =
                     else
                         shortUrl
             in
-            Element.link
-                [ Font.color theme.link ]
-                { url = Url.toString url
-                , label = Element.text trimmedUrl
-                }
+            a
+                [ href (Url.toString url)
+                , target "_blank"
+                , style "color" (css theme.link)
+                ]
+                [ text trimmedUrl ]
 
 
 
