@@ -1,5 +1,5 @@
 module View.Parts exposing
-    ( noneAttr, breakP, breakT, breakTColumn
+    ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, octiconFreeSizeEl, squareIconEl
     , disabled, disabledColor, scale12, manualStyle
     )
@@ -9,7 +9,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, breakP, breakT, breakTColumn
+@docs noneAttr, breakP, breakT, breakTColumn, collapsingColumn
 
 
 ## Icons
@@ -128,6 +128,16 @@ breakClassName =
 breakTColumn : List (Attribute msg) -> List (Element msg) -> Element msg
 breakTColumn attrs =
     textColumn <| htmlAttribute (class breakClassName) :: attrs
+
+
+collapsingColumn : List (Attribute msg) -> List (Element msg) -> Element msg
+collapsingColumn attrs elements =
+    case elements of
+        [] ->
+            none
+
+        _ ->
+            column attrs elements
 
 
 
