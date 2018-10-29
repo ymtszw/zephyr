@@ -875,9 +875,10 @@ discordMessageHeaderEl m { author, timestamp, channelId } =
 
 discordMessageBodyEl : Model -> Discord.Message -> Element Msg
 discordMessageBodyEl m discordMessage =
-    textColumn [ spacingXY 0 10, width fill ]
+    column [ spacingXY 0 5, width fill ]
         [ messageToParagraph discordMessage.content
-        , column [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
+        , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
+        , collapsingColumn [ width fill, spacing 5 ] <| List.map discordAttachmentEl discordMessage.attachments
         ]
 
 
@@ -899,7 +900,7 @@ discordEmbedEl embed =
 
 maxEmbeddedMediaWidth : Int
 maxEmbeddedMediaWidth =
-    maxMediaWidth - 15
+    maxMediaWidth - 25
 
 
 discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
@@ -933,33 +934,39 @@ discordEmbedTitleEl urlMaybe title =
 
 discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
 discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
-    let
-        availableSrc =
-            embedImage.proxyUrl |> Maybe.withDefault embedImage.url
-
-        linkedImage actualMaxWidth src =
-            newTabLink []
-                { url = Url.toString (Maybe.withDefault embedImage.url linkUrlMaybe)
-                , label =
-                    image [ width (fill |> maximum actualMaxWidth) ]
-                        { src = Url.toString src, description = "Thumbnail" }
+    newTabLink []
+        { url = Url.toString (Maybe.withDefault embedImage.url linkUrlMaybe)
+        , label =
+            image [ width (shrink |> maximum maxWidth) ]
+                { src =
+                    embedImage.proxyUrl
+                        |> Maybe.withDefault embedImage.url
+                        |> addDimensionQuery maxWidth embedImage.width embedImage.height
+                        |> Url.toString
+                , description = "Thumbnail"
                 }
-    in
-    case ( embedImage.width, embedImage.height ) of
-        ( Just w, Just h ) ->
-            let
-                ( queryW, queryH ) =
-                    if w <= maxWidth then
-                        ( w, h )
+        }
 
-                    else
-                        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
-            in
-            linkedImage queryW <|
-                { availableSrc | query = Just ("width=" ++ fromInt queryW ++ "&height=" ++ fromInt queryH) }
 
-        _ ->
-            linkedImage maxMediaWidth availableSrc
+addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
+addDimensionQuery maxWidth widthMaybe heightMaybe =
+    Maybe.map2 (fitDimensionToWidth maxWidth) widthMaybe heightMaybe
+        |> Maybe.map urlWithDimensionQuery
+        |> Maybe.withDefault identity
+
+
+fitDimensionToWidth : Int -> Int -> Int -> ( Int, Int )
+fitDimensionToWidth maxWidth w h =
+    if w <= maxWidth then
+        ( w, h )
+
+    else
+        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
+
+
+urlWithDimensionQuery : ( Int, Int ) -> Url.Url -> Url.Url
+urlWithDimensionQuery ( queryWidth, queryHeight ) src =
+    { src | query = Just ("width=" ++ fromInt queryWidth ++ "&height=" ++ fromInt queryHeight) }
 
 
 discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
@@ -1017,6 +1024,34 @@ maxThumbnailWidth =
     60
 
 
+discordAttachmentEl : Discord.Attachment -> Element Msg
+discordAttachmentEl attachment =
+    if Data.Item.isImageFile attachment.filename then
+        newTabLink []
+            { url = Url.toString attachment.url
+            , label =
+                imageEl attachment.filename <|
+                    addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
+            }
+
+    else
+        -- TODO use video tag on video files
+        download [ width fill ]
+            { url = Url.toString attachment.proxyUrl
+            , label =
+                row
+                    [ width fill
+                    , padding 5
+                    , spacing 5
+                    , BG.color (brightness -1 oneDark.main)
+                    , BD.rounded 3
+                    ]
+                    [ breakP [ Font.size (scale12 2), Font.color oneDark.link ] [ breakT attachment.filename ]
+                    , el [ alignRight ] <| octiconFreeSizeEl 20 Octicons.cloudDownload
+                    ]
+            }
+
+
 defaultItemEl : String -> Maybe Media -> Element Msg
 defaultItemEl message mediaMaybe =
     case mediaMaybe of
@@ -1032,10 +1067,14 @@ defaultItemEl message mediaMaybe =
 
 messageToParagraph : String -> Element Msg
 messageToParagraph message =
-    message
-        |> Data.TextRenderer.default oneDark
-        |> List.map html
-        |> breakP [ Font.size (scale12 1) ]
+    if String.isEmpty message then
+        none
+
+    else
+        message
+            |> Data.TextRenderer.default oneDark
+            |> List.map html
+            |> breakP [ Font.size (scale12 1) ]
 
 
 mediaEl : Media -> Element Msg
