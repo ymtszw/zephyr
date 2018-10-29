@@ -877,28 +877,25 @@ discordMessageBodyEl m discordMessage =
 
 discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
-    row
-        [ padding 5
-        , spacing 5
-        , BG.color (brightness -1 oneDark.main)
-        , BD.color (Maybe.withDefault oneDark.bg embed.color)
-        , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
-        , BD.rounded 3
-        ]
-        [ [ embed.author |> Maybe.map discordEmbedAuthorEl
-          , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
-          , embed.description |> Maybe.map messageToParagraph
-          ]
-            |> List.filterMap identity
-            |> textColumn
-                [ width fill
-                , spacing 5
-                , Font.size (scale12 1)
-                , htmlAttribute (style "white-space" "pre-wrap")
-                , htmlAttribute (style "word-break" "break-all")
-                ]
-        , embed.thumbnail |> Maybe.map discordEmbedThumbnailEl |> Maybe.withDefault none
-        ]
+    [ embed.author |> Maybe.map discordEmbedAuthorEl
+    , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
+    , embed.description |> Maybe.map messageToParagraph
+    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth)
+    ]
+        |> List.filterMap identity
+        |> textColumn
+            [ width fill
+            , spacing 5
+            , Font.size (scale12 1)
+            , htmlAttribute (style "white-space" "pre-wrap")
+            , htmlAttribute (style "word-break" "break-all")
+            ]
+        |> discordSmartThumbnailEl embed
+
+
+maxEmbeddedMediaWidth : Int
+maxEmbeddedMediaWidth =
+    maxMediaWidth - 15
 
 
 discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
@@ -930,33 +927,75 @@ discordEmbedTitleEl urlMaybe title =
         ]
 
 
-discordEmbedThumbnailEl : Discord.EmbedImage -> Element Msg
-discordEmbedThumbnailEl embedImage =
+discordEmbedImageEl : Int -> Discord.EmbedImage -> Element Msg
+discordEmbedImageEl maxWidth embedImage =
     let
-        src =
+        availableUrl =
             embedImage.proxyUrl |> Maybe.withDefault embedImage.url
 
-        thumbnail =
-            case ( embedImage.width, embedImage.height ) of
-                ( Just w, Just h ) ->
-                    let
-                        ( queryW, queryH ) =
-                            if w <= maxThumbnailWidth then
-                                ( w, h )
-
-                            else
-                                ( maxThumbnailWidth, round <| toFloat h * (toFloat maxThumbnailWidth / toFloat w) )
-                    in
-                    image [ width (px queryW), height shrink ]
-                        { src = Url.toString src ++ "?width=" ++ fromInt queryW ++ "&height=" ++ fromInt queryH
-                        , description = "Thumbnail"
-                        }
-
-                _ ->
-                    image [ width (shrink |> maximum maxThumbnailWidth) ]
+        linkedImage actualMaxWidth src =
+            link []
+                { url = Url.toString embedImage.url
+                , label =
+                    image [ width (fill |> maximum actualMaxWidth) ]
                         { src = Url.toString src, description = "Thumbnail" }
+                }
     in
-    link [ alignTop, alignRight ] { url = Url.toString embedImage.url, label = thumbnail }
+    case ( embedImage.width, embedImage.height ) of
+        ( Just w, Just h ) ->
+            let
+                ( queryW, queryH ) =
+                    if w <= maxWidth then
+                        ( w, h )
+
+                    else
+                        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
+            in
+            linkedImage queryW <|
+                { availableUrl | query = Just ("width=" ++ fromInt queryW ++ "&height=" ++ fromInt queryH) }
+
+        _ ->
+            linkedImage maxMediaWidth availableUrl
+
+
+discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
+discordSmartThumbnailEl embed element =
+    let
+        wrapperAttrs =
+            [ padding 5
+            , spacing 5
+            , BG.color (brightness -1 oneDark.main)
+            , BD.color (Maybe.withDefault oneDark.bg embed.color)
+            , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
+            , BD.rounded 3
+            ]
+    in
+    case embed.thumbnail of
+        Just embedImage ->
+            if thumbnailLike embedImage.width embedImage.height then
+                row wrapperAttrs
+                    [ element
+                    , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth embedImage
+                    ]
+
+            else
+                column wrapperAttrs
+                    [ element
+                    , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth embedImage
+                    ]
+
+        Nothing ->
+            row wrapperAttrs [ element ]
+
+
+thumbnailLike : Maybe Int -> Maybe Int -> Bool
+thumbnailLike widthMaybe heightMaybe =
+    let
+        mapper w h =
+            w == h || w <= maxThumbnailWidth
+    in
+    Maybe.map2 mapper widthMaybe heightMaybe
+        |> Maybe.withDefault False
 
 
 maxThumbnailWidth : Int
@@ -1001,7 +1040,12 @@ mediaEl media =
 
 imageEl : String -> Url.Url -> Element Msg
 imageEl desc url =
-    image [ width fill ] { src = Url.toString url, description = desc }
+    image [ width (fill |> maximum maxMediaWidth) ] { src = Url.toString url, description = desc }
+
+
+maxMediaWidth : Int
+maxMediaWidth =
+    fixedColumnWidth - avatarSize - 10
 
 
 videoEl : Url.Url -> Element Msg
@@ -1010,7 +1054,7 @@ videoEl url =
         html <|
             Html.video
                 [ Html.Attributes.controls True
-                , Html.Attributes.width (fixedColumnWidth - avatarSize - 10)
+                , Html.Attributes.width maxMediaWidth
                 , Html.Attributes.src (Url.toString url)
                 ]
                 [ Html.text "Embedded video not supported."
