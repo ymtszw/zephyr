@@ -851,18 +851,19 @@ discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
 discordMessageHeaderEl m { author, timestamp, channelId } =
     let
         userNameEl =
-            el [ Font.bold, Font.size (scale12 2) ] <|
-                text <|
+            paragraph [ alignLeft, Font.bold, Font.size (scale12 2) ]
+                [ text <|
                     case author of
                         Discord.UserAuthor user ->
                             user.username
 
                         Discord.WebhookAuthor user ->
                             user.username
+                ]
     in
-    row [ spacing 5 ]
+    row [ width fill, spacing 5 ]
         [ userNameEl
-        , el [ Font.color oneDark.note, Font.size (scale12 1) ] <|
+        , el [ alignRight, Font.color oneDark.note, Font.size (scale12 1) ] <|
             text (Time.local m.viewState.timezone timestamp)
         ]
 
