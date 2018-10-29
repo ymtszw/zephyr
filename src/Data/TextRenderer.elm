@@ -30,7 +30,7 @@ They must be converted to Element Msg by callers.
 import Data.ColorTheme exposing (ColorTheme, css)
 import Data.Msg exposing (Msg)
 import Html exposing (..)
-import Html.Attributes exposing (href, style)
+import Html.Attributes exposing (href, style, target)
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
 
@@ -73,7 +73,12 @@ stringOrUrlEl theme stringOrUrl =
                     else
                         shortUrl
             in
-            a [ href (Url.toString url), style "color" (css theme.link) ] [ text trimmedUrl ]
+            a
+                [ href (Url.toString url)
+                , target "_blank"
+                , style "color" (css theme.link)
+                ]
+                [ text trimmedUrl ]
 
 
 

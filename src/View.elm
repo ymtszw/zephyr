@@ -161,7 +161,7 @@ otherButtonsEl viewState =
             { onPress = Just (ToggleConfig (not viewState.configOpen))
             , label = el [ centerX, centerY ] <| octiconEl Octicons.gear
             }
-        , link
+        , newTabLink
             [ width (px 40)
             , height (px 40)
             , BD.rounded 10
@@ -880,7 +880,7 @@ discordEmbedEl embed =
     [ embed.author |> Maybe.map discordEmbedAuthorEl
     , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
     , embed.description |> Maybe.map messageToParagraph
-    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth)
+    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth embed.url)
     ]
         |> List.filterMap identity
         |> textColumn
@@ -904,7 +904,7 @@ discordEmbedAuthorEl author =
         wrapWithLink element =
             case author.url of
                 Just url ->
-                    link [] { url = Url.toString url, label = element }
+                    newTabLink [] { url = Url.toString url, label = element }
 
                 Nothing ->
                     element
@@ -920,22 +920,22 @@ discordEmbedTitleEl urlMaybe title =
     paragraph [ Font.color oneDark.link ]
         [ case urlMaybe of
             Just url ->
-                link [] { url = Url.toString url, label = text title }
+                newTabLink [] { url = Url.toString url, label = text title }
 
             Nothing ->
                 text title
         ]
 
 
-discordEmbedImageEl : Int -> Discord.EmbedImage -> Element Msg
-discordEmbedImageEl maxWidth embedImage =
+discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
+discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
     let
-        availableUrl =
+        availableSrc =
             embedImage.proxyUrl |> Maybe.withDefault embedImage.url
 
         linkedImage actualMaxWidth src =
-            link []
-                { url = Url.toString embedImage.url
+            newTabLink []
+                { url = Url.toString (Maybe.withDefault embedImage.url linkUrlMaybe)
                 , label =
                     image [ width (fill |> maximum actualMaxWidth) ]
                         { src = Url.toString src, description = "Thumbnail" }
@@ -952,10 +952,10 @@ discordEmbedImageEl maxWidth embedImage =
                         ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
             in
             linkedImage queryW <|
-                { availableUrl | query = Just ("width=" ++ fromInt queryW ++ "&height=" ++ fromInt queryH) }
+                { availableSrc | query = Just ("width=" ++ fromInt queryW ++ "&height=" ++ fromInt queryH) }
 
         _ ->
-            linkedImage maxMediaWidth availableUrl
+            linkedImage maxMediaWidth availableSrc
 
 
 discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
@@ -969,27 +969,37 @@ discordSmartThumbnailEl embed element =
             , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
             , BD.rounded 3
             ]
+
+        linkUrlMaybe =
+            case ( embed.video, embed.url ) of
+                ( Just ev, _ ) ->
+                    Just ev.url
+
+                ( _, eu ) ->
+                    eu
     in
     case embed.thumbnail of
         Just embedImage ->
-            if thumbnailLike embedImage.width embedImage.height then
+            -- Assuming embed.video always comes with embed.thumbnail
+            -- TODO load embedded players on click
+            if iconLike embedImage.width embedImage.height then
                 row wrapperAttrs
                     [ element
-                    , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth embedImage
+                    , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth linkUrlMaybe embedImage
                     ]
 
             else
                 column wrapperAttrs
                     [ element
-                    , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth embedImage
+                    , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe embedImage
                     ]
 
         Nothing ->
             row wrapperAttrs [ element ]
 
 
-thumbnailLike : Maybe Int -> Maybe Int -> Bool
-thumbnailLike widthMaybe heightMaybe =
+iconLike : Maybe Int -> Maybe Int -> Bool
+iconLike widthMaybe heightMaybe =
     let
         mapper w h =
             w == h || w <= maxThumbnailWidth
