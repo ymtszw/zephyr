@@ -929,7 +929,12 @@ fillWithTimers concurrencyFactor cmds =
 setFetchTimerOne : Cmd Msg
 setFetchTimerOne =
     -- We may randomize interval, but each timer drifts naturally so let it be so.
-    setTimeout Fetch 500
+    setTimeout Fetch fetchInterval
+
+
+fetchInterval : Float
+fetchInterval =
+    1000
 
 
 handleRehydrate : Discord -> Producer.Yield Message Discord Msg

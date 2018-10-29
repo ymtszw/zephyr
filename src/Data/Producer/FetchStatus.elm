@@ -6,6 +6,7 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import Time exposing (Posix)
+import TimeExtra exposing (ms, posix)
 
 
 type FetchStatus
@@ -37,9 +38,8 @@ encode fetchStatus =
         Waiting ->
             E.tag "Waiting"
 
-        NextFetchAt posix bf ->
-            -- Roll back to Waiting, enforce immediate fetching on next reload
-            E.tag "Waiting"
+        NextFetchAt posix bo ->
+            E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
         InitialFetching ->
             E.tag "NeverFetched"
@@ -47,8 +47,8 @@ encode fetchStatus =
         ResumeFetching ->
             E.tag "Waiting"
 
-        Fetching posix bf ->
-            E.tag "Waiting"
+        Fetching posix bo ->
+            E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
         Available ->
             E.tag "Available"
@@ -57,16 +57,48 @@ encode fetchStatus =
             E.tag "Forbidden"
 
 
+encodeBackoff : Backoff -> E.Value
+encodeBackoff bo =
+    case bo of
+        BO2 ->
+            E.tag "BO2"
+
+        BO5 ->
+            E.tag "BO5"
+
+        BO10 ->
+            E.tag "BO10"
+
+        BO30 ->
+            E.tag "BO30"
+
+        BO60 ->
+            E.tag "BO60"
+
+        BO120 ->
+            E.tag "BO120"
+
+
 decoder : Decoder FetchStatus
 decoder =
     D.oneOf
         [ D.tag "NeverFetched" NeverFetched
         , D.tag "Waiting" Waiting
+        , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
         , D.tag "Available" Available
         , D.tag "Forbidden" Forbidden
+        ]
 
-        -- Old pattern
-        , D.tag "NextFetchAt" Waiting
+
+backoffDecoder : Decoder Backoff
+backoffDecoder =
+    D.oneOf
+        [ D.tag "BO2" BO2
+        , D.tag "BO5" BO5
+        , D.tag "BO10" BO10
+        , D.tag "BO30" BO30
+        , D.tag "BO60" BO60
+        , D.tag "BO120" BO120
         ]
 
 

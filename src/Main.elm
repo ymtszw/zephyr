@@ -82,7 +82,7 @@ though older Items may be evicted BEFORE consumed by Columns, effectively causin
 -}
 scanIntervalMillis : Float
 scanIntervalMillis =
-    500
+    1000
 
 
 
