@@ -712,10 +712,10 @@ update : Producer.Update Message Discord Msg
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            enter (tokenInput discord str)
+            enter False (tokenInput discord str)
 
         ( TokenInput str, Nothing ) ->
-            enter (TokenGiven str)
+            enter False (TokenGiven str)
 
         ( CommitToken, Just discord ) ->
             commitToken discord
@@ -767,19 +767,19 @@ commitToken discord =
             destroy
 
         TokenGiven token ->
-            enterAndFire (TokenReady token) (identify token)
+            enterAndFire False (TokenReady token) (identify token)
 
         Hydrated "" _ ->
             destroy
 
         Hydrated newToken _ ->
-            enterAndFire discord (identify newToken)
+            enterAndFire False discord (identify newToken)
 
         Expired "" _ ->
             destroy
 
         Expired newToken _ ->
-            enterAndFire discord (identify newToken)
+            enterAndFire False discord (identify newToken)
 
         _ ->
             -- Otherwise token input is locked; this should not happen
@@ -790,7 +790,7 @@ handleIdentify : Discord -> User -> Producer.Yield Message Discord Msg
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            enterAndFire (Identified (NewSession token user)) (hydrate token)
+            enterAndFire True (Identified (NewSession token user)) (hydrate token)
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -808,17 +808,17 @@ handleIdentify discord user =
 
         _ ->
             -- Otherwise Identify should not arrive; just keep state
-            enter discord
+            enter False discord
 
 
 detectUserSwitch : String -> POV -> User -> Producer.Yield Message Discord Msg
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
         -- TODO restart polling timers if token was Expired. Need to check living timers.
-        enter (Hydrated token { pov | token = token, user = user })
+        enter True (Hydrated token { pov | token = token, user = user })
 
     else
-        enterAndFire (Switching (NewSession token user) pov) (hydrate token)
+        enterAndFire True (Switching (NewSession token user) pov) (hydrate token)
 
 
 handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Message Discord Msg
@@ -830,19 +830,18 @@ handleHydrate discord guilds channels =
 
         Switching { token, user } _ ->
             -- Successful user switch; TODO restart polling timers if token was Expired. Need to check living timers.
-            enter (Hydrated token (POV token user guilds channels))
+            enter True (Hydrated token (POV token user guilds channels))
 
         Rehydrating token pov ->
-            -- Not diffing against current POV, just overwrite.
-            enter (Hydrated token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
+            enter True (Hydrated token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
 
         Expired token pov ->
             -- Possibly late arrival.
-            enter (Expired token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
+            enter True (Expired token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
 
         _ ->
             -- Otherwise Hydrate should not arrive; just keep state
-            enter discord
+            enter False discord
 
 
 mergeChannels : Dict String Channel -> Dict String Channel -> Dict String Channel
@@ -889,7 +888,7 @@ startConcurrentFetch stateTagger pov =
                 |> List.filter (.fetchStatus >> (==) NeverFetched)
                 |> List.take fetchConcurrencyFactor
     in
-    enterAndFire
+    enterAndFire False
         (stateTagger (List.foldl updateChannelBeforeFetch pov targetChannels))
         (Cmd.batch (List.map (fetchOne pov.token) targetChannels |> fillWithTimers fetchConcurrencyFactor))
 
@@ -942,10 +941,10 @@ handleRehydrate discord =
     case discord of
         Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            enterAndFire (Rehydrating token pov) (hydrate pov.token)
+            enterAndFire False (Rehydrating token pov) (hydrate pov.token)
 
         _ ->
-            enter discord
+            enter False discord
 
 
 {-| Handles Fetch event caused by fetch timers.
@@ -970,14 +969,14 @@ handleFetch discord posix =
 
         Expired t pov ->
             -- Effectively killing a timer. Needs to be restarted when new token is regisered.
-            enter discord
+            enter False discord
 
         Switching newSession pov ->
             fetchOrSetTimer (Switching newSession) pov posix
 
         _ ->
             -- Timer tick should not arrive in other states
-            enter discord
+            enter False discord
 
 
 fetchOrSetTimer : (POV -> Discord) -> POV -> Posix -> Producer.Yield Message Discord Msg
@@ -990,10 +989,10 @@ fetchOrSetTimer stateTagger pov posix =
     in
     case readyToFetchChannels of
         [] ->
-            enterAndFire (stateTagger pov) setFetchTimerOne
+            enterAndFire False (stateTagger pov) setFetchTimerOne
 
         c :: _ ->
-            enterAndFire (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
+            enterAndFire False (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
 
 
 handleFetched : Discord -> FetchResult -> Producer.Yield Message Discord Msg
@@ -1003,30 +1002,30 @@ handleFetched discord fetchResult =
             handleFetchedImpl (Hydrated t) pov fetchResult
 
         ( Hydrated t pov, True ) ->
-            enter (Expired t pov)
+            enter True (Expired t pov)
 
         ( Rehydrating t pov, False ) ->
             handleFetchedImpl (Rehydrating t) pov fetchResult
 
         ( Rehydrating t pov, True ) ->
             -- Hydrate may arrive later, but it will be handled by handleHydrate even if the state was Expired
-            enter (Expired t pov)
+            enter True (Expired t pov)
 
         ( Switching newSession pov, False ) ->
             handleFetchedImpl (Switching newSession) pov fetchResult
 
         ( Switching newSession pov, True ) ->
             -- Hydrate should be going concurrently; let it handle the case
-            enter discord
+            enter False discord
 
         ( Expired _ _, _ ) ->
             -- Regardless of its content, discard fetchResult and keep Expired status as is.
             -- If the session is restored with new token later, expects retry from previous lastMessageId
-            enter discord
+            enter False discord
 
         _ ->
             -- `Fetched` should not arrive in other status
-            enter discord
+            enter False discord
 
 
 unauthorizedOnFetch : FetchResult -> Bool
@@ -1134,12 +1133,21 @@ nextInitialFetchOrSetTimer items stateTagger pov =
     -- Issues a fetch for NeverFetched channel immediately, otherwise set timer.
     -- XXX Consequently, initial fetching sequence becomes very "bursty", potentially resulting in throttling
     -- Note: reversing items since /messages API sorts messages from latest to oldest
+    let
+        stateFun =
+            case items of
+                [] ->
+                    enterAndFire False
+
+                _ ->
+                    yieldAndFire (List.reverse items)
+    in
     case List.filter (.fetchStatus >> (==) NeverFetched) (Dict.values pov.channels) of
         [] ->
-            yieldAndFire (List.reverse items) (stateTagger pov) setFetchTimerOne
+            stateFun (stateTagger pov) setFetchTimerOne
 
         c :: _ ->
-            yieldAndFire (List.reverse items) (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
+            stateFun (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
 
 
 handleAPIError : Discord -> Http.Error -> Producer.Yield Message Discord Msg
@@ -1149,7 +1157,7 @@ handleAPIError discord error =
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
-            enter discord
+            enter False discord
 
         TokenReady _ ->
             -- Identify failure
@@ -1160,24 +1168,24 @@ handleAPIError discord error =
             destroy
 
         Hydrated _ pov ->
-            enter (Hydrated pov.token pov)
+            enter False (Hydrated pov.token pov)
 
         Rehydrating token pov ->
             -- Just fall back to previous Hydrated state.
-            enter (Hydrated token pov)
+            enter False (Hydrated token pov)
 
         Revisit pov ->
             -- Identify failure on reload, likely token expiration/revocation
-            enter (Expired pov.token pov)
+            enter False (Expired pov.token pov)
 
         Expired _ _ ->
             -- Somehow token is expired AND any subsequent API requests also failed. Settle at Expired.
-            enter discord
+            enter False discord
 
         Switching _ pov ->
             -- Similar to Identified branch (Hydrate after successful Identify should not basically fail).
             -- Directly fall back to previous Hydrated state.
-            enter (Hydrated pov.token pov)
+            enter False (Hydrated pov.token pov)
 
 
 

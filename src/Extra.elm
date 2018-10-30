@@ -1,4 +1,4 @@
-module Extra exposing (andDo, divMod, doAfter, ite, setTimeout)
+module Extra exposing (andDo, divMod, doAfter, ite, pure, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
@@ -13,6 +13,13 @@ import Time exposing (Posix)
 andDo : List (Cmd msg) -> model -> ( model, Cmd msg )
 andDo cmds model =
     ( model, Cmd.batch cmds )
+
+
+{-| Just apply new Model, without any Cmd. Hence the name.
+-}
+pure : model -> ( model, Cmd msg, Bool )
+pure m =
+    ( m, Cmd.none, False )
 
 
 {-| Oneline if-then-else.

@@ -112,6 +112,7 @@ type Msg
 
 type alias GrossYield =
     { items : List Item
+    , shouldPersist : Bool
     , producerRegistry : ProducerRegistry
     , cmd : Cmd Msg
     }
@@ -131,6 +132,7 @@ update msg producerRegistry =
                     Discord.update dMsg producerRegistry.discord
             in
             GrossYield (List.map DiscordItem discordYield.items)
+                discordYield.shouldPersist
                 { producerRegistry | discord = discordYield.newState }
                 (Cmd.map DiscordMsg discordYield.cmd)
 

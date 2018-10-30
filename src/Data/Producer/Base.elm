@@ -39,6 +39,7 @@ Items must be ordered **from oldest to latest**.
 -}
 type alias Yield item state msg =
     { items : List item
+    , shouldPersist : Bool
     , newState : Maybe state
     , cmd : Cmd msg
     }
@@ -46,37 +47,37 @@ type alias Yield item state msg =
 
 {-| Just entering a specific state of a Producer.
 -}
-enter : state -> Yield item state msg
-enter state =
-    Yield [] (Just state) Cmd.none
+enter : Bool -> state -> Yield item state msg
+enter shouldPersist state =
+    Yield [] shouldPersist (Just state) Cmd.none
 
 
 {-| Enters a specific state, and fire an event (Cmd msg).
 -}
-enterAndFire : state -> Cmd msg -> Yield item state msg
-enterAndFire state cmd =
-    Yield [] (Just state) cmd
+enterAndFire : Bool -> state -> Cmd msg -> Yield item state msg
+enterAndFire shouldPersist state cmd =
+    Yield [] shouldPersist (Just state) cmd
 
 
-{-| Yield items and enter a state.
+{-| Yield items and enter a state. Always persist.
 -}
 yield : List item -> state -> Yield item state msg
 yield items state =
-    Yield items (Just state) Cmd.none
+    Yield items True (Just state) Cmd.none
 
 
-{-| Yield items, enter a state, and fire an event. Do all!
+{-| Yield items, enter a state, and fire an event. Always persist.
 -}
 yieldAndFire : List item -> state -> Cmd msg -> Yield item state msg
 yieldAndFire items state cmd =
-    Yield items (Just state) cmd
+    Yield items True (Just state) cmd
 
 
-{-| Destroys the whole state machine. Discarding/deregistering a Producer.
+{-| Destroys the whole state machine. Discarding/deregistering a Producer. Always persist.
 -}
 destroy : Yield item state msg
 destroy =
-    Yield [] Nothing Cmd.none
+    Yield [] True Nothing Cmd.none
 
 
 {-| Function to handle arrived msg for a Producer.
