@@ -187,7 +187,8 @@ update msg ({ viewState, env } as m) =
             updateColumn cId m True <| \c -> { c | filters = Array.removeAt index c.filters, offset = Nothing, items = [] }
 
         ColumnDeleteGateInput cId text ->
-            updateColumn cId m False <| \c -> { c | deleteGate = text }
+            -- Bypassing unrelated checks in updateColumn
+            pure { m | columnStore = ColumnStore.updateById cId (\c -> { c | deleteGate = text }) m.columnStore }
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
