@@ -1,4 +1,4 @@
-port module IndexedDb exposing (load, save)
+port module IndexedDb exposing (load, noPersist, postUpdate)
 
 {-| Handles persistence of application state to IndexedDB.
 
@@ -33,9 +33,34 @@ loadMsg idGen value =
 port loadFromJs : (E.Value -> msg) -> Sub msg
 
 
-save : Model -> Cmd msg
-save =
-    Model.encodeForPersistence >> sendToJs
+{-| A hook to persist Elm application state to IndexedDB via port.
+
+It is intended to be called with specialized update output,
+which has third tuple element instructing this function
+whether the model should be persisted or not.
+
+TODO change shouldPersist Bool into PersistenceInstruction record,
+telling which portion of the Model should be persisted,
+with breaking SavedState into separate IndexedDB objects.
+So that parts of the Model can be efficiently saved/loaded.
+
+-}
+postUpdate : ( Model, Cmd Msg, Bool ) -> ( Model, Cmd Msg )
+postUpdate ( model, cmd, shouldPersist ) =
+    ( model
+    , if model.env.indexedDBAvailable && shouldPersist then
+        Cmd.batch [ cmd, sendToJs (Model.encodeForPersistence model) ]
+
+      else
+        cmd
+    )
 
 
 port sendToJs : E.Value -> Cmd msg
+
+
+{-| A Glue function that connects ordinary component update output into postUpdate.
+-}
+noPersist : ( model, Cmd msg ) -> ( model, Cmd msg, Bool )
+noPersist ( m, cmd ) =
+    ( m, cmd, False )
