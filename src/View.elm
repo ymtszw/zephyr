@@ -7,7 +7,7 @@ import Data.Column as Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
 import Data.Item exposing (Item(..))
-import Data.Model exposing (ColumnSwap, Model, ViewState)
+import Data.Model exposing (ColumnSwap, DiscordChannelCache, FilterAtomMaterial, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
@@ -476,40 +476,32 @@ newFilterAtomEl tagger m filterId =
 
 filterAtomInputEl : (FilterAtom -> Msg) -> Model -> String -> Maybe FilterAtom -> Element Msg
 filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
-    let
-        material =
-            filterAtomMaterial m.producerRegistry
-    in
     row [ width (fill |> minimum 0), spacing 3 ]
-        [ filterAtomTypeSelectEl tagger m.viewState.selectState material (filterAtomId ++ "-typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger m.viewState.selectState material (filterAtomId ++ "-variableInput") filterAtomMaybe
+        [ filterAtomTypeSelectEl tagger m.viewState.selectState m.viewState.filterAtomMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
+        , filterAtomVariableInputEl tagger m.viewState.selectState m.viewState.filterAtomMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
 
 
-type alias FilterAtomMaterial =
-    { ofDiscordChannel : Maybe ( FilterAtom, Dict String Discord.Channel )
-    }
 
-
-filterAtomMaterial : ProducerRegistry -> FilterAtomMaterial
-filterAtomMaterial producerRegistry =
-    { ofDiscordChannel =
-        case producerRegistry.discord |> Maybe.andThen Discord.getPov of
-            Just { channels } ->
-                let
-                    filtered =
-                        Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
-                in
-                case Dict.values filtered of
-                    [] ->
-                        Nothing
-
-                    c :: _ ->
-                        Just ( OfDiscordChannel c.id, filtered )
-
-            Nothing ->
-                Nothing
-    }
+-- filterAtomMaterial : ProducerRegistry -> FilterAtomMaterial
+-- filterAtomMaterial producerRegistry =
+--     { ofDiscordChannel =
+--         case producerRegistry.discord |> Maybe.andThen Discord.getPov of
+--             Just { channels } ->
+--                 let
+--                     filtered =
+--                         Dict.filter (\_ c -> FetchStatus.isAvailable c.fetchStatus) channels
+--                 in
+--                 case Dict.values filtered of
+--                     [] ->
+--                         Nothing
+--
+--                     c :: _ ->
+--                         Just ( OfDiscordChannel c.id, filtered )
+--
+--             Nothing ->
+--                 Nothing
+--     }
 
 
 filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
@@ -602,9 +594,7 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
                 case material.ofDiscordChannel of
                     Just ( _, channels ) ->
-                        ( Dict.values channels |> List.sortWith discordChannelSorter |> List.map .id
-                        , discordChannelWithGuildIconEl channels
-                        )
+                        ( List.map .id channels, discordChannelWithGuildIconEl channels )
 
                     Nothing ->
                         ( [], text )
@@ -674,20 +664,9 @@ mediaTypeOptionEl mediaType =
             text "Movie"
 
 
-discordGuildOptionEl : Dict String Discord.Guild -> String -> Element msg
-discordGuildOptionEl guilds gId =
-    case Dict.get gId guilds of
-        Just guild ->
-            row [ width fill, spacing 3 ]
-                [ Discord.guildSmallIconEl guild, text guild.name ]
-
-        Nothing ->
-            text gId
-
-
-discordChannelWithGuildIconEl : Dict String Discord.Channel -> String -> Element msg
+discordChannelWithGuildIconEl : List DiscordChannelCache -> String -> Element msg
 discordChannelWithGuildIconEl channels cId =
-    case Dict.get cId channels of
+    case List.findOne (.id >> (==) cId) channels of
         Just channel ->
             case channel.guildMaybe of
                 Just guild ->

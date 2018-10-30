@@ -1,14 +1,35 @@
-module Data.Model exposing (ColumnSwap, Env, Model, ViewState, encodeForPersistence, init, welcomeModel)
+module Data.Model exposing
+    ( Model, ViewState, Env
+    , ColumnSwap, FilterAtomMaterial, DiscordChannelCache
+    , init, welcomeModel, encodeForPersistence
+    )
+
+{-| Model of the app.
+
+
+## Types
+
+@docs Model, ViewState, Env
+@docs ColumnSwap, FilterAtomMaterial, DiscordChannelCache
+
+
+## APIs
+
+@docs init, welcomeModel, encodeForPersistence
+
+-}
 
 import Array exposing (Array)
 import Broker exposing (Broker)
 import Browser.Navigation exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Filter exposing (FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
 import Json.Encode as E
 import Logger
@@ -34,6 +55,7 @@ type alias ViewState =
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
+    , filterAtomMaterial : FilterAtomMaterial
     }
 
 
@@ -41,6 +63,21 @@ type alias ColumnSwap =
     { grabbedId : String
     , originalIndex : Int
     , originalOrder : Array String
+    }
+
+
+type alias FilterAtomMaterial =
+    { ofDiscordChannel : Maybe ( FilterAtom, List DiscordChannelCache ) -- List instead of Dict, should be sorted already
+    }
+
+
+{-| Rarely updated part of Discord.Channel.
+Namely, omitting lastMessageId and fetchStatus.
+-}
+type alias DiscordChannelCache =
+    { id : String
+    , name : String
+    , guildMaybe : Maybe Discord.Guild
     }
 
 
@@ -81,6 +118,7 @@ defaultViewState =
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
+    , filterAtomMaterial = { ofDiscordChannel = Nothing }
     }
 
 
