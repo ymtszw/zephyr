@@ -1,4 +1,4 @@
-module Data.Model exposing (ColumnSwap, Env, Model, ViewState, init, welcomeModel)
+module Data.Model exposing (ColumnSwap, Env, Model, ViewState, encodeForPersistence, init, welcomeModel)
 
 import Array exposing (Array)
 import Broker exposing (Broker)
@@ -10,6 +10,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.UniqueId as UniqueId
+import Json.Encode as E
 import Logger
 import Time exposing (Zone)
 import View.Select
@@ -99,3 +100,13 @@ welcomeModel env navKey =
     , viewState = defaultViewState
     , env = env
     }
+
+
+encodeForPersistence : Model -> E.Value
+encodeForPersistence m =
+    E.object
+        [ ( "columnStore", ColumnStore.encode m.columnStore )
+        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
+        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
+        , ( "idGen", UniqueId.encodeGenerator m.idGen )
+        ]

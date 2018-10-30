@@ -19,12 +19,12 @@ import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
 import Extra exposing (andDo, ite, setTimeout)
 import HttpExtra
+import IndexedDb
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Logger exposing (Entry)
-import Ports
 import String exposing (fromInt)
 import Task
 import Time
@@ -141,9 +141,22 @@ update msg ({ viewState, env } as m) =
             -- So we always turn off swap mode at dragend
             persist ( { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
 
-        Load val ->
+        LoadOk ss ->
             -- Persist on Load, migrating to new encoding format if any
-            persist <| reloadProducers <| ( loadSavedState m val, ite m.env.indexedDBAvailable scheduleNextScan Cmd.none )
+            -- TODO break them apart; save/load one gigantic state object is one of anti-pattern
+            persist <|
+                reloadProducers <|
+                    ( { m
+                        | columnStore = ss.columnStore
+                        , itemBroker = ss.itemBroker
+                        , producerRegistry = ss.producerRegistry
+                        , idGen = ss.idGen
+                      }
+                    , ite m.env.indexedDBAvailable scheduleNextScan Cmd.none
+                    )
+
+        LoadErr _ ->
+            ( m, Cmd.none )
 
         ToggleConfig opened ->
             ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
@@ -250,109 +263,11 @@ persist : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 persist ( model, cmd ) =
     ( model
     , if model.env.indexedDBAvailable then
-        Cmd.batch [ cmd, Ports.sendToJs (encodeModel model) ]
+        Cmd.batch [ cmd, IndexedDb.save model ]
 
       else
         cmd
     )
-
-
-encodeModel : Model -> E.Value
-encodeModel m =
-    E.object
-        [ ( "columnStore", ColumnStore.encode m.columnStore )
-        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
-        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
-        , ( "idGen", UniqueId.encodeGenerator m.idGen )
-        ]
-
-
-{-| Decodes JS value from IndexedDB and populate Model.
-
-This function is called upon Load Msg, not in init with flags,
-since all IndexedDB APIs are asynchronous.
-
--}
-loadSavedState : Model -> D.Value -> Model
-loadSavedState model value =
-    case D.decodeValue (savedStateDecoder model.idGen) value of
-        Ok savedState ->
-            { model
-                | columnStore = savedState.columnStore
-                , itemBroker = savedState.itemBroker
-                , producerRegistry = savedState.producerRegistry
-                , idGen = savedState.idGen
-            }
-
-        Err err ->
-            let
-                m =
-                    welcomeModel model.env model.navKey
-            in
-            { m | log = Logger.rec m.log (Entry "Error.loadSavedState" [ D.errorToString err ]) }
-
-
-type alias SavedState =
-    { columnStore : ColumnStore
-    , itemBroker : Broker Item
-    , producerRegistry : ProducerRegistry
-    , idGen : UniqueId.Generator
-    }
-
-
-savedStateDecoder : UniqueId.Generator -> Decoder SavedState
-savedStateDecoder idGen =
-    -- Write new decoder and migration logic when you change SavedState structure
-    D.oneOf
-        [ v3StateDecoder
-        , v2StateDecoder
-        , v1StateDecoder idGen
-        ]
-
-
-v3StateDecoder : Decoder SavedState
-v3StateDecoder =
-    D.map4 SavedState
-        (D.field "columnStore" ColumnStore.decoder)
-        (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
-        (D.field "producerRegistry" Producer.registryDecoder)
-        (D.field "idGen" UniqueId.generatorDecoder)
-
-
-v2StateDecoder : Decoder SavedState
-v2StateDecoder =
-    D.map convertFromV2State <|
-        D.map2 Tuple.pair
-            (D.field "columnStore" ColumnStore.decoder)
-            (D.field "idGen" UniqueId.generatorDecoder)
-
-
-convertFromV2State : ( ColumnStore, UniqueId.Generator ) -> SavedState
-convertFromV2State ( columnStore, idGen ) =
-    SavedState columnStore ItemBroker.init Producer.initRegistry idGen
-
-
-v1StateDecoder : UniqueId.Generator -> Decoder SavedState
-v1StateDecoder idGen =
-    D.field "columns" (D.list Column.decoder)
-        |> D.andThen (convertFromV1State idGen)
-        |> D.map convertFromV2State
-
-
-convertFromV1State : UniqueId.Generator -> List Column -> Decoder ( ColumnStore, UniqueId.Generator )
-convertFromV1State idGen columns =
-    case columns of
-        (_ :: _) as nonEmptyColumns ->
-            let
-                applyId decoded ( accColumnStore, accIdGen ) =
-                    UniqueId.genAndMap "column" accIdGen <|
-                        \newId ->
-                            ColumnStore.add { decoded | id = newId } accColumnStore
-            in
-            D.succeed <| List.foldr applyId ( ColumnStore.init, idGen ) nonEmptyColumns
-
-        [] ->
-            D.fail "No saved columns. Go to fallback."
 
 
 
@@ -397,7 +312,7 @@ sub : Model -> Sub Msg
 sub m =
     Sub.batch
         [ onResize Resize
-        , Ports.loadFromJs Load
+        , IndexedDb.load m.idGen
         , toggleColumnSwap m.viewState.columnSwappable
         ]
 
@@ -506,8 +421,11 @@ msgToLogEntry msg =
         DragEnd ->
             Entry "DragEnd" []
 
-        Load _ ->
-            Entry "Load" [ "<savedState>" ]
+        LoadOk _ ->
+            Entry "LoadOk" [ "<savedState>" ]
+
+        LoadErr e ->
+            Entry "LoadErr" [ D.errorToString e ]
 
         ToggleConfig bool ->
             Entry "ToggleConfig" [ ite bool "True" "False" ]
