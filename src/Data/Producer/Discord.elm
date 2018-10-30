@@ -1655,7 +1655,7 @@ getPov discord =
             Just pov
 
 
-setChannelFetchStatus : List String -> Discord -> Discord
+setChannelFetchStatus : List String -> Discord -> ( Discord, Bool )
 setChannelFetchStatus subs discord =
     case discord of
         Hydrated t pov ->
@@ -1674,31 +1674,31 @@ setChannelFetchStatus subs discord =
             setChannelFetchStatusImpl (Switching newSession) subs pov
 
         _ ->
-            discord
+            ( discord, False )
 
 
-setChannelFetchStatusImpl : (POV -> Discord) -> List String -> POV -> Discord
+setChannelFetchStatusImpl : (POV -> Discord) -> List String -> POV -> ( Discord, Bool )
 setChannelFetchStatusImpl tagger subs pov =
     let
-        newChannels =
-            pov.channels
-                |> Dict.map
-                    (\cId c ->
-                        case ( List.member cId subs, FetchStatus.isActive c.fetchStatus ) of
-                            ( True, True ) ->
-                                c
+        ( newChannels, shouldPersist ) =
+            Dict.foldl reducer ( Dict.empty, False ) pov.channels
 
-                            ( True, False ) ->
-                                { c | fetchStatus = Waiting }
+        reducer cId c ( accDict, accSP ) =
+            Tuple.mapFirst (\newChannel -> Dict.insert cId newChannel accDict) <|
+                case ( List.member cId subs, FetchStatus.isActive c.fetchStatus ) of
+                    ( True, True ) ->
+                        ( c, False )
 
-                            ( False, True ) ->
-                                { c | fetchStatus = Available }
+                    ( True, False ) ->
+                        ( { c | fetchStatus = Waiting }, True )
 
-                            ( False, False ) ->
-                                c
-                    )
+                    ( False, True ) ->
+                        ( { c | fetchStatus = Available }, True )
+
+                    ( False, False ) ->
+                        ( c, False )
     in
-    tagger { pov | channels = newChannels }
+    ( tagger { pov | channels = newChannels }, shouldPersist )
 
 
 

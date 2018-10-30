@@ -190,17 +190,19 @@ new id =
     }
 
 
-consumeBroker : Int -> Broker Item -> Column -> Column
+consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )
 consumeBroker maxCount broker column =
     case ItemBroker.bulkRead maxCount column.offset broker of
         [] ->
-            column
+            ( column, False )
 
         (( _, newOffset ) :: _) as items ->
-            { column
+            ( { column
                 | offset = Just newOffset
                 , items = List.filterMap (applyFilters column.filters) items ++ column.items
-            }
+              }
+            , True
+            )
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
