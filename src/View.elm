@@ -21,6 +21,7 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import Element.Lazy exposing (lazy2)
 import Element.Region exposing (description)
 import Html
 import Html.Attributes exposing (draggable, style, title)
@@ -31,6 +32,7 @@ import ListExtra as List
 import Logger
 import Octicons
 import String exposing (fromFloat, fromInt)
+import Time
 import TimeExtra as Time exposing (ms)
 import Url
 import View.Parts exposing (..)
@@ -217,17 +219,22 @@ notDraggedColumnEl m index c attrs =
         (columnBaseAttrs m.env.clientHeight ++ attrs)
         [ columnHeaderEl c
         , columnConfigEl m index c
-        , case c.items of
-            [] ->
-                waitingForFirstItemEl
-
-            items ->
-                -- Do note that items are sorted from latest to oldest
-                items
-                    |> List.groupWhile shouldGroup
-                    |> List.map (itemEl m)
-                    |> column [ width fill, paddingXY 5 0, scrollbarY ]
+        , lazy2 itemsEl m.viewState.timezone c.items
         ]
+
+
+itemsEl : Time.Zone -> List ColumnItem -> Element Msg
+itemsEl tz items =
+    case items of
+        [] ->
+            waitingForFirstItemEl
+
+        _ ->
+            -- Do note that items are sorted from latest to oldest
+            items
+                |> List.groupWhile shouldGroup
+                |> List.map (itemEl tz)
+                |> column [ width fill, paddingXY 5 0, scrollbarY ]
 
 
 waitingForFirstItemEl : Element Msg
@@ -747,8 +754,8 @@ columnDeleteButtonEl index column =
 -- ITEM
 
 
-itemEl : Model -> List ColumnItem -> Element Msg
-itemEl m closeItems =
+itemEl : Time.Zone -> List ColumnItem -> Element Msg
+itemEl tz closeItems =
     -- Reverse, since we want to show closeItems in oldest to latest, opposite from other places
     case List.reverse closeItems of
         [] ->
@@ -764,7 +771,7 @@ itemEl m closeItems =
                 , BD.color oneDark.bd
                 ]
                 [ itemAvatarEl item
-                , itemContentsEl m item items
+                , itemContentsEl tz item items
                 ]
 
 
@@ -816,8 +823,8 @@ botIconEl =
         octiconFreeSizeEl 12 Octicons.zap
 
 
-itemContentsEl : Model -> ColumnItem -> List ColumnItem -> Element Msg
-itemContentsEl m item closeItems =
+itemContentsEl : Time.Zone -> ColumnItem -> List ColumnItem -> Element Msg
+itemContentsEl tz item closeItems =
     case item of
         Product offset (DiscordItem discordMessage) ->
             let
@@ -831,24 +838,24 @@ itemContentsEl m item closeItems =
             in
             closeItems
                 |> List.filterMap unwrap
-                |> discordMessageEl m ( discordMessage, offset )
+                |> discordMessageEl tz ( discordMessage, offset )
 
         System { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
 
 
-discordMessageEl : Model -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
-discordMessageEl m ( discordMessage, _ ) closeMessages =
+discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
+discordMessageEl tz ( discordMessage, _ ) closeMessages =
     -- TODO match with official app styling
     column [ width fill, spacing 5, alignTop ] <|
-        (::) (discordMessageHeaderEl m discordMessage) <|
-            List.map (discordMessageBodyEl m) <|
+        (::) (discordMessageHeaderEl tz discordMessage) <|
+            List.map discordMessageBodyEl <|
                 (::) discordMessage <|
                     List.map Tuple.first closeMessages
 
 
-discordMessageHeaderEl : Model -> Discord.Message -> Element Msg
-discordMessageHeaderEl m { author, timestamp, channelId } =
+discordMessageHeaderEl : Time.Zone -> Discord.Message -> Element Msg
+discordMessageHeaderEl tz { author, timestamp, channelId } =
     let
         userNameEl =
             breakP
@@ -869,12 +876,12 @@ discordMessageHeaderEl m { author, timestamp, channelId } =
     row [ width fill, spacing 5 ]
         [ userNameEl
         , el [ alignRight, Font.color oneDark.note, Font.size (scale12 1) ] <|
-            text (Time.local m.viewState.timezone timestamp)
+            text (Time.local tz timestamp)
         ]
 
 
-discordMessageBodyEl : Model -> Discord.Message -> Element Msg
-discordMessageBodyEl m discordMessage =
+discordMessageBodyEl : Discord.Message -> Element Msg
+discordMessageBodyEl discordMessage =
     column [ spacingXY 0 5, width fill ]
         [ messageToParagraph discordMessage.content
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
