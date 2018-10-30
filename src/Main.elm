@@ -35,6 +35,22 @@ import View.Select
 
 
 
+-- MAIN
+
+
+main : Program Env Model Msg
+main =
+    Browser.application
+        { init = init
+        , update = log update
+        , subscriptions = sub
+        , view = view
+        , onUrlRequest = LinkClicked
+        , onUrlChange = \_ -> NoOp
+        }
+
+
+
 -- INIT
 
 
@@ -348,19 +364,7 @@ view m =
 
 
 
--- MAIN
-
-
-main : Program Env Model Msg
-main =
-    Browser.application
-        { init = init
-        , view = view
-        , update = log update
-        , subscriptions = sub
-        , onUrlRequest = LinkClicked
-        , onUrlChange = \_ -> NoOp
-        }
+-- LOGGING
 
 
 log : (Msg -> Model -> ( Model, Cmd Msg )) -> Msg -> Model -> ( Model, Cmd Msg )
