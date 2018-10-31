@@ -32,8 +32,9 @@ sidebarEl { columnStore, viewState, env } =
 
 columnButtonsEl : ColumnStore -> Element Msg
 columnButtonsEl columnStore =
-    List.append (ColumnStore.indexedMap columnButtonEl columnStore) [ ( "columnAddButton", columnAddButtonEl ) ]
-        |> Element.Keyed.column [ width fill, padding 5, spacingXY 0 10 ]
+    Element.Keyed.column [ width fill, padding 5, spacingXY 0 10 ] <|
+        ( "columnAddButton", columnAddButtonEl )
+            :: ColumnStore.indexedMap columnButtonEl columnStore
 
 
 columnButtonEl : Int -> Column.Column -> ( String, Element Msg )

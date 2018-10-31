@@ -73,7 +73,7 @@ add : Column -> ColumnStore -> ColumnStore
 add column columnStore =
     { columnStore
         | dict = Dict.insert column.id column columnStore.dict
-        , order = Array.push column.id columnStore.order
+        , order = Array.squeeze 0 column.id columnStore.order
     }
 
 
