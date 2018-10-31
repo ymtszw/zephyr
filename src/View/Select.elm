@@ -8,6 +8,7 @@ import Element.Border as BD
 import Element.Events
 import Element.Font as Font
 import Element.Input
+import Element.Lazy exposing (lazy3, lazy4)
 import Extra exposing (ite)
 import Html.Attributes exposing (tabindex)
 import Octicons
@@ -72,10 +73,10 @@ select { id, onSelect, selectedOption, noMsgOptionEl } state options =
     in
     el
         [ width (fill |> minimum 0)
-        , below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) none)
+        , below (ite opened (lazy4 optionsEl onSelect noMsgOptionEl selectedOption options) none)
         , Font.size (scale12 2)
         ]
-        (headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
+        (lazy3 headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
 
 
 headerEl : Msg -> Maybe a -> (a -> Element Msg) -> Element Msg
@@ -103,7 +104,7 @@ headerEl onPress selectedOption noMsgOptionEl =
 optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List a -> Element Msg
 optionsEl onSelect noMsgOptionEl selectedOption options =
     options
-        |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
+        |> List.map (lazy4 optionEl onSelect noMsgOptionEl selectedOption)
         |> column
             [ width (fill |> minimum 100)
             , paddingXY 0 5
