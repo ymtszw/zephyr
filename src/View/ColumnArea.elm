@@ -4,7 +4,7 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column exposing (ColumnItem(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item exposing (Item(..))
-import Data.Model exposing (Model)
+import Data.Model exposing (Env, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Element exposing (..)
@@ -14,7 +14,7 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Element.Lazy exposing (lazy2)
+import Element.Lazy exposing (..)
 import Html.Attributes exposing (draggable, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
@@ -33,41 +33,39 @@ columnAreaEl m =
         [ width fill
         , height (fill |> maximum m.env.clientHeight)
         , Font.regular
+        , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
-        (ColumnStore.indexedMap (columnKeyEl m) m.columnStore)
+        (ColumnStore.indexedMap (columnKeyEl m.env m.viewState) m.columnStore)
 
 
-columnKeyEl : Model -> Int -> Column.Column -> ( String, Element Msg )
-columnKeyEl m index column =
+columnKeyEl : Env -> ViewState -> Int -> Column.Column -> ( String, Element Msg )
+columnKeyEl env vs index column =
     Tuple.pair ("column_" ++ column.id) <|
-        case m.viewState.columnSwapMaybe of
+        case vs.columnSwapMaybe of
             Nothing ->
-                notDraggedColumnEl m index column <|
-                    if m.viewState.columnSwappable then
-                        [ htmlAttribute (draggable "true")
-                        , htmlAttribute (style "cursor" "all-scroll")
-                        , htmlAttribute (Html.Events.on "dragstart" (onDragStart index column.id))
-                        ]
+                columnEl env vs index column <|
+                    if vs.columnSwappable then
+                        dragHandle (D.succeed (DragStart index column.id))
 
                     else
                         []
 
             Just swap ->
                 if swap.grabbedId == column.id then
-                    draggedColumnEl m.env.clientHeight
+                    columnEl env vs index column [ inFront (lazy dragIndicatorEl env.clientHeight) ]
 
                 else
-                    notDraggedColumnEl m index column <|
-                        [ htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter index, True ))) ]
+                    columnEl env vs index column <|
+                        [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter index))) ]
 
 
-notDraggedColumnEl : Model -> Int -> Column.Column -> List (Attribute Msg) -> Element Msg
-notDraggedColumnEl m index c attrs =
+columnEl : Env -> ViewState -> Int -> Column.Column -> List (Attribute Msg) -> Element Msg
+columnEl env vs index c attrs =
     column
-        (columnBaseAttrs m.env.clientHeight ++ attrs)
-        [ columnHeaderEl c
-        , columnConfigFlyoutEl m index c
-        , lazy2 itemsEl m.viewState.timezone c.items
+        (columnBaseAttrs env.clientHeight ++ attrs)
+        [ lazy columnHeaderEl c
+        , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
+        , lazy2 itemsEl vs.timezone c.items
         ]
 
 
@@ -112,9 +110,14 @@ shouldGroupDiscordMessage dNewer dOlder =
         && (ms dOlder.timestamp + 60000 > ms dNewer.timestamp)
 
 
-draggedColumnEl : Int -> Element Msg
-draggedColumnEl clientHeight =
-    el (columnBaseAttrs clientHeight ++ [ BG.color oneDark.bg ]) none
+dragIndicatorEl : Int -> Element Msg
+dragIndicatorEl clientHeight =
+    el
+        [ width fill
+        , height (px clientHeight)
+        , BD.innerGlow oneDark.active 10
+        ]
+        none
 
 
 columnBaseAttrs : Int -> List (Attribute Msg)
@@ -126,23 +129,6 @@ columnBaseAttrs clientHeight =
     , BD.color oneDark.bg
     , Font.color oneDark.text
     ]
-
-
-onDragStart : Int -> String -> Decoder Msg
-onDragStart index id =
-    let
-        fireDependingOnDataTransfer types =
-            case types of
-                [] ->
-                    -- If Column div elements are dragged, it should not have items attached in dataTransfer property
-                    D.succeed (DragStart index id)
-
-                _ ->
-                    -- Otherwise something else (img, link, etc...) are dragged. Turn off swap mode
-                    D.succeed (ToggleColumnSwappable False)
-    in
-    D.at [ "dataTransfer", "types" ] (D.list D.string)
-        |> D.andThen fireDependingOnDataTransfer
 
 
 columnHeaderEl : Column.Column -> Element Msg

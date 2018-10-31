@@ -1,5 +1,5 @@
 module View.Parts exposing
-    ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn
+    ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, octiconFreeSizeEl, squareIconEl
     , disabled, disabledColor, scale12, css, brightness, manualStyle
     , fixedColumnWidth
@@ -10,7 +10,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, breakP, breakT, breakTColumn, collapsingColumn
+@docs noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
 
 
 ## Icons
@@ -35,7 +35,9 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Html
-import Html.Attributes exposing (class, style)
+import Html.Attributes exposing (class, draggable, style)
+import Html.Events
+import Json.Decode as D exposing (Decoder)
 import Json.Encode
 import Octicons
 
@@ -191,6 +193,19 @@ css color =
         ]
 
 
+dragHandle : Decoder msg -> List (Attribute msg)
+dragHandle onDragstart =
+    [ htmlAttribute (draggable "true")
+    , htmlAttribute (class dragHandleClassName)
+    , htmlAttribute (Html.Events.stopPropagationOn "dragstart" (D.map (\msg -> ( msg, True )) onDragstart))
+    ]
+
+
+dragHandleClassName : String
+dragHandleClassName =
+    "dragHandle"
+
+
 
 -- MANUAL STYLE
 
@@ -201,6 +216,7 @@ manualStyle =
         []
         [ Html.text "::-webkit-scrollbar{display:none;}"
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}"
+        , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}"
         ]
 
 

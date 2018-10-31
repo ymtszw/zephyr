@@ -176,7 +176,6 @@ discordEmbedEl embed =
     [ embed.author |> Maybe.map discordEmbedAuthorEl
     , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
     , embed.description |> Maybe.map messageToParagraph
-    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth embed.url)
     ]
         |> List.filterMap identity
         |> breakTColumn
@@ -283,19 +282,26 @@ discordSmartThumbnailEl embed element =
             -- Assuming embed.video always comes with embed.thumbnail
             -- TODO load embedded players on click
             if iconLike embedImage.width embedImage.height then
-                row wrapperAttrs
-                    [ element
-                    , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth linkUrlMaybe embedImage
+                column wrapperAttrs
+                    [ row [ width fill, spacing 5 ]
+                        [ element
+                        , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth linkUrlMaybe embedImage
+                        ]
+                    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
                     ]
 
             else
                 column wrapperAttrs
                     [ element
                     , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe embedImage
+                    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
                     ]
 
         Nothing ->
-            row wrapperAttrs [ element ]
+            column wrapperAttrs
+                [ element
+                , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
+                ]
 
 
 iconLike : Maybe Int -> Maybe Int -> Bool

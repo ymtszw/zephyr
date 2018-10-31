@@ -145,8 +145,12 @@ update msg ({ viewState, env } as m) =
         DelColumn index ->
             ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, True )
 
-        ToggleColumnSwappable bool ->
-            pure { m | viewState = { viewState | columnSwappable = bool } }
+        ToggleColumnSwappable True ->
+            pure { m | viewState = { viewState | columnSwappable = True } }
+
+        ToggleColumnSwappable False ->
+            -- DragEnd may get lost. Fix zombie drag here.
+            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
 
         DragStart originalIndex colId ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }

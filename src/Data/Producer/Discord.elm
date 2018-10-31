@@ -931,6 +931,7 @@ updateChannelBeforeFetch target pov =
 setFetchTimerOne : Cmd Msg
 setFetchTimerOne =
     -- We may randomize interval, but each timer drifts naturally so let it be so.
+    -- TODO use global Time.every
     setTimeout Fetch fetchInterval
 
 
