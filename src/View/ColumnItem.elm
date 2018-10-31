@@ -3,7 +3,7 @@ module View.ColumnItem exposing (columnItemEl)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..))
+import Data.Item exposing (Item(..), isImageFile, isMovieFile)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.TextRenderer
@@ -11,6 +11,7 @@ import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
+import Element.Lazy exposing (lazy2)
 import Html
 import Html.Attributes exposing (title)
 import Octicons
@@ -172,7 +173,7 @@ discordEmbedEl embed =
 
 maxEmbeddedMediaWidth : Int
 maxEmbeddedMediaWidth =
-    maxMediaWidth - 25
+    maxMediaWidth - 15
 
 
 discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
@@ -298,7 +299,7 @@ maxThumbnailWidth =
 
 discordAttachmentEl : Discord.Attachment -> Element Msg
 discordAttachmentEl attachment =
-    if Data.Item.isImageFile attachment.filename then
+    if isImageFile attachment.filename then
         newTabLink []
             { url = Url.toString attachment.url
             , label =
@@ -306,8 +307,27 @@ discordAttachmentEl attachment =
                     addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
             }
 
+    else if isMovieFile attachment.filename then
+        let
+            posterUrl =
+                attachment.proxyUrl
+                    |> addDimensionQuery maxMediaWidth attachment.width attachment.height
+                    |> addPosterQuery
+
+            addPosterQuery url =
+                { url
+                    | query =
+                        case url.query of
+                            Just q ->
+                                Just ("format=jpeg&" ++ q)
+
+                            Nothing ->
+                                Just "format=jpeg"
+                }
+        in
+        lazy2 videoEl (Just posterUrl) attachment.proxyUrl
+
     else
-        -- TODO use video tag on video files
         download [ width fill ]
             { url = Url.toString attachment.proxyUrl
             , label =
@@ -356,7 +376,7 @@ mediaEl media =
             imageEl "Image" url
 
         Movie url ->
-            videoEl url
+            videoEl Nothing url
 
 
 imageEl : String -> Url.Url -> Element Msg
@@ -366,18 +386,23 @@ imageEl desc url =
 
 maxMediaWidth : Int
 maxMediaWidth =
-    fixedColumnWidth - avatarSize - 10
+    fixedColumnWidth - avatarSize - 20
 
 
-videoEl : Url.Url -> Element Msg
-videoEl url =
+videoEl : Maybe Url.Url -> Url.Url -> Element Msg
+videoEl posterMaybe url =
     el [ width fill, centerX ] <|
         html <|
             Html.video
                 [ Html.Attributes.controls True
                 , Html.Attributes.width maxMediaWidth
                 , Html.Attributes.src (Url.toString url)
+                , Html.Attributes.poster (posterMaybe |> Maybe.map Url.toString |> Maybe.withDefault "")
                 ]
                 [ Html.text "Embedded video not supported."
-                , Html.a [ Html.Attributes.href (Url.toString url) ] [ Html.text "[Source]" ]
+                , Html.a
+                    [ Html.Attributes.href (Url.toString url)
+                    , Html.Attributes.target "_blank"
+                    ]
+                    [ Html.text "[Source]" ]
                 ]

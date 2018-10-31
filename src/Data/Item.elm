@@ -94,10 +94,12 @@ isImageFile filename =
 
 isMovieFile : String -> Bool
 isMovieFile filename =
+    -- Files that are likely playable with HTML5 <video>, which in spec does not specify supported formats
     String.endsWith ".mp4" filename
         || String.endsWith ".ogg" filename
         || String.endsWith ".ogv" filename
         || String.endsWith ".webm" filename
+        || String.endsWith ".mov" filename
 
 
 discordEmbedHasImage : Discord.Embed -> Bool

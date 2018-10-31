@@ -5,7 +5,7 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
-import Data.Model exposing (Model)
+import Data.Model exposing (Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Element exposing (..)
@@ -13,7 +13,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
-import Element.Lazy exposing (lazy2)
+import Element.Lazy exposing (lazy, lazy2)
 import ListExtra
 import Octicons
 import View.Parts exposing (..)
@@ -31,14 +31,11 @@ columnConfigFlyoutEl m index c =
             , BD.width 1
             , BD.color oneDark.note
             ]
-            [ columnConfigTitleEl "Filter Rules"
-            , filtersEl m c
-            , columnConfigTitleEl "Danger Zone"
+            [ lazy columnConfigTitleEl "Filter Rules"
+            , lazy2 filtersEl m.viewState c
+            , lazy columnConfigTitleEl "Danger Zone"
             , columnDeleteEl index c
-            , Element.Input.button [ width fill, BG.color oneDark.sub ]
-                { onPress = Just (ToggleColumnConfig c.id False)
-                , label = octiconFreeSizeEl 24 Octicons.triangleUp
-                }
+            , lazy columnConfigCloseButtonEl c.id
             ]
 
     else
@@ -56,10 +53,10 @@ columnConfigTitleEl title =
         (text title)
 
 
-filtersEl : Model -> Column.Column -> Element Msg
-filtersEl m c =
-    Array.indexedMap (filterEl m c.id) c.filters
-        |> Array.push (addNewFilterEl m c.id)
+filtersEl : ViewState -> Column.Column -> Element Msg
+filtersEl vs c =
+    Array.indexedMap (filterEl vs c.id) c.filters
+        |> Array.push (addNewFilterEl vs c.id)
         |> Array.toList
         |> List.intersperse (filterLogicSeparator "AND")
         |> column
@@ -71,8 +68,8 @@ filtersEl m c =
             ]
 
 
-filterEl : Model -> String -> Int -> Filter -> Element Msg
-filterEl m cId index filter =
+filterEl : ViewState -> String -> Int -> Filter -> Element Msg
+filterEl vs cId index filter =
     let
         tagger newFilterMaybe =
             case newFilterMaybe of
@@ -82,11 +79,11 @@ filterEl m cId index filter =
                 Nothing ->
                     DelColumnFilter cId index
     in
-    filterGeneratorEl tagger m cId (Just ( index, filter ))
+    filterGeneratorEl tagger vs cId (Just ( index, filter ))
 
 
-addNewFilterEl : Model -> String -> Element Msg
-addNewFilterEl m cId =
+addNewFilterEl : ViewState -> String -> Element Msg
+addNewFilterEl vs cId =
     let
         tagger newFilterMaybe =
             case newFilterMaybe of
@@ -97,7 +94,7 @@ addNewFilterEl m cId =
                     -- Should not happen
                     tagger newFilterMaybe
     in
-    filterGeneratorEl tagger m cId Nothing
+    filterGeneratorEl tagger vs cId Nothing
 
 
 filterLogicSeparator : String -> Element msg
@@ -111,8 +108,8 @@ filterLogicSeparator operator =
         (el [ centerX ] (text operator))
 
 
-filterGeneratorEl : (Maybe Filter -> Msg) -> Model -> String -> Maybe ( Int, Filter ) -> Element Msg
-filterGeneratorEl tagger m cId indexFilterMaybe =
+filterGeneratorEl : (Maybe Filter -> Msg) -> ViewState -> String -> Maybe ( Int, Filter ) -> Element Msg
+filterGeneratorEl tagger vs cId indexFilterMaybe =
     row
         [ width fill
         , BD.width 1
@@ -127,12 +124,12 @@ filterGeneratorEl tagger m cId indexFilterMaybe =
                 in
                 column [ width (fill |> minimum 0), padding 5 ] <|
                     List.intersperse (filterLogicSeparator "OR") <|
-                        Filter.indexedMap (filterAtomEl filter tagger m filterId) filter
-                            ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) m filterId ]
+                        Filter.indexedMap (filterAtomEl filter tagger vs filterId) filter
+                            ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) vs filterId ]
 
             Nothing ->
                 column [ width (fill |> minimum 0), padding 5 ]
-                    [ newFilterAtomEl (tagger << Just << Singular) m (cId ++ "addNewFilter") ]
+                    [ newFilterAtomEl (tagger << Just << Singular) vs (cId ++ "addNewFilter") ]
         , deleteFilterButtonEl cId indexFilterMaybe
         ]
 
@@ -157,8 +154,8 @@ deleteFilterButtonEl cId indexFilterMaybe =
             none
 
 
-filterAtomEl : Filter -> (Maybe Filter -> Msg) -> Model -> String -> Int -> FilterAtom -> Element Msg
-filterAtomEl originalFilter tagger m filterId index filterAtom =
+filterAtomEl : Filter -> (Maybe Filter -> Msg) -> ViewState -> String -> Int -> FilterAtom -> Element Msg
+filterAtomEl originalFilter tagger vs filterId index filterAtom =
     let
         updateAndTag newFilterAtom =
             tagger <|
@@ -169,19 +166,19 @@ filterAtomEl originalFilter tagger m filterId index filterAtom =
                     _ ->
                         Just (Filter.setAt index newFilterAtom originalFilter)
     in
-    filterAtomInputEl updateAndTag m (filterId ++ "-atom_" ++ String.fromInt index) (Just filterAtom)
+    filterAtomInputEl updateAndTag vs (filterId ++ "-atom_" ++ String.fromInt index) (Just filterAtom)
 
 
-newFilterAtomEl : (FilterAtom -> Msg) -> Model -> String -> Element Msg
-newFilterAtomEl tagger m filterId =
-    filterAtomInputEl tagger m (filterId ++ "newAtom") Nothing
+newFilterAtomEl : (FilterAtom -> Msg) -> ViewState -> String -> Element Msg
+newFilterAtomEl tagger vs filterId =
+    filterAtomInputEl tagger vs (filterId ++ "newAtom") Nothing
 
 
-filterAtomInputEl : (FilterAtom -> Msg) -> Model -> String -> Maybe FilterAtom -> Element Msg
-filterAtomInputEl tagger m filterAtomId filterAtomMaybe =
+filterAtomInputEl : (FilterAtom -> Msg) -> ViewState -> String -> Maybe FilterAtom -> Element Msg
+filterAtomInputEl tagger vs filterAtomId filterAtomMaybe =
     row [ width (fill |> minimum 0), spacing 3 ]
-        [ filterAtomTypeSelectEl tagger m.viewState.selectState m.viewState.filterAtomMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger m.viewState.selectState m.viewState.filterAtomMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
+        [ filterAtomTypeSelectEl tagger vs.selectState vs.filterAtomMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
+        , filterAtomVariableInputEl tagger vs.selectState vs.filterAtomMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
 
 
@@ -393,3 +390,11 @@ columnDeleteButtonEl index column =
 
         else
             none
+
+
+columnConfigCloseButtonEl : String -> Element Msg
+columnConfigCloseButtonEl cId =
+    Element.Input.button [ width fill, BG.color oneDark.sub ]
+        { onPress = Just (ToggleColumnConfig cId False)
+        , label = octiconFreeSizeEl 24 Octicons.triangleUp
+        }
