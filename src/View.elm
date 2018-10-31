@@ -6,8 +6,9 @@ import Data.ColorTheme exposing (brightness, oneDark)
 import Data.Column as Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Item exposing (Item(..))
-import Data.Model exposing (ColumnSwap, DiscordChannelCache, FilterAtomMaterial, Model, ViewState)
+import Data.Model exposing (ColumnSwap, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
@@ -594,7 +595,7 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
                 case material.ofDiscordChannel of
                     Just ( _, channels ) ->
-                        ( List.map .id channels, discordChannelWithGuildIconEl channels )
+                        ( List.map .id channels, lazy2 discordChannelWithGuildIconEl channels )
 
                     Nothing ->
                         ( [], text )
@@ -605,21 +606,6 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
 
         Nothing ->
             none
-
-
-discordChannelSorter : Discord.Channel -> Discord.Channel -> Order
-discordChannelSorter a b =
-    let
-        gName =
-            -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
-            .guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~"
-    in
-    case compare (gName a) (gName b) of
-        EQ ->
-            compare a.name b.name
-
-        diff ->
-            diff
 
 
 filterAtomVariableTextInputEl : (String -> Msg) -> String -> Element Msg
@@ -664,7 +650,7 @@ mediaTypeOptionEl mediaType =
             text "Movie"
 
 
-discordChannelWithGuildIconEl : List DiscordChannelCache -> String -> Element msg
+discordChannelWithGuildIconEl : List Discord.ChannelCache -> String -> Element msg
 discordChannelWithGuildIconEl channels cId =
     case List.findOne (.id >> (==) cId) channels of
         Just channel ->

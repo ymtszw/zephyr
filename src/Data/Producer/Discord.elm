@@ -1,5 +1,5 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), Guild, Channel, Msg(..), FetchResult(..), decoder, encode, encodeUser
+    ( Discord(..), Guild, Channel, ChannelCache, Msg(..), FetchResult(..), decoder, encode, encodeUser
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update, configEl
@@ -19,7 +19,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, Guild, Channel, Msg, FetchResult, decoder, encode, encodeUser
+@docs Discord, Guild, Channel, ChannelCache, Msg, FetchResult, decoder, encode, encodeUser
 
 
 ## Message
@@ -46,7 +46,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
-import Data.Producer.Base as Producer exposing (destroy, enter, enterAndFire, yieldAndFire)
+import Data.Producer.Base as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -66,6 +66,7 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import Octicons
+import String exposing (fromInt)
 import Task exposing (Task)
 import Time exposing (Posix)
 import TimeExtra as Time exposing (posix)
@@ -102,6 +103,7 @@ type Discord
     = TokenGiven String
     | TokenReady String
     | Identified NewSession
+    | ChannelScanning POV
     | Hydrated String POV
     | Rehydrating String POV
     | Revisit POV
@@ -158,6 +160,20 @@ type alias Channel =
 
     -- Zephyr-only fields below
     , fetchStatus : FetchStatus
+    }
+
+
+{-| Rarely updated part of Channel.
+Namely, omitting lastMessageId and fetchStatus.
+
+Used for caching of FilterAtomMaterial.
+
+-}
+type alias ChannelCache =
+    { id : String
+    , name : String
+    , type_ : ChannelType
+    , guildMaybe : Maybe Guild
     }
 
 
@@ -266,6 +282,9 @@ encode discord =
         Identified session ->
             -- Step back to TokenReady state for clean retry
             E.tagged "TokenReady" (E.string session.token)
+
+        ChannelScanning pov ->
+            E.tagged "ChannelScanning" (encodePov pov)
 
         Hydrated _ pov ->
             E.tagged "Revisit" (encodePov pov)
@@ -470,6 +489,7 @@ decoder : Decoder Discord
 decoder =
     D.oneOf
         [ D.tagged "Revisit" Revisit povDecoder
+        , D.tagged "ChannelScanning" ChannelScanning povDecoder
         , D.tagged "TokenReady" TokenReady D.string
         , D.tagged "TokenGiven" TokenGiven D.string
 
@@ -671,25 +691,69 @@ attachmentDecoder =
 -- RELOADER
 
 
-reload : Producer.Reload Discord Msg
+reload : Discord -> Producer.Reload ( FilterAtom, List ChannelCache ) Discord Msg
 reload discord =
     case discord of
         TokenGiven _ ->
-            ( discord, Cmd.none )
+            ( discord, Cmd.none, KeepFAM )
 
         TokenReady token ->
-            ( discord, identify token )
+            ( discord, identify token, KeepFAM )
 
         Revisit pov ->
-            ( discord, identify pov.token )
+            ( discord, identify pov.token, calculateFAM pov.channels )
 
         _ ->
             -- Other states should not come from IndexedDB
             reload discord
 
 
+type alias UpdateFAM =
+    Producer.UpdateFAM ( FilterAtom, List ChannelCache )
+
+
+calculateFAM : Dict String Channel -> UpdateFAM
+calculateFAM channels =
+    let
+        filtered =
+            channels |> Dict.foldl reducer [] |> List.sortWith channelSorter
+
+        reducer _ c acc =
+            if FetchStatus.isAvailable c.fetchStatus then
+                ChannelCache c.id c.name c.type_ c.guildMaybe :: acc
+
+            else
+                acc
+    in
+    case filtered of
+        [] ->
+            DestroyFAM
+
+        c :: _ ->
+            SetFAM ( OfDiscordChannel c.id, filtered )
+
+
+channelSorter : ChannelCache -> ChannelCache -> Order
+channelSorter a b =
+    let
+        gName =
+            -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
+            .guildMaybe >> Maybe.map .name >> Maybe.withDefault "~~~"
+    in
+    case compare (gName a) (gName b) of
+        EQ ->
+            compare a.name b.name
+
+        diff ->
+            diff
+
+
 
 -- UPDATE
+
+
+type alias Yield =
+    Producer.Yield Message ( FilterAtom, List ChannelCache ) Discord Msg
 
 
 type Msg
@@ -708,14 +772,14 @@ type FetchResult
     | FetchOk String (List Message) Posix
 
 
-update : Producer.Update Message Discord Msg
+update : Msg -> Maybe Discord -> Yield
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            enter False (tokenInput discord str)
+            enter (PostProcess False KeepFAM) (tokenInput discord str)
 
         ( TokenInput str, Nothing ) ->
-            enter False (TokenGiven str)
+            enter (PostProcess False KeepFAM) (TokenGiven str)
 
         ( CommitToken, Just discord ) ->
             commitToken discord
@@ -760,37 +824,37 @@ tokenInput discord newToken =
             discord
 
 
-commitToken : Discord -> Producer.Yield Message Discord Msg
+commitToken : Discord -> Yield
 commitToken discord =
     case discord of
         TokenGiven "" ->
             destroy
 
         TokenGiven token ->
-            enterAndFire False (TokenReady token) (identify token)
+            enterAndFire (PostProcess False KeepFAM) (TokenReady token) (identify token)
 
         Hydrated "" _ ->
             destroy
 
         Hydrated newToken _ ->
-            enterAndFire False discord (identify newToken)
+            enterAndFire (PostProcess False KeepFAM) discord (identify newToken)
 
         Expired "" _ ->
             destroy
 
         Expired newToken _ ->
-            enterAndFire False discord (identify newToken)
+            enterAndFire (PostProcess False KeepFAM) discord (identify newToken)
 
         _ ->
             -- Otherwise token input is locked; this should not happen
             commitToken discord
 
 
-handleIdentify : Discord -> User -> Producer.Yield Message Discord Msg
+handleIdentify : Discord -> User -> Yield
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            enterAndFire True (Identified (NewSession token user)) (hydrate token)
+            enterAndFire (PostProcess True KeepFAM) (Identified (NewSession token user)) (hydrate token)
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -798,9 +862,14 @@ handleIdentify discord user =
         Expired token pov ->
             detectUserSwitch token pov user
 
-        Revisit pov ->
+        ChannelScanning pov ->
             -- Successful reload
-            startConcurrentFetch (Hydrated pov.token) { pov | user = user }
+            startChannelScanning { pov | user = user }
+
+        Revisit pov ->
+            -- Successful reload; FAM is already calculated on reload
+            -- TODO rehydrate?
+            enterAndFire (PostProcess True KeepFAM) (Hydrated pov.token { pov | user = user }) setFetchTimerOne
 
         Switching _ pov ->
             -- Retried Identify with previous token after error on Switching phase
@@ -808,121 +877,55 @@ handleIdentify discord user =
 
         _ ->
             -- Otherwise Identify should not arrive; just keep state
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
 
-detectUserSwitch : String -> POV -> User -> Producer.Yield Message Discord Msg
+detectUserSwitch : String -> POV -> User -> Yield
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
-        -- TODO restart polling timers if token was Expired. Need to check living timers.
-        enter True (Hydrated token { pov | token = token, user = user })
+        -- Go Rehydrate => ChannelScanning => Hydrated route for clean restart
+        enterAndFire (PostProcess True KeepFAM) (Rehydrating token { pov | token = token, user = user }) (hydrate token)
 
     else
-        enterAndFire True (Switching (NewSession token user) pov) (hydrate token)
+        enterAndFire (PostProcess True KeepFAM) (Switching (NewSession token user) pov) (hydrate token)
 
 
-handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Producer.Yield Message Discord Msg
-handleHydrate discord guilds channels =
-    case discord of
-        Identified { token, user } ->
-            -- Successful register
-            startConcurrentFetch (Hydrated token) (POV token user guilds channels)
-
-        Switching { token, user } _ ->
-            -- Successful user switch; TODO restart polling timers if token was Expired. Need to check living timers.
-            enter True (Hydrated token (POV token user guilds channels))
-
-        Rehydrating token pov ->
-            enter True (Hydrated token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
-
-        Expired token pov ->
-            -- Possibly late arrival.
-            enter True (Expired token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
-
-        _ ->
-            -- Otherwise Hydrate should not arrive; just keep state
-            enter False discord
-
-
-mergeChannels : Dict String Channel -> Dict String Channel -> Dict String Channel
-mergeChannels oldChannels newChannels =
-    let
-        foundOnlyInOld _ _ acc =
-            -- Deleting now unreachable (deleted/banned) Channel
-            acc
-
-        foundInBoth cId oldChannel newChannel acc =
-            -- Using newChannel's last_message_id (can cause skip/dupelication)
-            Dict.insert cId { newChannel | fetchStatus = oldChannel.fetchStatus } acc
-
-        foundOnlyInNew cId newChannel acc =
-            Dict.insert cId newChannel acc
-    in
-    Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldChannels newChannels Dict.empty
-
-
-{-| Start concurrent fetches.
-
-All periodic fetches are triggered by concurrent timers.
-Maximum total number of timers (= concurrent fetches) is controlled by `fetchConcurrencyFactor`.
-
-This function immediately issues fetches for channels that are `NeverFetched`.
-
-Timers fire `Fetch` msg in relatively small intervals (5 seconds average).
-On every `Fetch` event, it searches channel dictionary for "ready-to-fetch" channel and do work if one found.
-
-If a channel is fetched but not having yielded a message,
-"next fetch time" is near-exponentially backed off, up to 120 seconds.
-If one or more message yielded by a fetch, backoff interval is reset to minimum (5 sec),
-thus next few fetches are likely attempted in minimum intervals. Call it "bursting".
-
-TODO If users attempted token (= login user) change, number of timers could be messed up.
-There must be some kind of "timer counter" to enforce concurrency amount.
-
+{-| Start initial fetches with some level of concurrency.
 -}
-startConcurrentFetch : (POV -> Discord) -> POV -> Producer.Yield Message Discord Msg
-startConcurrentFetch stateTagger pov =
+startChannelScanning : POV -> Yield
+startChannelScanning pov =
     let
         targetChannels =
             Dict.values pov.channels
                 |> List.filter (.fetchStatus >> (==) NeverFetched)
-                |> List.take fetchConcurrencyFactor
+                |> List.take initialFetchConcurrency
     in
-    enterAndFire False
-        (stateTagger (List.foldl updateChannelBeforeFetch pov targetChannels))
-        (Cmd.batch (List.map (fetchOne pov.token) targetChannels |> fillWithTimers fetchConcurrencyFactor))
+    enterAndFire (PostProcess True KeepFAM)
+        -- Checkpointing
+        (ChannelScanning (List.foldl updateChannelBeforeFetch pov targetChannels))
+        (Cmd.batch (List.map (fetchOne pov.token) targetChannels))
 
 
-fetchConcurrencyFactor : Int
-fetchConcurrencyFactor =
+initialFetchConcurrency : Int
+initialFetchConcurrency =
     1
 
 
 updateChannelBeforeFetch : Channel -> POV -> POV
-updateChannelBeforeFetch targetChannel pov =
+updateChannelBeforeFetch target pov =
     -- This function just transit fetchStatus and update POV, not actually checks the fetchStatus is ready-to-fetch
-    case targetChannel.fetchStatus of
+    case target.fetchStatus of
         NeverFetched ->
-            updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = InitialFetching }
+            { pov | channels = Dict.update target.id (Maybe.map (\c -> { c | fetchStatus = InitialFetching })) pov.channels }
 
         Waiting ->
-            updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = ResumeFetching }
+            { pov | channels = Dict.update target.id (Maybe.map (\c -> { c | fetchStatus = ResumeFetching })) pov.channels }
 
         NextFetchAt posix backoff ->
-            updateChannel targetChannel.id pov <| \c -> { c | fetchStatus = Fetching posix backoff }
+            { pov | channels = Dict.update target.id (Maybe.map (\c -> { c | fetchStatus = Fetching posix backoff })) pov.channels }
 
         _ ->
             pov
-
-
-updateChannel : String -> POV -> (Channel -> Channel) -> POV
-updateChannel cId pov updater =
-    { pov | channels = Dict.update cId (Maybe.map updater) pov.channels }
-
-
-fillWithTimers : Int -> List (Cmd Msg) -> List (Cmd Msg)
-fillWithTimers concurrencyFactor cmds =
-    cmds ++ List.repeat (concurrencyFactor - List.length cmds) setFetchTimerOne
 
 
 setFetchTimerOne : Cmd Msg
@@ -936,20 +939,63 @@ fetchInterval =
     1000
 
 
-handleRehydrate : Discord -> Producer.Yield Message Discord Msg
+handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Yield
+handleHydrate discord guilds channels =
+    case discord of
+        Identified { token, user } ->
+            -- Successful register
+            startChannelScanning (POV token user guilds channels)
+
+        Switching { token, user } _ ->
+            -- Successful user switch
+            startChannelScanning (POV token user guilds channels)
+
+        Rehydrating token pov ->
+            -- Re-scan for new channels; existing channels are not fetched here
+            startChannelScanning (POV pov.token pov.user guilds (mergeChannels pov.channels channels))
+
+        Expired token pov ->
+            -- Possibly late arrival. Not re-scan, but persist.
+            enter (PostProcess True KeepFAM) (Expired token (POV pov.token pov.user guilds (mergeChannels pov.channels channels)))
+
+        _ ->
+            -- Otherwise Hydrate should not arrive; just keep state
+            enter (PostProcess False KeepFAM) discord
+
+
+mergeChannels : Dict String Channel -> Dict String Channel -> Dict String Channel
+mergeChannels oldChannels newChannels =
+    let
+        foundOnlyInOld _ _ acc =
+            -- Deleting now unreachable (deleted/banned) Channel
+            -- TODO do equivalent if got 404 with FetchErr
+            acc
+
+        foundInBoth cId old new acc =
+            -- Use old's last_message_id; let our polling naturally catch up
+            Dict.insert cId { new | fetchStatus = old.fetchStatus, lastMessageId = old.lastMessageId } acc
+
+        foundOnlyInNew cId new acc =
+            Dict.insert cId new acc
+    in
+    Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldChannels newChannels Dict.empty
+
+
+handleRehydrate : Discord -> Yield
 handleRehydrate discord =
     case discord of
         Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            enterAndFire False (Rehydrating token pov) (hydrate pov.token)
+            enterAndFire (PostProcess False KeepFAM) (Rehydrating token pov) (hydrate pov.token)
 
         _ ->
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
 
-{-| Handles Fetch event caused by fetch timers.
+{-| Handles Fetch event caused by the fetch timer.
 
 THIS is where timers are primarily continued/killed.
+XXX If refactored as using root app's Time.every, each Producer does not control timers.
 
 Timers are:
 
@@ -958,7 +1004,7 @@ Timers are:
   - otherwise continued
 
 -}
-handleFetch : Discord -> Posix -> Producer.Yield Message Discord Msg
+handleFetch : Discord -> Posix -> Yield
 handleFetch discord posix =
     case discord of
         Hydrated t pov ->
@@ -969,17 +1015,17 @@ handleFetch discord posix =
 
         Expired t pov ->
             -- Effectively killing a timer. Needs to be restarted when new token is regisered.
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
         Switching newSession pov ->
             fetchOrSetTimer (Switching newSession) pov posix
 
         _ ->
             -- Timer tick should not arrive in other states
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
 
-fetchOrSetTimer : (POV -> Discord) -> POV -> Posix -> Producer.Yield Message Discord Msg
+fetchOrSetTimer : (POV -> Discord) -> POV -> Posix -> Yield
 fetchOrSetTimer stateTagger pov posix =
     let
         readyToFetchChannels =
@@ -989,43 +1035,52 @@ fetchOrSetTimer stateTagger pov posix =
     in
     case readyToFetchChannels of
         [] ->
-            enterAndFire False (stateTagger pov) setFetchTimerOne
+            enterAndFire (PostProcess False KeepFAM) (stateTagger pov) setFetchTimerOne
 
         c :: _ ->
-            enterAndFire False (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
+            enterAndFire (PostProcess False KeepFAM) (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
 
 
-handleFetched : Discord -> FetchResult -> Producer.Yield Message Discord Msg
+handleFetched : Discord -> FetchResult -> Yield
 handleFetched discord fetchResult =
     case ( discord, unauthorizedOnFetch fetchResult ) of
+        ( ChannelScanning pov, False ) ->
+            handleFetchResult continueOrSetTimer pov fetchResult
+
+        ( ChannelScanning pov, True ) ->
+            -- This is very unlikely, since the token is quite recently Identified. But possible.
+            enter (PostProcess True KeepFAM) (Expired pov.token pov)
+
         ( Hydrated t pov, False ) ->
-            handleFetchedImpl (Hydrated t) pov fetchResult
+            handleFetchResult (\newPov -> ( Hydrated t newPov, setFetchTimerOne, Nothing )) pov fetchResult
 
         ( Hydrated t pov, True ) ->
-            enter True (Expired t pov)
+            enter (PostProcess True KeepFAM) (Expired t pov)
 
         ( Rehydrating t pov, False ) ->
-            handleFetchedImpl (Rehydrating t) pov fetchResult
+            -- After successful Hydrate, timer is restarted via ChannelScanning
+            handleFetchResult (\newPov -> ( Rehydrating t newPov, Cmd.none, Nothing )) pov fetchResult
 
         ( Rehydrating t pov, True ) ->
             -- Hydrate may arrive later, but it will be handled by handleHydrate even if the state was Expired
-            enter True (Expired t pov)
+            enter (PostProcess True KeepFAM) (Expired t pov)
 
         ( Switching newSession pov, False ) ->
-            handleFetchedImpl (Switching newSession) pov fetchResult
+            -- After successful Hydrate, timer is restarted via ChannelScanning
+            handleFetchResult (\newPov -> ( Switching newSession newPov, Cmd.none, Nothing )) pov fetchResult
 
         ( Switching newSession pov, True ) ->
             -- Hydrate should be going concurrently; let it handle the case
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
         ( Expired _ _, _ ) ->
             -- Regardless of its content, discard fetchResult and keep Expired status as is.
             -- If the session is restored with new token later, expects retry from previous lastMessageId
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
         _ ->
             -- `Fetched` should not arrive in other status
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
 
 unauthorizedOnFetch : FetchResult -> Bool
@@ -1038,26 +1093,93 @@ unauthorizedOnFetch fetchResult =
             False
 
 
-handleFetchedImpl : (POV -> Discord) -> POV -> FetchResult -> Producer.Yield Message Discord Msg
-handleFetchedImpl stateTagger pov fetchResult =
+continueOrSetTimer : POV -> ( Discord, Cmd Msg, Maybe UpdateFAM )
+continueOrSetTimer newPov =
+    case List.filter initializing (Dict.values newPov.channels) of
+        [] ->
+            ( Hydrated newPov.token newPov, setFetchTimerOne, Just (calculateFAM newPov.channels) )
+
+        cs ->
+            case List.filter (\c -> c.fetchStatus == NeverFetched) cs of
+                [] ->
+                    -- Other InitialFetching channel should resolve soon.
+                    ( ChannelScanning newPov, Cmd.none, Nothing )
+
+                c :: _ ->
+                    ( ChannelScanning (updateChannelBeforeFetch c newPov), fetchOne newPov.token c, Nothing )
+
+
+initializing : Channel -> Bool
+initializing c =
+    c.fetchStatus == NeverFetched || c.fetchStatus == InitialFetching
+
+
+handleFetchResult : (POV -> ( Discord, Cmd Msg, Maybe UpdateFAM )) -> POV -> FetchResult -> Yield
+handleFetchResult finalizer pov fetchResult =
+    let
+        finalize ms ( updatedPov, updateFAM ) =
+            let
+                ( newDiscord, cmd, finalFAM ) =
+                    finalizer updatedPov
+            in
+            case ms of
+                [] ->
+                    enterAndFire (PostProcess False (Maybe.withDefault updateFAM finalFAM)) newDiscord cmd
+
+                _ ->
+                    -- Note: reversing items since /messages API sorts messages from latest to oldest
+                    yieldAndFire (List.reverse ms) (Maybe.withDefault updateFAM finalFAM) newDiscord cmd
+    in
     case fetchResult of
         FetchErr cId _ ->
-            nextInitialFetchOrSetTimer [] stateTagger <|
+            finalize [] <|
                 updateChannel cId pov <|
                     \c ->
                         if forbiddenOnFetch fetchResult then
                             { c | fetchStatus = Forbidden }
 
                         else if c.fetchStatus == InitialFetching then
+                            -- Assuming transient error
                             { c | fetchStatus = NeverFetched }
 
                         else
+                            -- Assuming transient error
                             proceedFetchStatus Nothing [] c
 
         FetchOk cId ms posix ->
-            nextInitialFetchOrSetTimer ms stateTagger <|
+            finalize ms <|
                 updateChannel cId pov <|
                     proceedFetchStatus (Just posix) ms
+
+
+updateChannel : String -> POV -> (Channel -> Channel) -> ( POV, UpdateFAM )
+updateChannel cId pov updater =
+    case Dict.get cId pov.channels of
+        Just c ->
+            let
+                updated =
+                    updater c
+
+                newChannels =
+                    Dict.insert cId updated pov.channels
+
+                updateFAM =
+                    if c.fetchStatus == InitialFetching then
+                        -- FAM will be updated when all channels are fetched. Hold until then.
+                        KeepFAM
+
+                    else if updated.fetchStatus == Forbidden then
+                        -- Channel permission likely updated; need update FAM
+                        calculateFAM newChannels
+
+                    else
+                        KeepFAM
+            in
+            ( { pov | channels = newChannels }, updateFAM )
+
+        Nothing ->
+            -- Target Channel somehow gone; deleted?
+            ( pov, calculateFAM pov.channels )
 
 
 forbiddenOnFetch : FetchResult -> Bool
@@ -1128,36 +1250,14 @@ incrementBackoff backoff posix =
             NextFetchAt (Time.add 120000 posix) BO120
 
 
-nextInitialFetchOrSetTimer : List Message -> (POV -> Discord) -> POV -> Producer.Yield Message Discord Msg
-nextInitialFetchOrSetTimer items stateTagger pov =
-    -- Issues a fetch for NeverFetched channel immediately, otherwise set timer.
-    -- XXX Consequently, initial fetching sequence becomes very "bursty", potentially resulting in throttling
-    -- Note: reversing items since /messages API sorts messages from latest to oldest
-    let
-        stateFun =
-            case items of
-                [] ->
-                    enterAndFire False
-
-                _ ->
-                    yieldAndFire (List.reverse items)
-    in
-    case List.filter (.fetchStatus >> (==) NeverFetched) (Dict.values pov.channels) of
-        [] ->
-            stateFun (stateTagger pov) setFetchTimerOne
-
-        c :: _ ->
-            stateFun (stateTagger (updateChannelBeforeFetch c pov)) (fetchOne pov.token c)
-
-
-handleAPIError : Discord -> Http.Error -> Producer.Yield Message Discord Msg
+handleAPIError : Discord -> Http.Error -> Yield
 handleAPIError discord error =
     -- Debug here; mostly, unexpected API errors indicate auth error
     -- TODO log some important errors somehow
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
         TokenReady _ ->
             -- Identify failure
@@ -1167,25 +1267,29 @@ handleAPIError discord error =
             -- If successfully Identified, basically Hydrate should not fail. Fall back to token input.
             destroy
 
+        ChannelScanning pov ->
+            -- PROBABLY Identify failure on reload, likely token expiration/revocation
+            enter (PostProcess False KeepFAM) (Expired pov.token pov)
+
         Hydrated _ pov ->
-            enter False (Hydrated pov.token pov)
+            enter (PostProcess False KeepFAM) (Hydrated pov.token pov)
 
         Rehydrating token pov ->
             -- Just fall back to previous Hydrated state.
-            enter False (Hydrated token pov)
+            enter (PostProcess False KeepFAM) (Hydrated token pov)
 
         Revisit pov ->
             -- Identify failure on reload, likely token expiration/revocation
-            enter False (Expired pov.token pov)
+            enter (PostProcess False KeepFAM) (Expired pov.token pov)
 
         Expired _ _ ->
             -- Somehow token is expired AND any subsequent API requests also failed. Settle at Expired.
-            enter False discord
+            enter (PostProcess False KeepFAM) discord
 
         Switching _ pov ->
             -- Similar to Identified branch (Hydrate after successful Identify should not basically fail).
             -- Directly fall back to previous Hydrated state.
-            enter False (Hydrated pov.token pov)
+            enter (PostProcess False KeepFAM) (Hydrated pov.token pov)
 
 
 
@@ -1385,6 +1489,9 @@ tokenText discord =
         Identified newSession ->
             newSession.token
 
+        ChannelScanning pov ->
+            pov.token
+
         Hydrated token _ ->
             token
 
@@ -1423,6 +1530,15 @@ tokenInputButtonLabel discord =
         Identified _ ->
             "Fetching data..."
 
+        ChannelScanning pov ->
+            let
+                ( done, total ) =
+                    ( Dict.foldl (\_ c acc -> ite (not (initializing c)) (acc + 1) acc) 0 pov.channels
+                    , Dict.size pov.channels
+                    )
+            in
+            "Scanning Channels... (" ++ fromInt done ++ "/" ++ fromInt total ++ ")"
+
         Hydrated token _ ->
             if token == "" then
                 "Unregister"
@@ -1448,6 +1564,11 @@ currentStateEl discord =
     case discord of
         Identified newSession ->
             [ userNameAndAvatarEl newSession.user ]
+
+        ChannelScanning pov ->
+            [ userNameAndAvatarEl pov.user
+            , guildsEl False pov
+            ]
 
         Hydrated _ pov ->
             [ userNameAndAvatarEl pov.user
@@ -1639,6 +1760,9 @@ getPov discord =
         Identified _ ->
             Nothing
 
+        ChannelScanning pov ->
+            Just pov
+
         Hydrated _ pov ->
             Just pov
 
@@ -1658,6 +1782,9 @@ getPov discord =
 setChannelFetchStatus : List String -> Discord -> ( Discord, Bool )
 setChannelFetchStatus subs discord =
     case discord of
+        ChannelScanning pov ->
+            setChannelFetchStatusImpl ChannelScanning subs pov
+
         Hydrated t pov ->
             setChannelFetchStatusImpl (Hydrated t) subs pov
 

@@ -1,6 +1,5 @@
 module Data.Model exposing
-    ( Model, ViewState, Env
-    , ColumnSwap, FilterAtomMaterial, DiscordChannelCache
+    ( Model, ViewState, Env, ColumnSwap
     , init, welcomeModel, encodeForPersistence
     )
 
@@ -9,8 +8,7 @@ module Data.Model exposing
 
 ## Types
 
-@docs Model, ViewState, Env
-@docs ColumnSwap, FilterAtomMaterial, DiscordChannelCache
+@docs Model, ViewState, Env, ColumnSwap
 
 
 ## APIs
@@ -25,6 +23,7 @@ import Browser.Navigation exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter exposing (FilterAtom)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
@@ -63,21 +62,6 @@ type alias ColumnSwap =
     { grabbedId : String
     , originalIndex : Int
     , originalOrder : Array String
-    }
-
-
-type alias FilterAtomMaterial =
-    { ofDiscordChannel : Maybe ( FilterAtom, List DiscordChannelCache ) -- List instead of Dict, should be sorted already
-    }
-
-
-{-| Rarely updated part of Discord.Channel.
-Namely, omitting lastMessageId and fetchStatus.
--}
-type alias DiscordChannelCache =
-    { id : String
-    , name : String
-    , guildMaybe : Maybe Discord.Guild
     }
 
 

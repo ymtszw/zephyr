@@ -10,6 +10,7 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
+import Data.FilterAtomMaterial as FilterAtomMaterial
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
@@ -259,7 +260,7 @@ brokerScanChunkAmount =
 
 updateProducerFetchStatuses : Model -> ( Model, Bool )
 updateProducerFetchStatuses ({ producerRegistry } as m) =
-    -- This function should "fix" corrupted Producer statuses, if any.
+    -- This function should also "fix" corrupted Producer statuses, if any.
     let
         ( newDiscord, shouldPersist ) =
             case producerRegistry.discord of
@@ -279,16 +280,19 @@ updateProducerFetchStatuses ({ producerRegistry } as m) =
 
 {-| Relstart producers on savedState reload.
 
-Save state in order to apply new encoding format.
+Always persist state in order to apply new encoding format, if any.
 
 -}
 reloadProducers : Model -> ( Model, Cmd Msg, Bool )
-reloadProducers m =
+reloadProducers ({ viewState } as m) =
     let
-        ( newRegistry, reloadCmd ) =
+        ( newRegistry, reloadCmd, famInstruction ) =
             Producer.reloadAll m.producerRegistry
     in
-    ( { m | producerRegistry = newRegistry }
+    ( { m
+        | producerRegistry = newRegistry
+        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update famInstruction viewState.filterAtomMaterial }
+      }
     , Cmd.batch
         [ Cmd.map ProducerCtrl reloadCmd
         , ite m.env.indexedDBAvailable scheduleNextScan Cmd.none
@@ -298,21 +302,33 @@ reloadProducers m =
 
 
 applyProducerYield : Model -> Producer.GrossYield -> ( Model, Cmd Msg, Bool )
-applyProducerYield model gy =
+applyProducerYield ({ viewState } as m) gy =
     case gy.items of
         [] ->
-            ( { model | producerRegistry = gy.producerRegistry }
+            ( { m
+                | producerRegistry = gy.producerRegistry
+                , viewState =
+                    { viewState
+                        | filterAtomMaterial =
+                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                    }
+              }
             , Cmd.map ProducerCtrl gy.cmd
-            , gy.shouldPersist
+            , gy.postProcess.persist
             )
 
         nonEmptyYields ->
-            ( { model
-                | itemBroker = ItemBroker.bulkAppend nonEmptyYields model.itemBroker
+            ( { m
+                | itemBroker = ItemBroker.bulkAppend nonEmptyYields m.itemBroker
                 , producerRegistry = gy.producerRegistry
+                , viewState =
+                    { viewState
+                        | filterAtomMaterial =
+                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                    }
               }
             , Cmd.map ProducerCtrl gy.cmd
-            , gy.shouldPersist
+            , gy.postProcess.persist
             )
 
 
