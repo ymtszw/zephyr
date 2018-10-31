@@ -1,4 +1,18 @@
-module ListExtra exposing (groupWhile)
+module ListExtra exposing (findOne, groupWhile)
+
+
+findOne : (a -> Bool) -> List a -> Maybe a
+findOne check list =
+    case list of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            if check x then
+                Just x
+
+            else
+                findOne check xs
 
 
 groupWhile : (a -> a -> Bool) -> List a -> List (List a)

@@ -132,9 +132,20 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Int -> Broker Item -> ColumnStore -> ColumnStore
+consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
 consumeBroker maxCount broker columnStore =
-    { columnStore | dict = Dict.map (\_ column -> Column.consumeBroker maxCount broker column) columnStore.dict }
+    let
+        ( newDict, shouldPersist ) =
+            Dict.foldl reducer ( Dict.empty, False ) columnStore.dict
+
+        reducer cId column ( accDict, accSP ) =
+            column
+                |> Column.consumeBroker maxCount broker
+                |> Tuple.mapBoth
+                    (\newColumn -> Dict.insert cId newColumn accDict)
+                    ((||) accSP)
+    in
+    ( { columnStore | dict = newDict }, shouldPersist )
 
 
 

@@ -1,15 +1,36 @@
-module Data.Model exposing (ColumnSwap, Env, Model, ViewState, init, welcomeModel)
+module Data.Model exposing
+    ( Model, ViewState, Env, ColumnSwap
+    , init, welcomeModel, encodeForPersistence
+    )
+
+{-| Model of the app.
+
+
+## Types
+
+@docs Model, ViewState, Env, ColumnSwap
+
+
+## APIs
+
+@docs init, welcomeModel, encodeForPersistence
+
+-}
 
 import Array exposing (Array)
 import Broker exposing (Broker)
 import Browser.Navigation exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Filter exposing (FilterAtom)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
+import Json.Encode as E
 import Logger
 import Time exposing (Zone)
 import View.Select
@@ -33,6 +54,7 @@ type alias ViewState =
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
+    , filterAtomMaterial : FilterAtomMaterial
     }
 
 
@@ -80,6 +102,7 @@ defaultViewState =
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
+    , filterAtomMaterial = { ofDiscordChannel = Nothing }
     }
 
 
@@ -99,3 +122,13 @@ welcomeModel env navKey =
     , viewState = defaultViewState
     , env = env
     }
+
+
+encodeForPersistence : Model -> E.Value
+encodeForPersistence m =
+    E.object
+        [ ( "columnStore", ColumnStore.encode m.columnStore )
+        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
+        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
+        , ( "idGen", UniqueId.encodeGenerator m.idGen )
+        ]

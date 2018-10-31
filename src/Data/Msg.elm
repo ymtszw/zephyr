@@ -4,7 +4,8 @@ import Browser
 import Browser.Dom
 import Data.Filter
 import Data.Producer
-import Json.Decode
+import Data.SavedState exposing (SavedState)
+import Json.Decode as D
 import Logger
 import Time exposing (Posix, Zone)
 
@@ -24,7 +25,8 @@ type Msg
     | DragStart Int String
     | DragEnter Int
     | DragEnd
-    | Load Json.Decode.Value
+    | LoadOk SavedState
+    | LoadErr D.Error
     | ToggleConfig Bool
     | ToggleColumnConfig String Bool
     | AddColumnFilter String Data.Filter.Filter

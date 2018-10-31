@@ -10,6 +10,7 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
+import Data.FilterAtomMaterial as FilterAtomMaterial
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
@@ -17,14 +18,14 @@ import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
-import Extra exposing (andDo, ite, setTimeout)
+import Extra exposing (andDo, ite, pure, setTimeout)
 import HttpExtra
+import IndexedDb
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Logger exposing (Entry)
-import Ports
 import String exposing (fromInt)
 import Task
 import Time
@@ -32,6 +33,22 @@ import TimeZone
 import Url
 import View
 import View.Select
+
+
+
+-- MAIN
+
+
+main : Program Env Model Msg
+main =
+    Browser.application
+        { init = init
+        , update = \msg m -> log update msg m |> IndexedDb.postUpdate
+        , subscriptions = sub
+        , view = view
+        , onUrlRequest = LinkClicked
+        , onUrlChange = \_ -> NoOp
+        }
 
 
 
@@ -89,88 +106,99 @@ scanIntervalMillis =
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, Bool )
 update msg ({ viewState, env } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
-            ( m, adjustMaxHeight )
+            ( m, adjustMaxHeight, False )
 
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
-            ( { m | env = { env | clientHeight = round viewport.height } }, Cmd.none )
+            pure { m | env = { env | clientHeight = round viewport.height } }
 
         GetTimeZone ( _, zone ) ->
-            ( { m | viewState = { viewState | timezone = zone } }, Cmd.none )
+            pure { m | viewState = { viewState | timezone = zone } }
 
         LoggerCtrl lMsg ->
-            Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl)
+            Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
 
         LinkClicked (Internal url) ->
-            ( m, Nav.pushUrl m.navKey (Url.toString url) )
+            ( m, Nav.pushUrl m.navKey (Url.toString url), False )
 
         LinkClicked (External url) ->
-            ( m, Nav.load url )
+            ( m, Nav.load url, False )
 
         SelectToggle sId True ->
-            ( { m | viewState = { viewState | selectState = View.Select.open sId viewState.selectState } }, Cmd.none )
+            pure { m | viewState = { viewState | selectState = View.Select.open sId viewState.selectState } }
 
         SelectToggle _ False ->
-            ( { m | viewState = { viewState | selectState = View.Select.close } }, Cmd.none )
+            pure { m | viewState = { viewState | selectState = View.Select.close } }
 
         SelectPick actualMsg ->
             update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
 
         AddColumn ->
-            persist ( addColumn m, Cmd.none )
+            -- If Filters are somehow set to the new Column, then persist.
+            pure (addColumn m)
 
         DelColumn index ->
-            persist ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none )
+            ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, True )
 
         ToggleColumnSwappable bool ->
-            ( { m | viewState = { viewState | columnSwappable = bool } }, Cmd.none )
+            pure { m | viewState = { viewState | columnSwappable = bool } }
 
         DragStart originalIndex colId ->
-            ( { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }, Cmd.none )
+            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }
 
         DragEnter dest ->
-            onDragEnter m dest
+            pure (onDragEnter m dest)
 
         DragEnd ->
             -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
             -- So we always turn off swap mode at dragend
-            persist ( { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }, Cmd.none )
+            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
 
-        Load val ->
-            -- Persist on Load, migrating to new encoding format if any
-            persist <| reloadProducers <| ( loadSavedState m val, ite m.env.indexedDBAvailable scheduleNextScan Cmd.none )
+        LoadOk ss ->
+            -- TODO break them apart; save/load one gigantic state object is one of anti-pattern
+            reloadProducers <|
+                { m
+                    | columnStore = ss.columnStore
+                    , itemBroker = ss.itemBroker
+                    , producerRegistry = ss.producerRegistry
+                    , idGen = ss.idGen
+                }
+
+        LoadErr _ ->
+            pure m
 
         ToggleConfig opened ->
-            ( { m | viewState = { viewState | configOpen = opened } }, Cmd.none )
+            pure { m | viewState = { viewState | configOpen = opened } }
 
         ToggleColumnConfig cId bool ->
-            updateColumn cId m <| \c -> { c | configOpen = bool, deleteGate = "" }
+            updateColumn cId m False <| \c -> { c | configOpen = bool, deleteGate = "" }
 
         AddColumnFilter cId filter ->
-            persist <| updateColumn cId m <| \c -> { c | filters = Array.push filter c.filters, offset = Nothing, items = [] }
+            updateColumn cId m True <| \c -> { c | filters = Array.push filter c.filters, offset = Nothing, items = [] }
 
         SetColumnFilter cId index filter ->
-            persist <| updateColumn cId m <| \c -> { c | filters = Array.set index filter c.filters, offset = Nothing, items = [] }
+            updateColumn cId m True <| \c -> { c | filters = Array.set index filter c.filters, offset = Nothing, items = [] }
 
         DelColumnFilter cId index ->
-            persist <| updateColumn cId m <| \c -> { c | filters = Array.removeAt index c.filters, offset = Nothing, items = [] }
+            updateColumn cId m True <| \c -> { c | filters = Array.removeAt index c.filters, offset = Nothing, items = [] }
 
         ColumnDeleteGateInput cId text ->
-            updateColumn cId m <| \c -> { c | deleteGate = text }
+            -- Bypassing unrelated checks in updateColumn
+            pure { m | columnStore = ColumnStore.updateById cId (\c -> { c | deleteGate = text }) m.columnStore }
 
         ProducerCtrl pctrl ->
-            persist <| applyProducerYield m <| Producer.update pctrl m.producerRegistry
+            applyProducerYield m <| Producer.update pctrl m.producerRegistry
 
         ScanBroker _ ->
-            persist <| scanBroker <| updateProducerFetchStatuses m
+            scanBroker m
 
         NoOp ->
-            ( m, Cmd.none )
+            pure m
 
 
 addColumn : Model -> Model
@@ -182,7 +210,7 @@ addColumn m =
     { m | columnStore = ColumnStore.add (Column.new newId) m.columnStore, idGen = newIdGen }
 
 
-onDragEnter : Model -> Int -> ( Model, Cmd Msg )
+onDragEnter : Model -> Int -> Model
 onDragEnter m dest =
     -- Ideally we should pass originalOrder Array along with messages
     -- so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
@@ -194,38 +222,35 @@ onDragEnter m dest =
                 newOrder =
                     Array.moveFromTo swap.originalIndex dest swap.originalOrder
             in
-            ( { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }, Cmd.none )
+            { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
 
         Nothing ->
-            ( m, Cmd.none )
+            m
 
 
-updateColumn : String -> Model -> (Column -> Column) -> ( Model, Cmd Msg )
-updateColumn cId m updater =
-    ( { m | columnStore = ColumnStore.updateById cId updater m.columnStore }
-        |> updateProducerFetchStatuses
-    , Cmd.none
-    )
+{-| Update column somehow, someway.
+
+Can choose whether to persist or not.
+
+-}
+updateColumn : String -> Model -> Bool -> (Column -> Column) -> ( Model, Cmd Msg, Bool )
+updateColumn cId m persistRequested updater =
+    let
+        ( newModel, shouldPersist ) =
+            { m | columnStore = ColumnStore.updateById cId updater m.columnStore }
+                |> updateProducerFetchStatuses
+                |> Tuple.mapSecond ((||) persistRequested)
+    in
+    ( newModel, Cmd.none, shouldPersist )
 
 
-updateProducerFetchStatuses : Model -> Model
-updateProducerFetchStatuses ({ producerRegistry } as m) =
-    -- This function should "fix" corrupted Producer statuses.
-    { m
-        | producerRegistry =
-            { producerRegistry
-                | discord =
-                    producerRegistry.discord
-                        |> Maybe.map (Discord.setChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore))
-            }
-    }
-
-
-scanBroker : Model -> ( Model, Cmd Msg )
+scanBroker : Model -> ( Model, Cmd Msg, Bool )
 scanBroker m =
-    ( { m | columnStore = ColumnStore.consumeBroker brokerScanChunkAmount m.itemBroker m.columnStore }
-    , scheduleNextScan
-    )
+    let
+        ( newColumnStore, shouldPersist ) =
+            ColumnStore.consumeBroker brokerScanChunkAmount m.itemBroker m.columnStore
+    in
+    ( { m | columnStore = newColumnStore }, scheduleNextScan, shouldPersist )
 
 
 brokerScanChunkAmount : Int
@@ -233,159 +258,77 @@ brokerScanChunkAmount =
     500
 
 
+updateProducerFetchStatuses : Model -> ( Model, Bool )
+updateProducerFetchStatuses ({ producerRegistry } as m) =
+    -- This function should also "fix" corrupted Producer statuses, if any.
+    let
+        ( newDiscord, shouldPersist ) =
+            case producerRegistry.discord of
+                Just discord ->
+                    Discord.setChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore) discord
+                        |> Tuple.mapFirst Just
 
--- STATE PERSISTENCE
-
-
-{-| Persists Elm application state to IndexedDB via port.
-
-Do NOT call this function on every update, instead use it only when subject-to-persist data is updated,
-in order to minimize IndexedDB access.
-
-Even queueing/throttling can be introduced later, for when IndexedDB access become too frequent
-(with risks of potential data loss, obviously.)
-
--}
-persist : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-persist ( model, cmd ) =
-    ( model
-    , if model.env.indexedDBAvailable then
-        Cmd.batch [ cmd, Ports.sendToJs (encodeModel model) ]
-
-      else
-        cmd
-    )
-
-
-encodeModel : Model -> E.Value
-encodeModel m =
-    E.object
-        [ ( "columnStore", ColumnStore.encode m.columnStore )
-        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
-        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
-        , ( "idGen", UniqueId.encodeGenerator m.idGen )
-        ]
-
-
-{-| Decodes JS value from IndexedDB and populate Model.
-
-This function is called upon Load Msg, not in init with flags,
-since all IndexedDB APIs are asynchronous.
-
--}
-loadSavedState : Model -> D.Value -> Model
-loadSavedState model value =
-    case D.decodeValue (savedStateDecoder model.idGen) value of
-        Ok savedState ->
-            { model
-                | columnStore = savedState.columnStore
-                , itemBroker = savedState.itemBroker
-                , producerRegistry = savedState.producerRegistry
-                , idGen = savedState.idGen
-            }
-
-        Err err ->
-            let
-                m =
-                    welcomeModel model.env model.navKey
-            in
-            { m | log = Logger.rec m.log (Entry "Error.loadSavedState" [ D.errorToString err ]) }
-
-
-type alias SavedState =
-    { columnStore : ColumnStore
-    , itemBroker : Broker Item
-    , producerRegistry : ProducerRegistry
-    , idGen : UniqueId.Generator
-    }
-
-
-savedStateDecoder : UniqueId.Generator -> Decoder SavedState
-savedStateDecoder idGen =
-    -- Write new decoder and migration logic when you change SavedState structure
-    D.oneOf
-        [ v3StateDecoder
-        , v2StateDecoder
-        , v1StateDecoder idGen
-        ]
-
-
-v3StateDecoder : Decoder SavedState
-v3StateDecoder =
-    D.map4 SavedState
-        (D.field "columnStore" ColumnStore.decoder)
-        (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
-        (D.field "producerRegistry" Producer.registryDecoder)
-        (D.field "idGen" UniqueId.generatorDecoder)
-
-
-v2StateDecoder : Decoder SavedState
-v2StateDecoder =
-    D.map convertFromV2State <|
-        D.map2 Tuple.pair
-            (D.field "columnStore" ColumnStore.decoder)
-            (D.field "idGen" UniqueId.generatorDecoder)
-
-
-convertFromV2State : ( ColumnStore, UniqueId.Generator ) -> SavedState
-convertFromV2State ( columnStore, idGen ) =
-    SavedState columnStore ItemBroker.init Producer.initRegistry idGen
-
-
-v1StateDecoder : UniqueId.Generator -> Decoder SavedState
-v1StateDecoder idGen =
-    D.field "columns" (D.list Column.decoder)
-        |> D.andThen (convertFromV1State idGen)
-        |> D.map convertFromV2State
-
-
-convertFromV1State : UniqueId.Generator -> List Column -> Decoder ( ColumnStore, UniqueId.Generator )
-convertFromV1State idGen columns =
-    case columns of
-        (_ :: _) as nonEmptyColumns ->
-            let
-                applyId decoded ( accColumnStore, accIdGen ) =
-                    UniqueId.genAndMap "column" accIdGen <|
-                        \newId ->
-                            ColumnStore.add { decoded | id = newId } accColumnStore
-            in
-            D.succeed <| List.foldr applyId ( ColumnStore.init, idGen ) nonEmptyColumns
-
-        [] ->
-            D.fail "No saved columns. Go to fallback."
+                Nothing ->
+                    ( Nothing, False )
+    in
+    ( { m | producerRegistry = { producerRegistry | discord = newDiscord } }, shouldPersist )
 
 
 
 -- PRODUCER
 
 
-{-| Reload Producers on saved state load.
+{-| Relstart producers on savedState reload.
 
-After the initial engage, subsequent engage/disengage should be done
-on demand generated as Producer Replys.
+Always persist state in order to apply new encoding format, if any.
 
 -}
-reloadProducers : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-reloadProducers ( m, cmd ) =
+reloadProducers : Model -> ( Model, Cmd Msg, Bool )
+reloadProducers ({ viewState } as m) =
     let
-        ( newRegistry, reloadCmd ) =
+        ( newRegistry, reloadCmd, famInstruction ) =
             Producer.reloadAll m.producerRegistry
     in
-    ( { m | producerRegistry = newRegistry }, Cmd.batch [ Cmd.map ProducerCtrl reloadCmd, cmd ] )
+    ( { m
+        | producerRegistry = newRegistry
+        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update famInstruction viewState.filterAtomMaterial }
+      }
+    , Cmd.batch
+        [ Cmd.map ProducerCtrl reloadCmd
+        , ite m.env.indexedDBAvailable scheduleNextScan Cmd.none
+        ]
+    , True
+    )
 
 
-applyProducerYield : Model -> Producer.GrossYield -> ( Model, Cmd Msg )
-applyProducerYield model gy =
+applyProducerYield : Model -> Producer.GrossYield -> ( Model, Cmd Msg, Bool )
+applyProducerYield ({ viewState } as m) gy =
     case gy.items of
         [] ->
-            ( { model | producerRegistry = gy.producerRegistry }, Cmd.map ProducerCtrl gy.cmd )
-
-        nonEmptyYields ->
-            ( { model
-                | itemBroker = ItemBroker.bulkAppend nonEmptyYields model.itemBroker
-                , producerRegistry = gy.producerRegistry
+            ( { m
+                | producerRegistry = gy.producerRegistry
+                , viewState =
+                    { viewState
+                        | filterAtomMaterial =
+                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                    }
               }
             , Cmd.map ProducerCtrl gy.cmd
+            , gy.postProcess.persist
+            )
+
+        nonEmptyYields ->
+            ( { m
+                | itemBroker = ItemBroker.bulkAppend nonEmptyYields m.itemBroker
+                , producerRegistry = gy.producerRegistry
+                , viewState =
+                    { viewState
+                        | filterAtomMaterial =
+                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                    }
+              }
+            , Cmd.map ProducerCtrl gy.cmd
+            , gy.postProcess.persist
             )
 
 
@@ -397,7 +340,7 @@ sub : Model -> Sub Msg
 sub m =
     Sub.batch
         [ onResize Resize
-        , Ports.loadFromJs Load
+        , IndexedDb.load m.idGen
         , toggleColumnSwap m.viewState.columnSwappable
         ]
 
@@ -433,22 +376,10 @@ view m =
 
 
 
--- MAIN
+-- LOGGING
 
 
-main : Program Env Model Msg
-main =
-    Browser.application
-        { init = init
-        , view = view
-        , update = log update
-        , subscriptions = sub
-        , onUrlRequest = LinkClicked
-        , onUrlChange = \_ -> NoOp
-        }
-
-
-log : (Msg -> Model -> ( Model, Cmd Msg )) -> Msg -> Model -> ( Model, Cmd Msg )
+log : (Msg -> Model -> ( Model, Cmd Msg, Bool )) -> Msg -> Model -> ( Model, Cmd Msg, Bool )
 log u msg m =
     u msg <|
         if m.env.isLocalDevelopment then
@@ -506,8 +437,11 @@ msgToLogEntry msg =
         DragEnd ->
             Entry "DragEnd" []
 
-        Load _ ->
-            Entry "Load" [ "<savedState>" ]
+        LoadOk _ ->
+            Entry "LoadOk" [ "<savedState>" ]
+
+        LoadErr e ->
+            Entry "LoadErr" [ D.errorToString e ]
 
         ToggleConfig bool ->
             Entry "ToggleConfig" [ ite bool "True" "False" ]

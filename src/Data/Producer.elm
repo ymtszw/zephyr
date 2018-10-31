@@ -19,8 +19,9 @@ module Data.Producer exposing
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.Item exposing (Item(..))
-import Data.Producer.Base exposing (Update, Yield)
+import Data.Producer.Base exposing (PostProcess, UpdateFAM(..), Yield)
 import Data.Producer.Discord as Discord exposing (Channel, Discord, Guild)
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -92,14 +93,17 @@ initRegistry =
 
 {-| Reload all registered Producers on application startup.
 -}
-reloadAll : ProducerRegistry -> ( ProducerRegistry, Cmd Msg )
+reloadAll : ProducerRegistry -> ( ProducerRegistry, Cmd Msg, UpdateInstruction )
 reloadAll producerRegistry =
     case Maybe.map Discord.reload producerRegistry.discord of
-        Just ( newDiscord, discordCmd ) ->
-            ( { producerRegistry | discord = Just newDiscord }, Cmd.map DiscordMsg discordCmd )
+        Just ( newDiscord, discordCmd, discordFAM ) ->
+            ( { producerRegistry | discord = Just newDiscord }
+            , Cmd.map DiscordMsg discordCmd
+            , UpdateInstruction discordFAM
+            )
 
         Nothing ->
-            ( producerRegistry, Cmd.none )
+            ( producerRegistry, Cmd.none, UpdateInstruction KeepFAM )
 
 
 
@@ -112,8 +116,15 @@ type Msg
 
 type alias GrossYield =
     { items : List Item
+    , postProcess : PostProcess
     , producerRegistry : ProducerRegistry
     , cmd : Cmd Msg
+    }
+
+
+type alias PostProcess =
+    { persist : Bool
+    , famInstruction : UpdateInstruction
     }
 
 
@@ -127,12 +138,13 @@ update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
             let
-                discordYield =
+                dy =
                     Discord.update dMsg producerRegistry.discord
             in
-            GrossYield (List.map DiscordItem discordYield.items)
-                { producerRegistry | discord = discordYield.newState }
-                (Cmd.map DiscordMsg discordYield.cmd)
+            GrossYield (List.map DiscordItem dy.items)
+                (PostProcess dy.postProcess.persist (UpdateInstruction dy.postProcess.updateFAM))
+                { producerRegistry | discord = dy.newState }
+                (Cmd.map DiscordMsg dy.cmd)
 
 
 
