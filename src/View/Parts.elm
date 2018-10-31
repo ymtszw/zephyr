@@ -1,7 +1,8 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, octiconFreeSizeEl, squareIconEl
-    , disabled, disabledColor, scale12, manualStyle
+    , disabled, disabledColor, scale12, css, brightness, manualStyle
+    , fixedColumnWidth
     )
 
 {-| View parts, complementing Element and Html.
@@ -19,11 +20,16 @@ module View.Parts exposing
 
 ## Styles
 
-@docs disabled, disabledColor, scale12, manualStyle
+@docs disabled, disabledColor, scale12, css, brightness, manualStyle
+
+
+## Constants
+
+@docs fixedColumnWidth
 
 -}
 
-import Data.ColorTheme exposing (css, oneDark)
+import Data.ColorTheme exposing (oneDark)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -141,12 +147,48 @@ collapsingColumn attrs elements =
 
 
 
--- FONT SIZE
+-- STYLE HELPER
 
 
 scale12 : Int -> Int
 scale12 =
     modular 12 1.25 >> round
+
+
+{-| Shift brightness of a Color (RGB) by a power of 1.15, without altering alpha.
+
+`brightness 1` on a Color of `{red = 100, green = 100, blue = 100}`
+will yield `{red = 115, green = 115, blue = 115}`.
+
+`brightness -1` on the same Color will yield `{red = 86.96, green = 86.96, blue = 86.96}`
+
+-}
+brightness : Float -> Color -> Color
+brightness power color =
+    let
+        { red, green, blue } =
+            toRgb color
+    in
+    rgb (red * (1.15 ^ power)) (green * (1.15 ^ power)) (blue * (1.15 ^ power))
+
+
+{-| Dump a Color to CSS-compatible representaiton
+-}
+css : Color -> String
+css color =
+    let
+        { red, green, blue } =
+            toRgb color
+    in
+    String.join ""
+        [ "rgb("
+        , String.fromFloat (255 * red)
+        , ","
+        , String.fromFloat (255 * green)
+        , ","
+        , String.fromFloat (255 * blue)
+        , ")"
+        ]
 
 
 
@@ -160,3 +202,12 @@ manualStyle =
         [ Html.text "::-webkit-scrollbar{display:none;}"
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}"
         ]
+
+
+
+-- CONSTANTS
+
+
+fixedColumnWidth : Int
+fixedColumnWidth =
+    350

@@ -27,12 +27,13 @@ They must be converted to Element Msg by callers.
 
 -}
 
-import Data.ColorTheme exposing (ColorTheme, css)
+import Data.ColorTheme exposing (ColorTheme)
 import Data.Msg exposing (Msg)
 import Html exposing (..)
 import Html.Attributes exposing (href, style, target)
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
+import View.Parts exposing (css)
 
 
 type alias TextRenderer =
