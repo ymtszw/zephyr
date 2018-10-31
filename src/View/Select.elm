@@ -8,6 +8,7 @@ import Element.Border as BD
 import Element.Events
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Element.Lazy exposing (lazy3, lazy4)
 import Extra exposing (ite)
 import Html.Attributes exposing (tabindex)
@@ -55,6 +56,7 @@ isOpen id state =
 {-| Select input element.
 
 Require `id` and `state` to control open/closed status.
+Also, it uess Keyed.column.
 
 -}
 select :
@@ -64,7 +66,7 @@ select :
     , noMsgOptionEl : a -> Element Msg
     }
     -> State
-    -> List a
+    -> List ( String, a )
     -> Element Msg
 select { id, onSelect, selectedOption, noMsgOptionEl } state options =
     let
@@ -73,7 +75,7 @@ select { id, onSelect, selectedOption, noMsgOptionEl } state options =
     in
     el
         [ width (fill |> minimum 0)
-        , below (ite opened (lazy4 optionsEl onSelect noMsgOptionEl selectedOption options) none)
+        , below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) none)
         , Font.size (scale12 2)
         ]
         (lazy3 headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
@@ -101,11 +103,11 @@ headerEl onPress selectedOption noMsgOptionEl =
         }
 
 
-optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List a -> Element Msg
+optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
 optionsEl onSelect noMsgOptionEl selectedOption options =
     options
-        |> List.map (lazy4 optionEl onSelect noMsgOptionEl selectedOption)
-        |> column
+        |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
+        |> Element.Keyed.column
             [ width (fill |> minimum 100)
             , paddingXY 0 5
             , scrollbarY
@@ -123,8 +125,8 @@ optionsEl onSelect noMsgOptionEl selectedOption options =
         |> el [ height (fill |> maximum 300) ]
 
 
-optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> a -> Element Msg
-optionEl onSelect noMsgOptionEl selectedOption option =
+optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( String, Element Msg )
+optionEl onSelect noMsgOptionEl selectedOption ( optionKey, option ) =
     let
         selectedStyle =
             ite (selectedOption == Just option) [ BG.color oneDark.active ] []
@@ -139,3 +141,4 @@ optionEl onSelect noMsgOptionEl selectedOption option =
         { onPress = Just (SelectPick (onSelect option))
         , label = noMsgOptionEl option
         }
+        |> Tuple.pair optionKey

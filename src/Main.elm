@@ -204,10 +204,15 @@ update msg ({ viewState, env } as m) =
 addColumn : Model -> Model
 addColumn m =
     let
-        ( newId, newIdGen ) =
-            UniqueId.gen "column" m.idGen
+        ( newColumn, newIdGen ) =
+            m.idGen
+                |> UniqueId.gen "column"
+                |> UniqueId.andThen
+                    (\( cId, idGen ) ->
+                        Column.new idGen cId
+                    )
     in
-    { m | columnStore = ColumnStore.add (Column.new newId) m.columnStore, idGen = newIdGen }
+    { m | columnStore = ColumnStore.add newColumn m.columnStore, idGen = newIdGen }
 
 
 onDragEnter : Model -> Int -> Model

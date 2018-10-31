@@ -1,4 +1,4 @@
-module View.ColumnItem exposing (columnItemEl)
+module View.ColumnItem exposing (columnItemKeyEl)
 
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
@@ -21,15 +21,15 @@ import Url
 import View.Parts exposing (..)
 
 
-columnItemEl : Time.Zone -> List ColumnItem -> Element Msg
-columnItemEl tz closeItems =
+columnItemKeyEl : Time.Zone -> List ColumnItem -> ( String, Element Msg )
+columnItemKeyEl tz closeItems =
     -- Reverse, since we want to show closeItems in oldest to latest, opposite from other places
     case List.reverse closeItems of
         [] ->
             -- Should not happen
-            none
+            ( "", none )
 
-        item :: items ->
+        (item :: items) as reversed ->
             row
                 [ width fill
                 , paddingXY 0 5
@@ -40,6 +40,22 @@ columnItemEl tz closeItems =
                 [ itemAvatarEl item
                 , itemContentsEl tz item items
                 ]
+                |> Tuple.pair (columnItemKey reversed)
+
+
+columnItemKey : List ColumnItem -> String
+columnItemKey closeItems =
+    closeItems
+        |> List.map
+            (\item ->
+                case item of
+                    Product offset _ ->
+                        Broker.offsetToString offset
+
+                    System id _ ->
+                        id
+            )
+        |> String.join "-"
 
 
 itemAvatarEl : ColumnItem -> Element Msg
@@ -61,7 +77,7 @@ itemAvatarEl item =
                         , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
                         }
 
-        System _ ->
+        System _ _ ->
             avatarWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing }
 
 
@@ -107,7 +123,7 @@ itemContentsEl tz item closeItems =
                 |> List.filterMap unwrap
                 |> discordMessageEl tz ( discordMessage, offset )
 
-        System { message, mediaMaybe } ->
+        System _ { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
 
 

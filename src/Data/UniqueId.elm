@@ -1,4 +1,4 @@
-module Data.UniqueId exposing (Generator, encodeGenerator, gen, genAndMap, generatorDecoder, init)
+module Data.UniqueId exposing (Generator, andThen, encodeGenerator, gen, genAndMap, generatorDecoder, init, sequence)
 
 {-| Generates Unique (sequenced) ID string.
 -}
@@ -64,3 +64,20 @@ This is to allow writing in this style:
 genAndMap : String -> Generator -> (String -> a) -> ( a, Generator )
 genAndMap prefix generator transform =
     Tuple.mapFirst transform (gen prefix generator)
+
+
+{-| -}
+andThen : (( a, Generator ) -> ( b, Generator )) -> ( a, Generator ) -> ( b, Generator )
+andThen nextGen prev =
+    nextGen prev
+
+
+{-| Sequentially generate IDs and apply them to list of functions.
+-}
+sequence : String -> Generator -> List (String -> a) -> ( List a, Generator )
+sequence prefix generator transformSeq =
+    let
+        reducer transform ( accSeq, accGen ) =
+            genAndMap prefix accGen <| \id -> transform id :: accSeq
+    in
+    List.foldr reducer ( [], generator ) transformSeq

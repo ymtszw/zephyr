@@ -109,14 +109,15 @@ defaultViewState =
 welcomeModel : Env -> Key -> Model
 welcomeModel env navKey =
     let
-        ( columnStore, idGen ) =
-            UniqueId.genAndMap "column" UniqueId.init <|
-                \newId -> ColumnStore.add (Column.welcome newId) ColumnStore.init
+        ( welcomeColumn, finalGen ) =
+            UniqueId.init
+                |> UniqueId.gen "column"
+                |> UniqueId.andThen (\( cId, idGen ) -> Column.welcome idGen cId)
     in
-    { columnStore = columnStore
+    { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
-    , idGen = idGen
+    , idGen = finalGen
     , log = Logger.init
     , navKey = navKey
     , viewState = defaultViewState

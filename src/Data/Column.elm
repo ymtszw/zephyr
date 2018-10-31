@@ -25,6 +25,7 @@ import Broker exposing (Broker, Offset)
 import Data.Filter as Filter exposing (Filter)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
+import Data.UniqueId as UniqueId
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -44,10 +45,7 @@ type alias Column =
 
 type ColumnItem
     = Product Offset Item
-    | System
-        { message : String
-        , mediaMaybe : Maybe Media
-        }
+    | System String { message : String, mediaMaybe : Maybe Media }
 
 
 type Media
@@ -71,8 +69,8 @@ encodeColumnItem cItem =
         Product offset item ->
             E.tagged2 "Product" (offset |> Broker.offsetToString |> E.string) (Item.encode item)
 
-        System { message, mediaMaybe } ->
-            E.tagged "System" <|
+        System id { message, mediaMaybe } ->
+            E.tagged2 "System" (E.string id) <|
                 E.object
                     [ ( "message", E.string message )
                     , ( "media", E.maybe encodeMedia mediaMaybe )
@@ -93,7 +91,7 @@ decoder : Decoder Column
 decoder =
     D.map4 (\id items filters offset -> Column id items filters offset False "")
         (D.field "id" D.string)
-        (D.field "items" (D.list columnItemDecoder))
+        (D.field "items" (D.leakyList columnItemDecoder))
         (D.oneOf
             [ D.field "filters" (D.array Filter.decoder)
             , D.succeed Array.empty -- Migration
@@ -106,11 +104,7 @@ columnItemDecoder : Decoder ColumnItem
 columnItemDecoder =
     D.oneOf
         [ D.tagged2 "Product" Product offsetDecoder Item.decoder
-        , D.tagged "System" System systemMessageDecoder
-
-        -- Old format from Data.Item
-        , D.tagged "SystemItem" System systemMessageDecoder
-        , D.map System systemMessageDecoder
+        , D.tagged2 "System" System D.string systemMessageDecoder
         ]
 
 
@@ -143,28 +137,35 @@ mediaDecoder =
         ]
 
 
-welcome : String -> Column
-welcome id =
-    { id = id
-    , items =
-        [ welcomeItem
-        , textOnlyItem "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
-        ]
-    , filters = Array.empty
-    , offset = Nothing
-    , configOpen = True
-    , deleteGate = ""
-    }
+welcome : UniqueId.Generator -> String -> ( Column, UniqueId.Generator )
+welcome idGen id =
+    let
+        ( items, newGen ) =
+            UniqueId.sequence "systemMessage" idGen <|
+                [ welcomeItem
+                , textOnlyItem "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
+                ]
+    in
+    ( { id = id
+      , items = items
+      , filters = Array.empty
+      , offset = Nothing
+      , configOpen = True
+      , deleteGate = ""
+      }
+    , newGen
+    )
 
 
-textOnlyItem : String -> ColumnItem
-textOnlyItem message =
-    System { message = message, mediaMaybe = Nothing }
+textOnlyItem : String -> String -> ColumnItem
+textOnlyItem message id =
+    System id { message = message, mediaMaybe = Nothing }
 
 
-welcomeItem : ColumnItem
-welcomeItem =
+welcomeItem : String -> ColumnItem
+welcomeItem id =
     System
+        id
         { message = "Welcome to Zephyr app! 🚀\n\nThis is Elm-powered multi-service feed reader!\n\nLet's start with configuring column filters above!"
         , mediaMaybe =
             Just <|
@@ -179,15 +180,22 @@ welcomeItem =
         }
 
 
-new : String -> Column
-new id =
-    { id = id
-    , items = [ textOnlyItem "New column created! Let's configure filters above!" ]
-    , filters = Array.empty
-    , offset = Nothing
-    , configOpen = True
-    , deleteGate = ""
-    }
+new : UniqueId.Generator -> String -> ( Column, UniqueId.Generator )
+new idGen id =
+    let
+        ( item, newGen ) =
+            UniqueId.genAndMap "systemMessage" idGen <|
+                textOnlyItem "New column created! Let's configure filters above!"
+    in
+    ( { id = id
+      , items = [ item ]
+      , filters = Array.empty
+      , offset = Nothing
+      , configOpen = True
+      , deleteGate = ""
+      }
+    , newGen
+    )
 
 
 consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )

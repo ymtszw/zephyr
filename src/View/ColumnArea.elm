@@ -23,7 +23,7 @@ import Octicons
 import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
-import View.ColumnItem exposing (columnItemEl)
+import View.ColumnItem exposing (columnItemKeyEl)
 import View.Parts exposing (..)
 
 
@@ -81,8 +81,8 @@ itemsEl tz items =
             -- Do note that items are sorted from latest to oldest
             items
                 |> ListExtra.groupWhile shouldGroup
-                |> List.map (lazy2 columnItemEl tz)
-                |> column [ width fill, paddingXY 5 0, scrollbarY ]
+                |> List.map (columnItemKeyEl tz)
+                |> Element.Keyed.column [ width fill, paddingXY 5 0, scrollbarY ]
 
 
 waitingForFirstItemEl : Element Msg
@@ -95,10 +95,10 @@ waitingForFirstItemEl =
 shouldGroup : ColumnItem -> ColumnItem -> Bool
 shouldGroup newer older =
     case ( newer, older ) of
-        ( System _, _ ) ->
+        ( System _ _, _ ) ->
             False
 
-        ( _, System _ ) ->
+        ( _, System _ _ ) ->
             False
 
         ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->

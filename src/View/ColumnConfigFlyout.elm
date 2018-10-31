@@ -177,26 +177,26 @@ newFilterAtomEl tagger vs filterId =
 filterAtomInputEl : (FilterAtom -> Msg) -> ViewState -> String -> Maybe FilterAtom -> Element Msg
 filterAtomInputEl tagger vs filterAtomId filterAtomMaybe =
     row [ width (fill |> minimum 0), spacing 3 ]
-        [ filterAtomTypeSelectEl tagger vs.selectState vs.filterAtomMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
+        [ filterAtomCtorSelectEl tagger vs.selectState vs.filterAtomMaterial (filterAtomId ++ "-typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger vs.selectState vs.filterAtomMaterial (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
 
 
-filterAtomTypeSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomTypeSelectEl tagger selectState material selectId filterAtomMaybe =
+filterAtomCtorSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
+filterAtomCtorSelectEl tagger selectState material selectId filterAtomMaybe =
     el [ width (fill |> maximum 120) ] <|
         select
             { id = selectId
             , onSelect = tagger
             , selectedOption = filterAtomMaybe
-            , noMsgOptionEl = filterAtomTypeOptionEl
+            , noMsgOptionEl = filterAtomCtorOptionEl
             }
             selectState
             (availableFilterAtomsWithDefaultArguments material filterAtomMaybe)
 
 
-filterAtomTypeOptionEl : FilterAtom -> Element msg
-filterAtomTypeOptionEl filterAtom =
+filterAtomCtorOptionEl : FilterAtom -> Element msg
+filterAtomCtorOptionEl filterAtom =
     el [ Font.size (scale12 1) ] <|
         case filterAtom of
             ByMessage _ ->
@@ -212,11 +212,12 @@ filterAtomTypeOptionEl filterAtom =
                 text "Remove this filter"
 
 
-availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> Maybe FilterAtom -> List FilterAtom
+availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> Maybe FilterAtom -> List ( String, FilterAtom )
 availableFilterAtomsWithDefaultArguments material filterAtomMaybe =
     replaceWithSelected filterAtomMaybe
         (basicFilterAtoms ++ materialToDefaultFilterAtoms material)
         ++ Maybe.withDefault [] (Maybe.map (always [ RemoveMe ]) filterAtomMaybe)
+        |> List.map (\fa -> ( ctorKey fa, fa ))
 
 
 basicFilterAtoms : List FilterAtom
@@ -224,6 +225,22 @@ basicFilterAtoms =
     [ ByMessage "text"
     , ByMedia HasNone
     ]
+
+
+ctorKey : FilterAtom -> String
+ctorKey fa =
+    case fa of
+        ByMessage _ ->
+            "ByMessage"
+
+        ByMedia _ ->
+            "ByMedia"
+
+        OfDiscordChannel _ ->
+            "OfDiscordChannel"
+
+        RemoveMe ->
+            "RemoveMe"
 
 
 materialToDefaultFilterAtoms : FilterAtomMaterial -> List FilterAtom
@@ -266,13 +283,13 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
 
         Just (ByMedia mediaType) ->
             filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
-                ( [ HasNone, HasImage, HasMovie ], mediaTypeOptionEl )
+                ( [ ( "HasNone", HasNone ), ( "HasImage", HasImage ), ( "HasMovie", HasMovie ) ], mediaTypeOptionEl )
 
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
                 case material.ofDiscordChannel of
                     Just ( _, channels ) ->
-                        ( List.map .id channels, lazy2 discordChannelWithGuildIconEl channels )
+                        ( List.map (\c -> ( c.id, c.id )) channels, discordChannelWithGuildIconEl channels )
 
                     Nothing ->
                         ( [], text )
@@ -302,7 +319,7 @@ filterAtomVariableTextInputEl tagger text =
         }
 
 
-filterAtomVariableSelectInputEl : (a -> Msg) -> Select.State -> String -> a -> ( List a, a -> Element Msg ) -> Element Msg
+filterAtomVariableSelectInputEl : (a -> Msg) -> Select.State -> String -> a -> ( List ( String, a ), a -> Element Msg ) -> Element Msg
 filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, optionEl ) =
     select
         { id = selectId
@@ -347,15 +364,15 @@ discordChannelWithGuildIconEl channels cId =
 
 
 columnDeleteEl : Int -> Column.Column -> Element Msg
-columnDeleteEl index column =
+columnDeleteEl index c =
     row [ width fill, spacing 5, padding 10 ]
-        [ columnDeleteGateEl column
-        , columnDeleteButtonEl index column
+        [ columnDeleteGateEl c.id c.deleteGate
+        , lazy2 columnDeleteButtonEl index (String.toLower c.deleteGate == "delete")
         ]
 
 
-columnDeleteGateEl : Column.Column -> Element Msg
-columnDeleteGateEl column =
+columnDeleteGateEl : String -> String -> Element Msg
+columnDeleteGateEl cId deleteGate =
     Element.Input.text
         [ width fill
         , height (px 30) -- Match with select input height
@@ -364,8 +381,8 @@ columnDeleteGateEl column =
         , BD.width 0
         , Font.size (scale12 1)
         ]
-        { onChange = ColumnDeleteGateInput column.id
-        , text = column.deleteGate
+        { onChange = ColumnDeleteGateInput cId
+        , text = deleteGate
         , placeholder =
             Just <|
                 Element.Input.placeholder [] <|
@@ -374,10 +391,10 @@ columnDeleteGateEl column =
         }
 
 
-columnDeleteButtonEl : Int -> Column.Column -> Element Msg
-columnDeleteButtonEl index column =
+columnDeleteButtonEl : Int -> Bool -> Element Msg
+columnDeleteButtonEl index confirmed =
     el [ width (px 100) ] <|
-        if String.toLower column.deleteGate == "delete" then
+        if confirmed then
             Element.Input.button
                 [ width fill
                 , height (px 30)
