@@ -2,7 +2,6 @@ module Examples exposing (suite)
 
 import Array exposing (fromList)
 import ArrayExtra as Array
-import Data.Column
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
@@ -279,26 +278,6 @@ uniqueIdSuite =
 
 
 
--- Data.Column
-
-
-columnSuite : Test
-columnSuite =
-    describe "Data.Column"
-        [ test "encoder/decoder should work" <|
-            \_ ->
-                let
-                    welcome =
-                        Data.Column.welcome "test"
-                in
-                welcome
-                    |> Data.Column.encode
-                    |> decodeValue Data.Column.decoder
-                    |> Expect.equal (Ok { welcome | configOpen = False })
-        ]
-
-
-
 -- Data.TextRenderer
 
 
@@ -511,7 +490,6 @@ suite =
         , stringSuite
         , arraySuite
         , uniqueIdSuite
-        , columnSuite
         , textRendererSuite
         , fetchStatusSuite
         , discordSuite
