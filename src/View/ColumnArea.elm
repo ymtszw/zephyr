@@ -33,6 +33,7 @@ columnAreaEl m =
     Element.Keyed.row
         [ width fill
         , height (fill |> maximum m.env.clientHeight)
+        , scrollbarX
         , Font.regular
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         , inFront (configPaneEl m)
