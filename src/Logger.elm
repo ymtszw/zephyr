@@ -19,7 +19,7 @@ import Octicons
 import StringExtra
 import Task
 import Time exposing (Posix)
-import View.Parts exposing (noneAttr, octiconFreeSizeEl, scale12)
+import View.Parts exposing (..)
 
 
 
@@ -81,8 +81,7 @@ historyLimit =
 defaultFilters : List MsgFilter
 defaultFilters =
     -- Timer ticks are good candidates of default filters
-    [ MsgFilter False "ScanBroker"
-    , MsgFilter False "Discord.Fetch"
+    [ MsgFilter False "Tick"
     , MsgFilter False "Logger.ScrollStart"
     , MsgFilter False "Logger.ViewportOk"
     ]
@@ -328,7 +327,7 @@ rowKeyEl msgFilters ( eId, e ) =
 ctorCellEl : List MsgFilter -> Entry -> Element Msg
 ctorCellEl msgFilters entry =
     row [ spacing 5 ]
-        [ el [ bold ] (text entry.ctor)
+        [ breakP [ bold ] [ breakT entry.ctor ]
         , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))

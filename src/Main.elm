@@ -22,11 +22,12 @@ import Json.Decode as D
 import Json.DecodeExtra as D
 import Logger
 import Task
-import Time
+import Time exposing (Posix)
 import TimeZone
 import Url
 import View
 import View.Select
+import Worque exposing (Work(..))
 
 
 
@@ -66,8 +67,6 @@ init env _ navKey =
         |> andDo
             [ adjustMaxHeight
             , getTimeZone
-
-            -- , ite env.indexedDBAvailable Cmd.none scheduleNextScan -- Wait scanning until Load
             ]
 
 
@@ -83,29 +82,6 @@ getTimeZone =
             Result.withDefault ( "UTC", Time.utc ) >> GetTimeZone
     in
     TimeZone.getZone |> Task.attempt fallbackToUtc
-
-
-scheduleNextScan : Cmd Msg
-scheduleNextScan =
-    -- Not using Time.every subscription since Column updating may take longer time occasionally,
-    -- in such events fixed ticks may interfare with the adjacent ticks.
-    -- Chained timers can always ensure next processing is AFTER the previous one had done.
-    setTimeout ScanBroker scanIntervalMillis
-
-
-{-| Dictates how often Columns are updated (i.e. the Broker is scanned).
-
-XXX We may have to dynamically adjust scanIntervalMillis and brokerScanChunkAmount
-according to the flow rate of the Broker. Or, instruct users about how to configure Columns so they are not overloaded.
-Since it is possible for Producers to produce Items way faster than Consumers (Columns) can consume.
-
-Due to the "buffer" nature of the Broker, the application itself should continue to run,
-though older Items may be evicted BEFORE consumed by Columns, effectively causing "skip" or "loss" of data.
-
--}
-scanIntervalMillis : Float
-scanIntervalMillis =
-    1000
 
 
 
@@ -204,8 +180,8 @@ update msg ({ viewState, env } as m) =
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
 
-        ScanBroker _ ->
-            scanBroker m
+        Tick posix ->
+            onTick posix m
 
         NoOp ->
             pure m
@@ -256,20 +232,6 @@ updateColumn cId m persistRequested updater =
     ( newModel, Cmd.none, shouldPersist )
 
 
-scanBroker : Model -> ( Model, Cmd Msg, Bool )
-scanBroker m =
-    let
-        ( newColumnStore, shouldPersist ) =
-            ColumnStore.consumeBroker brokerScanChunkAmount m.itemBroker m.columnStore
-    in
-    ( { m | columnStore = newColumnStore }, scheduleNextScan, shouldPersist )
-
-
-brokerScanChunkAmount : Int
-brokerScanChunkAmount =
-    500
-
-
 updateProducerFetchStatuses : Model -> ( Model, Bool )
 updateProducerFetchStatuses ({ producerRegistry } as m) =
     -- This function should also "fix" corrupted Producer statuses, if any.
@@ -286,6 +248,29 @@ updateProducerFetchStatuses ({ producerRegistry } as m) =
     ( { m | producerRegistry = { producerRegistry | discord = newDiscord } }, shouldPersist )
 
 
+onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
+onTick posix mOld =
+    case Worque.pop mOld.worque of
+        ( Just BrokerScan, newWorque ) ->
+            scanBroker { mOld | worque = newWorque }
+
+        ( Just DiscordFetch, newWorque ) ->
+            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) mOld.producerRegistry
+                |> applyProducerYield { mOld | worque = newWorque }
+
+        ( Nothing, newWorque ) ->
+            pure { mOld | worque = newWorque }
+
+
+scanBroker : Model -> ( Model, Cmd Msg, Bool )
+scanBroker m =
+    let
+        ( newColumnStore, shouldPersist ) =
+            ColumnStore.consumeBroker m.itemBroker m.columnStore
+    in
+    ( { m | columnStore = newColumnStore, worque = Worque.push BrokerScan m.worque }, Cmd.none, shouldPersist )
+
+
 
 -- PRODUCER
 
@@ -298,49 +283,49 @@ Always persist state in order to apply new encoding format, if any.
 reloadProducers : Model -> ( Model, Cmd Msg, Bool )
 reloadProducers ({ viewState } as m) =
     let
-        ( newRegistry, reloadCmd, famInstruction ) =
+        reloaded =
             Producer.reloadAll m.producerRegistry
     in
     ( { m
-        | producerRegistry = newRegistry
-        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update famInstruction viewState.filterAtomMaterial }
+        | producerRegistry = reloaded.producerRegistry
+        , worque = Worque.pushAll reloaded.works m.worque
+        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial }
       }
-    , Cmd.batch
-        [ Cmd.map ProducerCtrl reloadCmd
-        , ite m.env.indexedDBAvailable scheduleNextScan Cmd.none
-        ]
+    , Cmd.map ProducerCtrl reloaded.cmd
     , True
     )
 
 
-applyProducerYield : Model -> Producer.GrossYield -> ( Model, Cmd Msg, Bool )
-applyProducerYield ({ viewState } as m) gy =
-    case gy.items of
+applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, Bool )
+applyProducerYield ({ viewState } as m) y =
+    case y.items of
         [] ->
             ( { m
-                | producerRegistry = gy.producerRegistry
+                | producerRegistry = y.producerRegistry
+                , worque = y.postProcess.work |> Maybe.map (\w -> Worque.push w m.worque) |> Maybe.withDefault m.worque
                 , viewState =
                     { viewState
                         | filterAtomMaterial =
-                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
                     }
               }
-            , Cmd.map ProducerCtrl gy.cmd
-            , gy.postProcess.persist
+            , Cmd.map ProducerCtrl y.cmd
+            , y.postProcess.persist
             )
 
         nonEmptyYields ->
             ( { m
                 | itemBroker = ItemBroker.bulkAppend nonEmptyYields m.itemBroker
-                , producerRegistry = gy.producerRegistry
+                , producerRegistry = y.producerRegistry
+                , worque = y.postProcess.work |> Maybe.map (\w -> Worque.push w m.worque) |> Maybe.withDefault m.worque
                 , viewState =
                     { viewState
                         | filterAtomMaterial =
-                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
                     }
               }
-            , Cmd.map ProducerCtrl gy.cmd
-            , gy.postProcess.persist
+            , Cmd.map ProducerCtrl y.cmd
+            , y.postProcess.persist
             )
 
 
@@ -353,8 +338,15 @@ sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
         , IndexedDb.load m.idGen
+        , Time.every globalTimerIntervalMillis Tick
         , toggleColumnSwap m.viewState.columnSwappable
         ]
+
+
+globalTimerIntervalMillis : Float
+globalTimerIntervalMillis =
+    -- 6 Hz
+    166.7
 
 
 toggleColumnSwap : Bool -> Sub Msg

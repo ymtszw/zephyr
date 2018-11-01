@@ -34,6 +34,7 @@ import Json.Encode as E
 import Logger
 import Time exposing (Zone)
 import View.Select
+import Worque exposing (Work(..), Worque)
 
 
 type alias Model =
@@ -41,6 +42,7 @@ type alias Model =
     , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
     , idGen : UniqueId.Generator
+    , worque : Worque
     , log : Logger.History
     , navKey : Key
     , viewState : ViewState
@@ -85,6 +87,7 @@ initModel env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueId.init
+        , worque = Worque.init |> Worque.push BrokerScan
         , log = Logger.init
         , navKey = navKey
         , viewState = defaultViewState
@@ -117,6 +120,7 @@ welcomeModel env navKey =
     { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
+    , worque = Worque.init |> Worque.push BrokerScan
     , idGen = finalGen
     , log = Logger.init
     , navKey = navKey

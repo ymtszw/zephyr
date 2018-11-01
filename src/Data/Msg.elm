@@ -41,7 +41,7 @@ type Msg
     | DelColumnFilter String Int
     | ColumnDeleteGateInput String String
     | ProducerCtrl Producer.Msg
-    | ScanBroker Posix
+    | Tick Posix
 
 
 logEntry : Msg -> Entry
@@ -119,8 +119,8 @@ logEntry msg =
         ProducerCtrl pMsg ->
             producerMsgToEntry pMsg
 
-        ScanBroker posix ->
-            Entry "ScanBroker" [ Iso8601.fromTime posix ]
+        Tick posix ->
+            Entry "Tick" [ Iso8601.fromTime posix ]
 
 
 viewportToString : Browser.Dom.Viewport -> String

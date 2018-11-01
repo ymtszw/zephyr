@@ -1,4 +1,4 @@
-module Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction, update)
+module Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..), update)
 
 import Data.Filter exposing (FilterAtom)
 import Data.Producer.Base exposing (UpdateFAM(..))
@@ -10,19 +10,21 @@ type alias FilterAtomMaterial =
     }
 
 
-type alias UpdateInstruction =
-    { ofDiscordChannel : UpdateFAM ( FilterAtom, List Discord.ChannelCache )
-    }
+type UpdateInstruction
+    = DiscordInstruction (UpdateFAM ( FilterAtom, List Discord.ChannelCache ))
 
 
-update : UpdateInstruction -> FilterAtomMaterial -> FilterAtomMaterial
-update ins fam =
-    case ins.ofDiscordChannel of
-        SetFAM discordFAM ->
-            { fam | ofDiscordChannel = Just discordFAM }
-
-        KeepFAM ->
+update : List UpdateInstruction -> FilterAtomMaterial -> FilterAtomMaterial
+update instructions fam =
+    case instructions of
+        [] ->
             fam
 
-        DestroyFAM ->
-            { fam | ofDiscordChannel = Nothing }
+        (DiscordInstruction (SetFAM discordFAM)) :: xs ->
+            update xs { fam | ofDiscordChannel = Just discordFAM }
+
+        (DiscordInstruction KeepFAM) :: xs ->
+            update xs fam
+
+        (DiscordInstruction DestroyFAM) :: xs ->
+            update xs { fam | ofDiscordChannel = Nothing }
