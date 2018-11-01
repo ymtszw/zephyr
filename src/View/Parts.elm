@@ -129,7 +129,7 @@ iconWithBadgeEl { size, badge, fallback, url } =
                 Nothing ->
                     [ alignTop ]
     in
-    el bottomRightBadge <| el [ padding 2 ] <| squareIconOrHeadEl size fallback <| url
+    el bottomRightBadge <| el [ padding 1 ] <| squareIconOrHeadEl (size - 2) fallback <| url
 
 
 {-| Text that can break on parent inline element width.
