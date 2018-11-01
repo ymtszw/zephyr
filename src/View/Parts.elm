@@ -1,8 +1,8 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
-    , octiconEl, octiconFreeSizeEl, squareIconEl
+    , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl
     , disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
-    , discordGuildSmallIconEl
+    , discordGuildIconEl
     , fixedColumnWidth
     )
 
@@ -16,7 +16,7 @@ module View.Parts exposing
 
 ## Icons
 
-@docs octiconEl, octiconFreeSizeEl, squareIconEl
+@docs octiconEl, octiconFreeSizeEl, squareIconOrHeadEl
 
 
 ## Styles
@@ -26,7 +26,7 @@ module View.Parts exposing
 
 ## Discord
 
-@docs discordGuildSmallIconEl
+@docs discordGuildIconEl
 
 
 ## Constants
@@ -89,8 +89,8 @@ octiconFreeSizeEl size octicon =
         |> html
 
 
-squareIconEl : Int -> String -> Maybe String -> Element msg
-squareIconEl size name urlMaybe =
+squareIconOrHeadEl : Int -> String -> Maybe String -> Element msg
+squareIconOrHeadEl size name urlMaybe =
     let
         ( attr, fallbackContent ) =
             case urlMaybe of
@@ -222,9 +222,33 @@ dragHandleClassName =
     "dragHandle"
 
 
-discordGuildSmallIconEl : Discord.Guild -> Element msg
-discordGuildSmallIconEl guild =
-    squareIconEl 20 guild.name (Maybe.map (Discord.imageUrlNoFallback (Just "16")) guild.icon)
+discordGuildIconEl : Int -> Discord.Guild -> Element msg
+discordGuildIconEl size guild =
+    squareIconOrHeadEl size guild.name (Maybe.map (Discord.imageUrlNoFallback (Just (nextPowerOfTwoString size))) guild.icon)
+
+
+nextPowerOfTwoString : Int -> String
+nextPowerOfTwoString size =
+    if size > 512 then
+        "1024"
+
+    else if size > 256 then
+        "512"
+
+    else if size > 128 then
+        "256"
+
+    else if size > 64 then
+        "128"
+
+    else if size > 32 then
+        "64"
+
+    else if size > 16 then
+        "32"
+
+    else
+        "16"
 
 
 

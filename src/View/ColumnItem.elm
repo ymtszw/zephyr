@@ -92,7 +92,7 @@ avatarWithBadgeEl { badge, fallback, url } =
                 Nothing ->
                     [ alignTop ]
     in
-    el bottomRightBadge <| el [ padding 2 ] <| squareIconEl avatarSize fallback <| url
+    el bottomRightBadge <| el [ padding 2 ] <| squareIconOrHeadEl avatarSize fallback <| url
 
 
 avatarSize : Int
@@ -203,7 +203,7 @@ discordEmbedAuthorEl author =
                     element
     in
     row [ spacing 5, Font.bold ]
-        [ wrapWithLink <| squareIconEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
+        [ wrapWithLink <| squareIconOrHeadEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
         , paragraph [] [ wrapWithLink <| text author.name ]
         ]
 

@@ -3,7 +3,8 @@ module Data.Producer.Discord exposing
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update
-    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing, compareByFetchStatus
+    , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
+    , getPov, setChannelFetchStatus, initializing, compareByFetchStatus
     )
 
 {-| Polling Producer for Discord.
@@ -34,7 +35,8 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing, compareByFetchStatus
+@docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
+@docs getPov, setChannelFetchStatus, initializing, compareByFetchStatus
 
 -}
 
@@ -1368,6 +1370,16 @@ fetchOne token channel =
 
 
 -- RUNTIME APIs
+
+
+defaultIconUrl : Maybe String -> String
+defaultIconUrl sizeMaybe =
+    imageUrlWithFallback sizeMaybe "" Nothing
+
+
+guildIconOrDefaultUrl : Maybe String -> Guild -> String
+guildIconOrDefaultUrl sizeMaybe g =
+    imageUrlWithFallback sizeMaybe "" g.icon
 
 
 imageUrlNoFallback : Maybe String -> Image -> String

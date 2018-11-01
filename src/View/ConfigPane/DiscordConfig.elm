@@ -251,14 +251,9 @@ guildsEl rotating pov =
             , rehydrateButtonEl rotating pov
             ]
         , pov.guilds
-            |> Dict.foldl (\_ guild acc -> guildIconEl guild :: acc) []
+            |> Dict.foldl (\_ guild acc -> discordGuildIconEl 50 guild :: acc) []
             |> wrappedRow [ width fill, spacing 5 ]
         ]
-
-
-guildIconEl : Guild -> Element Msg
-guildIconEl guild =
-    squareIconEl 50 guild.name (Maybe.map (imageUrlNoFallback (Just "64")) guild.icon)
 
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
@@ -311,7 +306,7 @@ channelRowKeyEl c =
         row [ width fill, spacing 2, clipX ]
             [ el [ width fill ] <|
                 row []
-                    [ c.guildMaybe |> Maybe.map discordGuildSmallIconEl |> Maybe.withDefault none
+                    [ c.guildMaybe |> Maybe.map (discordGuildIconEl 20) |> Maybe.withDefault none
                     , breakP [] [ breakT ("#" ++ c.name) ]
                     ]
             , el [ width fill ] <|

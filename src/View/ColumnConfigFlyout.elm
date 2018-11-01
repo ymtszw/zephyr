@@ -352,7 +352,7 @@ discordChannelWithGuildIconEl channels cId =
             case channel.guildMaybe of
                 Just guild ->
                     row [ width (fill |> minimum 0), spacing 3 ]
-                        [ discordGuildSmallIconEl guild
+                        [ discordGuildIconEl 20 guild
                         , text ("#" ++ channel.name)
                         ]
 
