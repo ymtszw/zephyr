@@ -1,7 +1,7 @@
-module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, rec, update)
+module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, push, update)
 
 import BoundedDeque exposing (BoundedDeque)
-import Browser.Dom exposing (Viewport, getViewportOf, setViewportOf)
+import Browser.Dom
 import Data.ColorTheme exposing (oneDark)
 import Element exposing (..)
 import Element.Background as BG
@@ -41,14 +41,14 @@ type alias Entry =
 
 
 type Scroll
-    = Scrolling Viewport
-    | OffTheTop Viewport
+    = Scrolling Browser.Dom.Viewport
+    | OffTheTop Browser.Dom.Viewport
     | AtTop
 
 
 type Msg
     = ScrollStart
-    | ViewportResult (Result Browser.Dom.Error ( Posix, Viewport ))
+    | ViewportResult (Result Browser.Dom.Error ( Posix, Browser.Dom.Viewport ))
     | BackToTop
     | FilterInput String
     | SetMsgFilter MsgFilter
@@ -100,7 +100,7 @@ update msg (History h) =
             ( History h, queryViewport )
 
         ( BackToTop, _ ) ->
-            ( History h, setViewportOf historyElementId 0 0 |> Task.attempt (\_ -> ScrollStart) )
+            ( History h, Browser.Dom.setViewportOf historyElementId 0 0 |> Task.attempt (\_ -> ScrollStart) )
 
         ( ViewportResult (Ok ( _, newVp )), Scrolling oldVp ) ->
             if newVp.viewport.y == 0 then
@@ -137,7 +137,7 @@ update msg (History h) =
 
 queryViewport : Cmd Msg
 queryViewport =
-    doAfter 50 ViewportResult (getViewportOf historyElementId)
+    doAfter 50 ViewportResult (Browser.Dom.getViewportOf historyElementId)
 
 
 pendingToBuffer : History -> History
@@ -171,8 +171,8 @@ setMsgFilter ((MsgFilter isPos msg) as mf) (History h) =
 -- APIs
 
 
-rec : History -> Entry -> History
-rec (History h) e =
+push : Entry -> History -> History
+push e (History h) =
     let
         sanitized =
             sanitizeCtor e
