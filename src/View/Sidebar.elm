@@ -34,41 +34,40 @@ sidebarEl { columnStore, viewState, env } =
 columnButtonsEl : ColumnStore -> Element Msg
 columnButtonsEl columnStore =
     Element.Keyed.column [ width fill, padding 5, spacingXY 0 10 ] <|
-        ( "columnAddButton", columnAddButtonEl )
-            :: ColumnStore.indexedMap columnButtonEl columnStore
+        (columnAddButtonKeyEl :: ColumnStore.indexedMap columnButtonKeyEl columnStore)
 
 
-columnButtonEl : Int -> Column.Column -> ( String, Element Msg )
-columnButtonEl index { id } =
-    ( "sidebarButton_" ++ id
-    , el [ width fill ] <|
-        Element.Input.button
-            [ width (px 40)
-            , height (px 40)
-            , clip
-            , Font.color oneDark.note
-            , BD.width 1
-            , BD.color oneDark.note
-            , BD.rounded 10
-            ]
-            { onPress = Just (DelColumn index), label = el [ centerX, centerY ] <| text "×" }
-    )
+columnButtonKeyEl : Int -> Column.Column -> ( String, Element Msg )
+columnButtonKeyEl index { id } =
+    Element.Input.button
+        [ width (px 40)
+        , height (px 40)
+        , clip
+        , Font.color oneDark.note
+        , BD.width 1
+        , BD.color oneDark.note
+        , BD.rounded 10
+        ]
+        { onPress = Just (DelColumn index), label = el [ centerX, centerY ] <| text "×" }
+        |> el [ width fill ]
+        |> Tuple.pair ("sidebarButton_" ++ id)
 
 
-columnAddButtonEl : Element Msg
-columnAddButtonEl =
-    el [ width fill ] <|
-        Element.Input.button
-            [ width (px 40)
-            , height (px 40)
-            , clip
-            , Font.color oneDark.note
-            , BD.dashed
-            , BD.width 1
-            , BD.color oneDark.note
-            , BD.rounded 10
-            ]
-            { onPress = Just AddColumn, label = el [ centerX, centerY ] <| text "+" }
+columnAddButtonKeyEl : ( String, Element Msg )
+columnAddButtonKeyEl =
+    Element.Input.button
+        [ width (px 40)
+        , height (px 40)
+        , clip
+        , Font.color oneDark.note
+        , BD.dashed
+        , BD.width 1
+        , BD.color oneDark.note
+        , BD.rounded 10
+        ]
+        { onPress = Just AddColumn, label = el [ centerX, centerY ] <| text "+" }
+        |> el [ width fill ]
+        |> Tuple.pair "columnAddButton"
 
 
 otherButtonsEl : Bool -> Element Msg
