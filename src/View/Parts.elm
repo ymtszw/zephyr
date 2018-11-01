@@ -2,6 +2,7 @@ module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, octiconFreeSizeEl, squareIconEl
     , disabled, disabledColor, scale12, css, brightness, manualStyle
+    , discordGuildSmallIconEl
     , fixedColumnWidth
     )
 
@@ -23,6 +24,11 @@ module View.Parts exposing
 @docs disabled, disabledColor, scale12, css, brightness, manualStyle
 
 
+## Discord
+
+@docs discordGuildSmallIconEl
+
+
 ## Constants
 
 @docs fixedColumnWidth
@@ -30,6 +36,7 @@ module View.Parts exposing
 -}
 
 import Data.ColorTheme exposing (oneDark)
+import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -204,6 +211,11 @@ dragHandle onDragstart =
 dragHandleClassName : String
 dragHandleClassName =
     "dragHandle"
+
+
+discordGuildSmallIconEl : Discord.Guild -> Element msg
+discordGuildSmallIconEl guild =
+    squareIconEl 20 guild.name (Maybe.map (Discord.imageUrlNoFallback (Just "16")) guild.icon)
 
 
 

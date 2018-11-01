@@ -1,6 +1,6 @@
 module Data.Producer exposing
     ( ProducerRegistry, Msg(..), GrossReload, registryDecoder
-    , initRegistry, reloadAll, update, configsEl
+    , initRegistry, reloadAll, update
     , Yield, encodeRegistry
     )
 
@@ -14,28 +14,18 @@ module Data.Producer exposing
 
 ## Component APIs
 
-@docs initRegistry, reloadAll, update, configsEl
+@docs initRegistry, reloadAll, update
 
 -}
 
-import Data.ColorTheme exposing (oneDark)
-import Data.Filter exposing (FilterAtom)
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..))
+import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
 import Data.Item exposing (Item(..))
 import Data.Producer.Base exposing (PostProcessBase, UpdateFAM(..), YieldBase)
-import Data.Producer.Discord as Discord exposing (Channel, Discord, Guild)
-import Dict exposing (Dict)
-import Element exposing (..)
-import Element.Background as BG
-import Element.Border as BD
-import Element.Font as Font
+import Data.Producer.Discord as Discord exposing (Discord)
 import Json.Decode as D exposing (Decoder, Value)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
-import Process
-import Task
-import View.Parts exposing (scale12)
 import Worque exposing (Work)
 
 
@@ -190,36 +180,3 @@ mapYield itemTagger famTagger msgTagger stateSetter y =
 mapPostProcess : (UpdateFAM mat -> UpdateInstruction) -> PostProcessBase mat -> PostProcess
 mapPostProcess tagger ppb =
     PostProcess ppb.persist (tagger ppb.updateFAM) ppb.work
-
-
-
--- CONFIG VIEW
-
-
-configsEl : ProducerRegistry -> Element Msg
-configsEl producerRegistry =
-    column
-        [ width fill
-        , padding 10
-        , spacingXY 0 20
-        , BG.color oneDark.main
-        , BD.rounded 10
-        , Font.size (scale12 2)
-        ]
-        [ configWrapEl DiscordMsg "Discord" <| Discord.configEl producerRegistry.discord
-        ]
-
-
-configWrapEl : (msg -> Msg) -> String -> Element msg -> Element Msg
-configWrapEl tagger title element =
-    map tagger <|
-        column [ width fill, spacingXY 0 5 ]
-            [ el
-                [ width fill
-                , Font.bold
-                , Font.size (scale12 3)
-                , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                ]
-                (text title)
-            , element
-            ]

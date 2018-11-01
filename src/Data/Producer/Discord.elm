@@ -1,10 +1,9 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), Guild, Channel, ChannelCache, Msg(..), FetchResult(..), decoder, encode, encodeUser
+    ( Discord(..), User, POV, Guild, Channel, ChannelCache, Msg(..), FetchResult(..), decoder, encode, encodeUser
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
-    , reload, update, configEl
-    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus
-    , guildSmallIconEl
+    , reload, update
+    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing
     )
 
 {-| Polling Producer for Discord.
@@ -19,7 +18,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, Guild, Channel, ChannelCache, Msg, FetchResult, decoder, encode, encodeUser
+@docs Discord, User, POV, Guild, Channel, ChannelCache, Msg, FetchResult, decoder, encode, encodeUser
 
 
 ## Message
@@ -30,34 +29,21 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Component APIs
 
-@docs reload, update, configEl
+@docs reload, update
 
 
 ## Runtime APIs
 
-@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus
-
-
-## View APIs
-
-@docs guildSmallIconEl
+@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing
 
 -}
 
-import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Producer.Base as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Dict exposing (Dict)
-import Element exposing (..)
-import Element.Background as BG
-import Element.Border as BD
-import Element.Font as Font
-import Element.Input
-import Element.Keyed
-import Extra exposing (divMod, ite, setTimeout)
+import Element
 import Hex
-import Html.Attributes
 import Http
 import HttpExtra as Http
 import Iso8601
@@ -65,14 +51,11 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
-import ListExtra
-import Octicons
-import String exposing (fromInt)
+import String
 import Task exposing (Task)
 import Time exposing (Posix)
 import TimeExtra as Time exposing (posix)
 import Url exposing (Url)
-import View.Parts exposing (disabled, disabledColor, octiconEl, scale12, squareIconEl)
 import Worque
 
 
@@ -227,7 +210,7 @@ type alias Embed =
     { title : Maybe String
     , description : Maybe String
     , url : Maybe Url
-    , color : Maybe Color
+    , color : Maybe Element.Color
     , image : Maybe EmbedImage
     , thumbnail : Maybe EmbedImage -- Embed thumbnail and image are identical in structure
     , video : Maybe EmbedVideo
@@ -425,11 +408,11 @@ encodeEmbed embed =
         ]
 
 
-encodeColor : Color -> E.Value
+encodeColor : Element.Color -> E.Value
 encodeColor color =
     let
         { red, green, blue } =
-            toRgb color
+            Element.toRgb color
 
         hex2 =
             floor >> Hex.toString >> String.padLeft 2 '0'
@@ -638,14 +621,14 @@ embedDecoder =
         (D.maybeField "author" embedAuthorDecoder)
 
 
-colorDecoder : Decoder Color
+colorDecoder : Decoder Element.Color
 colorDecoder =
     let
         decimalIntToHex =
             Hex.toString >> String.padLeft 6 '0'
 
         hexToColor hex =
-            Result.map3 rgb255
+            Result.map3 Element.rgb255
                 (hex |> String.slice 0 2 |> Hex.fromString)
                 (hex |> String.slice 2 4 |> Hex.fromString)
                 (hex |> String.slice 4 6 |> Hex.fromString)
@@ -1076,12 +1059,6 @@ handleFetched discord fetchResult =
             pure discord
 
 
-
--- _ ->
---     -- `Fetched` should not arrive in other status
---     enter (PostProcessBase False KeepFAM) discord
-
-
 unauthorizedOnFetch : FetchResult -> Bool
 unauthorizedOnFetch fetchResult =
     case fetchResult of
@@ -1390,322 +1367,6 @@ fetchOne token channel =
 
 
 
--- CONFIG VIEW
-
-
-configEl : Maybe Discord -> Element Msg
-configEl discordMaybe =
-    case discordMaybe of
-        Just discord ->
-            tokenFormEl discord
-
-        Nothing ->
-            tokenFormEl (TokenGiven "")
-
-
-tokenFormEl : Discord -> Element Msg
-tokenFormEl discord =
-    column [ width fill, spacing 5 ] <|
-        [ Element.Input.text
-            (disabled (shouldLockInput discord)
-                [ width fill
-                , padding 5
-                , BG.color oneDark.note
-                , BD.width 0
-                ]
-            )
-            { onChange = TokenInput
-            , text = tokenText discord
-            , placeholder = Nothing
-            , label = tokenLabelEl
-            }
-        , tokenSubmitButtonEl discord
-        ]
-            ++ currentStateEl discord
-
-
-tokenSubmitButtonEl : Discord -> Element Msg
-tokenSubmitButtonEl discord =
-    Element.Input.button
-        ([ alignRight
-         , width shrink
-         , padding 10
-         , BD.rounded 5
-         ]
-            |> disabled (shouldLockButton discord)
-            |> disabledColor (shouldLockButton discord)
-        )
-        { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
-        , label = text (tokenInputButtonLabel discord)
-        }
-
-
-shouldLockInput : Discord -> Bool
-shouldLockInput discord =
-    case discord of
-        TokenGiven _ ->
-            False
-
-        Hydrated _ _ ->
-            False
-
-        Expired _ _ ->
-            False
-
-        _ ->
-            True
-
-
-shouldLockButton : Discord -> Bool
-shouldLockButton discord =
-    case discord of
-        TokenGiven "" ->
-            True
-
-        TokenGiven _ ->
-            False
-
-        Hydrated currentInput pov ->
-            -- Prohibit submitting with the same token
-            currentInput == pov.token
-
-        Expired currentInput pov ->
-            -- Allow submitting with the same token in this case, triggering retry
-            False
-
-        _ ->
-            True
-
-
-tokenText : Discord -> String
-tokenText discord =
-    case discord of
-        TokenGiven string ->
-            string
-
-        TokenReady string ->
-            string
-
-        Identified newSession ->
-            newSession.token
-
-        ChannelScanning pov ->
-            pov.token
-
-        Hydrated token _ ->
-            token
-
-        Rehydrating token _ ->
-            token
-
-        Switching newSession _ ->
-            newSession.token
-
-        Revisit pov ->
-            pov.token
-
-        Expired token _ ->
-            token
-
-
-tokenLabelEl : Element.Input.Label msg
-tokenLabelEl =
-    Element.Input.labelAbove [] <|
-        column [ spacing 5 ]
-            [ el [] (text "Token")
-            , paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
-                [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
-            ]
-
-
-tokenInputButtonLabel : Discord -> String
-tokenInputButtonLabel discord =
-    case discord of
-        TokenGiven _ ->
-            "Register"
-
-        TokenReady _ ->
-            "Waiting..."
-
-        Identified _ ->
-            "Fetching data..."
-
-        ChannelScanning pov ->
-            let
-                ( done, total ) =
-                    ( Dict.foldl (\_ c acc -> ite (not (initializing c)) (acc + 1) acc) 0 pov.channels
-                    , Dict.size pov.channels
-                    )
-            in
-            "Scanning Channels... (" ++ fromInt done ++ "/" ++ fromInt total ++ ")"
-
-        Hydrated token _ ->
-            if token == "" then
-                "Unregister"
-
-            else
-                "Change Token"
-
-        Rehydrating _ _ ->
-            "Fetching data..."
-
-        Switching _ _ ->
-            "Switching Identity"
-
-        Revisit _ ->
-            "Reloading..."
-
-        Expired _ _ ->
-            "Change Token"
-
-
-currentStateEl : Discord -> List (Element Msg)
-currentStateEl discord =
-    case discord of
-        Identified newSession ->
-            [ userNameAndAvatarEl newSession.user ]
-
-        ChannelScanning pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
-            ]
-
-        Hydrated _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
-            , subbedChannelsEl pov
-            ]
-
-        Rehydrating _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl True pov
-            , subbedChannelsEl pov
-            ]
-
-        Revisit pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
-            , subbedChannelsEl pov
-            ]
-
-        Expired _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
-            , subbedChannelsEl pov
-            ]
-
-        Switching newSession pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
-            , subbedChannelsEl pov
-            ]
-
-        _ ->
-            []
-
-
-userNameAndAvatarEl : User -> Element Msg
-userNameAndAvatarEl user =
-    row [ width fill, spacing 5 ]
-        [ el [] (text "User: ")
-        , el
-            [ width (px 32)
-            , height (px 32)
-            , BD.rounded 16
-            , BG.uncropped (imageUrlWithFallback (Just "32") user.discriminator user.avatar)
-            ]
-            none
-        , text user.username
-        , el [ centerY, Font.size (scale12 1), Font.color oneDark.note ] (text ("#" ++ user.discriminator))
-        ]
-
-
-guildsEl : Bool -> POV -> Element Msg
-guildsEl rotating pov =
-    row [ width fill, spacing 5 ]
-        [ column [ alignTop, spacing 5 ]
-            [ text "Servers: "
-            , rehydrateButtonEl rotating pov
-            ]
-        , pov.guilds
-            |> Dict.foldl (\_ guild acc -> guildIconEl guild :: acc) []
-            |> wrappedRow [ width fill, spacing 5 ]
-        ]
-
-
-guildIconEl : Guild -> Element Msg
-guildIconEl guild =
-    squareIconEl 50 guild.name (Maybe.map (imageUrlNoFallback (Just "64")) guild.icon)
-
-
-rehydrateButtonEl : Bool -> POV -> Element Msg
-rehydrateButtonEl rotating pov =
-    Element.Input.button
-        (disabled rotating
-            [ alignLeft
-            , height fill
-            , BD.rounded 30
-            , BG.color oneDark.main
-            ]
-        )
-        { onPress = ite rotating Nothing (Just Rehydrate)
-        , label = octiconEl Octicons.sync
-        }
-
-
-subbedChannelsEl : POV -> Element Msg
-subbedChannelsEl pov =
-    row [ width fill, spacing 5 ]
-        [ column [ alignTop, spacing 5 ] [ text "Channels: " ]
-        , { data =
-                pov.channels
-                    |> Dict.values
-                    |> List.filter (.fetchStatus >> FetchStatus.isActive)
-          , columns = [ subbedChannelEl, nextFetchEl ]
-          }
-            |> table [ width fill, spacing 5 ]
-        ]
-
-
-subbedChannelEl : Column Channel Msg
-subbedChannelEl =
-    { header = el [ BG.color oneDark.note ] (text "Name")
-    , width = fill
-    , view =
-        \c ->
-            row [ width fill, clipX ]
-                [ c.guildMaybe |> Maybe.map guildSmallIconEl |> Maybe.withDefault none
-                , text ("#" ++ c.name)
-                ]
-    }
-
-
-nextFetchEl : Column Channel Msg
-nextFetchEl =
-    { header = el [ BG.color oneDark.note ] (text "Next Fetch")
-    , width = fill
-    , view =
-        \c ->
-            text <|
-                case c.fetchStatus of
-                    Waiting ->
-                        "Soon"
-
-                    ResumeFetching ->
-                        "Fetching..."
-
-                    NextFetchAt posix _ ->
-                        Iso8601.fromTime posix
-
-                    Fetching _ _ ->
-                        "Fetching..."
-
-                    _ ->
-                        "Not active"
-    }
-
-
-
 -- RUNTIME APIs
 
 
@@ -1826,12 +1487,3 @@ setChannelFetchStatusImpl tagger subs pov =
                         ( c, False )
     in
     ( tagger { pov | channels = newChannels }, shouldPersist )
-
-
-
--- View APIs
-
-
-guildSmallIconEl : Guild -> Element msg
-guildSmallIconEl guild =
-    squareIconEl 20 guild.name (Maybe.map (imageUrlNoFallback (Just "16")) guild.icon)
