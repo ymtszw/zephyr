@@ -64,35 +64,23 @@ itemAvatarEl item =
         Product _ (DiscordItem { author }) ->
             case author of
                 Discord.UserAuthor user ->
-                    avatarWithBadgeEl
+                    iconWithBadgeEl
                         { badge = Nothing
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        , size = avatarSize
                         }
 
                 Discord.WebhookAuthor user ->
-                    avatarWithBadgeEl
+                    iconWithBadgeEl
                         { badge = Just botIconEl
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        , size = avatarSize
                         }
 
         System _ _ ->
-            avatarWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing }
-
-
-avatarWithBadgeEl : { badge : Maybe (Element Msg), fallback : String, url : Maybe String } -> Element Msg
-avatarWithBadgeEl { badge, fallback, url } =
-    let
-        bottomRightBadge =
-            case badge of
-                Just badgeEl ->
-                    [ alignTop, inFront <| el [ alignBottom, alignRight ] <| badgeEl ]
-
-                Nothing ->
-                    [ alignTop ]
-    in
-    el bottomRightBadge <| el [ padding 2 ] <| squareIconOrHeadEl avatarSize fallback <| url
+            iconWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing, size = avatarSize }
 
 
 avatarSize : Int

@@ -1,6 +1,6 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
-    , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl
+    , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
     , disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
     , discordGuildIconEl
     , fixedColumnWidth
@@ -16,7 +16,7 @@ module View.Parts exposing
 
 ## Icons
 
-@docs octiconEl, octiconFreeSizeEl, squareIconOrHeadEl
+@docs octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
 
 
 ## Styles
@@ -110,6 +110,26 @@ squareIconOrHeadEl size name urlMaybe =
         , attr
         ]
         fallbackContent
+
+
+iconWithBadgeEl :
+    { size : Int
+    , badge : Maybe (Element msg)
+    , fallback : String
+    , url : Maybe String
+    }
+    -> Element msg
+iconWithBadgeEl { size, badge, fallback, url } =
+    let
+        bottomRightBadge =
+            case badge of
+                Just badgeEl ->
+                    [ alignTop, inFront <| el [ alignBottom, alignRight ] <| badgeEl ]
+
+                Nothing ->
+                    [ alignTop ]
+    in
+    el bottomRightBadge <| el [ padding 2 ] <| squareIconOrHeadEl size fallback <| url
 
 
 {-| Text that can break on parent inline element width.
