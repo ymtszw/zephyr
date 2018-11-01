@@ -1,6 +1,7 @@
 module Data.Producer exposing
-    ( ProducerRegistry, Msg(..), GrossYield, encodeRegistry, registryDecoder
+    ( ProducerRegistry, Msg(..), GrossReload, registryDecoder
     , initRegistry, reloadAll, update, configsEl
+    , Yield, encodeRegistry
     )
 
 {-| Types and functions representing data produecr in Zephyr.
@@ -8,7 +9,7 @@ module Data.Producer exposing
 
 ## Types
 
-@docs ProducerRegistry, Msg, GrossYield, encodeRegistry, registryDecoder
+@docs ProducerRegistry, Msg, GrossReload, Yield encodeRegistry, registryDecoder
 
 
 ## Component APIs
@@ -19,9 +20,9 @@ module Data.Producer exposing
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom)
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..))
 import Data.Item exposing (Item(..))
-import Data.Producer.Base exposing (PostProcess, UpdateFAM(..), Yield)
+import Data.Producer.Base exposing (PostProcessBase, UpdateFAM(..), YieldBase)
 import Data.Producer.Discord as Discord exposing (Channel, Discord, Guild)
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -35,6 +36,7 @@ import Json.EncodeExtra as E
 import Process
 import Task
 import View.Parts exposing (scale12)
+import Worque exposing (Work)
 
 
 
@@ -91,30 +93,56 @@ initRegistry =
 -- RELOAD
 
 
-{-| Reload all registered Producers on application startup.
--}
-reloadAll : ProducerRegistry -> ( ProducerRegistry, Cmd Msg, UpdateInstruction )
-reloadAll producerRegistry =
-    case Maybe.map Discord.reload producerRegistry.discord of
-        Just ( newDiscord, discordCmd, discordFAM ) ->
-            ( { producerRegistry | discord = Just newDiscord }
-            , Cmd.map DiscordMsg discordCmd
-            , UpdateInstruction discordFAM
-            )
-
-        Nothing ->
-            ( producerRegistry, Cmd.none, UpdateInstruction KeepFAM )
-
-
-
--- GROSS UPDATE
-
-
 type Msg
     = DiscordMsg Discord.Msg
 
 
-type alias GrossYield =
+type alias GrossReload =
+    { producerRegistry : ProducerRegistry
+    , cmd : Cmd Msg
+    , famInstructions : List UpdateInstruction
+    , works : List Work
+    }
+
+
+{-| Reload all registered Producers on application startup.
+
+Reload function uses same Yield type as return type, but it is just for convenience.
+On reload, items are ignored and states are always persisted.
+
+-}
+reloadAll : ProducerRegistry -> GrossReload
+reloadAll producerRegistry =
+    GrossReload producerRegistry Cmd.none [] []
+        |> reloadDiscord
+
+
+reloadDiscord : GrossReload -> GrossReload
+reloadDiscord ({ producerRegistry } as gr) =
+    case Maybe.map Discord.reload gr.producerRegistry.discord of
+        Just y ->
+            { gr
+                | producerRegistry = { producerRegistry | discord = y.newState }
+                , cmd = Cmd.batch [ Cmd.map DiscordMsg y.cmd, gr.cmd ]
+                , famInstructions = DiscordInstruction y.postProcess.updateFAM :: gr.famInstructions
+                , works =
+                    case y.postProcess.work of
+                        Just w ->
+                            w :: gr.works
+
+                        Nothing ->
+                            gr.works
+            }
+
+        Nothing ->
+            gr
+
+
+
+-- UPDATE
+
+
+type alias Yield =
     { items : List Item
     , postProcess : PostProcess
     , producerRegistry : ProducerRegistry
@@ -125,6 +153,7 @@ type alias GrossYield =
 type alias PostProcess =
     { persist : Bool
     , famInstruction : UpdateInstruction
+    , work : Maybe Work
     }
 
 
@@ -133,18 +162,34 @@ type alias PostProcess =
 Returns same data structure as `receive`.
 
 -}
-update : Msg -> ProducerRegistry -> GrossYield
+update : Msg -> ProducerRegistry -> Yield
 update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
-            let
-                dy =
-                    Discord.update dMsg producerRegistry.discord
-            in
-            GrossYield (List.map DiscordItem dy.items)
-                (PostProcess dy.postProcess.persist (UpdateInstruction dy.postProcess.updateFAM))
-                { producerRegistry | discord = dy.newState }
-                (Cmd.map DiscordMsg dy.cmd)
+            Discord.update dMsg producerRegistry.discord
+                |> mapYield DiscordItem
+                    DiscordInstruction
+                    DiscordMsg
+                    (\newState -> { producerRegistry | discord = newState })
+
+
+mapYield :
+    (item -> Item)
+    -> (UpdateFAM mat -> UpdateInstruction)
+    -> (msg -> Msg)
+    -> (Maybe state -> ProducerRegistry)
+    -> YieldBase item mat state msg
+    -> Yield
+mapYield itemTagger famTagger msgTagger stateSetter y =
+    Yield (List.map itemTagger y.items)
+        (mapPostProcess famTagger y.postProcess)
+        (stateSetter y.newState)
+        (Cmd.map msgTagger y.cmd)
+
+
+mapPostProcess : (UpdateFAM mat -> UpdateInstruction) -> PostProcessBase mat -> PostProcess
+mapPostProcess tagger ppb =
+    PostProcess ppb.persist (tagger ppb.updateFAM) ppb.work
 
 
 

@@ -3,36 +3,31 @@ module Main exposing (main)
 import Array
 import ArrayExtra as Array
 import Broker exposing (Broker)
-import Browser exposing (UrlRequest(..))
-import Browser.Dom exposing (Viewport, getViewport)
-import Browser.Events exposing (Visibility(..), onResize)
+import Browser
+import Browser.Dom
+import Browser.Events
 import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Filter as Filter
 import Data.FilterAtomMaterial as FilterAtomMaterial
-import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
-import Data.Model as Model exposing (ColumnSwap, Env, Model, welcomeModel)
+import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueId as UniqueId
-import Extra exposing (andDo, ite, pure, setTimeout)
-import HttpExtra
+import Extra exposing (..)
 import IndexedDb
-import Iso8601
-import Json.Decode as D exposing (Decoder)
+import Json.Decode as D
 import Json.DecodeExtra as D
-import Json.Encode as E
-import Logger exposing (Entry)
-import String exposing (fromInt)
+import Logger
 import Task
-import Time
+import Time exposing (Posix)
 import TimeZone
 import Url
 import View
 import View.Select
+import Worque exposing (Work(..))
 
 
 
@@ -51,6 +46,17 @@ main =
         }
 
 
+log : (Msg -> Model -> ( Model, Cmd Msg, Bool )) -> Msg -> Model -> ( Model, Cmd Msg, Bool )
+log u msg m =
+    u msg <|
+        if m.env.isLocalDevelopment then
+            Logger.push m.idGen (Data.Msg.logEntry msg) m.log
+                |> (\( newLog, idGen ) -> { m | log = newLog, idGen = idGen })
+
+        else
+            m
+
+
 
 -- INIT
 
@@ -61,13 +67,12 @@ init env _ navKey =
         |> andDo
             [ adjustMaxHeight
             , getTimeZone
-            , ite env.indexedDBAvailable Cmd.none scheduleNextScan -- Wait scanning until Load
             ]
 
 
 adjustMaxHeight : Cmd Msg
 adjustMaxHeight =
-    Task.perform GetViewport getViewport
+    Task.perform GetViewport Browser.Dom.getViewport
 
 
 getTimeZone : Cmd Msg
@@ -77,29 +82,6 @@ getTimeZone =
             Result.withDefault ( "UTC", Time.utc ) >> GetTimeZone
     in
     TimeZone.getZone |> Task.attempt fallbackToUtc
-
-
-scheduleNextScan : Cmd Msg
-scheduleNextScan =
-    -- Not using Time.every subscription since Column updating may take longer time occasionally,
-    -- in such events fixed ticks may interfare with the adjacent ticks.
-    -- Chained timers can always ensure next processing is AFTER the previous one had done.
-    setTimeout ScanBroker scanIntervalMillis
-
-
-{-| Dictates how often Columns are updated (i.e. the Broker is scanned).
-
-XXX We may have to dynamically adjust scanIntervalMillis and brokerScanChunkAmount
-according to the flow rate of the Broker. Or, instruct users about how to configure Columns so they are not overloaded.
-Since it is possible for Producers to produce Items way faster than Consumers (Columns) can consume.
-
-Due to the "buffer" nature of the Broker, the application itself should continue to run,
-though older Items may be evicted BEFORE consumed by Columns, effectively causing "skip" or "loss" of data.
-
--}
-scanIntervalMillis : Float
-scanIntervalMillis =
-    1000
 
 
 
@@ -123,10 +105,10 @@ update msg ({ viewState, env } as m) =
         LoggerCtrl lMsg ->
             Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
 
-        LinkClicked (Internal url) ->
+        LinkClicked (Browser.Internal url) ->
             ( m, Nav.pushUrl m.navKey (Url.toString url), False )
 
-        LinkClicked (External url) ->
+        LinkClicked (Browser.External url) ->
             ( m, Nav.load url, False )
 
         SelectToggle sId True ->
@@ -198,8 +180,8 @@ update msg ({ viewState, env } as m) =
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
 
-        ScanBroker _ ->
-            scanBroker m
+        Tick posix ->
+            onTick posix m
 
         NoOp ->
             pure m
@@ -211,10 +193,7 @@ addColumn m =
         ( newColumn, newIdGen ) =
             m.idGen
                 |> UniqueId.gen "column"
-                |> UniqueId.andThen
-                    (\( cId, idGen ) ->
-                        Column.new idGen cId
-                    )
+                |> UniqueId.andThen (\( cId, idGen ) -> Column.new idGen cId)
     in
     { m | columnStore = ColumnStore.add newColumn m.columnStore, idGen = newIdGen }
 
@@ -253,20 +232,6 @@ updateColumn cId m persistRequested updater =
     ( newModel, Cmd.none, shouldPersist )
 
 
-scanBroker : Model -> ( Model, Cmd Msg, Bool )
-scanBroker m =
-    let
-        ( newColumnStore, shouldPersist ) =
-            ColumnStore.consumeBroker brokerScanChunkAmount m.itemBroker m.columnStore
-    in
-    ( { m | columnStore = newColumnStore }, scheduleNextScan, shouldPersist )
-
-
-brokerScanChunkAmount : Int
-brokerScanChunkAmount =
-    500
-
-
 updateProducerFetchStatuses : Model -> ( Model, Bool )
 updateProducerFetchStatuses ({ producerRegistry } as m) =
     -- This function should also "fix" corrupted Producer statuses, if any.
@@ -283,6 +248,29 @@ updateProducerFetchStatuses ({ producerRegistry } as m) =
     ( { m | producerRegistry = { producerRegistry | discord = newDiscord } }, shouldPersist )
 
 
+onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
+onTick posix mOld =
+    case Worque.pop mOld.worque of
+        ( Just BrokerScan, newWorque ) ->
+            scanBroker { mOld | worque = newWorque }
+
+        ( Just DiscordFetch, newWorque ) ->
+            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) mOld.producerRegistry
+                |> applyProducerYield { mOld | worque = newWorque }
+
+        ( Nothing, newWorque ) ->
+            pure { mOld | worque = newWorque }
+
+
+scanBroker : Model -> ( Model, Cmd Msg, Bool )
+scanBroker m =
+    let
+        ( newColumnStore, shouldPersist ) =
+            ColumnStore.consumeBroker m.itemBroker m.columnStore
+    in
+    ( { m | columnStore = newColumnStore, worque = Worque.push BrokerScan m.worque }, Cmd.none, shouldPersist )
+
+
 
 -- PRODUCER
 
@@ -295,49 +283,49 @@ Always persist state in order to apply new encoding format, if any.
 reloadProducers : Model -> ( Model, Cmd Msg, Bool )
 reloadProducers ({ viewState } as m) =
     let
-        ( newRegistry, reloadCmd, famInstruction ) =
+        reloaded =
             Producer.reloadAll m.producerRegistry
     in
     ( { m
-        | producerRegistry = newRegistry
-        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update famInstruction viewState.filterAtomMaterial }
+        | producerRegistry = reloaded.producerRegistry
+        , worque = Worque.pushAll reloaded.works m.worque
+        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial }
       }
-    , Cmd.batch
-        [ Cmd.map ProducerCtrl reloadCmd
-        , ite m.env.indexedDBAvailable scheduleNextScan Cmd.none
-        ]
+    , Cmd.map ProducerCtrl reloaded.cmd
     , True
     )
 
 
-applyProducerYield : Model -> Producer.GrossYield -> ( Model, Cmd Msg, Bool )
-applyProducerYield ({ viewState } as m) gy =
-    case gy.items of
+applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, Bool )
+applyProducerYield ({ viewState } as m) y =
+    case y.items of
         [] ->
             ( { m
-                | producerRegistry = gy.producerRegistry
+                | producerRegistry = y.producerRegistry
+                , worque = y.postProcess.work |> Maybe.map (\w -> Worque.push w m.worque) |> Maybe.withDefault m.worque
                 , viewState =
                     { viewState
                         | filterAtomMaterial =
-                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
                     }
               }
-            , Cmd.map ProducerCtrl gy.cmd
-            , gy.postProcess.persist
+            , Cmd.map ProducerCtrl y.cmd
+            , y.postProcess.persist
             )
 
         nonEmptyYields ->
             ( { m
                 | itemBroker = ItemBroker.bulkAppend nonEmptyYields m.itemBroker
-                , producerRegistry = gy.producerRegistry
+                , producerRegistry = y.producerRegistry
+                , worque = y.postProcess.work |> Maybe.map (\w -> Worque.push w m.worque) |> Maybe.withDefault m.worque
                 , viewState =
                     { viewState
                         | filterAtomMaterial =
-                            FilterAtomMaterial.update gy.postProcess.famInstruction viewState.filterAtomMaterial
+                            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
                     }
               }
-            , Cmd.map ProducerCtrl gy.cmd
-            , gy.postProcess.persist
+            , Cmd.map ProducerCtrl y.cmd
+            , y.postProcess.persist
             )
 
 
@@ -348,10 +336,17 @@ applyProducerYield ({ viewState } as m) gy =
 sub : Model -> Sub Msg
 sub m =
     Sub.batch
-        [ onResize Resize
+        [ Browser.Events.onResize Resize
         , IndexedDb.load m.idGen
+        , Time.every globalTimerIntervalMillis Tick
         , toggleColumnSwap m.viewState.columnSwappable
         ]
+
+
+globalTimerIntervalMillis : Float
+globalTimerIntervalMillis =
+    -- 6 Hz
+    166.7
 
 
 toggleColumnSwap : Bool -> Sub Msg
@@ -365,10 +360,10 @@ toggleColumnSwap swappable =
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 case visibility of
-                    Visible ->
+                    Browser.Events.Visible ->
                         NoOp
 
-                    Hidden ->
+                    Browser.Events.Hidden ->
                         ToggleColumnSwappable False
         ]
 
@@ -382,176 +377,3 @@ view m =
     { title = "Zephyr"
     , body = View.body m
     }
-
-
-
--- LOGGING
-
-
-log : (Msg -> Model -> ( Model, Cmd Msg, Bool )) -> Msg -> Model -> ( Model, Cmd Msg, Bool )
-log u msg m =
-    u msg <|
-        if m.env.isLocalDevelopment then
-            { m | log = Logger.rec m.log (msgToLogEntry msg) }
-
-        else
-            m
-
-
-msgToLogEntry : Msg -> Entry
-msgToLogEntry msg =
-    case msg of
-        NoOp ->
-            Entry "NoOp" []
-
-        Resize x y ->
-            Entry "Resize" [ fromInt x, fromInt y ]
-
-        GetViewport vp ->
-            Entry "GetViewport" [ viewportToString vp ]
-
-        GetTimeZone ( name, _ ) ->
-            Entry "GetTimeZone" [ name ]
-
-        LoggerCtrl lMsg ->
-            loggerMsgToEntry lMsg
-
-        LinkClicked (Internal url) ->
-            Entry "LinkClicked.Internal" [ Url.toString url ]
-
-        LinkClicked (External str) ->
-            Entry "LinkClicked.External" [ str ]
-
-        SelectToggle sId bool ->
-            Entry "SelectToggle" [ sId, ite bool "True" "False" ]
-
-        SelectPick sMsg ->
-            msgToLogEntry sMsg
-
-        AddColumn ->
-            Entry "AddColumn" []
-
-        DelColumn index ->
-            Entry "DelColumn" [ fromInt index ]
-
-        ToggleColumnSwappable bool ->
-            Entry "ToggleColumnSwappable" [ ite bool "True" "False" ]
-
-        DragStart index cId ->
-            Entry "DragStart" [ fromInt index, cId ]
-
-        DragEnter index ->
-            Entry "DragEnter" [ fromInt index ]
-
-        DragEnd ->
-            Entry "DragEnd" []
-
-        LoadOk _ ->
-            Entry "LoadOk" [ "<savedState>" ]
-
-        LoadErr e ->
-            Entry "LoadErr" [ D.errorToString e ]
-
-        ToggleConfig bool ->
-            Entry "ToggleConfig" [ ite bool "True" "False" ]
-
-        ToggleColumnConfig cId bool ->
-            Entry "ToggleColumnConfig" [ cId, ite bool "True" "False" ]
-
-        AddColumnFilter cId filter ->
-            Entry "AddColumnFilter" [ cId, Filter.toString filter ]
-
-        SetColumnFilter cId index filter ->
-            Entry "SetColumnFilter" [ cId, fromInt index, Filter.toString filter ]
-
-        DelColumnFilter cId index ->
-            Entry "DelColumnFilter" [ cId, fromInt index ]
-
-        ColumnDeleteGateInput cId input ->
-            Entry "ColumnDeleteGateInput" [ cId, input ]
-
-        ProducerCtrl pMsg ->
-            producerMsgToEntry pMsg
-
-        ScanBroker posix ->
-            Entry "ScanBroker" [ Iso8601.fromTime posix ]
-
-
-viewportToString : Viewport -> String
-viewportToString vp =
-    E.encode 2 <|
-        E.object
-            [ Tuple.pair "scene" <|
-                E.object
-                    [ ( "width", E.float vp.scene.width )
-                    , ( "height", E.float vp.scene.height )
-                    ]
-            , Tuple.pair "viewport" <|
-                E.object
-                    [ ( "width", E.float vp.viewport.width )
-                    , ( "height", E.float vp.viewport.height )
-                    , ( "x", E.float vp.viewport.x )
-                    , ( "y", E.float vp.viewport.y )
-                    ]
-            ]
-
-
-loggerMsgToEntry : Logger.Msg -> Entry
-loggerMsgToEntry lMsg =
-    case lMsg of
-        Logger.ScrollStart ->
-            Entry "Logger.ScrollStart" []
-
-        Logger.BackToTop ->
-            Entry "Logger.BackToTop" []
-
-        Logger.ViewportResult (Ok ( _, vp )) ->
-            Entry "Logger.ViewportOk" [ viewportToString vp ]
-
-        Logger.ViewportResult (Err _) ->
-            Entry "Logger.ViewportNotFound" []
-
-        Logger.FilterInput query ->
-            Entry "Logger.FilterInput" [ query ]
-
-        Logger.SetMsgFilter (Logger.MsgFilter isPos ctor) ->
-            Entry "Logger.SetMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
-
-        Logger.DelMsgFilter (Logger.MsgFilter isPos ctor) ->
-            Entry "Logger.DelMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
-
-        Logger.NoOp ->
-            Entry "Logger.NoOp" []
-
-
-producerMsgToEntry : Producer.Msg -> Entry
-producerMsgToEntry pMsg =
-    case pMsg of
-        Producer.DiscordMsg msgDiscord ->
-            case msgDiscord of
-                Discord.TokenInput input ->
-                    Entry "Discord.TokenInput" [ input ]
-
-                Discord.CommitToken ->
-                    Entry "Discord.CommitToken" []
-
-                Discord.Identify user ->
-                    Entry "Discord.Identify" [ E.encode 2 (Discord.encodeUser user) ]
-
-                Discord.Hydrate _ _ ->
-                    Entry "Discord.Hydrate" [ "<Hydrate>" ]
-
-                Discord.Rehydrate ->
-                    Entry "Discord.Rehydrate" []
-
-                Discord.Fetch posix ->
-                    Entry "Discord.Fetch" [ Iso8601.fromTime posix ]
-
-                Discord.Fetched (Discord.FetchOk cId ms posix) ->
-                    Entry "Discord.FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
-
-                Discord.Fetched (Discord.FetchErr cId e) ->
-                    Entry "Discord.FetchErr" [ cId, HttpExtra.errorToString e ]
-
-                Discord.APIError e ->
-                    Entry "Discord.APIError" [ HttpExtra.errorToString e ]

@@ -132,20 +132,28 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
-consumeBroker maxCount broker columnStore =
+consumeBroker : Broker Item -> ColumnStore -> ( ColumnStore, Bool )
+consumeBroker broker columnStore =
     let
         ( newDict, shouldPersist ) =
             Dict.foldl reducer ( Dict.empty, False ) columnStore.dict
 
+        scanCountPerColumn =
+            maxScanCount // Dict.size columnStore.dict
+
         reducer cId column ( accDict, accSP ) =
             column
-                |> Column.consumeBroker maxCount broker
+                |> Column.consumeBroker scanCountPerColumn broker
                 |> Tuple.mapBoth
                     (\newColumn -> Dict.insert cId newColumn accDict)
                     ((||) accSP)
     in
     ( { columnStore | dict = newDict }, shouldPersist )
+
+
+maxScanCount : Int
+maxScanCount =
+    500
 
 
 
