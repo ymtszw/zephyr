@@ -49,7 +49,8 @@ log : (Msg -> Model -> ( Model, Cmd Msg, Bool )) -> Msg -> Model -> ( Model, Cmd
 log u msg m =
     u msg <|
         if m.env.isLocalDevelopment then
-            { m | log = Logger.push (Data.Msg.logEntry msg) m.log }
+            Logger.push m.idGen (Data.Msg.logEntry msg) m.log
+                |> (\( newLog, idGen ) -> { m | log = newLog, idGen = idGen })
 
         else
             m
