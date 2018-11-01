@@ -244,31 +244,9 @@ dragHandleClassName =
 
 discordGuildIconEl : Int -> Discord.Guild -> Element msg
 discordGuildIconEl size guild =
-    squareIconOrHeadEl size guild.name (Maybe.map (Discord.imageUrlNoFallback (Just (nextPowerOfTwoString size))) guild.icon)
-
-
-nextPowerOfTwoString : Int -> String
-nextPowerOfTwoString size =
-    if size > 512 then
-        "1024"
-
-    else if size > 256 then
-        "512"
-
-    else if size > 128 then
-        "256"
-
-    else if size > 64 then
-        "128"
-
-    else if size > 32 then
-        "64"
-
-    else if size > 16 then
-        "32"
-
-    else
-        "16"
+    guild.icon
+        |> Maybe.map (Discord.imageUrlNoFallback (Just size))
+        |> squareIconOrHeadEl size guild.name
 
 
 

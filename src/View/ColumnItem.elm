@@ -67,7 +67,7 @@ itemAvatarEl item =
                     iconWithBadgeEl
                         { badge = Nothing
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
                         , size = avatarSize
                         }
 
@@ -75,7 +75,7 @@ itemAvatarEl item =
                     iconWithBadgeEl
                         { badge = Just botIconEl
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
                         , size = avatarSize
                         }
 

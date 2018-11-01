@@ -235,7 +235,7 @@ userNameAndAvatarEl user =
             [ width (px 32)
             , height (px 32)
             , BD.rounded 16
-            , BG.uncropped (imageUrlWithFallback (Just "32") user.discriminator user.avatar)
+            , BG.uncropped (imageUrlWithFallback (Just 32) user.discriminator user.avatar)
             ]
             none
         , text user.username

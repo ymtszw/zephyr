@@ -1372,22 +1372,22 @@ fetchOne token channel =
 -- RUNTIME APIs
 
 
-defaultIconUrl : Maybe String -> String
+defaultIconUrl : Maybe Int -> String
 defaultIconUrl sizeMaybe =
     imageUrlWithFallback sizeMaybe "" Nothing
 
 
-guildIconOrDefaultUrl : Maybe String -> Guild -> String
+guildIconOrDefaultUrl : Maybe Int -> Guild -> String
 guildIconOrDefaultUrl sizeMaybe g =
     imageUrlWithFallback sizeMaybe "" g.icon
 
 
-imageUrlNoFallback : Maybe String -> Image -> String
+imageUrlNoFallback : Maybe Int -> Image -> String
 imageUrlNoFallback sizeMaybe image =
     imageUrlWithFallback sizeMaybe "" (Just image)
 
 
-imageUrlWithFallback : Maybe String -> String -> Maybe Image -> String
+imageUrlWithFallback : Maybe Int -> String -> Maybe Image -> String
 imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     let
         endpoint =
@@ -1410,15 +1410,39 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
                         Nothing ->
                             "/embed/avatars/0.png"
 
-        size =
+        sizeQuery =
             case sizeMaybe of
-                Just sizeStr ->
-                    "?size=" ++ sizeStr
+                Just size ->
+                    "?size=" ++ String.fromInt (imageQuerySize size)
 
                 Nothing ->
                     ""
     in
-    "https://cdn.discordapp.com" ++ endpoint ++ size
+    "https://cdn.discordapp.com" ++ endpoint ++ sizeQuery
+
+
+imageQuerySize : Int -> Int
+imageQuerySize size =
+    if size > 512 then
+        1024
+
+    else if size > 256 then
+        512
+
+    else if size > 128 then
+        256
+
+    else if size > 64 then
+        128
+
+    else if size > 32 then
+        64
+
+    else if size > 16 then
+        32
+
+    else
+        16
 
 
 getPov : Discord -> Maybe POV
