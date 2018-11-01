@@ -22,6 +22,7 @@ sidebarEl { columnStore, viewState, env } =
     column
         [ width (px 50)
         , height (fill |> maximum env.clientHeight)
+        , alignLeft
         , paddingXY 0 10
         , BG.color oneDark.bg
         ]

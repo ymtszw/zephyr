@@ -9,6 +9,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Extra exposing (..)
 import Iso8601
 import Octicons
@@ -277,51 +278,57 @@ rehydrateButtonEl rotating pov =
 
 subbedChannelsEl : POV -> Element Msg
 subbedChannelsEl pov =
-    row [ width fill, spacing 5 ]
-        [ column [ alignTop, spacing 5 ] [ text "Channels: " ]
-        , { data =
-                pov.channels
-                    |> Dict.values
-                    |> List.filter (.fetchStatus >> FetchStatus.isActive)
-          , columns = [ subbedChannelEl, nextFetchEl ]
-          }
-            |> table [ width fill, spacing 5 ]
+    row [ width fill ]
+        [ el [ alignTop ] <| text "Channels: "
+        , Element.Keyed.column [ width fill, spacing 5, Font.size (scale12 1) ] <|
+            [ headerKeyEl
+            ]
+                ++ channelRows pov
         ]
 
 
-subbedChannelEl : Column Channel Msg
-subbedChannelEl =
-    { header = el [ BG.color oneDark.note ] (text "Name")
-    , width = fill
-    , view =
-        \c ->
-            row [ width fill, clipX ]
-                [ c.guildMaybe |> Maybe.map discordGuildSmallIconEl |> Maybe.withDefault none
-                , text ("#" ++ c.name)
-                ]
-    }
+channelRows : POV -> List ( String, Element Msg )
+channelRows pov =
+    pov.channels
+        |> Dict.values
+        |> List.filter (FetchStatus.isActive << .fetchStatus)
+        |> List.sortWith Discord.compareByFetchStatus
+        |> List.map channelRowKeyEl
 
 
-nextFetchEl : Column Channel Msg
-nextFetchEl =
-    { header = el [ BG.color oneDark.note ] (text "Next Fetch")
-    , width = fill
-    , view =
-        \c ->
-            text <|
-                case c.fetchStatus of
-                    Waiting ->
-                        "Soon"
+headerKeyEl : ( String, Element Msg )
+headerKeyEl =
+    Tuple.pair "ChannelHeader" <|
+        row [ width fill, spacing 2 ]
+            [ el [ width fill, BG.color oneDark.note ] <| text "Name"
+            , el [ width fill, BG.color oneDark.note ] <| text "Next Fetch"
+            ]
 
-                    ResumeFetching ->
-                        "Fetching..."
 
-                    NextFetchAt posix _ ->
-                        Iso8601.fromTime posix
+channelRowKeyEl : Channel -> ( String, Element Msg )
+channelRowKeyEl c =
+    Tuple.pair c.id <|
+        row [ width fill, spacing 2, clipX ]
+            [ el [ width fill ] <|
+                row []
+                    [ c.guildMaybe |> Maybe.map discordGuildSmallIconEl |> Maybe.withDefault none
+                    , breakP [] [ breakT ("#" ++ c.name) ]
+                    ]
+            , el [ width fill ] <|
+                text <|
+                    case c.fetchStatus of
+                        Waiting ->
+                            "Soon"
 
-                    Fetching _ _ ->
-                        "Fetching..."
+                        ResumeFetching ->
+                            "Fetching..."
 
-                    _ ->
-                        "Not active"
-    }
+                        NextFetchAt posix _ ->
+                            Iso8601.fromTime posix
+
+                        Fetching _ _ ->
+                            "Fetching..."
+
+                        _ ->
+                            "Not active"
+            ]

@@ -25,6 +25,7 @@ columnConfigFlyoutEl ss fam index c =
     if c.configOpen then
         column
             [ width fill
+            , alignTop
             , padding 5
             , spacing 3
             , BG.color oneDark.sub

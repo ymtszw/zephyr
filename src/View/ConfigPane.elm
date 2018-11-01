@@ -15,14 +15,20 @@ import View.Parts exposing (..)
 
 configPaneEl : Model -> Element Msg
 configPaneEl m =
-    el
-        [ width (fill |> minimum 480 |> maximum 860)
-        , height (fill |> maximum m.env.clientHeight)
-        , padding 15
-        , scrollbarY
-        , Font.color oneDark.text
-        ]
-        (configInnerEl m)
+    if m.viewState.configOpen then
+        el
+            [ width (px 640)
+            , height (fill |> maximum m.env.clientHeight)
+            , alignLeft
+            , padding 15
+            , scrollbarY
+            , BG.color oneDark.bg
+            , Font.color oneDark.text
+            ]
+            (configInnerEl m)
+
+    else
+        none
 
 
 configInnerEl : Model -> Element Msg

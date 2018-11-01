@@ -24,6 +24,7 @@ import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
 import View.ColumnItem exposing (columnItemKeyEl)
+import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
 
 
@@ -34,6 +35,7 @@ columnAreaEl m =
         , height (fill |> maximum m.env.clientHeight)
         , Font.regular
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
+        , inFront (configPaneEl m)
         ]
         (ColumnStore.indexedMap (columnKeyEl m.env m.viewState) m.columnStore)
 

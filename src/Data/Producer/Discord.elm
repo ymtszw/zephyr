@@ -3,7 +3,7 @@ module Data.Producer.Discord exposing
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update
-    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing
+    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing, compareByFetchStatus
     )
 
 {-| Polling Producer for Discord.
@@ -34,7 +34,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing
+@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing, compareByFetchStatus
 
 -}
 
@@ -1487,3 +1487,8 @@ setChannelFetchStatusImpl tagger subs pov =
                         ( c, False )
     in
     ( tagger { pov | channels = newChannels }, shouldPersist )
+
+
+compareByFetchStatus : Channel -> Channel -> Order
+compareByFetchStatus a b =
+    FetchStatus.compare a.fetchStatus b.fetchStatus
