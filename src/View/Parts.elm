@@ -101,7 +101,7 @@ squareIconOrHeadEl size name urlMaybe =
                     ( Font.size (size // 2), el [ centerX, centerY ] (text (String.left 1 name)) )
     in
     el
-        [ BG.color oneDark.bg
+        [ BG.color oneDark.sub
         , width (px size)
         , height (px size)
         , alignTop
