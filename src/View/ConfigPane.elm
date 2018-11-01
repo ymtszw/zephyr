@@ -22,7 +22,7 @@ configPaneEl m =
             , alignLeft
             , padding 15
             , scrollbarY
-            , BG.color oneDark.bg
+            , BG.color (setAlpha 0.9 oneDark.bg)
             , Font.color oneDark.text
             ]
             (configInnerEl m)

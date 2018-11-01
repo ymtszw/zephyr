@@ -1,7 +1,7 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, octiconFreeSizeEl, squareIconEl
-    , disabled, disabledColor, scale12, css, brightness, manualStyle
+    , disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
     , discordGuildSmallIconEl
     , fixedColumnWidth
     )
@@ -21,7 +21,7 @@ module View.Parts exposing
 
 ## Styles
 
-@docs disabled, disabledColor, scale12, css, brightness, manualStyle
+@docs disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
 
 
 ## Discord
@@ -179,6 +179,15 @@ brightness power color =
             toRgb color
     in
     rgb (red * (1.15 ^ power)) (green * (1.15 ^ power)) (blue * (1.15 ^ power))
+
+
+setAlpha : Float -> Color -> Color
+setAlpha a color =
+    let
+        rgba =
+            toRgb color
+    in
+    fromRgb { rgba | alpha = a }
 
 
 {-| Dump a Color to CSS-compatible representaiton
