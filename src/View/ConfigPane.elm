@@ -17,10 +17,10 @@ configPaneEl : Model -> Element Msg
 configPaneEl m =
     if m.viewState.configOpen then
         el
-            [ width (px 640)
+            [ width (px fixedPaneWidth)
             , height (fill |> maximum m.env.clientHeight)
             , alignLeft
-            , padding 15
+            , padding panePadding
             , scrollbarY
             , BG.color (setAlpha 0.9 oneDark.bg)
             , Font.color oneDark.text
@@ -31,14 +31,25 @@ configPaneEl m =
         none
 
 
+fixedPaneWidth : Int
+fixedPaneWidth =
+    640
+
+
+panePadding : Int
+panePadding =
+    10
+
+
 configInnerEl : Model -> Element Msg
 configInnerEl m =
     column
         [ width fill
         , height fill
-        , spacing 10
+        , spacingXY 0 sectionSpacingY
         ]
-        [ producerConfigsEl m.producerRegistry
+        [ configSectionWrapper (ProducerCtrl << Producer.DiscordMsg) "Discord" <|
+            discordConfigEl m.producerRegistry.discord
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -49,25 +60,22 @@ configInnerEl m =
         ]
 
 
-producerConfigsEl : ProducerRegistry -> Element Msg
-producerConfigsEl producerRegistry =
-    column
-        [ width fill
-        , padding 10
-        , spacingXY 0 20
-        , BG.color oneDark.main
-        , BD.rounded 10
-        , Font.size (scale12 2)
-        ]
-        [ configWrapEl (ProducerCtrl << Producer.DiscordMsg) "Discord" <|
-            discordConfigEl producerRegistry.discord
-        ]
+sectionSpacingY : Int
+sectionSpacingY =
+    20
 
 
-configWrapEl : (msg -> Msg) -> String -> Element msg -> Element Msg
-configWrapEl tagger title element =
+configSectionWrapper : (msg -> Msg) -> String -> Element msg -> Element Msg
+configSectionWrapper tagger title element =
     map tagger <|
-        column [ width fill, spacingXY 0 5 ]
+        column
+            [ width fill
+            , padding sectionPadding
+            , spacingXY 0 sectionTitleBodySpacingY
+            , BG.color oneDark.main
+            , BD.rounded 10
+            , Font.size (scale12 2)
+            ]
             [ el
                 [ width fill
                 , Font.bold
@@ -77,3 +85,13 @@ configWrapEl tagger title element =
                 (text title)
             , element
             ]
+
+
+sectionPadding : Int
+sectionPadding =
+    10
+
+
+sectionTitleBodySpacingY : Int
+sectionTitleBodySpacingY =
+    5
