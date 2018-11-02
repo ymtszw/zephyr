@@ -11,7 +11,7 @@ type alias ColorTheme =
     , text : Color
     , note : Color
     , link : Color
-    , active : Color
+    , prim : Color
     , succ : Color
     , warn : Color
     , err : Color

@@ -122,7 +122,7 @@ dragIndicatorEl clientHeight =
     el
         [ width fill
         , height (px clientHeight)
-        , BD.innerGlow oneDark.active 10
+        , BD.innerGlow oneDark.prim 10
         ]
         none
 

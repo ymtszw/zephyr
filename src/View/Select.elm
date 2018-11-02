@@ -128,7 +128,7 @@ optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( Str
 optionEl onSelect noMsgOptionEl selectedOption ( optionKey, option ) =
     let
         selectedStyle =
-            ite (selectedOption == Just option) [ BG.color oneDark.active ] []
+            ite (selectedOption == Just option) [ BG.color oneDark.prim ] []
     in
     Element.Input.button
         (selectedStyle
