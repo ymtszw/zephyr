@@ -28,7 +28,7 @@ discordConfigEl discordMaybe =
 
 tokenFormEl : Discord -> Element Msg
 tokenFormEl discord =
-    column [ width fill, spacing 5 ] <|
+    column [ width fill, spacing spacingUnit ] <|
         [ textInputEl
             { onChange = TokenInput
             , theme = oneDark
@@ -124,7 +124,7 @@ tokenText discord =
 tokenLabelEl : Element.Input.Label msg
 tokenLabelEl =
     Element.Input.labelAbove [] <|
-        column [ spacing 5 ]
+        column [ spacing spacingUnit ]
             [ el [] (text "Token")
             , paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
                 [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
@@ -219,7 +219,7 @@ currentStateEl discord =
 
 userNameAndAvatarEl : User -> Element Msg
 userNameAndAvatarEl user =
-    row [ width fill, spacing 5 ]
+    row [ width fill, spacing spacingUnit ]
         [ el [] (text "User: ")
         , el
             [ width (px 32)
@@ -235,8 +235,8 @@ userNameAndAvatarEl user =
 
 guildsEl : Bool -> POV -> Element Msg
 guildsEl rehydrating pov =
-    row [ width fill, spacing 5 ]
-        [ column [ alignTop, spacing 5 ]
+    row [ width fill, spacing spacingUnit ]
+        [ column [ alignTop, spacing spacingUnit ]
             [ text "Servers: "
             , rehydrateButtonEl rehydrating pov
             ]

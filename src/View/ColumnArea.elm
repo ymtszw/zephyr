@@ -31,9 +31,9 @@ columnAreaEl m =
     Element.Keyed.row
         [ width fill
         , height (fill |> maximum m.env.clientHeight)
-        , htmlAttribute (id columnAreaParentId)
         , scrollbarX
         , Font.regular
+        , htmlAttribute (id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
         (ColumnStore.indexedMap (columnKeyEl m.env m.viewState) m.columnStore)
@@ -46,7 +46,7 @@ columnKeyEl env vs index c =
             [ width (px fixedColumnWidth)
             , height (fill |> maximum env.clientHeight)
             , BG.color oneDark.main
-            , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
+            , BD.width columnBorder
             , BD.color oneDark.bg
             , Font.color oneDark.text
             ]
@@ -75,11 +75,17 @@ columnKeyEl env vs index c =
             ]
 
 
+columnBorder : Int
+columnBorder =
+    -- This border looks rather pointless, though we may introduce "focus" sytle later.
+    2
+
+
 columnHeaderEl : Column.Column -> Element Msg
 columnHeaderEl column =
     row
         [ width fill
-        , padding 10
+        , padding rectElementOuterPadding
         , BG.color oneDark.sub
         ]
         [ text ("[PH] " ++ column.id)
@@ -109,7 +115,7 @@ itemsEl tz items =
             items
                 |> ListExtra.groupWhile shouldGroup
                 |> List.map (columnItemKeyEl tz)
-                |> Element.Keyed.column [ width fill, paddingXY 5 0, scrollbarY ]
+                |> Element.Keyed.column [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
 
 
 waitingForFirstItemEl : Element Msg
@@ -136,7 +142,12 @@ shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool
 shouldGroupDiscordMessage dNewer dOlder =
     (dNewer.channelId == dOlder.channelId)
         && (dNewer.author == dOlder.author)
-        && (ms dOlder.timestamp + 60000 > ms dNewer.timestamp)
+        && (ms dOlder.timestamp + groupingIntervalSeconds > ms dNewer.timestamp)
+
+
+groupingIntervalSeconds : Int
+groupingIntervalSeconds =
+    60000
 
 
 dragIndicatorEl : Int -> Element Msg

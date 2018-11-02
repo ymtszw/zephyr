@@ -90,7 +90,7 @@ avatarSize =
 
 botIconEl : Element Msg
 botIconEl =
-    el [ padding 1, BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
+    el [ BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
         octiconFreeSizeEl 12 Octicons.zap
 
 

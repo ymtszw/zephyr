@@ -29,7 +29,7 @@ sidebarEl { columnStore, viewState, env } =
         [ width (px (buttonSize + paddingX * 2))
         , height (fill |> maximum env.clientHeight)
         , alignLeft
-        , paddingXY paddingX spacingY
+        , paddingXY paddingX sectionSpacingY
         , BG.color oneDark.bg
         ]
         [ el [ width fill, alignTop ] (columnButtonsEl viewState.filterAtomMaterial columnStore)
@@ -44,17 +44,17 @@ buttonSize =
 
 paddingX : Int
 paddingX =
-    5
+    rectElementInnerPadding
 
 
-spacingY : Int
-spacingY =
+sectionSpacingY : Int
+sectionSpacingY =
     10
 
 
 columnButtonsEl : FilterAtomMaterial -> ColumnStore -> Element Msg
 columnButtonsEl fam columnStore =
-    Element.Keyed.column [ width fill, paddingXY 0 spacingY, spacingXY 0 spacingY, Font.color oneDark.text ] <|
+    Element.Keyed.column [ width fill, paddingXY 0 sectionSpacingY, spacingXY 0 sectionSpacingY, Font.color oneDark.text ] <|
         (columnAddButtonKeyEl :: ColumnStore.indexedMap (columnButtonKeyEl fam) columnStore)
 
 
@@ -123,7 +123,6 @@ discordBadgeEl =
     el
         [ width (px badgeSize)
         , height (px badgeSize)
-        , padding 1
         , BD.rounded 2
         , BG.uncropped (Discord.defaultIconUrl (Just badgeSize))
         ]
@@ -138,7 +137,7 @@ defaultColumnIconEl =
         , clip
         , BD.width 1
         , BD.color oneDark.note
-        , BD.rounded 10
+        , BD.rounded rectElementRound
         , Font.size (buttonSize - 10)
         , Font.family [ Font.serif ]
         ]
@@ -155,7 +154,7 @@ columnAddButtonKeyEl =
         , BD.dashed
         , BD.width 1
         , BD.color oneDark.note
-        , BD.rounded 10
+        , BD.rounded rectElementRound
         ]
         { onPress = Just AddColumn
         , label =
@@ -168,11 +167,11 @@ columnAddButtonKeyEl =
 
 otherButtonsEl : Bool -> Element Msg
 otherButtonsEl configOpen =
-    column [ width fill, paddingXY 0 spacingY, spacingXY 0 spacingY ]
+    column [ width fill, paddingXY 0 sectionSpacingY, spacingXY 0 sectionSpacingY ]
         [ Element.Input.button
             [ width (px buttonSize)
             , height (px buttonSize)
-            , BD.rounded 10
+            , BD.rounded rectElementRound
             , if configOpen then
                 BG.color oneDark.main
 
@@ -185,7 +184,7 @@ otherButtonsEl configOpen =
         , newTabLink
             [ width (px buttonSize)
             , height (px buttonSize)
-            , BD.rounded 10
+            , BD.rounded rectElementRound
             , BG.color oneDark.sub
             ]
             { url = "https://github.com/ymtszw/zephyr"
