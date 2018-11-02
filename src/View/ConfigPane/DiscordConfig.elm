@@ -29,15 +29,10 @@ discordConfigEl discordMaybe =
 tokenFormEl : Discord -> Element Msg
 tokenFormEl discord =
     column [ width fill, spacing 5 ] <|
-        [ Element.Input.text
-            (disabled (shouldLockInput discord)
-                [ width fill
-                , padding 5
-                , BG.color oneDark.note
-                , BD.width 0
-                ]
-            )
+        [ textInputEl
             { onChange = TokenInput
+            , theme = oneDark
+            , enabled = shouldLockInput discord
             , text = tokenText discord
             , placeholder = Nothing
             , label = tokenLabelEl
@@ -49,17 +44,11 @@ tokenFormEl discord =
 
 tokenSubmitButtonEl : Discord -> Element Msg
 tokenSubmitButtonEl discord =
-    Element.Input.button
-        ([ alignRight
-         , width shrink
-         , padding 10
-         , BD.rounded 5
-         ]
-            |> disabled (shouldLockButton discord)
-            |> disabledColor (shouldLockButton discord)
-        )
-        { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
-        , label = text (tokenInputButtonLabel discord)
+    primaryButtonEl
+        { onPress = CommitToken
+        , theme = oneDark
+        , enabled = not (shouldLockButton discord)
+        , innerElement = text (tokenInputButtonLabel discord)
         }
 
 
@@ -244,11 +233,11 @@ userNameAndAvatarEl user =
 
 
 guildsEl : Bool -> POV -> Element Msg
-guildsEl rotating pov =
+guildsEl mayRehydrate pov =
     row [ width fill, spacing 5 ]
         [ column [ alignTop, spacing 5 ]
             [ text "Servers: "
-            , rehydrateButtonEl rotating pov
+            , rehydrateButtonEl mayRehydrate pov
             ]
         , pov.guilds
             |> Dict.foldl (\_ guild acc -> discordGuildIconEl 50 guild :: acc) []
@@ -257,18 +246,18 @@ guildsEl rotating pov =
 
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
-rehydrateButtonEl rotating pov =
-    Element.Input.button
-        (disabled rotating
-            [ alignLeft
-            , height fill
-            , BD.rounded 30
-            , BG.color oneDark.main
-            ]
-        )
-        { onPress = ite rotating Nothing (Just Rehydrate)
-        , label = octiconEl Octicons.sync
+rehydrateButtonEl mayRehydrate pov =
+    roundButtonEl
+        { onPress = Rehydrate
+        , enabled = mayRehydrate
+        , innerElementSize = rehydrateButtonSize
+        , innerElement = octiconFreeSizeEl rehydrateButtonSize Octicons.sync
         }
+
+
+rehydrateButtonSize : Int
+rehydrateButtonSize =
+    26
 
 
 subbedChannelsEl : POV -> Element Msg

@@ -1,7 +1,8 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
-    , disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
+    , textInputEl, roundButtonEl, rectButtonEl, primaryButtonEl
+    , scale12, css, brightness, setAlpha, manualStyle
     , discordGuildIconEl
     , fixedColumnWidth, columnAreaParentId
     )
@@ -19,9 +20,14 @@ module View.Parts exposing
 @docs octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
 
 
+## Inputs
+
+@docs textInputEl, roundButtonEl, rectButtonEl, primaryButtonEl
+
+
 ## Styles
 
-@docs disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
+@docs scale12, css, brightness, setAlpha, manualStyle
 
 
 ## Discord
@@ -35,12 +41,14 @@ module View.Parts exposing
 
 -}
 
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme, oneDark)
 import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
+import Element.Input
+import Extra exposing (ite)
 import Html
 import Html.Attributes exposing (class, draggable, style)
 import Html.Events
@@ -52,27 +60,6 @@ import Octicons
 noneAttr : Attribute msg
 noneAttr =
     htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
-
-
-disabled : Bool -> List (Attribute msg) -> List (Attribute msg)
-disabled isDisabled attrs =
-    if isDisabled then
-        [ htmlAttribute (Html.Attributes.disabled isDisabled)
-        , htmlAttribute (Html.Attributes.style "cursor" "default")
-        ]
-            ++ attrs
-
-    else
-        attrs
-
-
-disabledColor : Bool -> List (Attribute msg) -> List (Attribute msg)
-disabledColor isDisabled attrs =
-    if isDisabled then
-        [ BG.color oneDark.sub, Font.color oneDark.note ] ++ attrs
-
-    else
-        [ BG.color oneDark.active ] ++ attrs
 
 
 octiconEl : (Octicons.Options -> Html.Html msg) -> Element msg
@@ -132,6 +119,102 @@ iconWithBadgeEl { size, badge, fallback, url } =
     el bottomRightBadge <| el [ padding 1 ] <| squareIconOrHeadEl (size - 2) fallback <| url
 
 
+textInputEl :
+    { onChange : String -> msg
+    , theme : ColorTheme
+    , enabled : Bool
+    , text : String
+    , label : Element.Input.Label msg
+    , placeholder : Maybe (Element.Input.Placeholder msg)
+    }
+    -> Element msg
+textInputEl { onChange, theme, enabled, text, label, placeholder } =
+    Element.Input.text
+        [ width fill
+        , padding rectElementRound
+        , BG.color theme.note
+        , BD.width 0
+        , Font.color theme.text
+        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        ]
+        { onChange = onChange
+        , text = text
+        , placeholder = placeholder
+        , label = label
+        }
+
+
+rectElementRound : Int
+rectElementRound =
+    5
+
+
+primaryButtonEl : { onPress : msg, theme : ColorTheme, enabled : Bool, innerElement : Element msg } -> Element msg
+primaryButtonEl { onPress, theme, enabled, innerElement } =
+    rectButtonEl
+        { onPress = onPress
+        , theme = theme
+        , enabledColor = theme.prim
+        , enabledFontColor = theme.text
+        , disabledColor = theme.sub
+        , disabledFontColor = theme.note
+        , enabled = enabled
+        , innerElement = innerElement
+        }
+
+
+rectButtonEl :
+    { onPress : msg
+    , theme : ColorTheme
+    , enabledColor : Color
+    , enabledFontColor : Color
+    , disabledColor : Color
+    , disabledFontColor : Color
+    , enabled : Bool
+    , innerElement : Element msg
+    }
+    -> Element msg
+rectButtonEl { onPress, theme, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
+    Element.Input.button
+        [ width shrink
+        , padding rectButtonPadding
+        , BD.rounded rectElementRound
+        , BG.color (ite enabled enabledColor disabledColor)
+        , Font.color (ite enabled enabledFontColor disabledFontColor)
+        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        ]
+        { onPress = ite enabled (Just onPress) Nothing
+        , label = el [ centerX, centerY ] innerElement
+        }
+
+
+rectButtonPadding : Int
+rectButtonPadding =
+    5
+
+
+roundButtonEl :
+    { onPress : msg
+    , enabled : Bool
+    , innerElement : Element msg
+    , innerElementSize : Int
+    }
+    -> Element msg
+roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
+    Element.Input.button
+        [ width fill
+        , height fill
+        , BD.rounded (innerElementSize // 2 + 1)
+        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , htmlAttribute (Html.Attributes.disabled (not enabled))
+        ]
+        { onPress = ite enabled (Just onPress) Nothing
+        , label = el [ centerX, centerY ] innerElement
+        }
+
+
 {-| Text that can break on parent inline element width.
 Respects "word-break" and "white-space" styles.
 
@@ -179,6 +262,8 @@ collapsingColumn attrs elements =
 -- STYLE HELPER
 
 
+{-| Scale 12px by a power of 1.25. Primarily meant for font sizes.
+-}
 scale12 : Int -> Int
 scale12 =
     modular 12 1.25 >> round
