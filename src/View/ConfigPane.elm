@@ -20,9 +20,9 @@ configPaneEl m =
             [ width (px fixedPaneWidth)
             , height (fill |> maximum m.env.clientHeight)
             , alignLeft
-            , padding panePadding
+            , padding rectElementOuterPadding
             , scrollbarY
-            , BG.color (setAlpha 0.9 oneDark.bg)
+            , BG.color oneDark.bg
             , Font.color oneDark.text
             ]
             (configInnerEl m)
@@ -34,11 +34,6 @@ configPaneEl m =
 fixedPaneWidth : Int
 fixedPaneWidth =
     640
-
-
-panePadding : Int
-panePadding =
-    10
 
 
 configInnerEl : Model -> Element Msg
@@ -70,16 +65,16 @@ configSectionWrapper tagger title element =
     map tagger <|
         column
             [ width fill
-            , padding sectionPadding
-            , spacingXY 0 sectionTitleBodySpacingY
+            , padding rectElementOuterPadding
+            , spacing spacingUnit
             , BG.color oneDark.main
-            , BD.rounded 10
+            , BD.rounded rectElementRound
             , Font.size (scale12 2)
             ]
             [ el
                 [ width fill
                 , Font.bold
-                , Font.size (scale12 3)
+                , Font.size sectionTitleFontSize
                 , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
                 ]
                 (text title)
@@ -87,11 +82,6 @@ configSectionWrapper tagger title element =
             ]
 
 
-sectionPadding : Int
-sectionPadding =
-    10
-
-
-sectionTitleBodySpacingY : Int
-sectionTitleBodySpacingY =
-    5
+sectionTitleFontSize : Int
+sectionTitleFontSize =
+    scale12 3

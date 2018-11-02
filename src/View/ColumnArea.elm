@@ -12,7 +12,6 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Events
 import Element.Font as Font
-import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (..)
 import Html.Attributes exposing (draggable, id, style)
@@ -76,6 +75,29 @@ columnKeyEl env vs index c =
             ]
 
 
+columnHeaderEl : Column.Column -> Element Msg
+columnHeaderEl column =
+    row
+        [ width fill
+        , padding 10
+        , BG.color oneDark.sub
+        ]
+        [ text ("[PH] " ++ column.id)
+        , el [ alignRight ] <|
+            squareButtonEl
+                { onPress = ToggleColumnConfig column.id (not column.configOpen)
+                , enabled = True
+                , innerElement = octiconFreeSizeEl columnConfigToggleButtonSize Octicons.settings
+                , innerElementSize = columnConfigToggleButtonSize
+                }
+        ]
+
+
+columnConfigToggleButtonSize : Int
+columnConfigToggleButtonSize =
+    26
+
+
 itemsEl : Time.Zone -> List ColumnItem -> Element Msg
 itemsEl tz items =
     case items of
@@ -92,7 +114,7 @@ itemsEl tz items =
 
 waitingForFirstItemEl : Element Msg
 waitingForFirstItemEl =
-    el [ width fill, height (px 50), paddingXY 5 0 ] <|
+    el [ width fill, height (px 50), alignTop, paddingXY 5 0 ] <|
         el [ centerX, centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
             text "Waiting for messages..."
 
@@ -125,18 +147,3 @@ dragIndicatorEl clientHeight =
         , BD.innerGlow oneDark.prim 10
         ]
         none
-
-
-columnHeaderEl : Column.Column -> Element Msg
-columnHeaderEl column =
-    row
-        [ width fill
-        , padding 10
-        , BG.color oneDark.sub
-        ]
-        [ text ("[PH] " ++ column.id)
-        , Element.Input.button [ alignRight ]
-            { onPress = Just (ToggleColumnConfig column.id (not column.configOpen))
-            , label = octiconEl Octicons.settings
-            }
-        ]

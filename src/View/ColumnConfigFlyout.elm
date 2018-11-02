@@ -27,8 +27,8 @@ columnConfigFlyoutEl ss fam index c =
         column
             [ width fill
             , alignTop
-            , padding flyoutPadding
-            , spacingXY 0 sectionSpacingY
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
             , BG.color flyoutBackground
             , BD.width 1
             , BD.color flyoutFrameColor
@@ -43,16 +43,6 @@ columnConfigFlyoutEl ss fam index c =
 
     else
         none
-
-
-flyoutPadding : Int
-flyoutPadding =
-    5
-
-
-sectionSpacingY : Int
-sectionSpacingY =
-    5
 
 
 baseFontSize : Int
@@ -94,21 +84,11 @@ filtersEl ss fam c =
         |> List.intersperse (filterLogicSeparator "AND")
         |> column
             [ width (fill |> minimum 0)
-            , padding sectionPadding
-            , spacingXY 0 filtersSpacingY
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
             , BD.rounded rectElementRound
             , BG.color sectionBackground
             ]
-
-
-sectionPadding : Int
-sectionPadding =
-    5
-
-
-filtersSpacingY : Int
-filtersSpacingY =
-    5
 
 
 sectionBackground : Color
@@ -179,25 +159,15 @@ filterGeneratorEl tagger ss fam cId indexFilterMaybe =
                     |> List.intersperse (filterLogicSeparator "OR")
                     |> column
                         [ width (fill |> minimum 0)
-                        , padding filterGeneratorPadding
-                        , spacingXY 0 filterGeneratorSpacingY
+                        , padding rectElementInnerPadding
+                        , spacing spacingUnit
                         ]
 
             Nothing ->
-                column [ width (fill |> minimum 0), padding filterGeneratorPadding ]
+                column [ width (fill |> minimum 0), padding rectElementInnerPadding ]
                     [ newFilterAtomEl (tagger << Just << Singular) ss fam (cId ++ "addNewFilter") ]
         , deleteFilterButtonEl cId indexFilterMaybe
         ]
-
-
-filterGeneratorPadding : Int
-filterGeneratorPadding =
-    5
-
-
-filterGeneratorSpacingY : Int
-filterGeneratorSpacingY =
-    5
 
 
 deleteFilterButtonEl : String -> Maybe ( Int, Filter ) -> Element Msg
@@ -257,15 +227,10 @@ newFilterAtomEl tagger ss fam filterId =
 
 filterAtomInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomInputEl tagger ss fam filterAtomId filterAtomMaybe =
-    row [ width (fill |> minimum 0), spacingXY filterAtomInputSpacingX 0 ]
+    row [ width (fill |> minimum 0), spacing spacingUnit ]
         [ filterAtomCtorSelectEl tagger ss fam (filterAtomId ++ "-typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger ss fam (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
-
-
-filterAtomInputSpacingX : Int
-filterAtomInputSpacingX =
-    3
 
 
 filterAtomCtorSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
@@ -458,19 +423,14 @@ columnDeleteEl : Int -> Column.Column -> Element Msg
 columnDeleteEl index c =
     row
         [ width fill
-        , padding sectionPadding
-        , spacingXY columnDeleteInputSpacingX 0
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
         , BG.color sectionBackground
         , BD.rounded rectElementRound
         ]
         [ columnDeleteGateEl c.id c.deleteGate
         , lazy2 columnDeleteButtonEl index (String.toLower c.deleteGate == "delete")
         ]
-
-
-columnDeleteInputSpacingX : Int
-columnDeleteInputSpacingX =
-    5
 
 
 columnDeleteGateEl : String -> String -> Element Msg

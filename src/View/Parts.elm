@@ -4,7 +4,8 @@ module View.Parts exposing
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , discordGuildIconEl
-    , fixedColumnWidth, rectElementRound, columnAreaParentId
+    , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
+    , columnAreaParentId
     )
 
 {-| View parts, complementing Element and Html.
@@ -37,7 +38,8 @@ module View.Parts exposing
 
 ## Constants
 
-@docs fixedColumnWidth, rectElementRound, columnAreaParentId
+@docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
+@docs columnAreaParentId
 
 -}
 
@@ -393,9 +395,24 @@ fixedColumnWidth =
     350
 
 
+spacingUnit : Int
+spacingUnit =
+    5
+
+
 rectElementRound : Int
 rectElementRound =
-    5
+    spacingUnit
+
+
+rectElementOuterPadding : Int
+rectElementOuterPadding =
+    spacingUnit * 2
+
+
+rectElementInnerPadding : Int
+rectElementInnerPadding =
+    spacingUnit
 
 
 columnAreaParentId : String

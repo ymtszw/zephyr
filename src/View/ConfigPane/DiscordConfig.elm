@@ -46,6 +46,7 @@ tokenSubmitButtonEl : Discord -> Element Msg
 tokenSubmitButtonEl discord =
     primaryButtonEl
         { onPress = CommitToken
+        , width = shrink
         , theme = oneDark
         , enabled = tokenSubmitAllowed discord
         , innerElement = text (tokenInputButtonLabel discord)
@@ -294,7 +295,7 @@ channelRowKeyEl c =
     Tuple.pair c.id <|
         row [ width fill, spacing 2, clipX ]
             [ el [ width fill ] <|
-                row []
+                row [ spacing 2 ]
                     [ c.guildMaybe |> Maybe.map (discordGuildIconEl 20) |> Maybe.withDefault none
                     , breakP [] [ breakT ("#" ++ c.name) ]
                     ]
