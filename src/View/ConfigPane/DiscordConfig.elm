@@ -32,12 +32,12 @@ tokenFormEl discord =
         [ textInputEl
             { onChange = TokenInput
             , theme = oneDark
-            , enabled = shouldLockInput discord
+            , enabled = tokenInputAllowed discord
             , text = tokenText discord
             , placeholder = Nothing
             , label = tokenLabelEl
             }
-        , tokenSubmitButtonEl discord
+        , el [ alignRight ] <| tokenSubmitButtonEl discord
         ]
             ++ currentStateEl discord
 
@@ -47,46 +47,46 @@ tokenSubmitButtonEl discord =
     primaryButtonEl
         { onPress = CommitToken
         , theme = oneDark
-        , enabled = not (shouldLockButton discord)
+        , enabled = tokenSubmitAllowed discord
         , innerElement = text (tokenInputButtonLabel discord)
         }
 
 
-shouldLockInput : Discord -> Bool
-shouldLockInput discord =
+tokenInputAllowed : Discord -> Bool
+tokenInputAllowed discord =
     case discord of
         TokenGiven _ ->
-            False
+            True
 
         Hydrated _ _ ->
-            False
+            True
 
         Expired _ _ ->
-            False
+            True
 
         _ ->
-            True
+            False
 
 
-shouldLockButton : Discord -> Bool
-shouldLockButton discord =
+tokenSubmitAllowed : Discord -> Bool
+tokenSubmitAllowed discord =
     case discord of
         TokenGiven "" ->
-            True
+            False
 
         TokenGiven _ ->
-            False
+            True
 
         Hydrated currentInput pov ->
             -- Prohibit submitting with the same token
-            currentInput == pov.token
+            currentInput /= pov.token
 
         Expired currentInput pov ->
             -- Allow submitting with the same token in this case, triggering retry
-            False
+            True
 
         _ ->
-            True
+            False
 
 
 tokenText : Discord -> String
@@ -233,11 +233,11 @@ userNameAndAvatarEl user =
 
 
 guildsEl : Bool -> POV -> Element Msg
-guildsEl mayRehydrate pov =
+guildsEl rehydrating pov =
     row [ width fill, spacing 5 ]
         [ column [ alignTop, spacing 5 ]
             [ text "Servers: "
-            , rehydrateButtonEl mayRehydrate pov
+            , rehydrateButtonEl rehydrating pov
             ]
         , pov.guilds
             |> Dict.foldl (\_ guild acc -> discordGuildIconEl 50 guild :: acc) []
@@ -246,10 +246,10 @@ guildsEl mayRehydrate pov =
 
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
-rehydrateButtonEl mayRehydrate pov =
+rehydrateButtonEl rehydrating pov =
     roundButtonEl
         { onPress = Rehydrate
-        , enabled = mayRehydrate
+        , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
         , innerElement = octiconFreeSizeEl rehydrateButtonSize Octicons.sync
         }

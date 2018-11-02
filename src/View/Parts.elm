@@ -192,7 +192,7 @@ rectButtonEl { onPress, theme, enabledColor, enabledFontColor, disabledColor, di
 
 rectButtonPadding : Int
 rectButtonPadding =
-    5
+    10
 
 
 roundButtonEl :
@@ -204,11 +204,11 @@ roundButtonEl :
     -> Element msg
 roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
     Element.Input.button
-        [ width fill
-        , height fill
+        [ width shrink
+        , height shrink
         , BD.rounded (innerElementSize // 2 + 1)
         , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
-        , htmlAttribute (Html.Attributes.disabled (not enabled))
+        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
