@@ -1,10 +1,10 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, roundButtonEl, rectButtonEl, primaryButtonEl
+    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , discordGuildIconEl
-    , fixedColumnWidth, columnAreaParentId
+    , fixedColumnWidth, rectElementRound, columnAreaParentId
     )
 
 {-| View parts, complementing Element and Html.
@@ -22,7 +22,7 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, roundButtonEl, rectButtonEl, primaryButtonEl
+@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
 
 
 ## Styles
@@ -37,7 +37,7 @@ module View.Parts exposing
 
 ## Constants
 
-@docs fixedColumnWidth, columnAreaParentId
+@docs fixedColumnWidth, rectElementRound, columnAreaParentId
 
 -}
 
@@ -131,10 +131,13 @@ textInputEl :
 textInputEl { onChange, theme, enabled, text, label, placeholder } =
     Element.Input.text
         [ width fill
-        , padding rectElementRound
+        , height fill
+        , padding textInputPadding
         , BG.color theme.note
         , BD.width 0
+        , BD.rounded rectElementRound
         , Font.color theme.text
+        , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
         , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
@@ -145,17 +148,31 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         }
 
 
-rectElementRound : Int
-rectElementRound =
+textInputPadding : Int
+textInputPadding =
     5
 
 
-primaryButtonEl : { onPress : msg, theme : ColorTheme, enabled : Bool, innerElement : Element msg } -> Element msg
-primaryButtonEl { onPress, theme, enabled, innerElement } =
+primaryButtonEl : { onPress : msg, width : Length, theme : ColorTheme, enabled : Bool, innerElement : Element msg } -> Element msg
+primaryButtonEl { onPress, width, theme, enabled, innerElement } =
     rectButtonEl
         { onPress = onPress
-        , theme = theme
+        , width = width
         , enabledColor = theme.prim
+        , enabledFontColor = theme.text
+        , disabledColor = theme.sub
+        , disabledFontColor = theme.note
+        , enabled = enabled
+        , innerElement = innerElement
+        }
+
+
+dangerButtonEl : { onPress : msg, width : Length, theme : ColorTheme, enabled : Bool, innerElement : Element msg } -> Element msg
+dangerButtonEl { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl
+        { onPress = onPress
+        , width = width
+        , enabledColor = theme.err
         , enabledFontColor = theme.text
         , disabledColor = theme.sub
         , disabledFontColor = theme.note
@@ -166,7 +183,7 @@ primaryButtonEl { onPress, theme, enabled, innerElement } =
 
 rectButtonEl :
     { onPress : msg
-    , theme : ColorTheme
+    , width : Length
     , enabledColor : Color
     , enabledFontColor : Color
     , disabledColor : Color
@@ -175,9 +192,9 @@ rectButtonEl :
     , innerElement : Element msg
     }
     -> Element msg
-rectButtonEl { onPress, theme, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
+rectButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
     Element.Input.button
-        [ width shrink
+        [ Element.width width
         , padding rectButtonPadding
         , BD.rounded rectElementRound
         , BG.color (ite enabled enabledColor disabledColor)
@@ -204,9 +221,28 @@ roundButtonEl :
     -> Element msg
 roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
     Element.Input.button
-        [ width shrink
-        , height shrink
+        [ width (px innerElementSize)
+        , height (px innerElementSize)
         , BD.rounded (innerElementSize // 2 + 1)
+        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        ]
+        { onPress = ite enabled (Just onPress) Nothing
+        , label = el [ centerX, centerY ] innerElement
+        }
+
+
+squareButtonEl :
+    { onPress : msg
+    , enabled : Bool
+    , innerElement : Element msg
+    , innerElementSize : Int
+    }
+    -> Element msg
+squareButtonEl { onPress, enabled, innerElement, innerElementSize } =
+    Element.Input.button
+        [ width (px innerElementSize)
+        , height (px innerElementSize)
         , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
@@ -355,6 +391,11 @@ manualStyle =
 fixedColumnWidth : Int
 fixedColumnWidth =
     350
+
+
+rectElementRound : Int
+rectElementRound =
+    5
 
 
 columnAreaParentId : String
