@@ -70,7 +70,7 @@ columnButtonKeyEl fam index { id, filters } =
 asColumnButton : Int -> String -> Element Msg -> Element Msg
 asColumnButton index cId element =
     Element.Input.button [ width (px buttonSize), height (px buttonSize) ]
-        { onPress = Nothing -- Want "Focus Column"
+        { onPress = Just (RevealColumn index)
         , label = element
         }
 

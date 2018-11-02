@@ -15,7 +15,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (..)
-import Html.Attributes exposing (draggable, style)
+import Html.Attributes exposing (draggable, id, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import ListExtra
@@ -24,7 +24,6 @@ import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
 import View.ColumnItem exposing (columnItemKeyEl)
-import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
 
 
@@ -33,43 +32,48 @@ columnAreaEl m =
     Element.Keyed.row
         [ width fill
         , height (fill |> maximum m.env.clientHeight)
+        , htmlAttribute (id columnAreaParentId)
         , scrollbarX
         , Font.regular
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
-        , inFront (configPaneEl m)
         ]
         (ColumnStore.indexedMap (columnKeyEl m.env m.viewState) m.columnStore)
 
 
 columnKeyEl : Env -> ViewState -> Int -> Column.Column -> ( String, Element Msg )
-columnKeyEl env vs index column =
-    Tuple.pair ("column_" ++ column.id) <|
-        case vs.columnSwapMaybe of
-            Nothing ->
-                columnEl env vs index column <|
-                    if vs.columnSwappable then
-                        dragHandle (D.succeed (DragStart index column.id))
+columnKeyEl env vs index c =
+    let
+        baseAttrs =
+            [ width (px fixedColumnWidth)
+            , height (fill |> maximum env.clientHeight)
+            , BG.color oneDark.main
+            , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
+            , BD.color oneDark.bg
+            , Font.color oneDark.text
+            ]
+
+        attrs =
+            case vs.columnSwapMaybe of
+                Just swap ->
+                    if swap.grabbedId == c.id then
+                        baseAttrs ++ [ inFront (lazy dragIndicatorEl env.clientHeight) ]
 
                     else
-                        []
+                        baseAttrs ++ [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter index))) ]
 
-            Just swap ->
-                if swap.grabbedId == column.id then
-                    columnEl env vs index column [ inFront (lazy dragIndicatorEl env.clientHeight) ]
+                Nothing ->
+                    if vs.columnSwappable then
+                        baseAttrs ++ dragHandle (D.succeed (DragStart index c.id))
 
-                else
-                    columnEl env vs index column <|
-                        [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter index))) ]
-
-
-columnEl : Env -> ViewState -> Int -> Column.Column -> List (Attribute Msg) -> Element Msg
-columnEl env vs index c attrs =
-    column
-        (columnBaseAttrs env.clientHeight ++ attrs)
-        [ lazy columnHeaderEl c
-        , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
-        , lazy2 itemsEl vs.timezone c.items
-        ]
+                    else
+                        baseAttrs
+    in
+    Tuple.pair c.id <|
+        column attrs
+            [ lazy columnHeaderEl c
+            , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
+            , lazy2 itemsEl vs.timezone c.items
+            ]
 
 
 itemsEl : Time.Zone -> List ColumnItem -> Element Msg
@@ -121,17 +125,6 @@ dragIndicatorEl clientHeight =
         , BD.innerGlow oneDark.active 10
         ]
         none
-
-
-columnBaseAttrs : Int -> List (Attribute Msg)
-columnBaseAttrs clientHeight =
-    [ width (px fixedColumnWidth)
-    , height (fill |> maximum clientHeight)
-    , BG.color oneDark.main
-    , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-    , BD.color oneDark.bg
-    , Font.color oneDark.text
-    ]
 
 
 columnHeaderEl : Column.Column -> Element Msg

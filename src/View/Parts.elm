@@ -3,7 +3,7 @@ module View.Parts exposing
     , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
     , disabled, disabledColor, scale12, css, brightness, setAlpha, manualStyle
     , discordGuildIconEl
-    , fixedColumnWidth
+    , fixedColumnWidth, columnAreaParentId
     )
 
 {-| View parts, complementing Element and Html.
@@ -31,7 +31,7 @@ module View.Parts exposing
 
 ## Constants
 
-@docs fixedColumnWidth
+@docs fixedColumnWidth, columnAreaParentId
 
 -}
 
@@ -270,3 +270,8 @@ manualStyle =
 fixedColumnWidth : Int
 fixedColumnWidth =
     350
+
+
+columnAreaParentId : String
+columnAreaParentId =
+    "columnAreaParent"

@@ -11,7 +11,6 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy3, lazy4)
 import Extra exposing (ite)
-import Html.Attributes exposing (tabindex)
 import Octicons
 import Set exposing (Set)
 import View.Parts exposing (octiconFreeSizeEl, scale12)

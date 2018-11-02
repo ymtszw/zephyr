@@ -328,7 +328,7 @@ ctorCellEl : List MsgFilter -> Entry -> Element Msg
 ctorCellEl msgFilters entry =
     row [ spacing 5 ]
         [ breakP [ bold ] [ breakT entry.ctor ]
-        , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
                 , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
@@ -338,7 +338,7 @@ ctorCellEl msgFilters entry =
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
                 , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
                 }
-        , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
             , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
