@@ -36,14 +36,14 @@ matchFilter item filter =
 matchAtom : Item -> FilterAtom -> Bool
 matchAtom item filterAtom =
     case ( filterAtom, item ) of
+        ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
+            cId == channelId
+
         ( ByMessage text, DiscordItem { content, embeds } ) ->
             String.contains text content || List.any (discordEmbedHasText text) embeds
 
         ( ByMedia filter, DiscordItem discordMessage ) ->
             discordMessageHasMedia filter discordMessage
-
-        ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
-            cId == channelId
 
         ( RemoveMe, _ ) ->
             False

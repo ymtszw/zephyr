@@ -255,14 +255,14 @@ filterAtomCtorFixedWidth =
 filterAtomCtorOptionEl : FilterAtom -> Element msg
 filterAtomCtorOptionEl filterAtom =
     case filterAtom of
+        OfDiscordChannel _ ->
+            text "Discord message in channel..."
+
         ByMessage _ ->
             text "Message contains..."
 
         ByMedia _ ->
             text "Attached media..."
-
-        OfDiscordChannel _ ->
-            text "Discord message in channel..."
 
         RemoveMe ->
             text "Remove this filter"
@@ -279,21 +279,21 @@ availableFilterAtomsWithDefaultArguments material filterAtomMaybe =
 basicFilterAtoms : List FilterAtom
 basicFilterAtoms =
     [ ByMessage "text"
-    , ByMedia HasNone
+    , ByMedia HasImage
     ]
 
 
 ctorKey : FilterAtom -> String
 ctorKey fa =
     case fa of
+        OfDiscordChannel _ ->
+            "OfDiscordChannel"
+
         ByMessage _ ->
             "ByMessage"
 
         ByMedia _ ->
             "ByMedia"
-
-        OfDiscordChannel _ ->
-            "OfDiscordChannel"
 
         RemoveMe ->
             "RemoveMe"
@@ -334,13 +334,6 @@ replaceWithSelected filterAtomMaybe filterAtoms =
 filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
     case filterAtomMaybe of
-        Just (ByMessage query) ->
-            filterAtomVariableTextInputEl (tagger << ByMessage) query
-
-        Just (ByMedia mediaType) ->
-            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
-                ( [ ( "HasNone", HasNone ), ( "HasImage", HasImage ), ( "HasMovie", HasMovie ) ], mediaTypeOptionEl )
-
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
                 case material.ofDiscordChannel of
@@ -349,6 +342,13 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
 
                     Nothing ->
                         ( [], text )
+
+        Just (ByMessage query) ->
+            filterAtomVariableTextInputEl (tagger << ByMessage) query
+
+        Just (ByMedia mediaType) ->
+            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
+                ( [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ], mediaTypeOptionEl )
 
         Just RemoveMe ->
             -- Should not happen
@@ -386,14 +386,14 @@ filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, 
 mediaTypeOptionEl : MediaFilter -> Element msg
 mediaTypeOptionEl mediaType =
     case mediaType of
-        HasNone ->
-            text "None"
-
         HasImage ->
             text "Image"
 
         HasMovie ->
             text "Movie"
+
+        HasNone ->
+            text "None"
 
 
 discordChannelWithGuildIconEl : List Discord.ChannelCache -> String -> Element msg
