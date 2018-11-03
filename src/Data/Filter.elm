@@ -1,6 +1,6 @@
 module Data.Filter exposing
-    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder, toString
-    , append, setAt, removeAt, updateAt, any, fold, map, indexedMap
+    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder, toString, compareFAM
+    , append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
     )
 
 {-| Filter to narrow down Items flowing into a Column.
@@ -21,12 +21,12 @@ For that, this module reluctantly exposes `append` API.
 
 ## Types
 
-@docs Filter, FilterAtom, MediaFilter, encode, decoder, toString
+@docs Filter, FilterAtom, MediaFilter, encode, decoder, toString, compareFAM
 
 
 ## APIs
 
-@docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap
+@docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
 
 -}
 
@@ -42,16 +42,16 @@ type Filter
 
 
 type FilterAtom
-    = ByMessage String
+    = OfDiscordChannel String
+    | ByMessage String
     | ByMedia MediaFilter
-    | OfDiscordChannel String
     | RemoveMe -- This is only for deletion from UI, not actually used as filter
 
 
 type MediaFilter
-    = HasNone
-    | HasImage
+    = HasImage
     | HasMovie
+    | HasNone
 
 
 encode : Filter -> E.Value
@@ -67,14 +67,14 @@ encode filter =
 encodeFilterAtom : FilterAtom -> E.Value
 encodeFilterAtom filterAtom =
     case filterAtom of
+        OfDiscordChannel channelId ->
+            E.tagged "OfDiscordChannel" (E.string channelId)
+
         ByMessage query ->
             E.tagged "ByMessage" (E.string query)
 
         ByMedia mediaType ->
             E.tagged "ByMedia" (encodeMediaType mediaType)
-
-        OfDiscordChannel channelId ->
-            E.tagged "OfDiscordChannel" (E.string channelId)
 
         RemoveMe ->
             -- Should not be stored in Filter
@@ -84,14 +84,14 @@ encodeFilterAtom filterAtom =
 encodeMediaType : MediaFilter -> E.Value
 encodeMediaType mediaType =
     case mediaType of
-        HasNone ->
-            E.tag "HasNone"
-
         HasImage ->
             E.tag "HasImage"
 
         HasMovie ->
             E.tag "HasMovie"
+
+        HasNone ->
+            E.tag "HasNone"
 
 
 decoder : Decoder Filter
@@ -105,9 +105,9 @@ decoder =
 filterAtomDecoder : Decoder FilterAtom
 filterAtomDecoder =
     D.oneOf
-        [ D.tagged "ByMessage" ByMessage D.string
+        [ D.tagged "OfDiscordChannel" OfDiscordChannel D.string
+        , D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
-        , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
 
         -- Old format
         , D.tag "IsSystem" (ByMessage "system")
@@ -119,7 +119,7 @@ filterAtomDecoder =
 
 mediaTypeDecoder : Decoder MediaFilter
 mediaTypeDecoder =
-    D.oneOf [ D.tag "HasNone" HasNone, D.tag "HasImage" HasImage, D.tag "HasMovie" HasMovie ]
+    D.oneOf [ D.tag "HasImage" HasImage, D.tag "HasMovie" HasMovie, D.tag "HasNone" HasNone ]
 
 
 oldMetadataFilterDecoder : Decoder FilterAtom
@@ -283,6 +283,11 @@ updateAtImpl targetIndex update index reversedFilterAtoms filter =
                 updateAtImpl targetIndex update (index + 1) (filterAtom :: reversedFilterAtoms) rest
 
 
+toList : Filter -> List FilterAtom
+toList f =
+    fold (\fa acc -> fa :: acc) [] f |> List.reverse
+
+
 toString : Filter -> String
 toString f =
     toStringImpl f ""
@@ -301,11 +306,11 @@ toStringImpl f acc =
 atomToString : FilterAtom -> String
 atomToString fa =
     case fa of
+        OfDiscordChannel cId ->
+            "Discord Ch: " ++ cId
+
         ByMessage query ->
             "Contains: " ++ query
-
-        ByMedia HasNone ->
-            "Has no media"
 
         ByMedia HasImage ->
             "Has images"
@@ -313,8 +318,84 @@ atomToString fa =
         ByMedia HasMovie ->
             "Has movies"
 
-        OfDiscordChannel cId ->
-            "Discord Ch: " ++ cId
+        ByMedia HasNone ->
+            "Has no media"
 
         RemoveMe ->
             ""
+
+
+compareFAM : FilterAtom -> FilterAtom -> Order
+compareFAM fa1 fa2 =
+    case ( fa1, fa2 ) of
+        ( OfDiscordChannel cId1, OfDiscordChannel cId2 ) ->
+            compare cId1 cId2
+
+        ( OfDiscordChannel _, ByMessage _ ) ->
+            LT
+
+        ( OfDiscordChannel _, ByMedia _ ) ->
+            LT
+
+        ( OfDiscordChannel _, RemoveMe ) ->
+            LT
+
+        ( ByMessage _, OfDiscordChannel _ ) ->
+            GT
+
+        ( ByMessage q1, ByMessage q2 ) ->
+            compare q1 q2
+
+        ( ByMessage _, ByMedia _ ) ->
+            LT
+
+        ( ByMessage _, RemoveMe ) ->
+            LT
+
+        ( ByMedia _, OfDiscordChannel _ ) ->
+            GT
+
+        ( ByMedia _, ByMessage _ ) ->
+            GT
+
+        ( ByMedia HasNone, ByMedia HasImage ) ->
+            GT
+
+        ( ByMedia HasNone, ByMedia HasMovie ) ->
+            GT
+
+        ( ByMedia HasMovie, ByMedia HasImage ) ->
+            GT
+
+        ( ByMedia HasImage, ByMedia HasImage ) ->
+            EQ
+
+        ( ByMedia HasMovie, ByMedia HasMovie ) ->
+            EQ
+
+        ( ByMedia HasNone, ByMedia HasNone ) ->
+            EQ
+
+        ( ByMedia HasImage, ByMedia HasMovie ) ->
+            LT
+
+        ( ByMedia HasImage, ByMedia HasNone ) ->
+            LT
+
+        ( ByMedia HasMovie, ByMedia HasNone ) ->
+            LT
+
+        ( ByMedia _, RemoveMe ) ->
+            LT
+
+        ( RemoveMe, OfDiscordChannel _ ) ->
+            LT
+
+        ( RemoveMe, ByMessage _ ) ->
+            LT
+
+        ( RemoveMe, ByMedia _ ) ->
+            LT
+
+        ( RemoveMe, RemoveMe ) ->
+            EQ
