@@ -9,6 +9,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Extra exposing (..)
 import Iso8601
 import Octicons
@@ -27,76 +28,66 @@ discordConfigEl discordMaybe =
 
 tokenFormEl : Discord -> Element Msg
 tokenFormEl discord =
-    column [ width fill, spacing 5 ] <|
-        [ Element.Input.text
-            (disabled (shouldLockInput discord)
-                [ width fill
-                , padding 5
-                , BG.color oneDark.note
-                , BD.width 0
-                ]
-            )
+    column [ width fill, spacing spacingUnit ] <|
+        [ textInputEl
             { onChange = TokenInput
+            , theme = oneDark
+            , enabled = tokenInputAllowed discord
             , text = tokenText discord
             , placeholder = Nothing
             , label = tokenLabelEl
             }
-        , tokenSubmitButtonEl discord
+        , el [ alignRight ] <| tokenSubmitButtonEl discord
         ]
             ++ currentStateEl discord
 
 
 tokenSubmitButtonEl : Discord -> Element Msg
 tokenSubmitButtonEl discord =
-    Element.Input.button
-        ([ alignRight
-         , width shrink
-         , padding 10
-         , BD.rounded 5
-         ]
-            |> disabled (shouldLockButton discord)
-            |> disabledColor (shouldLockButton discord)
-        )
-        { onPress = ite (shouldLockButton discord) Nothing (Just CommitToken)
-        , label = text (tokenInputButtonLabel discord)
+    primaryButtonEl
+        { onPress = CommitToken
+        , width = shrink
+        , theme = oneDark
+        , enabled = tokenSubmitAllowed discord
+        , innerElement = text (tokenInputButtonLabel discord)
         }
 
 
-shouldLockInput : Discord -> Bool
-shouldLockInput discord =
+tokenInputAllowed : Discord -> Bool
+tokenInputAllowed discord =
     case discord of
         TokenGiven _ ->
-            False
+            True
 
         Hydrated _ _ ->
-            False
+            True
 
         Expired _ _ ->
-            False
+            True
 
         _ ->
-            True
+            False
 
 
-shouldLockButton : Discord -> Bool
-shouldLockButton discord =
+tokenSubmitAllowed : Discord -> Bool
+tokenSubmitAllowed discord =
     case discord of
         TokenGiven "" ->
-            True
+            False
 
         TokenGiven _ ->
-            False
+            True
 
         Hydrated currentInput pov ->
             -- Prohibit submitting with the same token
-            currentInput == pov.token
+            currentInput /= pov.token
 
         Expired currentInput pov ->
             -- Allow submitting with the same token in this case, triggering retry
-            False
+            True
 
         _ ->
-            True
+            False
 
 
 tokenText : Discord -> String
@@ -133,7 +124,7 @@ tokenText discord =
 tokenLabelEl : Element.Input.Label msg
 tokenLabelEl =
     Element.Input.labelAbove [] <|
-        column [ spacing 5 ]
+        column [ spacing spacingUnit ]
             [ el [] (text "Token")
             , paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
                 [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
@@ -228,13 +219,13 @@ currentStateEl discord =
 
 userNameAndAvatarEl : User -> Element Msg
 userNameAndAvatarEl user =
-    row [ width fill, spacing 5 ]
+    row [ width fill, spacing spacingUnit ]
         [ el [] (text "User: ")
         , el
             [ width (px 32)
             , height (px 32)
             , BD.rounded 16
-            , BG.uncropped (imageUrlWithFallback (Just "32") user.discriminator user.avatar)
+            , BG.uncropped (imageUrlWithFallback (Just 32) user.discriminator user.avatar)
             ]
             none
         , text user.username
@@ -243,85 +234,86 @@ userNameAndAvatarEl user =
 
 
 guildsEl : Bool -> POV -> Element Msg
-guildsEl rotating pov =
-    row [ width fill, spacing 5 ]
-        [ column [ alignTop, spacing 5 ]
+guildsEl rehydrating pov =
+    row [ width fill, spacing spacingUnit ]
+        [ column [ alignTop, spacing spacingUnit ]
             [ text "Servers: "
-            , rehydrateButtonEl rotating pov
+            , rehydrateButtonEl rehydrating pov
             ]
         , pov.guilds
-            |> Dict.foldl (\_ guild acc -> guildIconEl guild :: acc) []
+            |> Dict.foldl (\_ guild acc -> discordGuildIconEl 50 guild :: acc) []
             |> wrappedRow [ width fill, spacing 5 ]
         ]
 
 
-guildIconEl : Guild -> Element Msg
-guildIconEl guild =
-    squareIconEl 50 guild.name (Maybe.map (imageUrlNoFallback (Just "64")) guild.icon)
-
-
 rehydrateButtonEl : Bool -> POV -> Element Msg
-rehydrateButtonEl rotating pov =
-    Element.Input.button
-        (disabled rotating
-            [ alignLeft
-            , height fill
-            , BD.rounded 30
-            , BG.color oneDark.main
-            ]
-        )
-        { onPress = ite rotating Nothing (Just Rehydrate)
-        , label = octiconEl Octicons.sync
+rehydrateButtonEl rehydrating pov =
+    roundButtonEl
+        { onPress = Rehydrate
+        , enabled = not rehydrating
+        , innerElementSize = rehydrateButtonSize
+        , innerElement = octiconFreeSizeEl rehydrateButtonSize Octicons.sync
         }
+
+
+rehydrateButtonSize : Int
+rehydrateButtonSize =
+    26
 
 
 subbedChannelsEl : POV -> Element Msg
 subbedChannelsEl pov =
-    row [ width fill, spacing 5 ]
-        [ column [ alignTop, spacing 5 ] [ text "Channels: " ]
-        , { data =
-                pov.channels
-                    |> Dict.values
-                    |> List.filter (.fetchStatus >> FetchStatus.isActive)
-          , columns = [ subbedChannelEl, nextFetchEl ]
-          }
-            |> table [ width fill, spacing 5 ]
+    row [ width fill ]
+        [ el [ alignTop ] <| text "Channels: "
+        , Element.Keyed.column [ width fill, spacing 5, Font.size (scale12 1) ] <|
+            [ headerKeyEl
+            ]
+                ++ channelRows pov
         ]
 
 
-subbedChannelEl : Column Channel Msg
-subbedChannelEl =
-    { header = el [ BG.color oneDark.note ] (text "Name")
-    , width = fill
-    , view =
-        \c ->
-            row [ width fill, clipX ]
-                [ c.guildMaybe |> Maybe.map discordGuildSmallIconEl |> Maybe.withDefault none
-                , text ("#" ++ c.name)
-                ]
-    }
+channelRows : POV -> List ( String, Element Msg )
+channelRows pov =
+    pov.channels
+        |> Dict.values
+        |> List.filter (FetchStatus.isActive << .fetchStatus)
+        |> List.sortWith Discord.compareByFetchStatus
+        |> List.map channelRowKeyEl
 
 
-nextFetchEl : Column Channel Msg
-nextFetchEl =
-    { header = el [ BG.color oneDark.note ] (text "Next Fetch")
-    , width = fill
-    , view =
-        \c ->
-            text <|
-                case c.fetchStatus of
-                    Waiting ->
-                        "Soon"
+headerKeyEl : ( String, Element Msg )
+headerKeyEl =
+    Tuple.pair "ChannelHeader" <|
+        row [ width fill, spacing 2 ]
+            [ el [ width fill, BG.color oneDark.note ] <| text "Name"
+            , el [ width fill, BG.color oneDark.note ] <| text "Next Fetch"
+            ]
 
-                    ResumeFetching ->
-                        "Fetching..."
 
-                    NextFetchAt posix _ ->
-                        Iso8601.fromTime posix
+channelRowKeyEl : Channel -> ( String, Element Msg )
+channelRowKeyEl c =
+    Tuple.pair c.id <|
+        row [ width fill, spacing 2, clipX ]
+            [ el [ width fill ] <|
+                row [ spacing 2 ]
+                    [ c.guildMaybe |> Maybe.map (discordGuildIconEl 20) |> Maybe.withDefault none
+                    , breakP [] [ breakT ("#" ++ c.name) ]
+                    ]
+            , el [ width fill ] <|
+                text <|
+                    case c.fetchStatus of
+                        Waiting ->
+                            "Soon"
 
-                    Fetching _ _ ->
-                        "Fetching..."
+                        ResumeFetching ->
+                            "Fetching..."
 
-                    _ ->
-                        "Not active"
-    }
+                        NextFetchAt posix _ ->
+                            Iso8601.fromTime posix
+
+                        Fetching _ _ ->
+                            "Fetching..."
+
+                        _ ->
+                            "Not active"
+            ]

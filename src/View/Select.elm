@@ -1,6 +1,6 @@
 module View.Select exposing (State, close, init, isOpen, open, select)
 
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme)
 import Data.Msg exposing (Msg(..))
 import Element exposing (..)
 import Element.Background as BG
@@ -9,12 +9,9 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Element.Lazy exposing (lazy3, lazy4)
 import Extra exposing (ite)
-import Html.Attributes exposing (tabindex)
 import Octicons
-import Set exposing (Set)
-import View.Parts exposing (octiconFreeSizeEl, scale12)
+import View.Parts exposing (..)
 
 
 {-| Global state of select input elements.
@@ -61,6 +58,7 @@ Also, it uess Keyed.column.
 -}
 select :
     { id : String
+    , theme : ColorTheme
     , onSelect : a -> Msg
     , selectedOption : Maybe a
     , noMsgOptionEl : a -> Element Msg
@@ -68,77 +66,112 @@ select :
     -> State
     -> List ( String, a )
     -> Element Msg
-select { id, onSelect, selectedOption, noMsgOptionEl } state options =
+select { id, theme, onSelect, selectedOption, noMsgOptionEl } state options =
     let
         opened =
             isOpen id state
     in
     el
         [ width (fill |> minimum 0)
-        , below (ite opened (optionsEl onSelect noMsgOptionEl selectedOption options) none)
-        , Font.size (scale12 2)
+        , height fill
+        , ite opened (below (optionsEl onSelect theme noMsgOptionEl selectedOption options)) noneAttr
         ]
-        (lazy3 headerEl (SelectToggle id (not opened)) selectedOption noMsgOptionEl)
+        (headerEl (SelectToggle id (not opened)) theme selectedOption noMsgOptionEl)
 
 
-headerEl : Msg -> Maybe a -> (a -> Element Msg) -> Element Msg
-headerEl onPress selectedOption noMsgOptionEl =
+headerEl : Msg -> ColorTheme -> Maybe a -> (a -> Element Msg) -> Element Msg
+headerEl onPress theme selectedOption noMsgOptionEl =
     Element.Input.button
         [ width fill
-        , spacing 3
-        , padding 5
-        , BD.rounded 5
-        , BG.color oneDark.note
+        , padding headerPadding
+        , BD.rounded rectElementRound
+        , BG.color theme.note
+        , Font.color theme.text
         ]
         { onPress = Just onPress
         , label =
-            row [ width fill ]
+            row [ width fill, spacingXY headerChevronSpacingX 0 ]
                 [ -- `minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
                   -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
                   el [ width (fill |> minimum 0), clipX ] <|
                     Maybe.withDefault (text "Select...") (Maybe.map noMsgOptionEl selectedOption)
-                , el [ width (px 20), alignRight, BG.color oneDark.sub ] <|
-                    octiconFreeSizeEl 20 Octicons.chevronDown
+                , el [ width (px headerChevronSize), alignRight, BG.color theme.sub ] <|
+                    octiconFreeSizeEl headerChevronSize Octicons.chevronDown
                 ]
         }
 
 
-optionsEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
-optionsEl onSelect noMsgOptionEl selectedOption options =
+headerPadding : Int
+headerPadding =
+    5
+
+
+headerChevronSpacingX : Int
+headerChevronSpacingX =
+    3
+
+
+headerChevronSize : Int
+headerChevronSize =
+    20
+
+
+optionsEl : (a -> Msg) -> ColorTheme -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
+optionsEl onSelect theme noMsgOptionEl selectedOption options =
     options
-        |> List.map (optionEl onSelect noMsgOptionEl selectedOption)
+        |> List.map (optionEl onSelect theme noMsgOptionEl selectedOption)
         |> Element.Keyed.column
-            [ width (fill |> minimum 100)
-            , paddingXY 0 5
+            [ width (fill |> minimum optionListMinWidth)
+            , paddingXY 0 optionListPaddingY
             , scrollbarY
-            , BD.width 1
-            , BD.rounded 5
-            , BD.color oneDark.bd
+            , BD.width optionListBorderWidth
+            , BD.rounded rectElementRound
+            , BD.color theme.bd
             , BD.shadow
                 { offset = ( 5.0, 5.0 )
                 , blur = 10.0
                 , size = 0.0
-                , color = oneDark.bg
+                , color = theme.bg
                 }
-            , BG.color oneDark.note
+            , BG.color theme.note
             ]
-        |> el [ height (fill |> maximum 300) ]
+        |> el [ height (fill |> maximum optionListMaxHeight) ]
 
 
-optionEl : (a -> Msg) -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( String, Element Msg )
-optionEl onSelect noMsgOptionEl selectedOption ( optionKey, option ) =
-    let
-        selectedStyle =
-            ite (selectedOption == Just option) [ BG.color oneDark.active ] []
-    in
+optionListMinWidth : Int
+optionListMinWidth =
+    100
+
+
+optionListMaxHeight : Int
+optionListMaxHeight =
+    300
+
+
+optionListPaddingY : Int
+optionListPaddingY =
+    5
+
+
+optionListBorderWidth : Int
+optionListBorderWidth =
+    1
+
+
+optionEl : (a -> Msg) -> ColorTheme -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( String, Element Msg )
+optionEl onSelect theme noMsgOptionEl selectedOption ( optionKey, option ) =
     Element.Input.button
-        (selectedStyle
-            ++ [ width fill
-               , padding 5
-               , mouseOver [ BG.color oneDark.sub ]
-               ]
-        )
+        [ width fill
+        , padding optionPadding
+        , mouseOver [ BG.color theme.sub ]
+        , ite (selectedOption == Just option) (BG.color theme.prim) noneAttr
+        ]
         { onPress = Just (SelectPick (onSelect option))
         , label = noMsgOptionEl option
         }
         |> Tuple.pair optionKey
+
+
+optionPadding : Int
+optionPadding =
+    5

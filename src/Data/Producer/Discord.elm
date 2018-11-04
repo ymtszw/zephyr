@@ -3,7 +3,8 @@ module Data.Producer.Discord exposing
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update
-    , imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing
+    , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
+    , getPov, setChannelFetchStatus, initializing, compareByFetchStatus
     )
 
 {-| Polling Producer for Discord.
@@ -34,7 +35,8 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Runtime APIs
 
-@docs imageUrlWithFallback, imageUrlNoFallback, getPov, setChannelFetchStatus, initializing
+@docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
+@docs getPov, setChannelFetchStatus, initializing, compareByFetchStatus
 
 -}
 
@@ -1370,12 +1372,22 @@ fetchOne token channel =
 -- RUNTIME APIs
 
 
-imageUrlNoFallback : Maybe String -> Image -> String
+defaultIconUrl : Maybe Int -> String
+defaultIconUrl sizeMaybe =
+    imageUrlWithFallback sizeMaybe "" Nothing
+
+
+guildIconOrDefaultUrl : Maybe Int -> Guild -> String
+guildIconOrDefaultUrl sizeMaybe g =
+    imageUrlWithFallback sizeMaybe "" g.icon
+
+
+imageUrlNoFallback : Maybe Int -> Image -> String
 imageUrlNoFallback sizeMaybe image =
     imageUrlWithFallback sizeMaybe "" (Just image)
 
 
-imageUrlWithFallback : Maybe String -> String -> Maybe Image -> String
+imageUrlWithFallback : Maybe Int -> String -> Maybe Image -> String
 imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     let
         endpoint =
@@ -1398,15 +1410,39 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
                         Nothing ->
                             "/embed/avatars/0.png"
 
-        size =
+        sizeQuery =
             case sizeMaybe of
-                Just sizeStr ->
-                    "?size=" ++ sizeStr
+                Just size ->
+                    "?size=" ++ String.fromInt (imageQuerySize size)
 
                 Nothing ->
                     ""
     in
-    "https://cdn.discordapp.com" ++ endpoint ++ size
+    "https://cdn.discordapp.com" ++ endpoint ++ sizeQuery
+
+
+imageQuerySize : Int -> Int
+imageQuerySize size =
+    if size > 512 then
+        1024
+
+    else if size > 256 then
+        512
+
+    else if size > 128 then
+        256
+
+    else if size > 64 then
+        128
+
+    else if size > 32 then
+        64
+
+    else if size > 16 then
+        32
+
+    else
+        16
 
 
 getPov : Discord -> Maybe POV
@@ -1487,3 +1523,8 @@ setChannelFetchStatusImpl tagger subs pov =
                         ( c, False )
     in
     ( tagger { pov | channels = newChannels }, shouldPersist )
+
+
+compareByFetchStatus : Channel -> Channel -> Order
+compareByFetchStatus a b =
+    FetchStatus.compare a.fetchStatus b.fetchStatus

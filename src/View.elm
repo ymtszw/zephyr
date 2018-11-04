@@ -28,11 +28,7 @@ bodyEl model =
     backgroundEl <|
         row [ width fill, height fill, clipY ]
             [ sidebarEl model
-            , if model.viewState.configOpen then
-                configPaneEl model
-
-              else
-                none
+            , configPaneEl model
             , columnAreaEl model
             ]
 

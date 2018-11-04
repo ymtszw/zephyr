@@ -41,6 +41,8 @@ type Msg
     | DelColumnFilter String Int
     | ColumnDeleteGateInput String String
     | ProducerCtrl Producer.Msg
+    | RevealColumn Int
+    | DomOp (Result Browser.Dom.Error ())
     | Tick Posix
 
 
@@ -118,6 +120,15 @@ logEntry msg =
 
         ProducerCtrl pMsg ->
             producerMsgToEntry pMsg
+
+        RevealColumn index ->
+            Entry "Reveal" [ fromInt index ]
+
+        DomOp (Ok ()) ->
+            Entry "DomOp.Ok" []
+
+        DomOp (Err (Browser.Dom.NotFound id)) ->
+            Entry "DomOp.Err.NotFound" [ id ]
 
         Tick posix ->
             Entry "Tick" [ Iso8601.fromTime posix ]

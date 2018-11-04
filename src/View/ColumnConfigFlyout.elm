@@ -14,6 +14,7 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
+import Extra exposing (ite)
 import ListExtra
 import Octicons
 import View.Parts exposing (..)
@@ -25,11 +26,13 @@ columnConfigFlyoutEl ss fam index c =
     if c.configOpen then
         column
             [ width fill
-            , padding 5
-            , spacing 3
-            , BG.color oneDark.sub
+            , alignTop
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
+            , BG.color flyoutBackground
             , BD.width 1
-            , BD.color oneDark.note
+            , BD.color flyoutFrameColor
+            , Font.size baseFontSize
             ]
             [ lazy columnConfigTitleEl "Filter Rules"
             , lazy3 filtersEl ss fam c
@@ -42,15 +45,35 @@ columnConfigFlyoutEl ss fam index c =
         none
 
 
+baseFontSize : Int
+baseFontSize =
+    scale12 1
+
+
+flyoutBackground : Color
+flyoutBackground =
+    oneDark.sub
+
+
+flyoutFrameColor : Color
+flyoutFrameColor =
+    oneDark.note
+
+
 columnConfigTitleEl : String -> Element Msg
 columnConfigTitleEl title =
     el
         [ width fill
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
-        , Font.size (scale12 3)
-        , Font.color oneDark.note
+        , Font.size titleFontSize
+        , Font.color flyoutFrameColor
         ]
         (text title)
+
+
+titleFontSize : Int
+titleFontSize =
+    scale12 3
 
 
 filtersEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -61,11 +84,16 @@ filtersEl ss fam c =
         |> List.intersperse (filterLogicSeparator "AND")
         |> column
             [ width (fill |> minimum 0)
-            , padding 5
-            , spacing 3
-            , BD.rounded 5
-            , BG.color oneDark.main
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
+            , BD.rounded rectElementRound
+            , BG.color sectionBackground
             ]
+
+
+sectionBackground : Color
+sectionBackground =
+    oneDark.main
 
 
 filterEl : Select.State -> FilterAtomMaterial -> String -> Int -> Filter -> Element Msg
@@ -101,11 +129,15 @@ filterLogicSeparator : String -> Element msg
 filterLogicSeparator operator =
     el
         [ width (fill |> minimum 0)
-        , padding 3
-        , Font.size (scale12 2)
-        , Font.color oneDark.note
+        , Font.size separatorFontSize
+        , Font.color flyoutFrameColor
         ]
         (el [ centerX ] (text operator))
+
+
+separatorFontSize : Int
+separatorFontSize =
+    scale12 2
 
 
 filterGeneratorEl : (Maybe Filter -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe ( Int, Filter ) -> Element Msg
@@ -113,8 +145,8 @@ filterGeneratorEl tagger ss fam cId indexFilterMaybe =
     row
         [ width fill
         , BD.width 1
-        , BD.rounded 5
-        , BD.color oneDark.note
+        , BD.rounded rectElementRound
+        , BD.color flyoutFrameColor
         ]
         [ case indexFilterMaybe of
             Just ( index, filter ) ->
@@ -122,13 +154,17 @@ filterGeneratorEl tagger ss fam cId indexFilterMaybe =
                     filterId =
                         cId ++ "-filter_" ++ String.fromInt index
                 in
-                column [ width (fill |> minimum 0), padding 5 ] <|
-                    List.intersperse (filterLogicSeparator "OR") <|
-                        Filter.indexedMap (filterAtomEl filter tagger ss fam filterId) filter
-                            ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) ss fam filterId ]
+                Filter.indexedMap (filterAtomEl filter tagger ss fam filterId) filter
+                    ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) ss fam filterId ]
+                    |> List.intersperse (filterLogicSeparator "OR")
+                    |> column
+                        [ width (fill |> minimum 0)
+                        , padding rectElementInnerPadding
+                        , spacing spacingUnit
+                        ]
 
             Nothing ->
-                column [ width (fill |> minimum 0), padding 5 ]
+                column [ width (fill |> minimum 0), padding rectElementInnerPadding ]
                     [ newFilterAtomEl (tagger << Just << Singular) ss fam (cId ++ "addNewFilter") ]
         , deleteFilterButtonEl cId indexFilterMaybe
         ]
@@ -139,19 +175,34 @@ deleteFilterButtonEl cId indexFilterMaybe =
     case indexFilterMaybe of
         Just ( index, _ ) ->
             Element.Input.button
-                [ width (px 20)
+                [ width (px deleteFilterButtonWidth)
                 , height fill
                 , mouseOver [ BG.color oneDark.err ]
                 , focused [ BG.color oneDark.err ]
                 , alignRight
-                , BD.roundEach { topLeft = 0, topRight = 5, bottomRight = 5, bottomLeft = 0 }
+                , BD.roundEach
+                    { topLeft = 0
+                    , topRight = rectElementRound
+                    , bottomRight = rectElementRound
+                    , bottomLeft = 0
+                    }
                 ]
                 { onPress = Just (DelColumnFilter cId index)
-                , label = el [ centerY, centerX ] <| octiconFreeSizeEl 16 Octicons.trashcan
+                , label = el [ centerY, centerX ] <| octiconFreeSizeEl deleteFilterIconSize Octicons.trashcan
                 }
 
         Nothing ->
             none
+
+
+deleteFilterButtonWidth : Int
+deleteFilterButtonWidth =
+    20
+
+
+deleteFilterIconSize : Int
+deleteFilterIconSize =
+    18
 
 
 filterAtomEl : Filter -> (Maybe Filter -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Int -> FilterAtom -> Element Msg
@@ -176,7 +227,7 @@ newFilterAtomEl tagger ss fam filterId =
 
 filterAtomInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomInputEl tagger ss fam filterAtomId filterAtomMaybe =
-    row [ width (fill |> minimum 0), spacing 3 ]
+    row [ width (fill |> minimum 0), spacing spacingUnit ]
         [ filterAtomCtorSelectEl tagger ss fam (filterAtomId ++ "-typeSelect") filterAtomMaybe
         , filterAtomVariableInputEl tagger ss fam (filterAtomId ++ "-variableInput") filterAtomMaybe
         ]
@@ -184,9 +235,10 @@ filterAtomInputEl tagger ss fam filterAtomId filterAtomMaybe =
 
 filterAtomCtorSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomCtorSelectEl tagger selectState material selectId filterAtomMaybe =
-    el [ width (fill |> maximum 120) ] <|
+    el [ width (px filterAtomCtorFixedWidth) ] <|
         select
             { id = selectId
+            , theme = oneDark
             , onSelect = tagger
             , selectedOption = filterAtomMaybe
             , noMsgOptionEl = filterAtomCtorOptionEl
@@ -195,21 +247,25 @@ filterAtomCtorSelectEl tagger selectState material selectId filterAtomMaybe =
             (availableFilterAtomsWithDefaultArguments material filterAtomMaybe)
 
 
+filterAtomCtorFixedWidth : Int
+filterAtomCtorFixedWidth =
+    120
+
+
 filterAtomCtorOptionEl : FilterAtom -> Element msg
 filterAtomCtorOptionEl filterAtom =
-    el [ Font.size (scale12 1) ] <|
-        case filterAtom of
-            ByMessage _ ->
-                text "Message contains..."
+    case filterAtom of
+        OfDiscordChannel _ ->
+            text "Discord message in channel..."
 
-            ByMedia _ ->
-                text "Attached media..."
+        ByMessage _ ->
+            text "Message contains..."
 
-            OfDiscordChannel _ ->
-                text "Discord message in channel..."
+        ByMedia _ ->
+            text "Attached media..."
 
-            RemoveMe ->
-                text "Remove this filter"
+        RemoveMe ->
+            text "Remove this filter"
 
 
 availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> Maybe FilterAtom -> List ( String, FilterAtom )
@@ -223,21 +279,21 @@ availableFilterAtomsWithDefaultArguments material filterAtomMaybe =
 basicFilterAtoms : List FilterAtom
 basicFilterAtoms =
     [ ByMessage "text"
-    , ByMedia HasNone
+    , ByMedia HasImage
     ]
 
 
 ctorKey : FilterAtom -> String
 ctorKey fa =
     case fa of
+        OfDiscordChannel _ ->
+            "OfDiscordChannel"
+
         ByMessage _ ->
             "ByMessage"
 
         ByMedia _ ->
             "ByMedia"
-
-        OfDiscordChannel _ ->
-            "OfDiscordChannel"
 
         RemoveMe ->
             "RemoveMe"
@@ -278,13 +334,6 @@ replaceWithSelected filterAtomMaybe filterAtoms =
 filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
 filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
     case filterAtomMaybe of
-        Just (ByMessage query) ->
-            filterAtomVariableTextInputEl (tagger << ByMessage) query
-
-        Just (ByMedia mediaType) ->
-            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
-                ( [ ( "HasNone", HasNone ), ( "HasImage", HasImage ), ( "HasMovie", HasMovie ) ], mediaTypeOptionEl )
-
         Just (OfDiscordChannel cId) ->
             filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
                 case material.ofDiscordChannel of
@@ -293,6 +342,13 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
 
                     Nothing ->
                         ( [], text )
+
+        Just (ByMessage query) ->
+            filterAtomVariableTextInputEl (tagger << ByMessage) query
+
+        Just (ByMedia mediaType) ->
+            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
+                ( [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ], mediaTypeOptionEl )
 
         Just RemoveMe ->
             -- Should not happen
@@ -304,18 +360,13 @@ filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
 
 filterAtomVariableTextInputEl : (String -> Msg) -> String -> Element Msg
 filterAtomVariableTextInputEl tagger text =
-    Element.Input.text
-        [ width fill
-        , height (px 30) -- Match with select input height
-        , padding 5
-        , BG.color oneDark.note
-        , BD.width 0
-        , Font.size (scale12 1)
-        ]
+    textInputEl
         { onChange = tagger
+        , theme = oneDark
+        , enabled = True
         , text = text
         , placeholder = Nothing
-        , label = Element.Input.labelHidden "text"
+        , label = Element.Input.labelHidden "Filter Text"
         }
 
 
@@ -323,9 +374,10 @@ filterAtomVariableSelectInputEl : (a -> Msg) -> Select.State -> String -> a -> (
 filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, optionEl ) =
     select
         { id = selectId
+        , theme = oneDark
         , onSelect = tagger
         , selectedOption = Just selected
-        , noMsgOptionEl = el [ Font.size (scale12 1) ] << optionEl
+        , noMsgOptionEl = optionEl
         }
         selectState
         options
@@ -334,38 +386,48 @@ filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, 
 mediaTypeOptionEl : MediaFilter -> Element msg
 mediaTypeOptionEl mediaType =
     case mediaType of
-        HasNone ->
-            text "None"
-
         HasImage ->
             text "Image"
 
         HasMovie ->
             text "Movie"
 
+        HasNone ->
+            text "None"
+
 
 discordChannelWithGuildIconEl : List Discord.ChannelCache -> String -> Element msg
 discordChannelWithGuildIconEl channels cId =
     case ListExtra.findOne (.id >> (==) cId) channels of
         Just channel ->
-            case channel.guildMaybe of
-                Just guild ->
-                    row [ width (fill |> minimum 0), spacing 3 ]
-                        [ discordGuildSmallIconEl guild
-                        , text ("#" ++ channel.name)
-                        ]
-
-                Nothing ->
-                    -- Mostly DM
-                    text channel.name
+            row [ width (fill |> minimum 0), spacingXY discordGuildIconSpacingX 0 ]
+                [ channel.guildMaybe |> Maybe.map (discordGuildIconEl discordGuildIconSize) |> Maybe.withDefault none
+                , breakP [] [ breakT ("#" ++ channel.name) ]
+                ]
 
         Nothing ->
             text cId
 
 
+discordGuildIconSpacingX : Int
+discordGuildIconSpacingX =
+    2
+
+
+discordGuildIconSize : Int
+discordGuildIconSize =
+    20
+
+
 columnDeleteEl : Int -> Column.Column -> Element Msg
 columnDeleteEl index c =
-    row [ width fill, spacing 5, padding 10 ]
+    row
+        [ width fill
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
+        , BG.color sectionBackground
+        , BD.rounded rectElementRound
+        ]
         [ columnDeleteGateEl c.id c.deleteGate
         , lazy2 columnDeleteButtonEl index (String.toLower c.deleteGate == "delete")
         ]
@@ -373,45 +435,43 @@ columnDeleteEl index c =
 
 columnDeleteGateEl : String -> String -> Element Msg
 columnDeleteGateEl cId deleteGate =
-    Element.Input.text
-        [ width fill
-        , height (px 30) -- Match with select input height
-        , padding 5
-        , BG.color oneDark.note
-        , BD.width 0
-        , Font.size (scale12 1)
-        ]
+    textInputEl
         { onChange = ColumnDeleteGateInput cId
+        , theme = oneDark
+        , enabled = True
         , text = deleteGate
+        , label = Element.Input.labelHidden "Delete Confirmation"
         , placeholder =
             Just <|
                 Element.Input.placeholder [] <|
                     el [ centerY ] (text "Type DELETE to delete this column")
-        , label = Element.Input.labelHidden "Delete Gate"
         }
 
 
 columnDeleteButtonEl : Int -> Bool -> Element Msg
 columnDeleteButtonEl index confirmed =
-    el [ width (px 100) ] <|
-        if confirmed then
-            Element.Input.button
-                [ width fill
-                , height (px 30)
-                , BD.rounded 5
-                , BG.color oneDark.err
-                ]
-                { onPress = Just (DelColumn index)
-                , label = el [ centerX ] (text "Delete!")
-                }
+    dangerButtonEl
+        { onPress = DelColumn index
+        , width = px deleteButtonWidth
+        , theme = oneDark
+        , enabled = confirmed
+        , innerElement = text (ite confirmed "Delete!" "Delete?")
+        }
 
-        else
-            none
+
+deleteButtonWidth : Int
+deleteButtonWidth =
+    100
 
 
 columnConfigCloseButtonEl : String -> Element Msg
 columnConfigCloseButtonEl cId =
     Element.Input.button [ width fill, BG.color oneDark.sub ]
         { onPress = Just (ToggleColumnConfig cId False)
-        , label = octiconFreeSizeEl 24 Octicons.triangleUp
+        , label = octiconFreeSizeEl closeTriangleSize Octicons.triangleUp
         }
+
+
+closeTriangleSize : Int
+closeTriangleSize =
+    24

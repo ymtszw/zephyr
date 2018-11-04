@@ -15,14 +15,25 @@ import View.Parts exposing (..)
 
 configPaneEl : Model -> Element Msg
 configPaneEl m =
-    el
-        [ width (fill |> minimum 480 |> maximum 860)
-        , height (fill |> maximum m.env.clientHeight)
-        , padding 15
-        , scrollbarY
-        , Font.color oneDark.text
-        ]
-        (configInnerEl m)
+    if m.viewState.configOpen then
+        el
+            [ width (px fixedPaneWidth)
+            , height (fill |> maximum m.env.clientHeight)
+            , alignLeft
+            , padding rectElementOuterPadding
+            , scrollbarY
+            , BG.color oneDark.bg
+            , Font.color oneDark.text
+            ]
+            (configInnerEl m)
+
+    else
+        none
+
+
+fixedPaneWidth : Int
+fixedPaneWidth =
+    640
 
 
 configInnerEl : Model -> Element Msg
@@ -30,9 +41,10 @@ configInnerEl m =
     column
         [ width fill
         , height fill
-        , spacing 10
+        , spacingXY 0 sectionSpacingY
         ]
-        [ producerConfigsEl m.producerRegistry
+        [ configSectionWrapper (ProducerCtrl << Producer.DiscordMsg) "Discord" <|
+            discordConfigEl m.producerRegistry.discord
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -43,31 +55,33 @@ configInnerEl m =
         ]
 
 
-producerConfigsEl : ProducerRegistry -> Element Msg
-producerConfigsEl producerRegistry =
-    column
-        [ width fill
-        , padding 10
-        , spacingXY 0 20
-        , BG.color oneDark.main
-        , BD.rounded 10
-        , Font.size (scale12 2)
-        ]
-        [ configWrapEl (ProducerCtrl << Producer.DiscordMsg) "Discord" <|
-            discordConfigEl producerRegistry.discord
-        ]
+sectionSpacingY : Int
+sectionSpacingY =
+    20
 
 
-configWrapEl : (msg -> Msg) -> String -> Element msg -> Element Msg
-configWrapEl tagger title element =
+configSectionWrapper : (msg -> Msg) -> String -> Element msg -> Element Msg
+configSectionWrapper tagger title element =
     map tagger <|
-        column [ width fill, spacingXY 0 5 ]
+        column
+            [ width fill
+            , padding rectElementOuterPadding
+            , spacing spacingUnit
+            , BG.color oneDark.main
+            , BD.rounded rectElementRound
+            , Font.size (scale12 2)
+            ]
             [ el
                 [ width fill
                 , Font.bold
-                , Font.size (scale12 3)
+                , Font.size sectionTitleFontSize
                 , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
                 ]
                 (text title)
             , element
             ]
+
+
+sectionTitleFontSize : Int
+sectionTitleFontSize =
+    scale12 3

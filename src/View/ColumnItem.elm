@@ -64,35 +64,23 @@ itemAvatarEl item =
         Product _ (DiscordItem { author }) ->
             case author of
                 Discord.UserAuthor user ->
-                    avatarWithBadgeEl
+                    iconWithBadgeEl
                         { badge = Nothing
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
+                        , size = avatarSize
                         }
 
                 Discord.WebhookAuthor user ->
-                    avatarWithBadgeEl
+                    iconWithBadgeEl
                         { badge = Just botIconEl
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just "64") user.discriminator user.avatar
+                        , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
+                        , size = avatarSize
                         }
 
         System _ _ ->
-            avatarWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing }
-
-
-avatarWithBadgeEl : { badge : Maybe (Element Msg), fallback : String, url : Maybe String } -> Element Msg
-avatarWithBadgeEl { badge, fallback, url } =
-    let
-        bottomRightBadge =
-            case badge of
-                Just badgeEl ->
-                    [ alignTop, inFront <| el [ alignBottom, alignRight ] <| badgeEl ]
-
-                Nothing ->
-                    [ alignTop ]
-    in
-    el bottomRightBadge <| el [ padding 2 ] <| squareIconEl avatarSize fallback <| url
+            iconWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing, size = avatarSize }
 
 
 avatarSize : Int
@@ -102,7 +90,7 @@ avatarSize =
 
 botIconEl : Element Msg
 botIconEl =
-    el [ padding 1, BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
+    el [ BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
         octiconFreeSizeEl 12 Octicons.zap
 
 
@@ -203,7 +191,7 @@ discordEmbedAuthorEl author =
                     element
     in
     row [ spacing 5, Font.bold ]
-        [ wrapWithLink <| squareIconEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
+        [ wrapWithLink <| squareIconOrHeadEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
         , paragraph [] [ wrapWithLink <| text author.name ]
         ]
 

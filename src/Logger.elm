@@ -222,17 +222,27 @@ historyEl : History -> Element Msg
 historyEl h =
     column
         [ width fill
-        , padding 10
-        , spacing 5
-        , BD.rounded 5
-        , BG.color oneDark.sub
-        , Font.size (scale12 1)
-        , inFront (newEntryEl h)
+        , padding rectElementOuterPadding
+        , spacing spacingUnit
+        , BD.rounded rectElementRound
+        , BG.color historyBackground
+        , Font.size historyFontSize
+        , inFront (newEntryToastEl h)
         ]
         [ historyTableEl h
         , msgFiltersEl h
         , payloadFilterInputEl h
         ]
+
+
+historyBackground : Color
+historyBackground =
+    oneDark.sub
+
+
+historyFontSize : Int
+historyFontSize =
+    scale12 1
 
 
 historyTableEl : History -> Element Msg
@@ -250,28 +260,58 @@ historyTableEl (History h) =
 
         columnAttrs =
             [ width fill
-            , height (shrink |> maximum 400)
-            , padding 5
-            , spacing 2
+            , height (shrink |> maximum historyTableMaxHeight)
+            , padding rectElementInnerPadding
+            , spacing historyTableCellSpacing
             , clipX
-            , BG.color oneDark.main
+            , BG.color historyTableBackground
             , htmlAttribute (id historyElementId)
             , detectScroll (History h)
             ]
     in
     Element.Keyed.column columnAttrs <|
         ( "LogHeaders"
-        , row [ width fill, spacing 2 ]
-            [ el [ width (fillPortion 1), BG.color oneDark.note ] <| text "Msg"
-            , el [ width (fillPortion 2), BG.color oneDark.note ] <| text "Payload"
+        , row [ width fill, spacing historyTableCellSpacing ]
+            [ el [ width ctorColumnWidth, BG.color historyTableHeaderBackground ] <| text "Msg"
+            , el [ width payloadColumnWidth, BG.color historyTableHeaderBackground ] <| text "Payload"
             ]
         )
             :: List.map (rowKeyEl h.msgFilters) data
 
 
+historyTableBackground : Color
+historyTableBackground =
+    oneDark.main
+
+
+historyTableMaxHeight : Int
+historyTableMaxHeight =
+    400
+
+
+historyTableCellSpacing : Int
+historyTableCellSpacing =
+    2
+
+
+historyTableHeaderBackground : Color
+historyTableHeaderBackground =
+    oneDark.note
+
+
 historyElementId : String
 historyElementId =
     "loggerHistory"
+
+
+ctorColumnWidth : Length
+ctorColumnWidth =
+    fillPortion 1
+
+
+payloadColumnWidth : Length
+payloadColumnWidth =
+    fillPortion 2
 
 
 detectScroll : History -> Element.Attribute Msg
@@ -300,15 +340,15 @@ filterEntry negMsgFilters posMsgFilters payloadQueries ( _, e ) =
         False
 
 
-newEntryEl : History -> Element Msg
-newEntryEl (History h) =
+newEntryToastEl : History -> Element Msg
+newEntryToastEl (History h) =
     case h.pending of
         [] ->
             none
 
         ps ->
-            el [ width fill, alignTop, padding 10 ] <|
-                Element.Input.button [ width fill, padding 5, BG.color oneDark.succ ]
+            el [ width fill, alignTop, padding rectElementOuterPadding ] <|
+                Element.Input.button [ width fill, padding rectElementInnerPadding, BG.color oneDark.succ ]
                     { onPress = Just BackToTop
                     , label = el [ centerX ] <| text ("New Log Entry (" ++ String.fromInt (List.length ps) ++ ")")
                     }
@@ -317,18 +357,18 @@ newEntryEl (History h) =
 rowKeyEl : List MsgFilter -> ( String, Entry ) -> ( String, Element Msg )
 rowKeyEl msgFilters ( eId, e ) =
     ( eId
-    , row [ width fill, spacing 2 ]
-        [ el [ alignTop, width (fillPortion 1) ] <| ctorCellEl msgFilters e
-        , el [ alignTop, width (fillPortion 2) ] <| payloadCellEl e
+    , row [ width fill, spacing historyTableCellSpacing ]
+        [ el [ alignTop, width ctorColumnWidth ] <| ctorCellEl msgFilters e
+        , el [ alignTop, width payloadColumnWidth ] <| payloadCellsEl e
         ]
     )
 
 
 ctorCellEl : List MsgFilter -> Entry -> Element Msg
 ctorCellEl msgFilters entry =
-    row [ spacing 5 ]
+    row [ spacing spacingUnit ]
         [ breakP [ bold ] [ breakT entry.ctor ]
-        , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
                 , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
@@ -338,7 +378,7 @@ ctorCellEl msgFilters entry =
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
                 , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
                 }
-        , Element.Input.button [ focused [], htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
             , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
@@ -346,36 +386,46 @@ ctorCellEl msgFilters entry =
         ]
 
 
-payloadCellEl : Entry -> Element Msg
-payloadCellEl entry =
-    column [ width fill, spacing 2 ] (List.map payloadEl entry.payload)
+payloadCellsEl : Entry -> Element Msg
+payloadCellsEl entry =
+    column [ width fill, spacing historyTableCellSpacing ] (List.map payloadCellEl entry.payload)
 
 
-payloadEl : String -> Element Msg
-payloadEl raw =
-    el [ width fill, padding 5, BG.color oneDark.bg ] <|
-        Element.Input.multiline
-            [ width fill
-            , height (shrink |> minimum 16 |> maximum 100)
-            , padding 0
-            , focused []
-            , BD.width 0
-            , BG.color oneDark.bg
-            , Font.family [ Font.typeface "consolas", Font.monospace ]
-            , htmlAttribute (readonly True)
-            , htmlAttribute (tabindex -1)
-            ]
-            { onChange = always NoOp
-            , text = raw
-            , placeholder = Nothing
-            , label = Element.Input.labelHidden "Payload"
-            , spellcheck = False
-            }
+payloadCellEl : String -> Element Msg
+payloadCellEl raw =
+    Element.Input.multiline
+        [ width fill
+        , height (shrink |> maximum payloadCellMaxHeight)
+        , padding rectElementInnerPadding
+        , focused []
+        , BD.width 0
+        , BG.color payloadCellBackground
+        , Font.family [ Font.typeface "consolas", Font.monospace ]
+        , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
+        , htmlAttribute (readonly True)
+        , htmlAttribute (tabindex -1)
+        ]
+        { onChange = always NoOp
+        , text = raw
+        , placeholder = Nothing
+        , label = Element.Input.labelHidden "Payload"
+        , spellcheck = False
+        }
+
+
+payloadCellBackground : Color
+payloadCellBackground =
+    oneDark.bg
+
+
+payloadCellMaxHeight : Int
+payloadCellMaxHeight =
+    100
 
 
 msgFiltersEl : History -> Element Msg
 msgFiltersEl (History h) =
-    wrappedRow [ width fill, spacing 5 ] <|
+    wrappedRow [ width fill, spacing spacingUnit ] <|
         List.map msgFilterEl h.msgFilters
 
 
@@ -383,41 +433,47 @@ msgFilterEl : MsgFilter -> Element Msg
 msgFilterEl ((MsgFilter isPos ctor) as mf) =
     row
         [ width shrink
-        , BD.rounded 5
+        , BD.rounded rectElementRound
         , BG.color (ite isPos oneDark.succ oneDark.err)
         ]
         [ el
-            [ padding 2
-            , BD.roundEach { topLeft = 5, bottomLeft = 5, topRight = 0, bottomRight = 0 }
+            [ padding msgFilterPadding
+            , BD.roundEach { topLeft = rectElementRound, bottomLeft = rectElementRound, topRight = 0, bottomRight = 0 }
             ]
             (text ctor)
         , Element.Input.button
-            [ padding 2
+            [ padding msgFilterPadding
             , focused []
             , htmlAttribute (tabindex -1)
-            , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = 5, bottomRight = 5 }
+            , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = rectElementRound, bottomRight = rectElementRound }
             ]
             { onPress = Just (DelMsgFilter mf)
-            , label = octiconFreeSizeEl (scale12 2) Octicons.trashcan
+            , label = octiconFreeSizeEl msgFilterDeleteIconSize Octicons.trashcan
             }
         ]
 
 
+msgFilterPadding : Int
+msgFilterPadding =
+    2
+
+
+msgFilterDeleteIconSize : Int
+msgFilterDeleteIconSize =
+    scale12 2
+
+
 payloadFilterInputEl : History -> Element Msg
 payloadFilterInputEl (History h) =
-    Element.Input.text
-        [ width fill
-        , padding 5
-        , BD.width 0
-        , BG.color oneDark.note
-        , Font.size (scale12 2)
-        ]
+    textInputEl
         { onChange = FilterInput
+        , theme = oneDark
+        , enabled = True
         , text = h.payloadFilter
+        , label = Element.Input.labelHidden "Log Payload Filter"
         , placeholder =
             Just <|
                 Element.Input.placeholder [] <|
                     el [ centerY ] <|
                         text "Payload OR Filter (Space-delimited, Case-sensitive)"
-        , label = Element.Input.labelHidden "Log Entry Filter"
         }

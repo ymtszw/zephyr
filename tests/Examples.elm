@@ -2,6 +2,7 @@ module Examples exposing (suite)
 
 import Array exposing (fromList)
 import ArrayExtra as Array
+import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
@@ -333,6 +334,53 @@ exampleCom =
 
 
 
+-- Data.Filter
+
+
+filterSuite : Test
+filterSuite =
+    describe "Data.Filter"
+        [ describe "compareFAM"
+            [ testCompareFAM (OfDiscordChannel "b") (OfDiscordChannel "a") GT
+            , testCompareFAM (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
+            , testCompareFAM (OfDiscordChannel "a") (OfDiscordChannel "b") LT
+            , testCompareFAM (OfDiscordChannel "a") (ByMessage "a") LT
+            , testCompareFAM (OfDiscordChannel "a") (ByMedia HasImage) LT
+            , testCompareFAM (OfDiscordChannel "a") RemoveMe LT
+            , testCompareFAM (ByMessage "a") (OfDiscordChannel "a") GT
+            , testCompareFAM (ByMessage "b") (ByMessage "a") GT
+            , testCompareFAM (ByMessage "a") (ByMessage "a") EQ
+            , testCompareFAM (ByMessage "a") (ByMessage "b") LT
+            , testCompareFAM (ByMessage "a") (ByMedia HasNone) LT
+            , testCompareFAM (ByMessage "a") RemoveMe LT
+            , testCompareFAM (ByMedia HasImage) (OfDiscordChannel "a") GT
+            , testCompareFAM (ByMedia HasImage) (ByMessage "a") GT
+            , testCompareFAM (ByMedia HasNone) (ByMedia HasImage) GT
+            , testCompareFAM (ByMedia HasNone) (ByMedia HasMovie) GT
+            , testCompareFAM (ByMedia HasMovie) (ByMedia HasImage) GT
+            , testCompareFAM (ByMedia HasImage) (ByMedia HasImage) EQ
+            , testCompareFAM (ByMedia HasMovie) (ByMedia HasMovie) EQ
+            , testCompareFAM (ByMedia HasNone) (ByMedia HasNone) EQ
+            , testCompareFAM (ByMedia HasImage) (ByMedia HasMovie) LT
+            , testCompareFAM (ByMedia HasImage) (ByMedia HasNone) LT
+            , testCompareFAM (ByMedia HasMovie) (ByMedia HasNone) LT
+            , testCompareFAM (ByMedia HasImage) RemoveMe LT
+            , testCompareFAM RemoveMe (OfDiscordChannel "a") LT
+            , testCompareFAM RemoveMe (ByMessage "a") LT
+            , testCompareFAM RemoveMe (ByMedia HasImage) LT
+            , testCompareFAM RemoveMe RemoveMe EQ
+            ]
+        ]
+
+
+testCompareFAM : FilterAtom -> FilterAtom -> Order -> Test
+testCompareFAM fa1 fa2 expected =
+    test (String.join " " [ Debug.toString fa1, Debug.toString expected, Debug.toString fa2 ]) <|
+        \_ ->
+            Filter.compareFAM fa1 fa2 |> Expect.equal expected
+
+
+
 -- Data.Producer.FetchStatus
 
 
@@ -491,6 +539,7 @@ suite =
         , arraySuite
         , uniqueIdSuite
         , textRendererSuite
+        , filterSuite
         , fetchStatusSuite
         , discordSuite
         ]

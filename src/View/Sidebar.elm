@@ -1,11 +1,15 @@
 module View.Sidebar exposing (sidebarEl)
 
+import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Filter exposing (Filter, FilterAtom(..))
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer
+import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -13,70 +17,95 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
+import ListExtra
 import Octicons
-import View.Parts exposing (octiconEl)
+import Url
+import View.Parts exposing (..)
 
 
 sidebarEl : Model -> Element Msg
 sidebarEl { columnStore, viewState, env } =
     column
-        [ width (px 50)
+        [ width (px (buttonSize + paddingX * 2))
         , height (fill |> maximum env.clientHeight)
-        , paddingXY 0 10
+        , alignLeft
+        , paddingXY paddingX sectionSpacingY
         , BG.color oneDark.bg
         ]
-        [ el [ width fill, alignTop ] (columnButtonsEl columnStore)
+        [ el [ width fill, alignTop ] (columnButtonsEl viewState.filterAtomMaterial columnStore)
         , el [ width fill, alignBottom ] (lazy otherButtonsEl viewState.configOpen)
         ]
 
 
-columnButtonsEl : ColumnStore -> Element Msg
-columnButtonsEl columnStore =
-    Element.Keyed.column [ width fill, padding 5, spacingXY 0 10 ] <|
-        ( "columnAddButton", columnAddButtonEl )
-            :: ColumnStore.indexedMap columnButtonEl columnStore
+buttonSize : Int
+buttonSize =
+    40
 
 
-columnButtonEl : Int -> Column.Column -> ( String, Element Msg )
-columnButtonEl index { id } =
-    ( "sidebarButton_" ++ id
-    , el [ width fill ] <|
-        Element.Input.button
-            [ width (px 40)
-            , height (px 40)
-            , clip
-            , Font.color oneDark.note
-            , BD.width 1
-            , BD.color oneDark.note
-            , BD.rounded 10
+paddingX : Int
+paddingX =
+    rectElementInnerPadding
+
+
+sectionSpacingY : Int
+sectionSpacingY =
+    10
+
+
+columnButtonsEl : FilterAtomMaterial -> ColumnStore -> Element Msg
+columnButtonsEl fam columnStore =
+    (columnAddButtonKeyEl :: ColumnStore.indexedMap (columnButtonKeyEl fam) columnStore)
+        |> Element.Keyed.column
+            [ width fill
+            , paddingXY 0 sectionSpacingY
+            , spacingXY 0 sectionSpacingY
+            , Font.color oneDark.text
             ]
-            { onPress = Just (DelColumn index), label = el [ centerX, centerY ] <| text "×" }
-    )
 
 
-columnAddButtonEl : Element Msg
-columnAddButtonEl =
-    el [ width fill ] <|
-        Element.Input.button
-            [ width (px 40)
-            , height (px 40)
-            , clip
-            , Font.color oneDark.note
-            , BD.dashed
-            , BD.width 1
-            , BD.color oneDark.note
-            , BD.rounded 10
-            ]
-            { onPress = Just AddColumn, label = el [ centerX, centerY ] <| text "+" }
+columnButtonKeyEl : FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
+columnButtonKeyEl fam index { id, filters } =
+    filtersToIconEl buttonSize fam filters
+        |> asColumnButton index id
+        |> Tuple.pair ("sidebarButton_" ++ id)
+
+
+asColumnButton : Int -> String -> Element Msg -> Element Msg
+asColumnButton index cId element =
+    Element.Input.button [ width (px buttonSize), height (px buttonSize) ]
+        { onPress = Just (RevealColumn index)
+        , label = element
+        }
+
+
+columnAddButtonKeyEl : ( String, Element Msg )
+columnAddButtonKeyEl =
+    Element.Input.button
+        [ width (px buttonSize)
+        , height (px buttonSize)
+        , clip
+        , Font.color oneDark.note
+        , BD.dashed
+        , BD.width 1
+        , BD.color oneDark.note
+        , BD.rounded rectElementRound
+        ]
+        { onPress = Just AddColumn
+        , label =
+            el [ centerX, centerY ] <|
+                octiconFreeSizeEl (buttonSize // 2) Octicons.plus
+        }
+        |> el [ width fill ]
+        |> Tuple.pair "columnAddButton"
 
 
 otherButtonsEl : Bool -> Element Msg
 otherButtonsEl configOpen =
-    column [ width fill, padding 5, spacingXY 0 10 ]
+    column [ width fill, paddingXY 0 sectionSpacingY, spacingXY 0 sectionSpacingY ]
         [ Element.Input.button
-            [ width (px 40)
-            , height (px 40)
-            , BD.rounded 10
+            [ width (px buttonSize)
+            , height (px buttonSize)
+            , BD.rounded rectElementRound
             , if configOpen then
                 BG.color oneDark.main
 
@@ -87,9 +116,9 @@ otherButtonsEl configOpen =
             , label = el [ centerX, centerY ] <| octiconEl Octicons.gear
             }
         , newTabLink
-            [ width (px 40)
-            , height (px 40)
-            , BD.rounded 10
+            [ width (px buttonSize)
+            , height (px buttonSize)
+            , BD.rounded rectElementRound
             , BG.color oneDark.sub
             ]
             { url = "https://github.com/ymtszw/zephyr"

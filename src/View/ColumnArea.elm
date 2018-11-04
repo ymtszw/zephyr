@@ -1,8 +1,11 @@
 module View.ColumnArea exposing (columnAreaEl)
 
+import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column exposing (ColumnItem(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item exposing (Item(..))
 import Data.Model exposing (Env, Model, ViewState)
 import Data.Msg exposing (Msg(..))
@@ -12,10 +15,9 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Events
 import Element.Font as Font
-import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (..)
-import Html.Attributes exposing (draggable, style)
+import Html.Attributes exposing (draggable, id, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import ListExtra
@@ -32,41 +34,156 @@ columnAreaEl m =
     Element.Keyed.row
         [ width fill
         , height (fill |> maximum m.env.clientHeight)
+        , scrollbarX
         , Font.regular
+        , htmlAttribute (id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
         (ColumnStore.indexedMap (columnKeyEl m.env m.viewState) m.columnStore)
 
 
 columnKeyEl : Env -> ViewState -> Int -> Column.Column -> ( String, Element Msg )
-columnKeyEl env vs index column =
-    Tuple.pair ("column_" ++ column.id) <|
-        case vs.columnSwapMaybe of
-            Nothing ->
-                columnEl env vs index column <|
-                    if vs.columnSwappable then
-                        dragHandle (D.succeed (DragStart index column.id))
+columnKeyEl env vs index c =
+    let
+        baseAttrs =
+            [ width (px fixedColumnWidth)
+            , height (fill |> maximum env.clientHeight)
+            , BG.color oneDark.main
+            , BD.width columnBorder
+            , BD.color oneDark.bg
+            , Font.color oneDark.text
+            ]
+
+        attrs =
+            case vs.columnSwapMaybe of
+                Just swap ->
+                    if swap.grabbedId == c.id then
+                        baseAttrs ++ [ inFront (lazy dragIndicatorEl env.clientHeight) ]
 
                     else
-                        []
+                        baseAttrs ++ [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter index))) ]
 
-            Just swap ->
-                if swap.grabbedId == column.id then
-                    columnEl env vs index column [ inFront (lazy dragIndicatorEl env.clientHeight) ]
+                Nothing ->
+                    if vs.columnSwappable then
+                        baseAttrs ++ dragHandle (D.succeed (DragStart index c.id))
 
-                else
-                    columnEl env vs index column <|
-                        [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter index))) ]
+                    else
+                        baseAttrs
+    in
+    Tuple.pair c.id <|
+        column attrs
+            [ lazy2 columnHeaderEl vs.filterAtomMaterial c
+            , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
+            , lazy2 itemsEl vs.timezone c.items
+            ]
 
 
-columnEl : Env -> ViewState -> Int -> Column.Column -> List (Attribute Msg) -> Element Msg
-columnEl env vs index c attrs =
-    column
-        (columnBaseAttrs env.clientHeight ++ attrs)
-        [ lazy columnHeaderEl c
-        , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
-        , lazy2 itemsEl vs.timezone c.items
+columnBorder : Int
+columnBorder =
+    -- This border looks rather pointless, though we may introduce "focus" sytle later.
+    2
+
+
+columnHeaderEl : FilterAtomMaterial -> Column.Column -> Element Msg
+columnHeaderEl fam c =
+    row
+        [ width fill
+        , paddingXY rectElementOuterPadding rectElementInnerPadding
+        , spacing spacingUnit
+        , BG.color oneDark.sub
         ]
+        [ lazy3 filtersToIconEl columnHeaderIconSize fam c.filters
+        , lazy2 columnHeaderTextEl fam c.filters
+        , lazy2 columnConfigToggleButtonEl c.configOpen c.id
+        ]
+
+
+columnHeaderIconSize : Int
+columnHeaderIconSize =
+    32
+
+
+columnHeaderTextEl : FilterAtomMaterial -> Array Filter -> Element Msg
+columnHeaderTextEl fam filters =
+    let
+        arrayReducer f acc =
+            List.sortWith Filter.compareFAM (Filter.toList f) :: acc
+    in
+    filters
+        |> Array.foldr arrayReducer []
+        |> List.concatMap (List.map (filterAtomTextEl fam))
+        |> List.intersperse (breakT "  ")
+        |> breakP
+            [ width fill
+
+            -- , padding rectElementInnerPadding
+            , Font.size baseHeaderTextSize
+            , Font.color baseHeaderTextColor
+            ]
+
+
+baseHeaderTextSize : Int
+baseHeaderTextSize =
+    scale12 1
+
+
+baseHeaderTextColor : Color
+baseHeaderTextColor =
+    oneDark.note
+
+
+filterAtomTextEl : FilterAtomMaterial -> FilterAtom -> Element Msg
+filterAtomTextEl fam fa =
+    case fa of
+        OfDiscordChannel cId ->
+            FAM.mapDiscordChannel cId fam discordChannelTextEl
+                |> Maybe.withDefault (breakT cId)
+
+        ByMessage query ->
+            breakT ("\"" ++ query ++ "\"")
+
+        ByMedia HasImage ->
+            octiconFreeSizeEl importantFilterTextSize Octicons.fileMedia
+
+        ByMedia HasMovie ->
+            octiconFreeSizeEl importantFilterTextSize Octicons.deviceCameraVideo
+
+        ByMedia HasNone ->
+            octiconFreeSizeEl importantFilterTextSize Octicons.textSize
+
+        RemoveMe ->
+            none
+
+
+discordChannelTextEl : Discord.ChannelCache -> Element Msg
+discordChannelTextEl c =
+    el [ Font.size importantFilterTextSize, Font.color importantFilterTextColor, Font.bold ] (breakT ("#" ++ c.name))
+
+
+importantFilterTextSize : Int
+importantFilterTextSize =
+    scale12 2
+
+
+importantFilterTextColor : Color
+importantFilterTextColor =
+    oneDark.text
+
+
+columnConfigToggleButtonEl : Bool -> String -> Element Msg
+columnConfigToggleButtonEl configOpen id =
+    el [ alignRight ] <|
+        squareButtonEl
+            { onPress = ToggleColumnConfig id (not configOpen)
+            , enabled = True
+            , innerElement = octiconFreeSizeEl columnConfigToggleButtonSize Octicons.settings
+            , innerElementSize = columnConfigToggleButtonSize
+            }
+
+
+columnConfigToggleButtonSize : Int
+columnConfigToggleButtonSize =
+    26
 
 
 itemsEl : Time.Zone -> List ColumnItem -> Element Msg
@@ -80,12 +197,12 @@ itemsEl tz items =
             items
                 |> ListExtra.groupWhile shouldGroup
                 |> List.map (columnItemKeyEl tz)
-                |> Element.Keyed.column [ width fill, paddingXY 5 0, scrollbarY ]
+                |> Element.Keyed.column [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
 
 
 waitingForFirstItemEl : Element Msg
 waitingForFirstItemEl =
-    el [ width fill, height (px 50), paddingXY 5 0 ] <|
+    el [ width fill, height (px 50), alignTop, paddingXY 5 0 ] <|
         el [ centerX, centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
             text "Waiting for messages..."
 
@@ -107,7 +224,12 @@ shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool
 shouldGroupDiscordMessage dNewer dOlder =
     (dNewer.channelId == dOlder.channelId)
         && (dNewer.author == dOlder.author)
-        && (ms dOlder.timestamp + 60000 > ms dNewer.timestamp)
+        && (ms dOlder.timestamp + groupingIntervalSeconds > ms dNewer.timestamp)
+
+
+groupingIntervalSeconds : Int
+groupingIntervalSeconds =
+    60000
 
 
 dragIndicatorEl : Int -> Element Msg
@@ -115,32 +237,6 @@ dragIndicatorEl clientHeight =
     el
         [ width fill
         , height (px clientHeight)
-        , BD.innerGlow oneDark.active 10
+        , BD.innerGlow oneDark.prim 10
         ]
         none
-
-
-columnBaseAttrs : Int -> List (Attribute Msg)
-columnBaseAttrs clientHeight =
-    [ width (px fixedColumnWidth)
-    , height (fill |> maximum clientHeight)
-    , BG.color oneDark.main
-    , BD.widthEach { bottom = 0, top = 0, left = 0, right = 2 }
-    , BD.color oneDark.bg
-    , Font.color oneDark.text
-    ]
-
-
-columnHeaderEl : Column.Column -> Element Msg
-columnHeaderEl column =
-    row
-        [ width fill
-        , padding 10
-        , BG.color oneDark.sub
-        ]
-        [ text ("[PH] " ++ column.id)
-        , Element.Input.button [ alignRight ]
-            { onPress = Just (ToggleColumnConfig column.id (not column.configOpen))
-            , label = octiconEl Octicons.settings
-            }
-        ]

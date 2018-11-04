@@ -21,11 +21,12 @@ import IndexedDb
 import Json.Decode as D
 import Json.DecodeExtra as D
 import Logger
-import Task
+import Task exposing (Task)
 import Time exposing (Posix)
 import TimeZone
 import Url
 import View
+import View.Parts exposing (columnAreaParentId, fixedColumnWidth)
 import View.Select
 import Worque exposing (Work(..))
 
@@ -183,6 +184,15 @@ update msg ({ viewState, env } as m) =
         Tick posix ->
             onTick posix m
 
+        RevealColumn index ->
+            ( m, revealColumn index, False )
+
+        DomOp (Ok ()) ->
+            pure m
+
+        DomOp (Err e) ->
+            pure m
+
         NoOp ->
             pure m
 
@@ -269,6 +279,32 @@ scanBroker m =
             ColumnStore.consumeBroker m.itemBroker m.columnStore
     in
     ( { m | columnStore = newColumnStore, worque = Worque.push BrokerScan m.worque }, Cmd.none, shouldPersist )
+
+
+revealColumn : Int -> Cmd Msg
+revealColumn index =
+    Browser.Dom.getViewportOf columnAreaParentId
+        |> Task.andThen (scrollToColumn index)
+        |> Task.attempt DomOp
+
+
+scrollToColumn : Int -> Browser.Dom.Viewport -> Task Browser.Dom.Error ()
+scrollToColumn index parentVp =
+    let
+        cWidth =
+            toFloat fixedColumnWidth
+
+        targetX =
+            Debug.log "tX" <| cWidth * toFloat index
+    in
+    if targetX < Debug.log "vpX" parentVp.viewport.x then
+        Browser.Dom.setViewportOf columnAreaParentId targetX 0
+
+    else if targetX + cWidth < parentVp.viewport.x + parentVp.viewport.width then
+        Task.succeed ()
+
+    else
+        Browser.Dom.setViewportOf columnAreaParentId (targetX + cWidth - parentVp.viewport.width) 0
 
 
 
