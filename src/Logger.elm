@@ -12,6 +12,7 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Extra exposing (doAfter, ite)
+import Html
 import Html.Attributes exposing (id, readonly, style, tabindex)
 import Html.Events
 import Json.Decode as D
@@ -371,19 +372,33 @@ ctorCellEl msgFilters entry =
         , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
-                , label = el [ BG.color oneDark.succ ] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
+                , label = el [ BG.color oneDark.succ ] <| ctorFilterButtonEl Octicons.diffAdded
                 }
 
             else
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
-                , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffAdded
+                , label = el [] <| ctorFilterButtonEl Octicons.diffAdded
                 }
         , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
-            , label = el [] <| octiconFreeSizeEl (scale12 1) Octicons.diffRemoved
+            , label = el [] <| ctorFilterButtonEl Octicons.diffRemoved
             }
         ]
+
+
+ctorFilterButtonEl : (Octicons.Options -> Html.Html Msg) -> Element Msg
+ctorFilterButtonEl shape =
+    octiconEl
+        { size = ctorFilterButtonSize
+        , color = defaultOcticonColor
+        , shape = shape
+        }
+
+
+ctorFilterButtonSize : Int
+ctorFilterButtonSize =
+    scale12 1
 
 
 payloadCellsEl : Entry -> Element Msg
@@ -448,7 +463,7 @@ msgFilterEl ((MsgFilter isPos ctor) as mf) =
             , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = rectElementRound, bottomRight = rectElementRound }
             ]
             { onPress = Just (DelMsgFilter mf)
-            , label = octiconFreeSizeEl msgFilterDeleteIconSize Octicons.trashcan
+            , label = octiconEl { size = msgFilterDeleteIconSize, color = msgFilterDeleteIconColor, shape = Octicons.trashcan }
             }
         ]
 
@@ -461,6 +476,11 @@ msgFilterPadding =
 msgFilterDeleteIconSize : Int
 msgFilterDeleteIconSize =
     scale12 2
+
+
+msgFilterDeleteIconColor : Color
+msgFilterDeleteIconColor =
+    oneDark.text
 
 
 payloadFilterInputEl : History -> Element Msg

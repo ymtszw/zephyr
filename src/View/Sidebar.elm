@@ -88,7 +88,7 @@ columnAddButtonKeyEl =
         { onPress = Just AddColumn
         , label =
             el [ centerX, centerY ] <|
-                octiconFreeSizeEl (buttonSize // 2) Octicons.plus
+                octiconEl { size = buttonSize // 2, color = defaultOcticonColor, shape = Octicons.plus }
         }
         |> el [ width fill ]
         |> Tuple.pair "columnAddButton"
@@ -102,21 +102,40 @@ otherButtonsEl configOpen =
             , height (px buttonSize)
             , BD.rounded rectElementRound
             , if configOpen then
-                BG.color oneDark.main
+                BG.color configButtonActiveBackground
 
               else
-                mouseOver [ BG.color oneDark.main ]
+                mouseOver [ BG.color configButtonActiveBackground ]
             ]
             { onPress = Just (ToggleConfig (not configOpen))
-            , label = el [ centerX, centerY ] <| octiconEl Octicons.gear
+            , label =
+                el [ centerX, centerY ] <|
+                    octiconEl { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.gear }
             }
         , newTabLink
             [ width (px buttonSize)
             , height (px buttonSize)
             , BD.rounded rectElementRound
-            , BG.color oneDark.sub
+            , BG.color sourceCodeLinkBackground
             ]
             { url = "https://github.com/ymtszw/zephyr"
-            , label = el [ centerX, centerY ] <| octiconEl Octicons.markGithub
+            , label =
+                el [ centerX, centerY ] <|
+                    octiconEl { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.markGithub }
             }
         ]
+
+
+configButtonActiveBackground : Color
+configButtonActiveBackground =
+    oneDark.main
+
+
+sourceCodeLinkBackground : Color
+sourceCodeLinkBackground =
+    oneDark.sub
+
+
+otherButtonSize : Int
+otherButtonSize =
+    round (toFloat buttonSize * 0.667)

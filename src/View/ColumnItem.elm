@@ -36,11 +36,17 @@ columnItemKeyEl tz closeItems =
                 , spacing 5
                 , BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }
                 , BD.color oneDark.bd
+                , Font.size baseFontSize
                 ]
                 [ itemAvatarEl item
                 , itemContentsEl tz item items
                 ]
                 |> Tuple.pair (columnItemKey reversed)
+
+
+baseFontSize : Int
+baseFontSize =
+    scale12 1
 
 
 columnItemKey : List ColumnItem -> String
@@ -88,10 +94,20 @@ avatarSize =
     40
 
 
-botIconEl : Element Msg
-botIconEl =
-    el [ BG.color oneDark.succ, BD.rounded 2, htmlAttribute (title "BOT") ] <|
-        octiconFreeSizeEl 12 Octicons.zap
+botIconEl : Int -> Element Msg
+botIconEl badgeSize =
+    el [ BG.color botIconBackground, htmlAttribute (title "BOT") ] <|
+        octiconEl { size = badgeSize, color = botIconColor, shape = Octicons.zap }
+
+
+botIconColor : Color
+botIconColor =
+    oneDark.text
+
+
+botIconBackground : Color
+botIconBackground =
+    oneDark.succ
 
 
 itemContentsEl : Time.Zone -> ColumnItem -> List ColumnItem -> Element Msg
@@ -131,7 +147,7 @@ discordMessageHeaderEl tz { author, timestamp, channelId } =
             breakP
                 [ alignLeft
                 , Font.bold
-                , Font.size (scale12 2)
+                , Font.size userNameFontSize
                 ]
                 [ breakT <|
                     case author of
@@ -144,9 +160,19 @@ discordMessageHeaderEl tz { author, timestamp, channelId } =
     in
     row [ width fill, spacing 5 ]
         [ userNameEl
-        , el [ alignRight, Font.color oneDark.note, Font.size (scale12 1) ] <|
+        , el [ alignRight, Font.color timestampFontColor ] <|
             text (TimeExtra.local tz timestamp)
         ]
+
+
+userNameFontSize : Int
+userNameFontSize =
+    scale12 2
+
+
+timestampFontColor : Color
+timestampFontColor =
+    oneDark.note
 
 
 discordMessageBodyEl : Discord.Message -> Element Msg
@@ -168,7 +194,6 @@ discordEmbedEl embed =
         |> breakTColumn
             [ width fill
             , spacing 5
-            , Font.size (scale12 1)
             ]
         |> discordSmartThumbnailEl embed
 
@@ -342,15 +367,39 @@ discordAttachmentEl attachment =
             , label =
                 row
                     [ width fill
-                    , padding 5
-                    , spacing 5
+                    , padding rectElementInnerPadding
+                    , spacing spacingUnit
                     , BG.color (brightness -1 oneDark.main)
-                    , BD.rounded 3
+                    , BD.rounded rectElementRound
                     ]
-                    [ breakP [ Font.size (scale12 2), Font.color oneDark.link ] [ breakT attachment.filename ]
-                    , el [ alignRight ] <| octiconFreeSizeEl 20 Octicons.cloudDownload
+                    [ breakP
+                        [ Font.size attachmentFilenameFontSize
+                        , Font.color attachmentFilenameColor
+                        ]
+                        [ breakT attachment.filename ]
+                    , el [ alignRight ] <|
+                        octiconEl
+                            { size = downloadIconSize
+                            , color = defaultOcticonColor
+                            , shape = Octicons.cloudDownload
+                            }
                     ]
             }
+
+
+attachmentFilenameFontSize : Int
+attachmentFilenameFontSize =
+    scale12 2
+
+
+attachmentFilenameColor : Color
+attachmentFilenameColor =
+    oneDark.link
+
+
+downloadIconSize : Int
+downloadIconSize =
+    20
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
@@ -375,7 +424,7 @@ messageToParagraph message =
         message
             |> Data.TextRenderer.default oneDark
             |> List.map html
-            |> breakP [ Font.size (scale12 1) ]
+            |> breakP []
 
 
 mediaEl : Media -> Element Msg

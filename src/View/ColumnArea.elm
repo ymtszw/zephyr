@@ -143,13 +143,13 @@ filterAtomTextEl fam fa =
             breakT ("\"" ++ query ++ "\"")
 
         ByMedia HasImage ->
-            octiconFreeSizeEl importantFilterTextSize Octicons.fileMedia
+            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
 
         ByMedia HasMovie ->
-            octiconFreeSizeEl importantFilterTextSize Octicons.deviceCameraVideo
+            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
 
         ByMedia HasNone ->
-            octiconFreeSizeEl importantFilterTextSize Octicons.textSize
+            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
 
         RemoveMe ->
             none
@@ -176,7 +176,12 @@ columnConfigToggleButtonEl configOpen id =
         squareButtonEl
             { onPress = ToggleColumnConfig id (not configOpen)
             , enabled = True
-            , innerElement = octiconFreeSizeEl columnConfigToggleButtonSize Octicons.settings
+            , innerElement =
+                octiconEl
+                    { size = columnConfigToggleButtonSize
+                    , color = defaultOcticonColor
+                    , shape = Octicons.settings
+                    }
             , innerElementSize = columnConfigToggleButtonSize
             }
 

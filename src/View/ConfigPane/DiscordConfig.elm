@@ -252,13 +252,23 @@ rehydrateButtonEl rehydrating pov =
         { onPress = Rehydrate
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
-        , innerElement = octiconFreeSizeEl rehydrateButtonSize Octicons.sync
+        , innerElement =
+            octiconEl
+                { size = rehydrateButtonSize
+                , color = ite rehydrating defaultOcticonColor activeRehydrateButtonColor
+                , shape = Octicons.sync
+                }
         }
 
 
 rehydrateButtonSize : Int
 rehydrateButtonSize =
     26
+
+
+activeRehydrateButtonColor : Color
+activeRehydrateButtonColor =
+    oneDark.prim
 
 
 subbedChannelsEl : POV -> Element Msg

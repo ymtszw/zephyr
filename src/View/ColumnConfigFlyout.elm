@@ -188,7 +188,9 @@ deleteFilterButtonEl cId indexFilterMaybe =
                     }
                 ]
                 { onPress = Just (DelColumnFilter cId index)
-                , label = el [ centerY, centerX ] <| octiconFreeSizeEl deleteFilterIconSize Octicons.trashcan
+                , label =
+                    el [ centerY, centerX ] <|
+                        octiconEl { size = deleteFilterIconSize, color = defaultOcticonColor, shape = Octicons.trashcan }
                 }
 
         Nothing ->
@@ -468,7 +470,7 @@ columnConfigCloseButtonEl : String -> Element Msg
 columnConfigCloseButtonEl cId =
     Element.Input.button [ width fill, BG.color oneDark.sub ]
         { onPress = Just (ToggleColumnConfig cId False)
-        , label = octiconFreeSizeEl closeTriangleSize Octicons.triangleUp
+        , label = octiconEl { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
         }
 
 

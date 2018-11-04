@@ -96,7 +96,7 @@ headerEl onPress theme selectedOption noMsgOptionEl =
                   el [ width (fill |> minimum 0), clipX ] <|
                     Maybe.withDefault (text "Select...") (Maybe.map noMsgOptionEl selectedOption)
                 , el [ width (px headerChevronSize), alignRight, BG.color theme.sub ] <|
-                    octiconFreeSizeEl headerChevronSize Octicons.chevronDown
+                    octiconEl { size = headerChevronSize, color = defaultOcticonColor, shape = Octicons.chevronDown }
                 ]
         }
 

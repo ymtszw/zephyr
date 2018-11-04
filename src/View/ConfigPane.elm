@@ -4,6 +4,7 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -43,8 +44,9 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper (ProducerCtrl << Producer.DiscordMsg) "Discord" <|
-            discordConfigEl m.producerRegistry.discord
+        [ configSectionWrapper (ProducerCtrl << Producer.DiscordMsg)
+            discordConfigTitleEl
+            (discordConfigEl m.producerRegistry.discord)
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -60,28 +62,45 @@ sectionSpacingY =
     20
 
 
-configSectionWrapper : (msg -> Msg) -> String -> Element msg -> Element Msg
-configSectionWrapper tagger title element =
-    map tagger <|
-        column
+configSectionWrapper : (msg -> Msg) -> Element Msg -> Element msg -> Element Msg
+configSectionWrapper tagger titleEl element =
+    column
+        [ width fill
+        , padding rectElementOuterPadding
+        , spacing spacingUnit
+        , BG.color oneDark.main
+        , BD.rounded rectElementRound
+        , Font.size sectionBaseFontSize
+        ]
+        [ el
             [ width fill
-            , padding rectElementOuterPadding
-            , spacing spacingUnit
-            , BG.color oneDark.main
-            , BD.rounded rectElementRound
-            , Font.size (scale12 2)
+            , Font.bold
+            , Font.size sectionTitleFontSize
+            , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
             ]
-            [ el
-                [ width fill
-                , Font.bold
-                , Font.size sectionTitleFontSize
-                , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                ]
-                (text title)
-            , element
-            ]
+            titleEl
+        , map tagger element
+        ]
 
 
 sectionTitleFontSize : Int
 sectionTitleFontSize =
     scale12 3
+
+
+sectionBaseFontSize : Int
+sectionBaseFontSize =
+    scale12 2
+
+
+discordConfigTitleEl : Element Msg
+discordConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ iconWithBadgeEl
+            { size = sectionTitleFontSize
+            , badge = Nothing
+            , fallback = "Discord"
+            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Discord"
+        ]
