@@ -1,6 +1,5 @@
 module View.Sidebar exposing (sidebarEl)
 
-import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
@@ -8,8 +7,6 @@ import Data.Filter exposing (Filter, FilterAtom(..))
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
-import Data.Producer as Producer
-import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -17,9 +14,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
-import ListExtra
 import Octicons
-import Url
 import View.Parts exposing (..)
 
 

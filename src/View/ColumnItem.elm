@@ -117,7 +117,6 @@ itemContentsEl tz item closeItems =
 
 discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
 discordMessageEl tz ( discordMessage, _ ) closeMessages =
-    -- TODO match with official app styling
     column [ width fill, spacing 5, alignTop ] <|
         (::) (discordMessageHeaderEl tz discordMessage) <|
             List.map discordMessageBodyEl <|
