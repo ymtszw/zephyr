@@ -52,7 +52,7 @@ module View.Parts exposing
 import Array exposing (Array)
 import Data.ColorTheme exposing (ColorTheme, oneDark)
 import Data.Filter exposing (Filter, FilterAtom(..))
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
@@ -420,9 +420,7 @@ filterToIconEl size fam filter elMaybe =
                     acc
 
                 ( _, OfDiscordChannel cId ) ->
-                    fam.ofDiscordChannel
-                        |> Maybe.andThen (\( _, channels ) -> ListExtra.findOne (.id >> (==) cId) channels)
-                        |> Maybe.map (discordChannelIconEl size)
+                    FAM.mapDiscordChannel cId fam (discordChannelIconEl size)
 
                 ( _, _ ) ->
                     Nothing
