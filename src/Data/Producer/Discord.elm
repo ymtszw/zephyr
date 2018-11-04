@@ -1230,8 +1230,6 @@ incrementBackoff backoff posix =
 
 handleAPIError : Discord -> Http.Error -> Yield
 handleAPIError discord error =
-    -- Debug here; mostly, unexpected API errors indicate auth error
-    -- TODO log some important errors somehow
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.

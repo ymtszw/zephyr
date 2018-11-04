@@ -295,9 +295,9 @@ scrollToColumn index parentVp =
             toFloat fixedColumnWidth
 
         targetX =
-            Debug.log "tX" <| cWidth * toFloat index
+            cWidth * toFloat index
     in
-    if targetX < Debug.log "vpX" parentVp.viewport.x then
+    if targetX < parentVp.viewport.x then
         Browser.Dom.setViewportOf columnAreaParentId targetX 0
 
     else if targetX + cWidth < parentVp.viewport.x + parentVp.viewport.width then
