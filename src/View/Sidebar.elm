@@ -54,15 +54,18 @@ sectionSpacingY =
 
 columnButtonsEl : FilterAtomMaterial -> ColumnStore -> Element Msg
 columnButtonsEl fam columnStore =
-    Element.Keyed.column [ width fill, paddingXY 0 sectionSpacingY, spacingXY 0 sectionSpacingY, Font.color oneDark.text ] <|
-        (columnAddButtonKeyEl :: ColumnStore.indexedMap (columnButtonKeyEl fam) columnStore)
+    (columnAddButtonKeyEl :: ColumnStore.indexedMap (columnButtonKeyEl fam) columnStore)
+        |> Element.Keyed.column
+            [ width fill
+            , paddingXY 0 sectionSpacingY
+            , spacingXY 0 sectionSpacingY
+            , Font.color oneDark.text
+            ]
 
 
 columnButtonKeyEl : FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
 columnButtonKeyEl fam index { id, filters } =
-    filters
-        |> Array.foldl (filterToIconUrl fam) Nothing
-        |> Maybe.withDefault defaultColumnIconEl
+    filtersToIconEl buttonSize fam filters
         |> asColumnButton index id
         |> Tuple.pair ("sidebarButton_" ++ id)
 
@@ -73,75 +76,6 @@ asColumnButton index cId element =
         { onPress = Just (RevealColumn index)
         , label = element
         }
-
-
-filterToIconUrl : FilterAtomMaterial -> Filter -> Maybe (Element Msg) -> Maybe (Element Msg)
-filterToIconUrl fam filter urlMaybe =
-    let
-        reducer filterAtom acc =
-            case ( acc, filterAtom ) of
-                ( Just _, _ ) ->
-                    acc
-
-                ( _, OfDiscordChannel cId ) ->
-                    fam.ofDiscordChannel
-                        |> Maybe.andThen (\( _, channels ) -> ListExtra.findOne (.id >> (==) cId) channels)
-                        |> Maybe.map discordChannelIconEl
-
-                ( _, _ ) ->
-                    Nothing
-    in
-    Data.Filter.fold reducer urlMaybe filter
-
-
-discordChannelIconEl : Discord.ChannelCache -> Element Msg
-discordChannelIconEl c =
-    case c.guildMaybe of
-        Just guild ->
-            iconWithBadgeEl
-                { size = buttonSize
-                , badge = Just discordBadgeEl
-                , fallback = c.name
-                , url = Maybe.map (Discord.imageUrlNoFallback (Just buttonSize)) guild.icon
-                }
-
-        Nothing ->
-            iconWithBadgeEl
-                { size = buttonSize
-                , badge = Nothing
-                , fallback = c.name
-                , url = Just (Discord.defaultIconUrl (Just buttonSize))
-                }
-
-
-discordBadgeEl : Element Msg
-discordBadgeEl =
-    let
-        badgeSize =
-            buttonSize // 3
-    in
-    el
-        [ width (px badgeSize)
-        , height (px badgeSize)
-        , BD.rounded 2
-        , BG.uncropped (Discord.defaultIconUrl (Just badgeSize))
-        ]
-        none
-
-
-defaultColumnIconEl : Element Msg
-defaultColumnIconEl =
-    el
-        [ width (px buttonSize)
-        , height (px buttonSize)
-        , clip
-        , BD.width 1
-        , BD.color oneDark.note
-        , BD.rounded rectElementRound
-        , Font.size (buttonSize - 10)
-        , Font.family [ Font.serif ]
-        ]
-        (el [ centerX, centerY ] <| text "Z")
 
 
 columnAddButtonKeyEl : ( String, Element Msg )

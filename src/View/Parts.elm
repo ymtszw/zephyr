@@ -3,6 +3,7 @@ module View.Parts exposing
     , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
+    , filtersToIconEl
     , discordGuildIconEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
     , columnAreaParentId
@@ -31,6 +32,11 @@ module View.Parts exposing
 @docs scale12, css, brightness, setAlpha, manualStyle
 
 
+## Filter
+
+@docs filtersToIconEl
+
+
 ## Discord
 
 @docs discordGuildIconEl
@@ -43,7 +49,10 @@ module View.Parts exposing
 
 -}
 
+import Array exposing (Array)
 import Data.ColorTheme exposing (ColorTheme, oneDark)
+import Data.Filter exposing (Filter, FilterAtom(..))
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
@@ -56,6 +65,7 @@ import Html.Attributes exposing (class, draggable, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import Json.Encode
+import ListExtra
 import Octicons
 
 
@@ -155,7 +165,14 @@ textInputPadding =
     5
 
 
-primaryButtonEl : { onPress : msg, width : Length, theme : ColorTheme, enabled : Bool, innerElement : Element msg } -> Element msg
+primaryButtonEl :
+    { onPress : msg
+    , width : Length
+    , theme : ColorTheme
+    , enabled : Bool
+    , innerElement : Element msg
+    }
+    -> Element msg
 primaryButtonEl { onPress, width, theme, enabled, innerElement } =
     rectButtonEl
         { onPress = onPress
@@ -169,7 +186,14 @@ primaryButtonEl { onPress, width, theme, enabled, innerElement } =
         }
 
 
-dangerButtonEl : { onPress : msg, width : Length, theme : ColorTheme, enabled : Bool, innerElement : Element msg } -> Element msg
+dangerButtonEl :
+    { onPress : msg
+    , width : Length
+    , theme : ColorTheme
+    , enabled : Bool
+    , innerElement : Element msg
+    }
+    -> Element msg
 dangerButtonEl { onPress, width, theme, enabled, innerElement } =
     rectButtonEl
         { onPress = onPress
@@ -363,6 +387,82 @@ dragHandle onDragstart =
 dragHandleClassName : String
 dragHandleClassName =
     "dragHandle"
+
+
+filtersToIconEl : Int -> FilterAtomMaterial -> Array Filter -> Element msg
+filtersToIconEl size fam filters =
+    filters
+        |> Array.foldl (filterToIconEl size fam) Nothing
+        |> Maybe.withDefault (defaultColumnIconEl size)
+
+
+defaultColumnIconEl : Int -> Element msg
+defaultColumnIconEl size =
+    el
+        [ width (px size)
+        , height (px size)
+        , clip
+        , BD.width 1
+        , BD.color oneDark.note
+        , BD.rounded rectElementRound
+        , Font.size (size // 2)
+        , Font.family [ Font.serif ]
+        ]
+        (el [ centerX, centerY ] <| text "Z")
+
+
+filterToIconEl : Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
+filterToIconEl size fam filter elMaybe =
+    let
+        reducer filterAtom acc =
+            case ( acc, filterAtom ) of
+                ( Just _, _ ) ->
+                    acc
+
+                ( _, OfDiscordChannel cId ) ->
+                    fam.ofDiscordChannel
+                        |> Maybe.andThen (\( _, channels ) -> ListExtra.findOne (.id >> (==) cId) channels)
+                        |> Maybe.map (discordChannelIconEl size)
+
+                ( _, _ ) ->
+                    Nothing
+    in
+    Data.Filter.fold reducer elMaybe filter
+
+
+discordChannelIconEl : Int -> Discord.ChannelCache -> Element msg
+discordChannelIconEl size c =
+    case c.guildMaybe of
+        Just guild ->
+            iconWithBadgeEl
+                { size = size
+                , badge = Just (discordBadgeEl size)
+                , fallback = c.name
+                , url = Maybe.map (Discord.imageUrlNoFallback (Just size)) guild.icon
+                }
+
+        Nothing ->
+            iconWithBadgeEl
+                { size = size
+                , badge = Nothing
+                , fallback = c.name
+                , url = Just (Discord.defaultIconUrl (Just size))
+                }
+
+
+discordBadgeEl : Int -> Element msg
+discordBadgeEl size =
+    let
+        badgeSize =
+            size // 3
+    in
+    el
+        [ width (px badgeSize)
+        , height (px badgeSize)
+        , BD.rounded 2
+        , BG.uncropped (Discord.defaultIconUrl (Just badgeSize))
+        ]
+        none
 
 
 discordGuildIconEl : Int -> Discord.Guild -> Element msg
