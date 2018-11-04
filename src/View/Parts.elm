@@ -480,7 +480,8 @@ manualStyle : Html.Html msg
 manualStyle =
     Html.node "style"
         []
-        [ Html.text "::-webkit-scrollbar{display:none;}"
+        [ Html.text "*{scroll-behavior:smooth;}"
+        , Html.text "::-webkit-scrollbar{display:none;}"
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}"
         , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}"
         ]
