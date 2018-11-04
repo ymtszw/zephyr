@@ -1,12 +1,12 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
-    , octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
+    , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , filtersToIconEl
     , discordGuildIconEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , columnAreaParentId
+    , columnAreaParentId, defaultOcticonColor
     )
 
 {-| View parts, complementing Element and Html.
@@ -19,7 +19,7 @@ module View.Parts exposing
 
 ## Icons
 
-@docs octiconEl, octiconFreeSizeEl, squareIconOrHeadEl, iconWithBadgeEl
+@docs octiconEl, squareIconOrHeadEl, iconWithBadgeEl
 
 
 ## Inputs
@@ -45,7 +45,7 @@ module View.Parts exposing
 ## Constants
 
 @docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs columnAreaParentId
+@docs columnAreaParentId, defaultOcticonColor
 
 -}
 
@@ -59,6 +59,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Element.Lazy exposing (..)
 import Extra exposing (ite)
 import Html
 import Html.Attributes exposing (class, draggable, style)
@@ -74,17 +75,12 @@ noneAttr =
     htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
 
 
-octiconEl : (Octicons.Options -> Html.Html msg) -> Element msg
-octiconEl =
-    octiconFreeSizeEl 26
-
-
-octiconFreeSizeEl : Int -> (Octicons.Options -> Html.Html msg) -> Element msg
-octiconFreeSizeEl size octicon =
+octiconEl : { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
+octiconEl { size, color, shape } =
     Octicons.defaultOptions
-        |> Octicons.color (css oneDark.note)
+        |> Octicons.color (css color)
         |> Octicons.size size
-        |> octicon
+        |> shape
         |> html
 
 
@@ -100,35 +96,64 @@ squareIconOrHeadEl size name urlMaybe =
                     ( Font.size (size // 2), el [ centerX, centerY ] (text (String.left 1 name)) )
     in
     el
-        [ BG.color oneDark.sub
-        , width (px size)
+        [ width (px size)
         , height (px size)
         , alignTop
-        , BD.rounded 5
+        , BG.color iconBackground
+        , BD.rounded (iconRounding size)
+        , clip
         , htmlAttribute (Html.Attributes.title name)
         , attr
         ]
         fallbackContent
 
 
+iconBackground : Color
+iconBackground =
+    oneDark.sub
+
+
+iconRounding : Int -> Int
+iconRounding badgeSize =
+    max 2 (badgeSize // 10)
+
+
 iconWithBadgeEl :
     { size : Int
-    , badge : Maybe (Element msg)
+    , badge : Maybe (Int -> Element msg)
     , fallback : String
     , url : Maybe String
     }
     -> Element msg
 iconWithBadgeEl { size, badge, fallback, url } =
     let
-        bottomRightBadge =
+        bottomRightBadgeAttrs =
             case badge of
                 Just badgeEl ->
-                    [ alignTop, inFront <| el [ alignBottom, alignRight ] <| badgeEl ]
+                    let
+                        badgeSize =
+                            size // 3
+                    in
+                    [ alignTop
+                    , inFront <|
+                        el
+                            [ alignBottom
+                            , alignRight
+                            , BD.rounded (iconRounding badgeSize)
+                            , clip
+                            ]
+                            (badgeEl badgeSize)
+                    ]
 
                 Nothing ->
                     [ alignTop ]
+
+        innerIconPadding =
+            max 1 (size // 20)
     in
-    el bottomRightBadge <| el [ padding 1 ] <| squareIconOrHeadEl (size - 2) fallback <| url
+    squareIconOrHeadEl (size - (innerIconPadding * 2)) fallback url
+        |> el [ padding innerIconPadding ]
+        |> el bottomRightBadgeAttrs
 
 
 textInputEl :
@@ -225,6 +250,7 @@ rectButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, di
         , BD.rounded rectElementRound
         , BG.color (ite enabled enabledColor disabledColor)
         , Font.color (ite enabled enabledFontColor disabledFontColor)
+        , clip
         , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
@@ -238,6 +264,10 @@ rectButtonPadding =
     10
 
 
+{-| Unlike general-purpose rectButtonEl, this cannot control BG/Font.color on enabled/disabled,
+since it expects avatar images/octicons in its element.
+Their color or saturations must be controlled by callers.
+-}
 roundButtonEl :
     { onPress : msg
     , enabled : Bool
@@ -269,6 +299,7 @@ squareButtonEl { onPress, enabled, innerElement, innerElementSize } =
     Element.Input.button
         [ width (px innerElementSize)
         , height (px innerElementSize)
+        , clip
         , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
@@ -393,22 +424,7 @@ filtersToIconEl : Int -> FilterAtomMaterial -> Array Filter -> Element msg
 filtersToIconEl size fam filters =
     filters
         |> Array.foldl (filterToIconEl size fam) Nothing
-        |> Maybe.withDefault (defaultColumnIconEl size)
-
-
-defaultColumnIconEl : Int -> Element msg
-defaultColumnIconEl size =
-    el
-        [ width (px size)
-        , height (px size)
-        , clip
-        , BD.width 1
-        , BD.color oneDark.note
-        , BD.rounded rectElementRound
-        , Font.size (size // 2)
-        , Font.family [ Font.serif ]
-        ]
-        (el [ centerX, centerY ] <| text "Z")
+        |> Maybe.withDefault (lazy fallbackIconEl size)
 
 
 filterToIconEl : Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
@@ -434,7 +450,7 @@ discordChannelIconEl size c =
         Just guild ->
             iconWithBadgeEl
                 { size = size
-                , badge = Just (discordBadgeEl size)
+                , badge = Just (lazy discordBadgeEl)
                 , fallback = c.name
                 , url = Maybe.map (Discord.imageUrlNoFallback (Just size)) guild.icon
                 }
@@ -449,18 +465,28 @@ discordChannelIconEl size c =
 
 
 discordBadgeEl : Int -> Element msg
-discordBadgeEl size =
-    let
-        badgeSize =
-            size // 3
-    in
+discordBadgeEl badgeSize =
     el
         [ width (px badgeSize)
         , height (px badgeSize)
-        , BD.rounded 2
         , BG.uncropped (Discord.defaultIconUrl (Just badgeSize))
         ]
         none
+
+
+fallbackIconEl : Int -> Element msg
+fallbackIconEl size =
+    el
+        [ width (px size)
+        , height (px size)
+        , clip
+        , BD.width 1
+        , BD.color oneDark.note
+        , BD.rounded rectElementRound
+        , Font.size (size // 2)
+        , Font.family [ Font.serif ]
+        ]
+        (el [ centerX, centerY ] <| text "Z")
 
 
 discordGuildIconEl : Int -> Discord.Guild -> Element msg
@@ -517,3 +543,8 @@ rectElementInnerPadding =
 columnAreaParentId : String
 columnAreaParentId =
     "columnAreaParent"
+
+
+defaultOcticonColor : Color
+defaultOcticonColor =
+    oneDark.note
