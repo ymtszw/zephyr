@@ -1,8 +1,11 @@
 module View.ColumnArea exposing (columnAreaEl)
 
+import Array exposing (Array)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column exposing (ColumnItem(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item exposing (Item(..))
 import Data.Model exposing (Env, Model, ViewState)
 import Data.Msg exposing (Msg(..))
@@ -69,7 +72,7 @@ columnKeyEl env vs index c =
     in
     Tuple.pair c.id <|
         column attrs
-            [ lazy columnHeaderEl c
+            [ lazy2 columnHeaderEl vs.filterAtomMaterial c
             , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
             , lazy2 itemsEl vs.timezone c.items
             ]
@@ -81,22 +84,101 @@ columnBorder =
     2
 
 
-columnHeaderEl : Column.Column -> Element Msg
-columnHeaderEl column =
+columnHeaderEl : FilterAtomMaterial -> Column.Column -> Element Msg
+columnHeaderEl fam c =
     row
         [ width fill
-        , padding rectElementOuterPadding
+        , paddingXY rectElementOuterPadding rectElementInnerPadding
+        , spacing spacingUnit
         , BG.color oneDark.sub
         ]
-        [ text ("[PH] " ++ column.id)
-        , el [ alignRight ] <|
-            squareButtonEl
-                { onPress = ToggleColumnConfig column.id (not column.configOpen)
-                , enabled = True
-                , innerElement = octiconFreeSizeEl columnConfigToggleButtonSize Octicons.settings
-                , innerElementSize = columnConfigToggleButtonSize
-                }
+        [ lazy3 filtersToIconEl columnHeaderIconSize fam c.filters
+        , lazy2 columnHeaderTextEl fam c.filters
+        , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
+
+
+columnHeaderIconSize : Int
+columnHeaderIconSize =
+    32
+
+
+columnHeaderTextEl : FilterAtomMaterial -> Array Filter -> Element Msg
+columnHeaderTextEl fam filters =
+    let
+        arrayReducer f acc =
+            List.sortWith Filter.compareFAM (Filter.toList f) :: acc
+    in
+    filters
+        |> Array.foldr arrayReducer []
+        |> List.concatMap (List.map (filterAtomTextEl fam))
+        |> List.intersperse (breakT "  ")
+        |> breakP
+            [ width fill
+
+            -- , padding rectElementInnerPadding
+            , Font.size baseHeaderTextSize
+            , Font.color baseHeaderTextColor
+            ]
+
+
+baseHeaderTextSize : Int
+baseHeaderTextSize =
+    scale12 1
+
+
+baseHeaderTextColor : Color
+baseHeaderTextColor =
+    oneDark.note
+
+
+filterAtomTextEl : FilterAtomMaterial -> FilterAtom -> Element Msg
+filterAtomTextEl fam fa =
+    case fa of
+        OfDiscordChannel cId ->
+            FAM.mapDiscordChannel cId fam discordChannelTextEl
+                |> Maybe.withDefault (breakT cId)
+
+        ByMessage query ->
+            breakT ("\"" ++ query ++ "\"")
+
+        ByMedia HasImage ->
+            octiconFreeSizeEl importantFilterTextSize Octicons.fileMedia
+
+        ByMedia HasMovie ->
+            octiconFreeSizeEl importantFilterTextSize Octicons.deviceCameraVideo
+
+        ByMedia HasNone ->
+            octiconFreeSizeEl importantFilterTextSize Octicons.textSize
+
+        RemoveMe ->
+            none
+
+
+discordChannelTextEl : Discord.ChannelCache -> Element Msg
+discordChannelTextEl c =
+    el [ Font.size importantFilterTextSize, Font.color importantFilterTextColor, Font.bold ] (breakT ("#" ++ c.name))
+
+
+importantFilterTextSize : Int
+importantFilterTextSize =
+    scale12 2
+
+
+importantFilterTextColor : Color
+importantFilterTextColor =
+    oneDark.text
+
+
+columnConfigToggleButtonEl : Bool -> String -> Element Msg
+columnConfigToggleButtonEl configOpen id =
+    el [ alignRight ] <|
+        squareButtonEl
+            { onPress = ToggleColumnConfig id (not configOpen)
+            , enabled = True
+            , innerElement = octiconFreeSizeEl columnConfigToggleButtonSize Octicons.settings
+            , innerElementSize = columnConfigToggleButtonSize
+            }
 
 
 columnConfigToggleButtonSize : Int
