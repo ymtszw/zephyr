@@ -209,6 +209,7 @@ type Msg
     | AddFilterAtom { filterIndex : Int, atom : FilterAtom }
     | SetFilterAtom { filterIndex : Int, atomIndex : Int, atom : FilterAtom }
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
+    | ConfirmFilter
     | DeleteGateInput String
 
 
@@ -246,6 +247,9 @@ update msg c =
                             c.pendingFilters
             in
             pure { c | pendingFilters = atomOrFilterDeleted }
+
+        ConfirmFilter ->
+            ( { c | filters = c.pendingFilters, offset = Nothing, items = [] }, Cmd.none, True )
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }

@@ -220,5 +220,8 @@ columnMsgToEntry cId cMsg =
         Column.DelFilterAtom { filterIndex, atomIndex } ->
             Entry "Column.DelFilterAtom" [ cId, fromInt filterIndex, fromInt atomIndex ]
 
+        Column.ConfirmFilter ->
+            Entry "Column.ConfirmFilter" []
+
         Column.DeleteGateInput input ->
             Entry "Column.DeleteGateInput" [ cId, input ]
