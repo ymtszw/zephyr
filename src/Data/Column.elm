@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, encode, decoder
-    , consumeBroker
+    , Msg(..), update, consumeBroker
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -13,19 +13,20 @@ Items stored in List are ordered from latest to oldest.
 @docs Column, ColumnItem, Media, welcome, new, encode, decoder
 
 
-## Consumer API
+## Component API
 
-@docs consumeBroker
+@docs Msg, update, consumeBroker
 
 -}
 
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
-import Data.Filter as Filter exposing (Filter)
+import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.UniqueId as UniqueId
+import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -39,6 +40,7 @@ type alias Column =
     , filters : Array Filter
     , offset : Maybe Offset
     , configOpen : Bool
+    , pendingFilters : Array Filter
     , deleteGate : String
     }
 
@@ -89,7 +91,7 @@ encodeMedia media =
 
 decoder : Decoder Column
 decoder =
-    D.map4 (\id items filters offset -> Column id items filters offset False "")
+    D.map4 (\id items filters offset -> Column id items filters offset False filters "")
         (D.field "id" D.string)
         (D.field "items" (D.leakyList columnItemDecoder))
         (D.oneOf
@@ -151,6 +153,7 @@ welcome idGen id =
       , filters = Array.empty
       , offset = Nothing
       , configOpen = True
+      , pendingFilters = Array.empty
       , deleteGate = ""
       }
     , newGen
@@ -192,10 +195,60 @@ new idGen id =
       , filters = Array.empty
       , offset = Nothing
       , configOpen = True
+      , pendingFilters = Array.empty
       , deleteGate = ""
       }
     , newGen
     )
+
+
+type Msg
+    = ToggleConfig Bool
+    | AddFilter Filter
+    | DelFilter Int
+    | AddFilterAtom { filterIndex : Int, atom : FilterAtom }
+    | SetFilterAtom { filterIndex : Int, atomIndex : Int, atom : FilterAtom }
+    | DelFilterAtom { filterIndex : Int, atomIndex : Int }
+    | DeleteGateInput String
+
+
+update : Msg -> Column -> ( Column, Cmd Msg, Bool )
+update msg c =
+    case msg of
+        ToggleConfig open ->
+            pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
+
+        AddFilter filter ->
+            pure { c | pendingFilters = Array.push filter c.pendingFilters }
+
+        DelFilter index ->
+            pure { c | pendingFilters = Array.removeAt index c.pendingFilters }
+
+        AddFilterAtom { filterIndex, atom } ->
+            pure { c | pendingFilters = Array.update filterIndex (Filter.append atom) c.pendingFilters }
+
+        SetFilterAtom { filterIndex, atomIndex, atom } ->
+            pure { c | pendingFilters = Array.update filterIndex (Filter.setAt atomIndex atom) c.pendingFilters }
+
+        DelFilterAtom { filterIndex, atomIndex } ->
+            let
+                atomOrFilterDeleted =
+                    case Array.get filterIndex c.pendingFilters of
+                        Just filter ->
+                            case Filter.removeAt atomIndex filter of
+                                Just newFilter ->
+                                    Array.set filterIndex newFilter c.pendingFilters
+
+                                Nothing ->
+                                    Array.removeAt filterIndex c.pendingFilters
+
+                        Nothing ->
+                            c.pendingFilters
+            in
+            pure { c | pendingFilters = atomOrFilterDeleted }
+
+        DeleteGateInput input ->
+            pure { c | deleteGate = input }
 
 
 consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )
