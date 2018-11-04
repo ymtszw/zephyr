@@ -1,8 +1,12 @@
-module Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..), update)
+module Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..), mapDiscordChannel, update)
+
+{-| Cache of relatively long-living information used for rendering FilterAtom.
+-}
 
 import Data.Filter exposing (FilterAtom)
 import Data.Producer.Base exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord
+import ListExtra
 
 
 type alias FilterAtomMaterial =
@@ -28,3 +32,10 @@ update instructions fam =
 
         (DiscordInstruction DestroyFAM) :: xs ->
             update xs { fam | ofDiscordChannel = Nothing }
+
+
+mapDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
+mapDiscordChannel cId fam mapper =
+    fam.ofDiscordChannel
+        |> Maybe.andThen (\( _, channels ) -> ListExtra.findOne (.id >> (==) cId) channels)
+        |> Maybe.map mapper
