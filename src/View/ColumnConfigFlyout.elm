@@ -15,6 +15,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
 import Extra exposing (ite)
+import Html.Attributes exposing (style)
 import ListExtra
 import Octicons
 import String exposing (fromInt)
@@ -35,9 +36,9 @@ columnConfigFlyoutEl ss fam index c =
             , BD.color flyoutFrameColor
             , Font.size baseFontSize
             ]
-            [ lazy columnConfigTitleEl "Filter Rules"
+            [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
             , lazy3 filtersEl ss fam c
-            , lazy columnConfigTitleEl "Danger Zone"
+            , dangerZoneHeaderEl
             , columnDeleteEl index c
             , lazy columnConfigCloseButtonEl c.id
             ]
@@ -61,20 +62,53 @@ flyoutFrameColor =
     oneDark.note
 
 
-columnConfigTitleEl : String -> Element Msg
-columnConfigTitleEl title =
-    el
+filterSectionHeaderEl : String -> Bool -> Element Msg
+filterSectionHeaderEl cId isDirty =
+    row
         [ width fill
+        , padding titlePadding
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
         , Font.color flyoutFrameColor
         ]
-        (text title)
+        [ text "Filter Rules"
+        , Element.Input.button
+            [ width shrink
+            , paddingXY rectElementInnerPadding titlePadding
+            , alignRight
+            , BD.rounded titlePadding
+            , BG.color (ite isDirty oneDark.succ flyoutBackground)
+            , Font.size baseFontSize
+            , Font.color (ite isDirty oneDark.text flyoutFrameColor)
+            , ite isDirty noneAttr (htmlAttribute (style "cursor" "default"))
+            , ite isDirty noneAttr (htmlAttribute (Html.Attributes.disabled True))
+            ]
+            { onPress = ite isDirty (Just (ColumnCtrl cId ConfirmFilter)) Nothing
+            , label = el [ centerX, centerY ] (text "Apply")
+            }
+        ]
 
 
 titleFontSize : Int
 titleFontSize =
     scale12 3
+
+
+titlePadding : Int
+titlePadding =
+    2
+
+
+dangerZoneHeaderEl : Element Msg
+dangerZoneHeaderEl =
+    el
+        [ width fill
+        , padding titlePadding
+        , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+        , Font.size titleFontSize
+        , Font.color flyoutFrameColor
+        ]
+        (text "Danger Zone")
 
 
 filtersEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
