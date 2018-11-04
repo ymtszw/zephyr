@@ -34,6 +34,7 @@ import Data.Filter exposing (FilterAtom(..))
 import Data.Item exposing (Item)
 import Data.UniqueId
 import Dict exposing (Dict)
+import Extra exposing (map, pure)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Set
@@ -97,9 +98,15 @@ removeAt index columnStore =
             columnStore
 
 
-updateById : String -> (Column -> Column) -> ColumnStore -> ColumnStore
-updateById id transform columnStore =
-    { columnStore | dict = Dict.update id (Maybe.map transform) columnStore.dict }
+updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Cmd Column.Msg, Bool )
+updateById cId cMsg columnStore =
+    case Dict.get cId columnStore.dict of
+        Just c ->
+            Column.update cMsg c
+                |> map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
+
+        Nothing ->
+            pure columnStore
 
 
 

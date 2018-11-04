@@ -1,10 +1,11 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
+    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl
+    , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , filtersToIconEl
-    , discordGuildIconEl
+    , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
     , columnAreaParentId, defaultOcticonColor
     )
@@ -24,7 +25,8 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
+@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl
+@docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
 ## Styles
@@ -39,7 +41,7 @@ module View.Parts exposing
 
 ## Discord
 
-@docs discordGuildIconEl
+@docs discordGuildIconEl, discordChannelEl
 
 
 ## Constants
@@ -203,6 +205,27 @@ primaryButtonEl { onPress, width, theme, enabled, innerElement } =
         { onPress = onPress
         , width = width
         , enabledColor = theme.prim
+        , enabledFontColor = theme.text
+        , disabledColor = theme.sub
+        , disabledFontColor = theme.note
+        , enabled = enabled
+        , innerElement = innerElement
+        }
+
+
+successButtonEl :
+    { onPress : msg
+    , width : Length
+    , theme : ColorTheme
+    , enabled : Bool
+    , innerElement : Element msg
+    }
+    -> Element msg
+successButtonEl { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl
+        { onPress = onPress
+        , width = width
+        , enabledColor = theme.succ
         , enabledFontColor = theme.text
         , disabledColor = theme.sub
         , disabledFontColor = theme.note
@@ -494,6 +517,19 @@ discordGuildIconEl size guild =
     guild.icon
         |> Maybe.map (Discord.imageUrlNoFallback (Just size))
         |> squareIconOrHeadEl size guild.name
+
+
+discordChannelEl : Int -> { x | name : String, guildMaybe : Maybe Discord.Guild } -> Element msg
+discordChannelEl size channel =
+    row [ spacing discordGuildIconSpacingX ]
+        [ channel.guildMaybe |> Maybe.map (discordGuildIconEl size) |> Maybe.withDefault none
+        , text ("#" ++ channel.name)
+        ]
+
+
+discordGuildIconSpacingX : Int
+discordGuildIconSpacingX =
+    2
 
 
 

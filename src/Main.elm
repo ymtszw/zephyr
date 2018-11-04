@@ -162,21 +162,8 @@ update msg ({ viewState, env } as m) =
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
 
-        ToggleColumnConfig cId bool ->
-            updateColumn cId m False <| \c -> { c | configOpen = bool, deleteGate = "" }
-
-        AddColumnFilter cId filter ->
-            updateColumn cId m True <| \c -> { c | filters = Array.push filter c.filters, offset = Nothing, items = [] }
-
-        SetColumnFilter cId index filter ->
-            updateColumn cId m True <| \c -> { c | filters = Array.set index filter c.filters, offset = Nothing, items = [] }
-
-        DelColumnFilter cId index ->
-            updateColumn cId m True <| \c -> { c | filters = Array.removeAt index c.filters, offset = Nothing, items = [] }
-
-        ColumnDeleteGateInput cId text ->
-            -- Bypassing unrelated checks in updateColumn
-            pure { m | columnStore = ColumnStore.updateById cId (\c -> { c | deleteGate = text }) m.columnStore }
+        ColumnCtrl cId cMsg ->
+            map (\cs -> { m | columnStore = cs }) (ColumnCtrl cId) <| ColumnStore.updateById cId cMsg m.columnStore
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -224,38 +211,6 @@ onDragEnter m dest =
 
         Nothing ->
             m
-
-
-{-| Update column somehow, someway.
-
-Can choose whether to persist or not.
-
--}
-updateColumn : String -> Model -> Bool -> (Column -> Column) -> ( Model, Cmd Msg, Bool )
-updateColumn cId m persistRequested updater =
-    let
-        ( newModel, shouldPersist ) =
-            { m | columnStore = ColumnStore.updateById cId updater m.columnStore }
-                |> updateProducerFetchStatuses
-                |> Tuple.mapSecond ((||) persistRequested)
-    in
-    ( newModel, Cmd.none, shouldPersist )
-
-
-updateProducerFetchStatuses : Model -> ( Model, Bool )
-updateProducerFetchStatuses ({ producerRegistry } as m) =
-    -- This function should also "fix" corrupted Producer statuses, if any.
-    let
-        ( newDiscord, shouldPersist ) =
-            case producerRegistry.discord of
-                Just discord ->
-                    Discord.setChannelFetchStatus (ColumnStore.discordChannelIds m.columnStore) discord
-                        |> Tuple.mapFirst Just
-
-                Nothing ->
-                    ( Nothing, False )
-    in
-    ( { m | producerRegistry = { producerRegistry | discord = newDiscord } }, shouldPersist )
 
 
 onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
@@ -307,11 +262,7 @@ scrollToColumn index parentVp =
         Browser.Dom.setViewportOf columnAreaParentId (targetX + cWidth - parentVp.viewport.width) 0
 
 
-
--- PRODUCER
-
-
-{-| Relstart producers on savedState reload.
+{-| Restart producers on savedState reload.
 
 Always persist state in order to apply new encoding format, if any.
 

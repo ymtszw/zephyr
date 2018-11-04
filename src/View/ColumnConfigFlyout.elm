@@ -2,7 +2,7 @@ module View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
 
 import Array
 import Data.ColorTheme exposing (oneDark)
-import Data.Column as Column
+import Data.Column as Column exposing (Msg(..))
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model exposing (Model)
@@ -15,8 +15,10 @@ import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
 import Extra exposing (ite)
+import Html.Attributes exposing (style)
 import ListExtra
 import Octicons
+import String exposing (fromInt)
 import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
@@ -34,9 +36,9 @@ columnConfigFlyoutEl ss fam index c =
             , BD.color flyoutFrameColor
             , Font.size baseFontSize
             ]
-            [ lazy columnConfigTitleEl "Filter Rules"
+            [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
             , lazy3 filtersEl ss fam c
-            , lazy columnConfigTitleEl "Danger Zone"
+            , dangerZoneHeaderEl
             , columnDeleteEl index c
             , lazy columnConfigCloseButtonEl c.id
             ]
@@ -60,15 +62,31 @@ flyoutFrameColor =
     oneDark.note
 
 
-columnConfigTitleEl : String -> Element Msg
-columnConfigTitleEl title =
-    el
+filterSectionHeaderEl : String -> Bool -> Element Msg
+filterSectionHeaderEl cId isDirty =
+    row
         [ width fill
+        , padding titlePadding
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
         , Font.color flyoutFrameColor
         ]
-        (text title)
+        [ text "Filter Rules"
+        , Element.Input.button
+            [ width shrink
+            , paddingXY rectElementInnerPadding titlePadding
+            , alignRight
+            , BD.rounded titlePadding
+            , BG.color (ite isDirty oneDark.succ flyoutBackground)
+            , Font.size baseFontSize
+            , Font.color (ite isDirty oneDark.text flyoutFrameColor)
+            , ite isDirty noneAttr (htmlAttribute (style "cursor" "default"))
+            , ite isDirty noneAttr (htmlAttribute (Html.Attributes.disabled True))
+            ]
+            { onPress = ite isDirty (Just (ColumnCtrl cId ConfirmFilter)) Nothing
+            , label = el [ centerX, centerY ] (text "Apply")
+            }
+        ]
 
 
 titleFontSize : Int
@@ -76,10 +94,27 @@ titleFontSize =
     scale12 3
 
 
+titlePadding : Int
+titlePadding =
+    2
+
+
+dangerZoneHeaderEl : Element Msg
+dangerZoneHeaderEl =
+    el
+        [ width fill
+        , padding titlePadding
+        , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+        , Font.size titleFontSize
+        , Font.color flyoutFrameColor
+        ]
+        (text "Danger Zone")
+
+
 filtersEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
 filtersEl ss fam c =
-    Array.indexedMap (filterEl ss fam c.id) c.filters
-        |> Array.push (addNewFilterEl ss fam c.id)
+    Array.indexedMap (\fi f -> filterEditorEl ss fam c.id (EditF fi f)) c.pendingFilters
+        |> Array.push (filterEditorEl ss fam c.id AddF)
         |> Array.toList
         |> List.intersperse (filterLogicSeparator "AND")
         |> column
@@ -96,33 +131,77 @@ sectionBackground =
     oneDark.main
 
 
-filterEl : Select.State -> FilterAtomMaterial -> String -> Int -> Filter -> Element Msg
-filterEl ss fam cId index filter =
-    let
-        tagger newFilterMaybe =
-            case newFilterMaybe of
-                Just newFilter ->
-                    SetColumnFilter cId index newFilter
-
-                Nothing ->
-                    DelColumnFilter cId index
-    in
-    filterGeneratorEl tagger ss fam cId (Just ( index, filter ))
+type FEditorType
+    = EditF Int Filter
+    | AddF
 
 
-addNewFilterEl : Select.State -> FilterAtomMaterial -> String -> Element Msg
-addNewFilterEl ss fam cId =
-    let
-        tagger newFilterMaybe =
-            case newFilterMaybe of
-                Just newFilter ->
-                    AddColumnFilter cId newFilter
+filterEditorEl : Select.State -> FilterAtomMaterial -> String -> FEditorType -> Element Msg
+filterEditorEl ss fam cId editorType =
+    row
+        [ width fill
+        , BD.width 1
+        , BD.rounded rectElementRound
+        , BD.color flyoutFrameColor
+        ]
+        [ case editorType of
+            EditF fi filter ->
+                Filter.indexedMap (\ai fa -> filterAtomEditorEl ss fam cId (EditFA fi ai fa)) filter
+                    ++ [ filterAtomEditorEl ss fam cId (AddFA fi) ]
+                    |> List.intersperse (filterLogicSeparator "OR")
+                    |> column
+                        [ width (fill |> minimum 0)
+                        , padding rectElementInnerPadding
+                        , spacing spacingUnit
+                        ]
 
-                Nothing ->
-                    -- Should not happen
-                    tagger newFilterMaybe
-    in
-    filterGeneratorEl tagger ss fam cId Nothing
+            AddF ->
+                column [ width (fill |> minimum 0), padding rectElementInnerPadding ]
+                    [ filterAtomEditorEl ss fam cId GenFilter
+                    ]
+        , deleteFilterButtonEl cId editorType
+        ]
+
+
+deleteFilterButtonEl : String -> FEditorType -> Element Msg
+deleteFilterButtonEl cId editorType =
+    case editorType of
+        EditF fi _ ->
+            Element.Input.button
+                [ width (px deleteFilterButtonWidth)
+                , height fill
+                , mouseOver [ BG.color oneDark.err ]
+                , focused [ BG.color oneDark.err ]
+                , alignRight
+                , BD.roundEach
+                    { topLeft = 0
+                    , topRight = rectElementRound
+                    , bottomRight = rectElementRound
+                    , bottomLeft = 0
+                    }
+                ]
+                { onPress = Just (ColumnCtrl cId (DelFilter fi))
+                , label =
+                    el [ centerY, centerX ] <|
+                        octiconEl
+                            { size = deleteFilterIconSize
+                            , color = defaultOcticonColor
+                            , shape = Octicons.trashcan
+                            }
+                }
+
+        AddF ->
+            none
+
+
+deleteFilterButtonWidth : Int
+deleteFilterButtonWidth =
+    20
+
+
+deleteFilterIconSize : Int
+deleteFilterIconSize =
+    18
 
 
 filterLogicSeparator : String -> Element msg
@@ -140,118 +219,78 @@ separatorFontSize =
     scale12 2
 
 
-filterGeneratorEl : (Maybe Filter -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe ( Int, Filter ) -> Element Msg
-filterGeneratorEl tagger ss fam cId indexFilterMaybe =
-    row
-        [ width fill
-        , BD.width 1
-        , BD.rounded rectElementRound
-        , BD.color flyoutFrameColor
-        ]
-        [ case indexFilterMaybe of
-            Just ( index, filter ) ->
-                let
-                    filterId =
-                        cId ++ "-filter_" ++ String.fromInt index
-                in
-                Filter.indexedMap (filterAtomEl filter tagger ss fam filterId) filter
-                    ++ [ newFilterAtomEl (\fa -> tagger (Just (Filter.append fa filter))) ss fam filterId ]
-                    |> List.intersperse (filterLogicSeparator "OR")
-                    |> column
-                        [ width (fill |> minimum 0)
-                        , padding rectElementInnerPadding
-                        , spacing spacingUnit
-                        ]
-
-            Nothing ->
-                column [ width (fill |> minimum 0), padding rectElementInnerPadding ]
-                    [ newFilterAtomEl (tagger << Just << Singular) ss fam (cId ++ "addNewFilter") ]
-        , deleteFilterButtonEl cId indexFilterMaybe
-        ]
+type FAInputType
+    = EditFA Int Int FilterAtom
+    | AddFA Int
+    | GenFilter
 
 
-deleteFilterButtonEl : String -> Maybe ( Int, Filter ) -> Element Msg
-deleteFilterButtonEl cId indexFilterMaybe =
-    case indexFilterMaybe of
-        Just ( index, _ ) ->
-            Element.Input.button
-                [ width (px deleteFilterButtonWidth)
-                , height fill
-                , mouseOver [ BG.color oneDark.err ]
-                , focused [ BG.color oneDark.err ]
-                , alignRight
-                , BD.roundEach
-                    { topLeft = 0
-                    , topRight = rectElementRound
-                    , bottomRight = rectElementRound
-                    , bottomLeft = 0
-                    }
+filterAtomEditorEl : Select.State -> FilterAtomMaterial -> String -> FAInputType -> Element Msg
+filterAtomEditorEl ss fam cId faInputType =
+    row [ width (fill |> minimum 0), spacing spacingUnit ] <|
+        case faInputType of
+            EditFA fi ai fa ->
+                [ filterAtomCtorSelectEl ss fam cId faInputType
+                , filterAtomVariableInputEl ss fam cId fi ai fa
                 ]
-                { onPress = Just (DelColumnFilter cId index)
-                , label =
-                    el [ centerY, centerX ] <|
-                        octiconEl { size = deleteFilterIconSize, color = defaultOcticonColor, shape = Octicons.trashcan }
-                }
 
-        Nothing ->
-            none
+            _ ->
+                [ filterAtomCtorSelectEl ss fam cId faInputType ]
 
 
-deleteFilterButtonWidth : Int
-deleteFilterButtonWidth =
-    20
-
-
-deleteFilterIconSize : Int
-deleteFilterIconSize =
-    18
-
-
-filterAtomEl : Filter -> (Maybe Filter -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Int -> FilterAtom -> Element Msg
-filterAtomEl originalFilter tagger ss fam filterId index filterAtom =
+filterAtomCtorSelectEl : Select.State -> FilterAtomMaterial -> String -> FAInputType -> Element Msg
+filterAtomCtorSelectEl selectState fam cId faInputType =
     let
-        updateAndTag newFilterAtom =
-            tagger <|
-                case newFilterAtom of
-                    RemoveMe ->
-                        Filter.removeAt index originalFilter
+        ( selectId, selectedOption ) =
+            case faInputType of
+                EditFA fi ai fa ->
+                    ( cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_ctor", Just fa )
 
-                    _ ->
-                        Just (Filter.setAt index newFilterAtom originalFilter)
+                AddFA fi ->
+                    ( cId ++ "-filter_" ++ fromInt fi ++ "-newAtom", Nothing )
+
+                GenFilter ->
+                    ( cId ++ "-newFilter", Nothing )
     in
-    filterAtomInputEl updateAndTag ss fam (filterId ++ "-atom_" ++ String.fromInt index) (Just filterAtom)
-
-
-newFilterAtomEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Element Msg
-newFilterAtomEl tagger ss fam filterId =
-    filterAtomInputEl tagger ss fam (filterId ++ "newAtom") Nothing
-
-
-filterAtomInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomInputEl tagger ss fam filterAtomId filterAtomMaybe =
-    row [ width (fill |> minimum 0), spacing spacingUnit ]
-        [ filterAtomCtorSelectEl tagger ss fam (filterAtomId ++ "-typeSelect") filterAtomMaybe
-        , filterAtomVariableInputEl tagger ss fam (filterAtomId ++ "-variableInput") filterAtomMaybe
-        ]
-
-
-filterAtomCtorSelectEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomCtorSelectEl tagger selectState material selectId filterAtomMaybe =
     el [ width (px filterAtomCtorFixedWidth) ] <|
         select
             { id = selectId
             , theme = oneDark
-            , onSelect = tagger
-            , selectedOption = filterAtomMaybe
+            , onSelect = filterAtomOnSelect cId faInputType
+            , selectedOption = selectedOption
             , noMsgOptionEl = filterAtomCtorOptionEl
             }
             selectState
-            (availableFilterAtomsWithDefaultArguments material filterAtomMaybe)
+            (availableFilterAtomsWithDefaultArguments fam faInputType)
 
 
 filterAtomCtorFixedWidth : Int
 filterAtomCtorFixedWidth =
     120
+
+
+filterAtomOnSelect : String -> FAInputType -> FilterAtom -> Msg
+filterAtomOnSelect cId faInputType newFa =
+    case ( faInputType, newFa ) of
+        ( EditFA fi ai _, RemoveMe ) ->
+            ColumnCtrl cId (DelFilterAtom { filterIndex = fi, atomIndex = ai })
+
+        ( EditFA fi ai _, _ ) ->
+            ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = newFa })
+
+        ( AddFA fi, RemoveMe ) ->
+            -- Should not happen
+            NoOp
+
+        ( AddFA fi, _ ) ->
+            ColumnCtrl cId (AddFilterAtom { filterIndex = fi, atom = newFa })
+
+        ( GenFilter, RemoveMe ) ->
+            -- Should not happen
+            NoOp
+
+        ( GenFilter, _ ) ->
+            ColumnCtrl cId (AddFilter (Singular newFa))
 
 
 filterAtomCtorOptionEl : FilterAtom -> Element msg
@@ -270,19 +309,36 @@ filterAtomCtorOptionEl filterAtom =
             text "Remove this filter"
 
 
-availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> Maybe FilterAtom -> List ( String, FilterAtom )
-availableFilterAtomsWithDefaultArguments material filterAtomMaybe =
-    replaceWithSelected filterAtomMaybe
-        (basicFilterAtoms ++ materialToDefaultFilterAtoms material)
-        ++ Maybe.withDefault [] (Maybe.map (always [ RemoveMe ]) filterAtomMaybe)
+availableFilterAtomsWithDefaultArguments : FilterAtomMaterial -> FAInputType -> List ( String, FilterAtom )
+availableFilterAtomsWithDefaultArguments fam faInputType =
+    let
+        editByInputType options =
+            case faInputType of
+                EditFA _ _ selected ->
+                    let
+                        replaceIfSameType option =
+                            case ( selected, option ) of
+                                ( ByMessage _, ByMessage _ ) ->
+                                    selected
+
+                                ( ByMedia _, ByMedia _ ) ->
+                                    selected
+
+                                ( OfDiscordChannel _, OfDiscordChannel _ ) ->
+                                    selected
+
+                                _ ->
+                                    option
+                    in
+                    List.map replaceIfSameType options ++ [ RemoveMe ]
+
+                _ ->
+                    options
+    in
+    List.filterMap identity [ Maybe.map Tuple.first fam.ofDiscordChannel ]
+        |> List.append [ ByMessage "text", ByMedia HasImage ]
+        |> editByInputType
         |> List.map (\fa -> ( ctorKey fa, fa ))
-
-
-basicFilterAtoms : List FilterAtom
-basicFilterAtoms =
-    [ ByMessage "text"
-    , ByMedia HasImage
-    ]
 
 
 ctorKey : FilterAtom -> String
@@ -301,83 +357,72 @@ ctorKey fa =
             "RemoveMe"
 
 
-materialToDefaultFilterAtoms : FilterAtomMaterial -> List FilterAtom
-materialToDefaultFilterAtoms material =
-    List.filterMap identity
-        [ Maybe.map Tuple.first material.ofDiscordChannel
-        ]
-
-
-replaceWithSelected : Maybe FilterAtom -> List FilterAtom -> List FilterAtom
-replaceWithSelected filterAtomMaybe filterAtoms =
-    case filterAtomMaybe of
-        Just filterAtom ->
+filterAtomVariableInputEl : Select.State -> FilterAtomMaterial -> String -> Int -> Int -> FilterAtom -> Element Msg
+filterAtomVariableInputEl ss fam cId fi ai fa =
+    case fa of
+        OfDiscordChannel channelId ->
             let
-                replaceIfSameType selected option =
-                    case ( selected, option ) of
-                        ( ByMessage _, ByMessage _ ) ->
-                            selected
+                channelSelectEl selected options =
+                    filterAtomVariableSelectEl (OfDiscordChannel << .id) ss cId fi ai selected options
 
-                        ( ByMedia _, ByMedia _ ) ->
-                            selected
-
-                        ( OfDiscordChannel _, OfDiscordChannel _ ) ->
-                            selected
-
-                        _ ->
-                            option
+                fallbackChannel =
+                    Discord.unavailableChannel channelId
             in
-            List.map (replaceIfSameType filterAtom) filterAtoms
+            case fam.ofDiscordChannel of
+                Just ( _, channels ) ->
+                    let
+                        selectedChannel =
+                            channels |> ListExtra.findOne (\c -> c.id == channelId) |> Maybe.withDefault fallbackChannel
+                    in
+                    channelSelectEl selectedChannel <|
+                        ( List.map (\c -> ( c.id, c )) channels, discordChannelEl discordGuildIconSize )
 
-        Nothing ->
-            filterAtoms
+                Nothing ->
+                    channelSelectEl fallbackChannel ( [], always none )
 
+        ByMessage query ->
+            filterAtomVariableTextInputEl ByMessage cId fi ai query
 
-filterAtomVariableInputEl : (FilterAtom -> Msg) -> Select.State -> FilterAtomMaterial -> String -> Maybe FilterAtom -> Element Msg
-filterAtomVariableInputEl tagger selectState material inputId filterAtomMaybe =
-    case filterAtomMaybe of
-        Just (OfDiscordChannel cId) ->
-            filterAtomVariableSelectInputEl (tagger << OfDiscordChannel) selectState (inputId ++ "-variableSelect") cId <|
-                case material.ofDiscordChannel of
-                    Just ( _, channels ) ->
-                        ( List.map (\c -> ( c.id, c.id )) channels, discordChannelWithGuildIconEl channels )
-
-                    Nothing ->
-                        ( [], text )
-
-        Just (ByMessage query) ->
-            filterAtomVariableTextInputEl (tagger << ByMessage) query
-
-        Just (ByMedia mediaType) ->
-            filterAtomVariableSelectInputEl (tagger << ByMedia) selectState (inputId ++ "-variableSelect") mediaType <|
+        ByMedia mediaType ->
+            filterAtomVariableSelectEl ByMedia ss cId fi ai mediaType <|
                 ( [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ], mediaTypeOptionEl )
 
-        Just RemoveMe ->
+        RemoveMe ->
             -- Should not happen
             none
 
-        Nothing ->
-            none
+
+discordGuildIconSize : Int
+discordGuildIconSize =
+    20
 
 
-filterAtomVariableTextInputEl : (String -> Msg) -> String -> Element Msg
-filterAtomVariableTextInputEl tagger text =
+filterAtomVariableTextInputEl : (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg
+filterAtomVariableTextInputEl tagger cId fi ai current =
     textInputEl
-        { onChange = tagger
+        { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger str })
         , theme = oneDark
         , enabled = True
-        , text = text
+        , text = current
         , placeholder = Nothing
         , label = Element.Input.labelHidden "Filter Text"
         }
 
 
-filterAtomVariableSelectInputEl : (a -> Msg) -> Select.State -> String -> a -> ( List ( String, a ), a -> Element Msg ) -> Element Msg
-filterAtomVariableSelectInputEl tagger selectState selectId selected ( options, optionEl ) =
+filterAtomVariableSelectEl :
+    (a -> FilterAtom)
+    -> Select.State
+    -> String
+    -> Int
+    -> Int
+    -> a
+    -> ( List ( String, a ), a -> Element Msg )
+    -> Element Msg
+filterAtomVariableSelectEl tagger selectState cId fi ai selected ( options, optionEl ) =
     select
-        { id = selectId
+        { id = cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_variable"
         , theme = oneDark
-        , onSelect = tagger
+        , onSelect = \option -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger option })
         , selectedOption = Just selected
         , noMsgOptionEl = optionEl
         }
@@ -398,29 +443,6 @@ mediaTypeOptionEl mediaType =
             text "None"
 
 
-discordChannelWithGuildIconEl : List Discord.ChannelCache -> String -> Element msg
-discordChannelWithGuildIconEl channels cId =
-    case ListExtra.findOne (.id >> (==) cId) channels of
-        Just channel ->
-            row [ width (fill |> minimum 0), spacingXY discordGuildIconSpacingX 0 ]
-                [ channel.guildMaybe |> Maybe.map (discordGuildIconEl discordGuildIconSize) |> Maybe.withDefault none
-                , breakP [] [ breakT ("#" ++ channel.name) ]
-                ]
-
-        Nothing ->
-            text cId
-
-
-discordGuildIconSpacingX : Int
-discordGuildIconSpacingX =
-    2
-
-
-discordGuildIconSize : Int
-discordGuildIconSize =
-    20
-
-
 columnDeleteEl : Int -> Column.Column -> Element Msg
 columnDeleteEl index c =
     row
@@ -438,7 +460,7 @@ columnDeleteEl index c =
 columnDeleteGateEl : String -> String -> Element Msg
 columnDeleteGateEl cId deleteGate =
     textInputEl
-        { onChange = ColumnDeleteGateInput cId
+        { onChange = ColumnCtrl cId << DeleteGateInput
         , theme = oneDark
         , enabled = True
         , text = deleteGate
@@ -469,7 +491,7 @@ deleteButtonWidth =
 columnConfigCloseButtonEl : String -> Element Msg
 columnConfigCloseButtonEl cId =
     Element.Input.button [ width fill, BG.color oneDark.sub ]
-        { onPress = Just (ToggleColumnConfig cId False)
+        { onPress = Just (ColumnCtrl cId (Column.ToggleConfig False))
         , label = octiconEl { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
         }
 

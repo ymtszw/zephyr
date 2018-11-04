@@ -1,4 +1,4 @@
-module Extra exposing (andDo, divMod, doAfter, ite, pure, setTimeout)
+module Extra exposing (andDo, divMod, doAfter, ite, map, pure, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
@@ -20,6 +20,15 @@ andDo cmds model =
 pure : model -> ( model, Cmd msg, Bool )
 pure m =
     ( m, Cmd.none, False )
+
+
+map :
+    (innerModel -> outerModel)
+    -> (innerMsg -> outerMsg)
+    -> ( innerModel, Cmd innerMsg, Bool )
+    -> ( outerModel, Cmd outerMsg, Bool )
+map modelTagger msgTagger ( m, cmd, shouldPersist ) =
+    ( modelTagger m, Cmd.map msgTagger cmd, shouldPersist )
 
 
 {-| Oneline if-then-else.

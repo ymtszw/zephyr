@@ -1,5 +1,5 @@
 module Data.Filter exposing
-    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder, toString, compareFAM
+    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, decoder, toString, atomToString, compareFAM
     , append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
     )
 
@@ -21,7 +21,7 @@ For that, this module reluctantly exposes `append` API.
 
 ## Types
 
-@docs Filter, FilterAtom, MediaFilter, encode, decoder, toString, compareFAM
+@docs Filter, FilterAtom, MediaFilter, encode, decoder, toString, atomToString, compareFAM
 
 
 ## APIs

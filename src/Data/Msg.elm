@@ -2,6 +2,7 @@ module Data.Msg exposing (Msg(..), logEntry)
 
 import Browser
 import Browser.Dom
+import Data.Column as Column
 import Data.Filter as Filter
 import Data.Producer as Producer
 import Data.Producer.Discord as Discord
@@ -35,11 +36,7 @@ type Msg
     | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
-    | ToggleColumnConfig String Bool
-    | AddColumnFilter String Filter.Filter
-    | SetColumnFilter String Int Filter.Filter
-    | DelColumnFilter String Int
-    | ColumnDeleteGateInput String String
+    | ColumnCtrl String Column.Msg
     | ProducerCtrl Producer.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
@@ -103,20 +100,8 @@ logEntry msg =
         ToggleConfig bool ->
             Entry "ToggleConfig" [ ite bool "True" "False" ]
 
-        ToggleColumnConfig cId bool ->
-            Entry "ToggleColumnConfig" [ cId, ite bool "True" "False" ]
-
-        AddColumnFilter cId filter ->
-            Entry "AddColumnFilter" [ cId, Filter.toString filter ]
-
-        SetColumnFilter cId index filter ->
-            Entry "SetColumnFilter" [ cId, fromInt index, Filter.toString filter ]
-
-        DelColumnFilter cId index ->
-            Entry "DelColumnFilter" [ cId, fromInt index ]
-
-        ColumnDeleteGateInput cId input ->
-            Entry "ColumnDeleteGateInput" [ cId, input ]
+        ColumnCtrl cId cMsg ->
+            columnMsgToEntry cId cMsg
 
         ProducerCtrl pMsg ->
             producerMsgToEntry pMsg
@@ -212,3 +197,31 @@ producerMsgToEntry pMsg =
 
                 Discord.APIError e ->
                     Entry "Discord.APIError" [ HttpExtra.errorToString e ]
+
+
+columnMsgToEntry : String -> Column.Msg -> Entry
+columnMsgToEntry cId cMsg =
+    case cMsg of
+        Column.ToggleConfig bool ->
+            Entry "Column.ToggleConfig" [ cId, ite bool "True" "False" ]
+
+        Column.AddFilter filter ->
+            Entry "Column.AddFilter" [ cId, Filter.toString filter ]
+
+        Column.DelFilter index ->
+            Entry "Column.DelFilter" [ cId, fromInt index ]
+
+        Column.AddFilterAtom { filterIndex, atom } ->
+            Entry "Column.AddFilterAtom" [ cId, fromInt filterIndex, Filter.atomToString atom ]
+
+        Column.SetFilterAtom { filterIndex, atomIndex, atom } ->
+            Entry "Column.SetFilterAtom" [ cId, fromInt filterIndex, fromInt atomIndex, Filter.atomToString atom ]
+
+        Column.DelFilterAtom { filterIndex, atomIndex } ->
+            Entry "Column.DelFilterAtom" [ cId, fromInt filterIndex, fromInt atomIndex ]
+
+        Column.ConfirmFilter ->
+            Entry "Column.ConfirmFilter" []
+
+        Column.DeleteGateInput input ->
+            Entry "Column.DeleteGateInput" [ cId, input ]

@@ -174,7 +174,7 @@ columnConfigToggleButtonEl : Bool -> String -> Element Msg
 columnConfigToggleButtonEl configOpen id =
     el [ alignRight ] <|
         squareButtonEl
-            { onPress = ToggleColumnConfig id (not configOpen)
+            { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
             , enabled = True
             , innerElement =
                 octiconEl
