@@ -4,7 +4,7 @@ module View.Parts exposing
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , filtersToIconEl
-    , discordGuildIconEl
+    , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
     , columnAreaParentId, defaultOcticonColor
     )
@@ -39,7 +39,7 @@ module View.Parts exposing
 
 ## Discord
 
-@docs discordGuildIconEl
+@docs discordGuildIconEl, discordChannelEl
 
 
 ## Constants
@@ -494,6 +494,19 @@ discordGuildIconEl size guild =
     guild.icon
         |> Maybe.map (Discord.imageUrlNoFallback (Just size))
         |> squareIconOrHeadEl size guild.name
+
+
+discordChannelEl : Int -> { x | name : String, guildMaybe : Maybe Discord.Guild } -> Element msg
+discordChannelEl size channel =
+    row [ spacing discordGuildIconSpacingX ]
+        [ channel.guildMaybe |> Maybe.map (discordGuildIconEl size) |> Maybe.withDefault none
+        , text ("#" ++ channel.name)
+        ]
+
+
+discordGuildIconSpacingX : Int
+discordGuildIconSpacingX =
+    2
 
 
 
