@@ -1,7 +1,8 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
+    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl
+    , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , filtersToIconEl
     , discordGuildIconEl, discordChannelEl
@@ -24,7 +25,8 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, primaryButtonEl, dangerButtonEl
+@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl
+@docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
 ## Styles
@@ -203,6 +205,27 @@ primaryButtonEl { onPress, width, theme, enabled, innerElement } =
         { onPress = onPress
         , width = width
         , enabledColor = theme.prim
+        , enabledFontColor = theme.text
+        , disabledColor = theme.sub
+        , disabledFontColor = theme.note
+        , enabled = enabled
+        , innerElement = innerElement
+        }
+
+
+successButtonEl :
+    { onPress : msg
+    , width : Length
+    , theme : ColorTheme
+    , enabled : Bool
+    , innerElement : Element msg
+    }
+    -> Element msg
+successButtonEl { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl
+        { onPress = onPress
+        , width = width
+        , enabledColor = theme.succ
         , enabledFontColor = theme.text
         , disabledColor = theme.sub
         , disabledFontColor = theme.note
