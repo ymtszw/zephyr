@@ -4,7 +4,7 @@ module Data.Producer.Discord exposing
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-    , getPov, setChannelFetchStatus, initializing, compareByFetchStatus, unavailableChannel
+    , getPov, initializing, compareByFetchStatus, unavailableChannel
     )
 
 {-| Polling Producer for Discord.
@@ -36,7 +36,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 ## Runtime APIs
 
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-@docs getPov, setChannelFetchStatus, initializing, compareByFetchStatus, unavailableChannel
+@docs getPov, initializing, compareByFetchStatus, unavailableChannel
 
 -}
 
@@ -1481,55 +1481,6 @@ getPov discord =
 
         Switching _ pov ->
             Just pov
-
-
-setChannelFetchStatus : List String -> Discord -> ( Discord, Bool )
-setChannelFetchStatus subs discord =
-    case discord of
-        ChannelScanning pov ->
-            setChannelFetchStatusImpl ChannelScanning subs pov
-
-        Hydrated t pov ->
-            setChannelFetchStatusImpl (Hydrated t) subs pov
-
-        Rehydrating t pov ->
-            setChannelFetchStatusImpl (Rehydrating t) subs pov
-
-        Revisit pov ->
-            setChannelFetchStatusImpl Revisit subs pov
-
-        Expired t pov ->
-            setChannelFetchStatusImpl (Expired t) subs pov
-
-        Switching newSession pov ->
-            setChannelFetchStatusImpl (Switching newSession) subs pov
-
-        _ ->
-            ( discord, False )
-
-
-setChannelFetchStatusImpl : (POV -> Discord) -> List String -> POV -> ( Discord, Bool )
-setChannelFetchStatusImpl tagger subs pov =
-    let
-        ( newChannels, shouldPersist ) =
-            Dict.foldl reducer ( Dict.empty, False ) pov.channels
-
-        reducer cId c ( accDict, accSP ) =
-            Tuple.mapFirst (\newChannel -> Dict.insert cId newChannel accDict) <|
-                case ( List.member cId subs, FetchStatus.isActive c.fetchStatus ) of
-                    ( True, True ) ->
-                        ( c, False )
-
-                    ( True, False ) ->
-                        ( { c | fetchStatus = Waiting }, True )
-
-                    ( False, True ) ->
-                        ( { c | fetchStatus = Available }, True )
-
-                    ( False, False ) ->
-                        ( c, False )
-    in
-    ( tagger { pov | channels = newChannels }, shouldPersist )
 
 
 compareByFetchStatus : Channel -> Channel -> Order
