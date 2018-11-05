@@ -26,11 +26,11 @@ import TimeExtra exposing (ms, posix)
 
 
 type FetchStatus
-    = Subscribed
+    = Waiting
     | NextFetchAt Posix Backoff
     | Fetching Posix Backoff
     | InitialFetching Posix -- If unexpectedly failed, should go Unavailable, allow retry
-    | Available -- Initial state; can transit to Subscribed => InitialFetching => NextFetchAt (or dropped)
+    | Available -- Initial state; can transit to Waiting => InitialFetching => NextFetchAt (or dropped)
 
 
 type Backoff
@@ -45,8 +45,8 @@ type Backoff
 encode : FetchStatus -> E.Value
 encode fetchStatus =
     case fetchStatus of
-        Subscribed ->
-            E.tag "Subscribed"
+        Waiting ->
+            E.tag "Waiting"
 
         NextFetchAt posix bo ->
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
@@ -55,7 +55,7 @@ encode fetchStatus =
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
         InitialFetching _ ->
-            E.tag "Subscribed"
+            E.tag "Waiting"
 
         Available ->
             E.tag "Available"
@@ -86,13 +86,12 @@ encodeBackoff bo =
 decoder : Decoder FetchStatus
 decoder =
     D.oneOf
-        [ D.tag "Subscribed" Subscribed
+        [ D.tag "Waiting" Waiting
         , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
         , D.tag "Available" Available
 
         -- Old format
         , D.tag "NeverFetched" Available
-        , D.tag "Waiting" Subscribed
         , D.tag "Forbidden" Available -- Purged when tried
         ]
 
@@ -117,10 +116,10 @@ compare a b =
 
     else
         case ( a, b ) of
-            ( Subscribed, _ ) ->
+            ( Waiting, _ ) ->
                 LT
 
-            ( NextFetchAt _ _, Subscribed ) ->
+            ( NextFetchAt _ _, Waiting ) ->
                 GT
 
             ( NextFetchAt p1 _, NextFetchAt p2 _ ) ->
@@ -130,7 +129,7 @@ compare a b =
             ( NextFetchAt _ _, _ ) ->
                 LT
 
-            ( Fetching _ _, Subscribed ) ->
+            ( Fetching _ _, Waiting ) ->
                 GT
 
             ( Fetching _ _, NextFetchAt _ _ ) ->
@@ -165,8 +164,8 @@ lessThan a b =
 subscribed : FetchStatus -> Bool
 subscribed fetchStatus =
     case fetchStatus of
-        Subscribed ->
-            -- Consider as subscribed only in fetch loop
+        Waiting ->
+            -- Consider as subscribed only after initial fetch succeeded
             False
 
         NextFetchAt _ _ ->
@@ -201,7 +200,7 @@ update msg fs =
         Sub ->
             case fs of
                 Available ->
-                    pure Subscribed
+                    pure Waiting
 
                 _ ->
                     pure fs
@@ -216,7 +215,7 @@ update msg fs =
 
         Start posix ->
             case fs of
-                Subscribed ->
+                Waiting ->
                     pure (InitialFetching posix)
 
                 NextFetchAt _ bo ->
@@ -252,8 +251,10 @@ update msg fs =
                 Fetching posix _ ->
                     { fs = backoff BO30 posix, persist = True, updateFAM = False }
 
-                InitialFetching posix ->
-                    { fs = backoff BO30 posix, persist = True, updateFAM = False }
+                InitialFetching _ ->
+                    -- This is very rare, but can happen.
+                    -- If it stacks at InitialFetching <-> Waiting, should be cancelled by Unsub
+                    pure Waiting
 
                 _ ->
                     pure fs
