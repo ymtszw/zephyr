@@ -125,6 +125,10 @@ update msg ({ viewState, env } as m) =
             -- If Filters are somehow set to the new Column, then persist.
             pure (addColumn m)
 
+        AddSimpleColumn fa ->
+            UniqueId.genAndMap columnIdPrefix m.idGen (Column.simple fa)
+                |> (\( c, idGen ) -> ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, True ))
+
         DelColumn index ->
             ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, True )
 
@@ -189,10 +193,15 @@ addColumn m =
     let
         ( newColumn, newIdGen ) =
             m.idGen
-                |> UniqueId.gen "column"
+                |> UniqueId.gen columnIdPrefix
                 |> UniqueId.andThen (\( cId, idGen ) -> Column.new idGen cId)
     in
     { m | columnStore = ColumnStore.add newColumn m.columnStore, idGen = newIdGen }
+
+
+columnIdPrefix : String
+columnIdPrefix =
+    "column"
 
 
 onDragEnter : Model -> Int -> Model

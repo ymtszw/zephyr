@@ -1,6 +1,7 @@
 module View.ConfigPane.DiscordConfig exposing (discordConfigEl)
 
 import Data.ColorTheme exposing (oneDark)
+import Data.Filter exposing (FilterAtom(..))
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer
 import Data.Producer.Discord as Discord exposing (Channel, Discord(..), POV, User)
@@ -332,7 +333,7 @@ channelRowKeyEl c =
 createColumnButtonEl : Channel -> Element Msg
 createColumnButtonEl c =
     thinButtonEl
-        { onPress = NoOp
+        { onPress = AddSimpleColumn (OfDiscordChannel c.id)
         , width = fill
         , enabledColor = oneDark.prim
         , enabledFontColor = oneDark.text

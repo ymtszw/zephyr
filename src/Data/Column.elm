@@ -1,5 +1,5 @@
 module Data.Column exposing
-    ( Column, ColumnItem(..), Media(..), welcome, new, encode, decoder
+    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder
     , Msg(..), update, consumeBroker
     )
 
@@ -10,7 +10,7 @@ Items stored in List are ordered from latest to oldest.
 
 ## Types
 
-@docs Column, ColumnItem, Media, welcome, new, encode, decoder
+@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder
 
 
 ## Component API
@@ -200,6 +200,18 @@ new idGen id =
       }
     , newGen
     )
+
+
+simple : FilterAtom -> String -> Column
+simple fa id =
+    { id = id
+    , items = []
+    , filters = Array.fromList [ Filter.Singular fa ]
+    , offset = Nothing
+    , configOpen = False
+    , pendingFilters = Array.fromList [ Filter.Singular fa ]
+    , deleteGate = ""
+    }
 
 
 type Msg

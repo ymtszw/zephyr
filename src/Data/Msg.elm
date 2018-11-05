@@ -28,6 +28,7 @@ type Msg
     | SelectToggle String Bool
     | SelectPick Msg
     | AddColumn
+    | AddSimpleColumn Filter.FilterAtom
     | DelColumn Int
     | ToggleColumnSwappable Bool
     | DragStart Int String
@@ -75,6 +76,9 @@ logEntry msg =
 
         AddColumn ->
             Entry "AddColumn" []
+
+        AddSimpleColumn fa ->
+            Entry "AddSimpleColumn" [ Filter.atomToString fa ]
 
         DelColumn index ->
             Entry "DelColumn" [ fromInt index ]
