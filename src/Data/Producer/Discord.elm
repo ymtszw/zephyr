@@ -4,7 +4,7 @@ module Data.Producer.Discord exposing
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-    , getPov, compareByFetchStatus, unavailableChannel
+    , getPov, compareByFetchStatus, unavailableChannel, compareByNames
     )
 
 {-| Polling Producer for Discord.
@@ -36,7 +36,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 ## Runtime APIs
 
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-@docs getPov, compareByFetchStatus, unavailableChannel
+@docs getPov, compareByFetchStatus, unavailableChannel, compareByNames
 
 -}
 
@@ -710,7 +710,7 @@ calculateFAM : Dict String Channel -> UpdateFAM
 calculateFAM channels =
     let
         filtered =
-            channels |> Dict.foldl reducer [] |> List.sortWith channelSorter
+            channels |> Dict.foldl reducer [] |> List.sortWith compareByNames
 
         reducer _ c acc =
             if FetchStatus.subscribed c.fetchStatus then
@@ -727,8 +727,16 @@ calculateFAM channels =
             SetFAM ( OfDiscordChannel c.id, filtered )
 
 
-channelSorter : ChannelCache -> ChannelCache -> Order
-channelSorter a b =
+{-| Order Channels by their Guild names and their own names.
+
+XXX May introduce client position.
+
+-}
+compareByNames :
+    { x | name : String, guildMaybe : Maybe Guild }
+    -> { x | name : String, guildMaybe : Maybe Guild }
+    -> Order
+compareByNames a b =
     let
         gName =
             -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
