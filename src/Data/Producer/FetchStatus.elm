@@ -40,7 +40,7 @@ type Backoff
 
 
 type RecentError
-    = ServerError -- Transient ones
+    = Unexpected -- Transient ones
     | Forbidden
 
 
@@ -62,8 +62,8 @@ encode fetchStatus =
         Available ->
             E.tag "Available"
 
-        Unavailable ServerError ->
-            E.tagged "Unavailable" (E.tag "ServerError")
+        Unavailable Unexpected ->
+            E.tagged "Unavailable" (E.tag "Unexpected")
 
         Unavailable Forbidden ->
             E.tagged "Unavailable" (E.tag "Forbidden")
@@ -98,7 +98,7 @@ decoder =
         , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
         , D.tag "Available" Available
         , D.tagged "Unavailable" Unavailable <|
-            D.oneOf [ D.tag "ServerError" ServerError, D.tag "Forbidden" Forbidden ]
+            D.oneOf [ D.tag "Unexpected" Unexpected, D.tag "Forbidden" Forbidden ]
 
         -- Old format
         , D.tag "NeverFetched" Available
@@ -167,7 +167,7 @@ compare a b =
             ( Available, _ ) ->
                 GT
 
-            ( Unavailable ServerError, Unavailable Forbidden ) ->
+            ( Unavailable Unexpected, Unavailable Forbidden ) ->
                 LT
 
             ( Unavailable _, _ ) ->

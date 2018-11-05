@@ -4,7 +4,7 @@ import Array exposing (fromList)
 import ArrayExtra as Array
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
-import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
+import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), RecentError(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueId exposing (Generator)
 import Element exposing (rgb255)
@@ -388,79 +388,52 @@ fetchStatusSuite : Test
 fetchStatusSuite =
     describe "Data.Producer.FetchStatus"
         [ describe "compare"
-            [ testCompare NeverFetched NeverFetched EQ
-            , testCompare NeverFetched Waiting LT
-            , testCompare NeverFetched (NextFetchAt (p 1) BO5) LT
-            , testCompare NeverFetched InitialFetching LT
-            , testCompare NeverFetched ResumeFetching LT
-            , testCompare NeverFetched (Fetching (p 1) BO5) LT
-            , testCompare NeverFetched Available LT
-            , testCompare NeverFetched Forbidden LT
-            , testCompare Waiting NeverFetched GT
-            , testCompare Waiting Waiting EQ
-            , testCompare Waiting (NextFetchAt (p 1) BO5) LT
-            , testCompare Waiting InitialFetching LT
-            , testCompare Waiting ResumeFetching LT
-            , testCompare Waiting (Fetching (p 1) BO5) LT
-            , testCompare Waiting Available LT
-            , testCompare Waiting Forbidden LT
-            , testCompare (NextFetchAt (p 1) BO5) NeverFetched GT
-            , testCompare (NextFetchAt (p 1) BO5) Waiting GT
+            [ testCompare Subscribed Subscribed EQ
+            , testCompare Subscribed (NextFetchAt (p 1) BO5) LT
+            , testCompare Subscribed (Fetching (p 1) BO5) LT
+            , testCompare Subscribed InitialFetching LT
+            , testCompare Subscribed Available LT
+            , testCompare Subscribed (Unavailable Unexpected) LT
+            , testCompare (NextFetchAt (p 1) BO5) Subscribed GT
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 0) BO5) GT
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO5) EQ
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO10) EQ
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 2) BO5) LT
-            , testCompare (NextFetchAt (p 1) BO5) InitialFetching LT
-            , testCompare (NextFetchAt (p 1) BO5) ResumeFetching LT
             , testCompare (NextFetchAt (p 1) BO5) (Fetching (p 1) BO5) LT
+            , testCompare (NextFetchAt (p 1) BO5) InitialFetching LT
             , testCompare (NextFetchAt (p 1) BO5) Available LT
-            , testCompare (NextFetchAt (p 1) BO5) Forbidden LT
-            , testCompare InitialFetching NeverFetched GT
-            , testCompare InitialFetching Waiting GT
-            , testCompare InitialFetching (NextFetchAt (p 1) BO5) GT
-            , testCompare InitialFetching InitialFetching EQ
-            , testCompare InitialFetching ResumeFetching LT
-            , testCompare InitialFetching (Fetching (p 1) BO5) LT
-            , testCompare InitialFetching Available LT
-            , testCompare InitialFetching Forbidden LT
-            , testCompare ResumeFetching NeverFetched GT
-            , testCompare ResumeFetching Waiting GT
-            , testCompare ResumeFetching (NextFetchAt (p 1) BO5) GT
-            , testCompare ResumeFetching InitialFetching GT
-            , testCompare ResumeFetching ResumeFetching EQ
-            , testCompare ResumeFetching (Fetching (p 1) BO5) LT
-            , testCompare ResumeFetching Available LT
-            , testCompare ResumeFetching Forbidden LT
-            , testCompare (Fetching (p 1) BO5) NeverFetched GT
-            , testCompare (Fetching (p 1) BO5) Waiting GT
+            , testCompare (NextFetchAt (p 1) BO5) (Unavailable Unexpected) LT
+            , testCompare (Fetching (p 1) BO5) Subscribed GT
             , testCompare (Fetching (p 1) BO5) (NextFetchAt (p 1) BO5) GT
-            , testCompare (Fetching (p 1) BO5) InitialFetching GT
-            , testCompare (Fetching (p 1) BO5) ResumeFetching GT
             , testCompare (Fetching (p 1) BO5) (Fetching (p 0) BO5) GT
             , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO5) EQ
             , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO10) EQ
             , testCompare (Fetching (p 1) BO5) (Fetching (p 2) BO5) LT
+            , testCompare (Fetching (p 1) BO5) InitialFetching LT
             , testCompare (Fetching (p 1) BO5) Available LT
-            , testCompare (Fetching (p 1) BO5) Forbidden LT
-            , testCompare Available NeverFetched GT
-            , testCompare Available Waiting GT
+            , testCompare (Fetching (p 1) BO5) (Unavailable Unexpected) LT
+            , testCompare InitialFetching Subscribed GT
+            , testCompare InitialFetching (NextFetchAt (p 1) BO5) GT
+            , testCompare InitialFetching (Fetching (p 1) BO5) GT
+            , testCompare InitialFetching InitialFetching EQ
+            , testCompare InitialFetching Available LT
+            , testCompare InitialFetching (Unavailable Unexpected) LT
+            , testCompare Available Subscribed GT
             , testCompare Available (NextFetchAt (p 1) BO5) GT
-            , testCompare Available InitialFetching GT
-            , testCompare Available ResumeFetching GT
             , testCompare Available (Fetching (p 1) BO5) GT
+            , testCompare Available InitialFetching GT
             , testCompare Available Available EQ
-            , testCompare Available Forbidden LT
-            , testCompare Forbidden NeverFetched GT
-            , testCompare Forbidden Waiting GT
-            , testCompare Forbidden (NextFetchAt (p 1) BO5) GT
-            , testCompare Forbidden InitialFetching GT
-            , testCompare Forbidden ResumeFetching GT
-            , testCompare Forbidden (Fetching (p 1) BO5) GT
-            , testCompare Forbidden Available GT
-            , testCompare Forbidden Forbidden EQ
+            , testCompare Available (Unavailable Unexpected) LT
+            , testCompare (Unavailable Unexpected) Subscribed GT
+            , testCompare (Unavailable Unexpected) (NextFetchAt (p 1) BO5) GT
+            , testCompare (Unavailable Unexpected) (Fetching (p 1) BO5) GT
+            , testCompare (Unavailable Unexpected) InitialFetching GT
+            , testCompare (Unavailable Unexpected) Available GT
+            , testCompare (Unavailable Unexpected) (Unavailable Unexpected) EQ
+            , testCompare (Unavailable Unexpected) (Unavailable Forbidden) LT
             ]
         , describe "lessThan"
-            [ NeverFetched |> testLessThan (NextFetchAt (p 1) BO5)
+            [ Subscribed |> testLessThan (NextFetchAt (p 1) BO5)
             , NextFetchAt (p 0) BO5 |> testLessThan (NextFetchAt (p 1) BO5)
             ]
         ]
