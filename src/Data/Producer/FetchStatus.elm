@@ -1,5 +1,17 @@
-module Data.Producer.FetchStatus exposing (Backoff(..), FetchStatus(..), compare, decoder, encode, isActive, isAvailable, lessThan)
+module Data.Producer.FetchStatus exposing
+    ( FetchStatus(..), Backoff(..), RecentError(..)
+    , encode, decoder, compare, lessThan, subscribed
+    )
 
+{-| Status of Periodic fetch.
+
+@docs FetchStatus, Backoff, RecentError
+@docs encode, decoder, compare, lessThan, subscribed
+@docs Msg, update
+
+-}
+
+import Extra exposing (ite)
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -10,14 +22,12 @@ import TimeExtra exposing (ms, posix)
 
 
 type FetchStatus
-    = NeverFetched
-    | Waiting
+    = Subscribed
     | NextFetchAt Posix Backoff
-    | InitialFetching
-    | ResumeFetching
     | Fetching Posix Backoff
-    | Available
-    | Forbidden
+    | InitialFetching -- If unexpectedly failed, should go Unavailable, allow retry
+    | Available -- Initial state; can transit to Subscribed => InitialFetching => NextFetchAt/Unavailble
+    | Unavailable RecentError -- May retry, but should be listed at hard-to-reach position
 
 
 type Backoff
@@ -29,32 +39,34 @@ type Backoff
     | BO120
 
 
+type RecentError
+    = ServerError -- Transient ones
+    | Forbidden
+
+
 encode : FetchStatus -> E.Value
 encode fetchStatus =
     case fetchStatus of
-        NeverFetched ->
-            E.tag "NeverFetched"
-
-        Waiting ->
-            E.tag "Waiting"
+        Subscribed ->
+            E.tag "Subscribed"
 
         NextFetchAt posix bo ->
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
-        InitialFetching ->
-            E.tag "NeverFetched"
-
-        ResumeFetching ->
-            E.tag "Waiting"
-
         Fetching posix bo ->
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
+
+        InitialFetching ->
+            E.tag "Subscribed"
 
         Available ->
             E.tag "Available"
 
-        Forbidden ->
-            E.tag "Forbidden"
+        Unavailable ServerError ->
+            E.tagged "Unavailable" (E.tag "ServerError")
+
+        Unavailable Forbidden ->
+            E.tagged "Unavailable" (E.tag "Forbidden")
 
 
 encodeBackoff : Backoff -> E.Value
@@ -82,11 +94,16 @@ encodeBackoff bo =
 decoder : Decoder FetchStatus
 decoder =
     D.oneOf
-        [ D.tag "NeverFetched" NeverFetched
-        , D.tag "Waiting" Waiting
+        [ D.tag "Subscribed" Subscribed
         , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
         , D.tag "Available" Available
-        , D.tag "Forbidden" Forbidden
+        , D.tagged "Unavailable" Unavailable <|
+            D.oneOf [ D.tag "ServerError" ServerError, D.tag "Forbidden" Forbidden ]
+
+        -- Old format
+        , D.tag "NeverFetched" Available
+        , D.tag "Waiting" Subscribed
+        , D.tag "Forbidden" (Unavailable Forbidden)
         ]
 
 
@@ -110,19 +127,10 @@ compare a b =
 
     else
         case ( a, b ) of
-            ( NeverFetched, _ ) ->
+            ( Subscribed, _ ) ->
                 LT
 
-            ( Waiting, NeverFetched ) ->
-                GT
-
-            ( Waiting, _ ) ->
-                LT
-
-            ( NextFetchAt _ _, NeverFetched ) ->
-                GT
-
-            ( NextFetchAt _ _, Waiting ) ->
+            ( NextFetchAt _ _, Subscribed ) ->
                 GT
 
             ( NextFetchAt p1 _, NextFetchAt p2 _ ) ->
@@ -132,49 +140,37 @@ compare a b =
             ( NextFetchAt _ _, _ ) ->
                 LT
 
-            ( InitialFetching, NeverFetched ) ->
+            ( Fetching _ _, Subscribed ) ->
                 GT
 
-            ( InitialFetching, Waiting ) ->
-                GT
-
-            ( InitialFetching, NextFetchAt _ _ ) ->
-                GT
-
-            ( InitialFetching, _ ) ->
-                LT
-
-            ( ResumeFetching, Fetching _ _ ) ->
-                LT
-
-            ( ResumeFetching, Available ) ->
-                LT
-
-            ( ResumeFetching, Forbidden ) ->
-                LT
-
-            ( ResumeFetching, _ ) ->
+            ( Fetching _ _, NextFetchAt _ _ ) ->
                 GT
 
             ( Fetching p1 _, Fetching p2 _ ) ->
                 Basics.compare (Time.posixToMillis p1) (Time.posixToMillis p2)
 
-            ( Fetching _ _, Available ) ->
-                LT
-
-            ( Fetching _ _, Forbidden ) ->
-                LT
-
             ( Fetching _ _, _ ) ->
+                LT
+
+            ( InitialFetching, Available ) ->
+                LT
+
+            ( InitialFetching, Unavailable _ ) ->
+                LT
+
+            ( InitialFetching, _ ) ->
                 GT
 
-            ( Available, Forbidden ) ->
+            ( Available, Unavailable _ ) ->
                 LT
 
             ( Available, _ ) ->
                 GT
 
-            ( Forbidden, _ ) ->
+            ( Unavailable ServerError, Unavailable Forbidden ) ->
+                LT
+
+            ( Unavailable _, _ ) ->
                 GT
 
 
@@ -185,34 +181,100 @@ lessThan a b =
     compare b a == LT
 
 
-isActive : FetchStatus -> Bool
-isActive fetchStatus =
+subscribed : FetchStatus -> Bool
+subscribed fetchStatus =
     case fetchStatus of
-        NeverFetched ->
-            False
-
-        Waiting ->
+        Subscribed ->
             True
 
         NextFetchAt _ _ ->
             True
 
-        InitialFetching ->
-            False
-
-        ResumeFetching ->
-            True
-
         Fetching _ _ ->
             True
+
+        InitialFetching ->
+            False
 
         Available ->
             False
 
-        Forbidden ->
+        Unavailable _ ->
             False
 
 
-isAvailable : FetchStatus -> Bool
-isAvailable fetchStatus =
-    fetchStatus == Available || isActive fetchStatus
+type Msg
+    = Sub
+    | Unsub
+    | Start
+    | Hit Posix
+    | Miss Posix
+    | Fail RecentError
+
+
+update : Msg -> FetchStatus -> FetchStatus
+update msg fs =
+    case msg of
+        Sub ->
+            ite (subscribed fs) fs Subscribed
+
+        Unsub ->
+            ite (subscribed fs) Available fs
+
+        Start ->
+            case fs of
+                Subscribed ->
+                    InitialFetching
+
+                NextFetchAt posix bo ->
+                    Fetching posix bo
+
+                _ ->
+                    fs
+
+        Hit posix ->
+            case fs of
+                Fetching _ _ ->
+                    NextFetchAt (TimeExtra.add 2000 posix) BO2
+
+                InitialFetching ->
+                    NextFetchAt (TimeExtra.add 2000 posix) BO2
+
+                _ ->
+                    fs
+
+        Miss posix ->
+            case fs of
+                Fetching _ bo ->
+                    backoff bo posix
+
+                InitialFetching ->
+                    backoff BO2 posix
+
+                _ ->
+                    fs
+
+        Fail recentError ->
+            Unavailable recentError
+
+
+backoff : Backoff -> Posix -> FetchStatus
+backoff bo posix =
+    case bo of
+        BO2 ->
+            NextFetchAt (TimeExtra.add 2000 posix) BO5
+
+        BO5 ->
+            NextFetchAt (TimeExtra.add 5000 posix) BO10
+
+        BO10 ->
+            NextFetchAt (TimeExtra.add 10000 posix) BO30
+
+        BO30 ->
+            NextFetchAt (TimeExtra.add 30000 posix) BO60
+
+        BO60 ->
+            NextFetchAt (TimeExtra.add 60000 posix) BO120
+
+        BO120 ->
+            NextFetchAt (TimeExtra.add 120000 posix) BO120
