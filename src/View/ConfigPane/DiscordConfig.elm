@@ -102,9 +102,6 @@ tokenText discord =
         Identified newSession ->
             newSession.token
 
-        ChannelScanning pov ->
-            pov.token
-
         Hydrated token _ ->
             token
 
@@ -143,15 +140,6 @@ tokenInputButtonLabel discord =
         Identified _ ->
             "Fetching data..."
 
-        ChannelScanning pov ->
-            let
-                ( done, total ) =
-                    ( Dict.foldl (\_ c acc -> ite (not (initializing c)) (acc + 1) acc) 0 pov.channels
-                    , Dict.size pov.channels
-                    )
-            in
-            "Scanning Channels... (" ++ String.fromInt done ++ "/" ++ String.fromInt total ++ ")"
-
         Hydrated token _ ->
             if token == "" then
                 "Unregister"
@@ -177,11 +165,6 @@ currentStateEl discord =
     case discord of
         Identified newSession ->
             [ userNameAndAvatarEl newSession.user ]
-
-        ChannelScanning pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
-            ]
 
         Hydrated _ pov ->
             [ userNameAndAvatarEl pov.user
@@ -286,8 +269,8 @@ channelRows : POV -> List ( String, Element Msg )
 channelRows pov =
     pov.channels
         |> Dict.values
-        |> List.filter (FetchStatus.isActive << .fetchStatus)
-        |> List.sortWith Discord.compareByFetchStatus
+        |> List.filter (FetchStatus.subscribed << .fetchStatus)
+        |> List.sortWith Discord.compareByNames
         |> List.map channelRowKeyEl
 
 
@@ -312,12 +295,6 @@ channelRowKeyEl c =
             , el [ width fill ] <|
                 text <|
                     case c.fetchStatus of
-                        Waiting ->
-                            "Soon"
-
-                        ResumeFetching ->
-                            "Fetching..."
-
                         NextFetchAt posix _ ->
                             Iso8601.fromTime posix
 
@@ -325,5 +302,5 @@ channelRowKeyEl c =
                             "Fetching..."
 
                         _ ->
-                            "Not active"
+                            "Not subscribed"
             ]
