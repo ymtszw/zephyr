@@ -72,20 +72,17 @@ filterSectionHeaderEl cId isDirty =
         , Font.color flyoutFrameColor
         ]
         [ text "Filter Rules"
-        , Element.Input.button
-            [ width shrink
-            , paddingXY rectElementInnerPadding titlePadding
-            , alignRight
-            , BD.rounded titlePadding
-            , BG.color (ite isDirty oneDark.succ flyoutBackground)
-            , Font.size baseFontSize
-            , Font.color (ite isDirty oneDark.text flyoutFrameColor)
-            , ite isDirty noneAttr (htmlAttribute (style "cursor" "default"))
-            , ite isDirty noneAttr (htmlAttribute (Html.Attributes.disabled True))
-            ]
-            { onPress = ite isDirty (Just (ColumnCtrl cId ConfirmFilter)) Nothing
-            , label = el [ centerX, centerY ] (text "Apply")
-            }
+        , el [ alignRight, Font.size baseFontSize ] <|
+            thinButtonEl
+                { onPress = ColumnCtrl cId ConfirmFilter
+                , width = shrink |> minimum 60
+                , enabledColor = oneDark.succ
+                , enabledFontColor = oneDark.text
+                , disabledColor = flyoutBackground
+                , disabledFontColor = flyoutFrameColor
+                , enabled = isDirty
+                , innerElement = text "Apply"
+                }
         ]
 
 

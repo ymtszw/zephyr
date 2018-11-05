@@ -1,7 +1,7 @@
 module View.Parts exposing
     ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl
+    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, css, brightness, setAlpha, manualStyle
     , filtersToIconEl
@@ -25,7 +25,7 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl
+@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
@@ -285,6 +285,38 @@ rectButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, di
 rectButtonPadding : Int
 rectButtonPadding =
     10
+
+
+thinButtonEl :
+    { onPress : msg
+    , width : Length
+    , enabledColor : Color
+    , enabledFontColor : Color
+    , disabledColor : Color
+    , disabledFontColor : Color
+    , enabled : Bool
+    , innerElement : Element msg
+    }
+    -> Element msg
+thinButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
+    Element.Input.button
+        [ Element.width width
+        , padding thinButtonPadding
+        , BD.rounded thinButtonPadding
+        , BG.color (ite enabled enabledColor disabledColor)
+        , Font.color (ite enabled enabledFontColor disabledFontColor)
+        , clip
+        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        ]
+        { onPress = ite enabled (Just onPress) Nothing
+        , label = el [ centerX, centerY ] innerElement
+        }
+
+
+thinButtonPadding : Int
+thinButtonPadding =
+    2
 
 
 {-| Unlike general-purpose rectButtonEl, this cannot control BG/Font.color on enabled/disabled,
