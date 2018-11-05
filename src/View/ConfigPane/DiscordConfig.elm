@@ -1,7 +1,9 @@
 module View.ConfigPane.DiscordConfig exposing (discordConfigEl)
 
 import Data.ColorTheme exposing (oneDark)
-import Data.Producer.Discord as Discord exposing (..)
+import Data.Msg exposing (Msg(..))
+import Data.Producer as Producer
+import Data.Producer.Discord as Discord exposing (Channel, Discord(..), POV, User)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -10,7 +12,7 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Extra exposing (..)
+import Extra exposing (ite)
 import Iso8601
 import Octicons
 import View.Parts exposing (..)
@@ -29,28 +31,23 @@ discordConfigEl discordMaybe =
 tokenFormEl : Discord -> Element Msg
 tokenFormEl discord =
     column [ width fill, spacing spacingUnit ] <|
-        [ textInputEl
-            { onChange = TokenInput
-            , theme = oneDark
-            , enabled = tokenInputAllowed discord
-            , text = tokenText discord
-            , placeholder = Nothing
-            , label = tokenLabelEl
-            }
+        [ tokenInputEl discord
         , el [ alignRight ] <| tokenSubmitButtonEl discord
         ]
             ++ currentStateEl discord
 
 
-tokenSubmitButtonEl : Discord -> Element Msg
-tokenSubmitButtonEl discord =
-    primaryButtonEl
-        { onPress = CommitToken
-        , width = shrink
+tokenInputEl : Discord -> Element Msg
+tokenInputEl discord =
+    textInputEl
+        { onChange = Discord.TokenInput
         , theme = oneDark
-        , enabled = tokenSubmitAllowed discord
-        , innerElement = text (tokenInputButtonLabel discord)
+        , enabled = tokenInputAllowed discord
+        , text = tokenText discord
+        , placeholder = Nothing
+        , label = tokenLabelEl
         }
+        |> mapToRoot
 
 
 tokenInputAllowed : Discord -> Bool
@@ -67,6 +64,23 @@ tokenInputAllowed discord =
 
         _ ->
             False
+
+
+mapToRoot : Element Discord.Msg -> Element Msg
+mapToRoot =
+    map (Producer.DiscordMsg >> ProducerCtrl)
+
+
+tokenSubmitButtonEl : Discord -> Element Msg
+tokenSubmitButtonEl discord =
+    primaryButtonEl
+        { onPress = Discord.CommitToken
+        , width = shrink
+        , theme = oneDark
+        , enabled = tokenSubmitAllowed discord
+        , innerElement = text (tokenInputButtonLabel discord)
+        }
+        |> mapToRoot
 
 
 tokenSubmitAllowed : Discord -> Bool
@@ -208,7 +222,7 @@ userNameAndAvatarEl user =
             [ width (px 32)
             , height (px 32)
             , BD.rounded 16
-            , BG.uncropped (imageUrlWithFallback (Just 32) user.discriminator user.avatar)
+            , BG.uncropped (Discord.imageUrlWithFallback (Just 32) user.discriminator user.avatar)
             ]
             none
         , text user.username
@@ -232,7 +246,7 @@ guildsEl rehydrating pov =
 rehydrateButtonEl : Bool -> POV -> Element Msg
 rehydrateButtonEl rehydrating pov =
     roundButtonEl
-        { onPress = Rehydrate
+        { onPress = Discord.Rehydrate
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
         , innerElement =
@@ -242,6 +256,7 @@ rehydrateButtonEl rehydrating pov =
                 , shape = Octicons.sync
                 }
         }
+        |> map (Producer.DiscordMsg >> ProducerCtrl)
 
 
 rehydrateButtonSize : Int
@@ -258,11 +273,17 @@ subbedChannelsEl : POV -> Element Msg
 subbedChannelsEl pov =
     row [ width fill ]
         [ el [ alignTop ] <| text "Channels: "
-        , Element.Keyed.column [ width fill, spacing 5, Font.size (scale12 1) ] <|
-            [ headerKeyEl
-            ]
-                ++ channelRows pov
+        , Element.Keyed.column [ width fill, spacing 5, Font.size channelTableFontSize ] <|
+            List.concat <|
+                [ [ headerKeyEl ]
+                , channelRows pov
+                ]
         ]
+
+
+channelTableFontSize : Int
+channelTableFontSize =
+    scale12 1
 
 
 channelRows : POV -> List ( String, Element Msg )
@@ -280,6 +301,7 @@ headerKeyEl =
         row [ width fill, spacing 2 ]
             [ el [ width fill, BG.color oneDark.note ] <| text "Name"
             , el [ width fill, BG.color oneDark.note ] <| text "Next Fetch"
+            , el [ width fill, BG.color oneDark.note ] <| text "Action"
             ]
 
 
@@ -303,4 +325,19 @@ channelRowKeyEl c =
 
                         _ ->
                             "Not subscribed"
+            , el [ width fill ] <| createColumnButtonEl c
             ]
+
+
+createColumnButtonEl : Channel -> Element Msg
+createColumnButtonEl c =
+    thinButtonEl
+        { onPress = NoOp
+        , width = fill
+        , enabledColor = oneDark.prim
+        , enabledFontColor = oneDark.text
+        , disabledColor = oneDark.sub
+        , disabledFontColor = oneDark.note
+        , enabled = True
+        , innerElement = text "Create Column"
+        }
