@@ -4,7 +4,7 @@ import Array exposing (fromList)
 import ArrayExtra as Array
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
-import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), RecentError(..))
+import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueId exposing (Generator)
 import Element exposing (rgb255)
@@ -391,46 +391,36 @@ fetchStatusSuite =
             [ testCompare Subscribed Subscribed EQ
             , testCompare Subscribed (NextFetchAt (p 1) BO5) LT
             , testCompare Subscribed (Fetching (p 1) BO5) LT
-            , testCompare Subscribed InitialFetching LT
+            , testCompare Subscribed (InitialFetching (p 1)) LT
             , testCompare Subscribed Available LT
-            , testCompare Subscribed (Unavailable Unexpected) LT
             , testCompare (NextFetchAt (p 1) BO5) Subscribed GT
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 0) BO5) GT
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO5) EQ
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO10) EQ
             , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 2) BO5) LT
             , testCompare (NextFetchAt (p 1) BO5) (Fetching (p 1) BO5) LT
-            , testCompare (NextFetchAt (p 1) BO5) InitialFetching LT
+            , testCompare (NextFetchAt (p 1) BO5) (InitialFetching (p 1)) LT
             , testCompare (NextFetchAt (p 1) BO5) Available LT
-            , testCompare (NextFetchAt (p 1) BO5) (Unavailable Unexpected) LT
             , testCompare (Fetching (p 1) BO5) Subscribed GT
             , testCompare (Fetching (p 1) BO5) (NextFetchAt (p 1) BO5) GT
             , testCompare (Fetching (p 1) BO5) (Fetching (p 0) BO5) GT
             , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO5) EQ
             , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO10) EQ
             , testCompare (Fetching (p 1) BO5) (Fetching (p 2) BO5) LT
-            , testCompare (Fetching (p 1) BO5) InitialFetching LT
+            , testCompare (Fetching (p 1) BO5) (InitialFetching (p 1)) LT
             , testCompare (Fetching (p 1) BO5) Available LT
-            , testCompare (Fetching (p 1) BO5) (Unavailable Unexpected) LT
-            , testCompare InitialFetching Subscribed GT
-            , testCompare InitialFetching (NextFetchAt (p 1) BO5) GT
-            , testCompare InitialFetching (Fetching (p 1) BO5) GT
-            , testCompare InitialFetching InitialFetching EQ
-            , testCompare InitialFetching Available LT
-            , testCompare InitialFetching (Unavailable Unexpected) LT
+            , testCompare (InitialFetching (p 1)) Subscribed GT
+            , testCompare (InitialFetching (p 1)) (NextFetchAt (p 1) BO5) GT
+            , testCompare (InitialFetching (p 1)) (Fetching (p 1) BO5) GT
+            , testCompare (InitialFetching (p 1)) (InitialFetching (p 0)) GT
+            , testCompare (InitialFetching (p 1)) (InitialFetching (p 1)) EQ
+            , testCompare (InitialFetching (p 1)) (InitialFetching (p 2)) LT
+            , testCompare (InitialFetching (p 1)) Available LT
             , testCompare Available Subscribed GT
             , testCompare Available (NextFetchAt (p 1) BO5) GT
             , testCompare Available (Fetching (p 1) BO5) GT
-            , testCompare Available InitialFetching GT
+            , testCompare Available (InitialFetching (p 1)) GT
             , testCompare Available Available EQ
-            , testCompare Available (Unavailable Unexpected) LT
-            , testCompare (Unavailable Unexpected) Subscribed GT
-            , testCompare (Unavailable Unexpected) (NextFetchAt (p 1) BO5) GT
-            , testCompare (Unavailable Unexpected) (Fetching (p 1) BO5) GT
-            , testCompare (Unavailable Unexpected) InitialFetching GT
-            , testCompare (Unavailable Unexpected) Available GT
-            , testCompare (Unavailable Unexpected) (Unavailable Unexpected) EQ
-            , testCompare (Unavailable Unexpected) (Unavailable Forbidden) LT
             ]
         , describe "lessThan"
             [ Subscribed |> testLessThan (NextFetchAt (p 1) BO5)

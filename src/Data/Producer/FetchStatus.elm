@@ -1,9 +1,13 @@
 module Data.Producer.FetchStatus exposing
-    ( FetchStatus(..), Backoff(..), RecentError(..)
+    ( FetchStatus(..), Backoff(..)
     , encode, decoder, compare, lessThan, subscribed
+    , Msg(..), update
     )
 
 {-| Status of Periodic fetch.
+
+On non-transient error, the fetch subject itself should be removed.
+It may be re-introduced/retried by manual actions (such as Discord's rehydration.)
 
 @docs FetchStatus, Backoff, RecentError
 @docs encode, decoder, compare, lessThan, subscribed
@@ -25,9 +29,8 @@ type FetchStatus
     = Subscribed
     | NextFetchAt Posix Backoff
     | Fetching Posix Backoff
-    | InitialFetching -- If unexpectedly failed, should go Unavailable, allow retry
-    | Available -- Initial state; can transit to Subscribed => InitialFetching => NextFetchAt/Unavailble
-    | Unavailable RecentError -- May retry, but should be listed at hard-to-reach position
+    | InitialFetching Posix -- If unexpectedly failed, should go Unavailable, allow retry
+    | Available -- Initial state; can transit to Subscribed => InitialFetching => NextFetchAt (or dropped)
 
 
 type Backoff
@@ -37,11 +40,6 @@ type Backoff
     | BO30
     | BO60
     | BO120
-
-
-type RecentError
-    = Unexpected -- Transient ones
-    | Forbidden
 
 
 encode : FetchStatus -> E.Value
@@ -56,17 +54,11 @@ encode fetchStatus =
         Fetching posix bo ->
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
-        InitialFetching ->
+        InitialFetching _ ->
             E.tag "Subscribed"
 
         Available ->
             E.tag "Available"
-
-        Unavailable Unexpected ->
-            E.tagged "Unavailable" (E.tag "Unexpected")
-
-        Unavailable Forbidden ->
-            E.tagged "Unavailable" (E.tag "Forbidden")
 
 
 encodeBackoff : Backoff -> E.Value
@@ -97,13 +89,11 @@ decoder =
         [ D.tag "Subscribed" Subscribed
         , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
         , D.tag "Available" Available
-        , D.tagged "Unavailable" Unavailable <|
-            D.oneOf [ D.tag "Unexpected" Unexpected, D.tag "Forbidden" Forbidden ]
 
         -- Old format
         , D.tag "NeverFetched" Available
         , D.tag "Waiting" Subscribed
-        , D.tag "Forbidden" (Unavailable Forbidden)
+        , D.tag "Forbidden" Available -- Purged when tried
         ]
 
 
@@ -135,7 +125,7 @@ compare a b =
 
             ( NextFetchAt p1 _, NextFetchAt p2 _ ) ->
                 -- For ease of impl., not comparing current backoff
-                Basics.compare (Time.posixToMillis p1) (Time.posixToMillis p2)
+                Basics.compare (ms p1) (ms p2)
 
             ( NextFetchAt _ _, _ ) ->
                 LT
@@ -147,30 +137,21 @@ compare a b =
                 GT
 
             ( Fetching p1 _, Fetching p2 _ ) ->
-                Basics.compare (Time.posixToMillis p1) (Time.posixToMillis p2)
+                Basics.compare (ms p1) (ms p2)
 
             ( Fetching _ _, _ ) ->
                 LT
 
-            ( InitialFetching, Available ) ->
+            ( InitialFetching p1, InitialFetching p2 ) ->
+                Basics.compare (ms p1) (ms p2)
+
+            ( InitialFetching _, Available ) ->
                 LT
 
-            ( InitialFetching, Unavailable _ ) ->
-                LT
-
-            ( InitialFetching, _ ) ->
+            ( InitialFetching _, _ ) ->
                 GT
-
-            ( Available, Unavailable _ ) ->
-                LT
 
             ( Available, _ ) ->
-                GT
-
-            ( Unavailable Unexpected, Unavailable Forbidden ) ->
-                LT
-
-            ( Unavailable _, _ ) ->
                 GT
 
 
@@ -185,7 +166,8 @@ subscribed : FetchStatus -> Bool
 subscribed fetchStatus =
     case fetchStatus of
         Subscribed ->
-            True
+            -- Consider as subscribed only in fetch loop
+            False
 
         NextFetchAt _ _ ->
             True
@@ -193,69 +175,88 @@ subscribed fetchStatus =
         Fetching _ _ ->
             True
 
-        InitialFetching ->
+        InitialFetching _ ->
             False
 
         Available ->
-            False
-
-        Unavailable _ ->
             False
 
 
 type Msg
     = Sub
     | Unsub
-    | Start
+    | Start Posix
     | Hit Posix
     | Miss Posix
-    | Fail RecentError
+    | Fail
 
 
-update : Msg -> FetchStatus -> FetchStatus
+update : Msg -> FetchStatus -> { fs : FetchStatus, persist : Bool, updateFAM : Bool }
 update msg fs =
+    let
+        pure fs_ =
+            { fs = fs_, persist = False, updateFAM = False }
+    in
     case msg of
         Sub ->
-            ite (subscribed fs) fs Subscribed
-
-        Unsub ->
-            ite (subscribed fs) Available fs
-
-        Start ->
             case fs of
-                Subscribed ->
-                    InitialFetching
-
-                NextFetchAt posix bo ->
-                    Fetching posix bo
+                Available ->
+                    pure Subscribed
 
                 _ ->
-                    fs
+                    pure fs
+
+        Unsub ->
+            case fs of
+                Available ->
+                    pure fs
+
+                _ ->
+                    { fs = Available, persist = True, updateFAM = True }
+
+        Start posix ->
+            case fs of
+                Subscribed ->
+                    pure (InitialFetching posix)
+
+                NextFetchAt _ bo ->
+                    pure (Fetching posix bo)
+
+                _ ->
+                    pure fs
 
         Hit posix ->
             case fs of
                 Fetching _ _ ->
-                    NextFetchAt (TimeExtra.add 2000 posix) BO2
+                    { fs = NextFetchAt (TimeExtra.add 2000 posix) BO2, persist = True, updateFAM = False }
 
-                InitialFetching ->
-                    NextFetchAt (TimeExtra.add 2000 posix) BO2
+                InitialFetching _ ->
+                    { fs = NextFetchAt (TimeExtra.add 2000 posix) BO2, persist = True, updateFAM = True }
 
                 _ ->
-                    fs
+                    pure fs
 
         Miss posix ->
             case fs of
                 Fetching _ bo ->
-                    backoff bo posix
+                    { fs = backoff bo posix, persist = True, updateFAM = False }
 
-                InitialFetching ->
-                    backoff BO2 posix
+                InitialFetching _ ->
+                    { fs = backoff BO2 posix, persist = True, updateFAM = True }
 
                 _ ->
-                    fs
+                    pure fs
 
-        Fail recentError ->
-            Unavailable recentError
+        Fail ->
+            case fs of
+                Fetching posix _ ->
+                    { fs = backoff BO30 posix, persist = True, updateFAM = False }
+
+                InitialFetching posix ->
+                    { fs = backoff BO30 posix, persist = True, updateFAM = False }
+
+                _ ->
+                    pure fs
 
 
 backoff : Backoff -> Posix -> FetchStatus
