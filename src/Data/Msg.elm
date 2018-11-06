@@ -1,5 +1,6 @@
 module Data.Msg exposing (Msg(..), logEntry)
 
+import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Data.Column as Column
@@ -32,7 +33,7 @@ type Msg
     | DelColumn Int
     | ToggleColumnSwappable Bool
     | DragStart Int String
-    | DragEnter Int
+    | DragEnter (Array String)
     | DragEnd
     | LoadOk SavedState
     | LoadErr D.Error
@@ -89,8 +90,8 @@ logEntry msg =
         DragStart index cId ->
             Entry "DragStart" [ fromInt index, cId ]
 
-        DragEnter index ->
-            Entry "DragEnter" [ fromInt index ]
+        DragEnter order ->
+            Entry "DragEnter" [ String.join "," (Array.toList order) ]
 
         DragEnd ->
             Entry "DragEnd" []

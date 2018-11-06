@@ -146,8 +146,8 @@ update msg ({ viewState, env } as m) =
         DragStart originalIndex colId ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }
 
-        DragEnter dest ->
-            pure (onDragEnter m dest)
+        DragEnter newOrder ->
+            pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
 
         DragEnd ->
             -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
@@ -195,24 +195,6 @@ update msg ({ viewState, env } as m) =
 columnIdPrefix : String
 columnIdPrefix =
     "column"
-
-
-onDragEnter : Model -> Int -> Model
-onDragEnter m dest =
-    -- Ideally we should pass originalOrder Array along with messages
-    -- so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
-    -- However currently there is a bug that prevents --debug compilation
-    -- when Arrays are passed in messages. See https://github.com/elm/compiler/issues/1753
-    case m.viewState.columnSwapMaybe of
-        Just swap ->
-            let
-                newOrder =
-                    Array.moveFromTo swap.originalIndex dest swap.originalOrder
-            in
-            { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
-
-        Nothing ->
-            m
 
 
 onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
