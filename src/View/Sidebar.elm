@@ -85,7 +85,7 @@ columnAddButtonKeyEl =
         , BD.color oneDark.note
         , BD.rounded rectElementRound
         ]
-        { onPress = Just AddColumn
+        { onPress = Just AddEmptyColumn
         , label =
             el [ centerX, centerY ] <|
                 octiconEl { size = buttonSize // 2, color = defaultOcticonColor, shape = Octicons.plus }

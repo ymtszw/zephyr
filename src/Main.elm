@@ -15,7 +15,7 @@ import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
-import Data.UniqueId as UniqueId
+import Data.UniqueIdGen as UniqueIdGen
 import Extra exposing (..)
 import IndexedDb
 import Json.Decode as D
@@ -121,9 +121,17 @@ update msg ({ viewState, env } as m) =
         SelectPick actualMsg ->
             update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
 
-        AddColumn ->
-            -- If Filters are somehow set to the new Column, then persist.
-            pure (addColumn m)
+        AddEmptyColumn ->
+            UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new idGen cId)
+                |> (\( c, idGen ) ->
+                        -- If Filters are somehow set to the new Column, then persist.
+                        pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
+                   )
+
+        AddSimpleColumn fa ->
+            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple fa)
+                |> (\( c, idGen ) -> ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, True ))
 
         DelColumn index ->
             ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, True )
@@ -138,8 +146,8 @@ update msg ({ viewState, env } as m) =
         DragStart originalIndex colId ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }
 
-        DragEnter dest ->
-            pure (onDragEnter m dest)
+        DragEnter newOrder ->
+            pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
 
         DragEnd ->
             -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
@@ -184,56 +192,19 @@ update msg ({ viewState, env } as m) =
             pure m
 
 
-addColumn : Model -> Model
-addColumn m =
-    let
-        ( newColumn, newIdGen ) =
-            m.idGen
-                |> UniqueId.gen "column"
-                |> UniqueId.andThen (\( cId, idGen ) -> Column.new idGen cId)
-    in
-    { m | columnStore = ColumnStore.add newColumn m.columnStore, idGen = newIdGen }
-
-
-onDragEnter : Model -> Int -> Model
-onDragEnter m dest =
-    -- Ideally we should pass originalOrder Array along with messages
-    -- so that this case clause can be eliminated. ("Make impossible states unrepresentable.")
-    -- However currently there is a bug that prevents --debug compilation
-    -- when Arrays are passed in messages. See https://github.com/elm/compiler/issues/1753
-    case m.viewState.columnSwapMaybe of
-        Just swap ->
-            let
-                newOrder =
-                    Array.moveFromTo swap.originalIndex dest swap.originalOrder
-            in
-            { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
-
-        Nothing ->
-            m
-
-
 onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
-onTick posix mOld =
-    case Worque.pop mOld.worque of
+onTick posix m =
+    case Worque.pop m.worque of
         ( Just BrokerScan, newWorque ) ->
-            scanBroker { mOld | worque = newWorque }
+            ColumnStore.consumeBroker m.itemBroker m.columnStore
+                |> (\( cs, persist ) -> ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }, Cmd.none, persist ))
 
         ( Just DiscordFetch, newWorque ) ->
-            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) mOld.producerRegistry
-                |> applyProducerYield { mOld | worque = newWorque }
+            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
+                |> applyProducerYield { m | worque = newWorque }
 
         ( Nothing, newWorque ) ->
-            pure { mOld | worque = newWorque }
-
-
-scanBroker : Model -> ( Model, Cmd Msg, Bool )
-scanBroker m =
-    let
-        ( newColumnStore, shouldPersist ) =
-            ColumnStore.consumeBroker m.itemBroker m.columnStore
-    in
-    ( { m | columnStore = newColumnStore, worque = Worque.push BrokerScan m.worque }, Cmd.none, shouldPersist )
+            pure { m | worque = newWorque }
 
 
 revealColumn : Int -> Cmd Msg

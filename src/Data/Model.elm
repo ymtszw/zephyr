@@ -29,7 +29,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
-import Data.UniqueId as UniqueId
+import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Encode as E
 import Logger
 import Time exposing (Zone)
@@ -41,7 +41,7 @@ type alias Model =
     { columnStore : ColumnStore
     , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
-    , idGen : UniqueId.Generator
+    , idGen : UniqueIdGen
     , worque : Worque
     , log : Logger.History
     , navKey : Key
@@ -86,7 +86,7 @@ initModel env navKey =
         { columnStore = ColumnStore.init
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
-        , idGen = UniqueId.init
+        , idGen = UniqueIdGen.init
         , worque = Worque.init |> Worque.push BrokerScan
         , log = Logger.init
         , navKey = navKey
@@ -113,9 +113,9 @@ welcomeModel : Env -> Key -> Model
 welcomeModel env navKey =
     let
         ( welcomeColumn, finalGen ) =
-            UniqueId.init
-                |> UniqueId.gen "column"
-                |> UniqueId.andThen (\( cId, idGen ) -> Column.welcome idGen cId)
+            UniqueIdGen.init
+                |> UniqueIdGen.gen UniqueIdGen.columnPrefix
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome idGen cId)
     in
     { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
@@ -135,5 +135,5 @@ encodeForPersistence m =
         [ ( "columnStore", ColumnStore.encode m.columnStore )
         , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
         , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
-        , ( "idGen", UniqueId.encodeGenerator m.idGen )
+        , ( "idGen", UniqueIdGen.encodeGenerator m.idGen )
         ]

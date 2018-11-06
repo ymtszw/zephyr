@@ -44,9 +44,8 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper (ProducerCtrl << Producer.DiscordMsg)
-            discordConfigTitleEl
-            (discordConfigEl m.producerRegistry.discord)
+        [ configSectionWrapper discordConfigTitleEl <|
+            discordConfigEl m.viewState m.producerRegistry.discord
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -62,8 +61,8 @@ sectionSpacingY =
     20
 
 
-configSectionWrapper : (msg -> Msg) -> Element Msg -> Element msg -> Element Msg
-configSectionWrapper tagger titleEl element =
+configSectionWrapper : Element Msg -> Element Msg -> Element Msg
+configSectionWrapper titleEl element =
     column
         [ width fill
         , padding rectElementOuterPadding
@@ -79,7 +78,7 @@ configSectionWrapper tagger titleEl element =
             , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
             ]
             titleEl
-        , map tagger element
+        , element
         ]
 
 

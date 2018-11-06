@@ -12,19 +12,8 @@ Realtime Producers could be implemented based on Websocket event handling.
 Also there could be Hybrid of the two, utilizing both downstream event handling
 AND stateless API requests.
 
-
-## Types
-
 @docs YieldBase, Reload, PostProcessBase, UpdateFAM
-
-
-## State Machine APIs
-
 @docs pure, enter, enterAndFire, yield, yieldAndFire, destroy
-
-
-## PostProcessBase APIs
-
 @docs noop
 
 -}

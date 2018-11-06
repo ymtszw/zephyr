@@ -1,5 +1,6 @@
 module Data.Msg exposing (Msg(..), logEntry)
 
+import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Data.Column as Column
@@ -27,11 +28,12 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | SelectToggle String Bool
     | SelectPick Msg
-    | AddColumn
+    | AddEmptyColumn
+    | AddSimpleColumn Filter.FilterAtom
     | DelColumn Int
     | ToggleColumnSwappable Bool
     | DragStart Int String
-    | DragEnter Int
+    | DragEnter (Array String)
     | DragEnd
     | LoadOk SavedState
     | LoadErr D.Error
@@ -73,8 +75,11 @@ logEntry msg =
         SelectPick sMsg ->
             logEntry sMsg
 
-        AddColumn ->
-            Entry "AddColumn" []
+        AddEmptyColumn ->
+            Entry "AddEmptyColumn" []
+
+        AddSimpleColumn fa ->
+            Entry "AddSimpleColumn" [ Filter.atomToString fa ]
 
         DelColumn index ->
             Entry "DelColumn" [ fromInt index ]
@@ -85,8 +90,8 @@ logEntry msg =
         DragStart index cId ->
             Entry "DragStart" [ fromInt index, cId ]
 
-        DragEnter index ->
-            Entry "DragEnter" [ fromInt index ]
+        DragEnter order ->
+            Entry "DragEnter" [ String.join "," (Array.toList order) ]
 
         DragEnd ->
             Entry "DragEnd" []
@@ -185,6 +190,12 @@ producerMsgToEntry pMsg =
 
                 Discord.Rehydrate ->
                     Entry "Discord.Rehydrate" []
+
+                Discord.Subscribe cId ->
+                    Entry "Discord.Subscribe" [ cId ]
+
+                Discord.Unsubscribe cId ->
+                    Entry "Discord.Unsubscribe" [ cId ]
 
                 Discord.Fetch posix ->
                     Entry "Discord.Fetch" [ Iso8601.fromTime posix ]

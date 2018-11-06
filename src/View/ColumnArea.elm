@@ -1,6 +1,7 @@
 module View.ColumnArea exposing (columnAreaEl)
 
 import Array exposing (Array)
+import ArrayExtra
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column exposing (ColumnItem(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
@@ -61,7 +62,11 @@ columnKeyEl env vs index c =
                         baseAttrs ++ [ inFront (lazy dragIndicatorEl env.clientHeight) ]
 
                     else
-                        baseAttrs ++ [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter index))) ]
+                        let
+                            newOrder =
+                                ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
+                        in
+                        baseAttrs ++ [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter newOrder))) ]
 
                 Nothing ->
                     if vs.columnSwappable then

@@ -1,5 +1,21 @@
-module Data.Producer.FetchStatus exposing (Backoff(..), FetchStatus(..), compare, decoder, encode, isActive, isAvailable, lessThan)
+module Data.Producer.FetchStatus exposing
+    ( FetchStatus(..), Backoff(..)
+    , encode, decoder, compare, lessThan, subscribed, dormant
+    , Msg(..), update
+    )
 
+{-| Status of Periodic fetch.
+
+On non-transient error, the fetch subject itself should be removed.
+It may be re-introduced/retried by manual actions (such as Discord's rehydration.)
+
+@docs FetchStatus, Backoff, RecentError
+@docs encode, decoder, compare, lessThan, subscribed, dormant
+@docs Msg, update
+
+-}
+
+import Extra exposing (ite)
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -10,14 +26,11 @@ import TimeExtra exposing (ms, posix)
 
 
 type FetchStatus
-    = NeverFetched
-    | Waiting
+    = Waiting
     | NextFetchAt Posix Backoff
-    | InitialFetching
-    | ResumeFetching
     | Fetching Posix Backoff
-    | Available
-    | Forbidden
+    | InitialFetching Posix -- If unexpectedly failed, should go Unavailable, allow retry
+    | Available -- Initial state; can transit to Waiting => InitialFetching => NextFetchAt (or dropped)
 
 
 type Backoff
@@ -32,29 +45,20 @@ type Backoff
 encode : FetchStatus -> E.Value
 encode fetchStatus =
     case fetchStatus of
-        NeverFetched ->
-            E.tag "NeverFetched"
-
         Waiting ->
             E.tag "Waiting"
 
         NextFetchAt posix bo ->
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
-        InitialFetching ->
-            E.tag "NeverFetched"
-
-        ResumeFetching ->
-            E.tag "Waiting"
-
         Fetching posix bo ->
             E.tagged2 "NextFetchAt" (E.int (ms posix)) (encodeBackoff bo)
 
+        InitialFetching _ ->
+            E.tag "Waiting"
+
         Available ->
             E.tag "Available"
-
-        Forbidden ->
-            E.tag "Forbidden"
 
 
 encodeBackoff : Backoff -> E.Value
@@ -82,11 +86,13 @@ encodeBackoff bo =
 decoder : Decoder FetchStatus
 decoder =
     D.oneOf
-        [ D.tag "NeverFetched" NeverFetched
-        , D.tag "Waiting" Waiting
+        [ D.tag "Waiting" Waiting
         , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
         , D.tag "Available" Available
-        , D.tag "Forbidden" Forbidden
+
+        -- Old format
+        , D.tag "NeverFetched" Available
+        , D.tag "Forbidden" Available -- Purged when tried
         ]
 
 
@@ -110,71 +116,41 @@ compare a b =
 
     else
         case ( a, b ) of
-            ( NeverFetched, _ ) ->
-                LT
-
-            ( Waiting, NeverFetched ) ->
-                GT
-
             ( Waiting, _ ) ->
                 LT
-
-            ( NextFetchAt _ _, NeverFetched ) ->
-                GT
 
             ( NextFetchAt _ _, Waiting ) ->
                 GT
 
             ( NextFetchAt p1 _, NextFetchAt p2 _ ) ->
                 -- For ease of impl., not comparing current backoff
-                Basics.compare (Time.posixToMillis p1) (Time.posixToMillis p2)
+                Basics.compare (ms p1) (ms p2)
 
             ( NextFetchAt _ _, _ ) ->
                 LT
 
-            ( InitialFetching, NeverFetched ) ->
+            ( Fetching _ _, Waiting ) ->
                 GT
 
-            ( InitialFetching, Waiting ) ->
-                GT
-
-            ( InitialFetching, NextFetchAt _ _ ) ->
-                GT
-
-            ( InitialFetching, _ ) ->
-                LT
-
-            ( ResumeFetching, Fetching _ _ ) ->
-                LT
-
-            ( ResumeFetching, Available ) ->
-                LT
-
-            ( ResumeFetching, Forbidden ) ->
-                LT
-
-            ( ResumeFetching, _ ) ->
+            ( Fetching _ _, NextFetchAt _ _ ) ->
                 GT
 
             ( Fetching p1 _, Fetching p2 _ ) ->
-                Basics.compare (Time.posixToMillis p1) (Time.posixToMillis p2)
-
-            ( Fetching _ _, Available ) ->
-                LT
-
-            ( Fetching _ _, Forbidden ) ->
-                LT
+                Basics.compare (ms p1) (ms p2)
 
             ( Fetching _ _, _ ) ->
-                GT
-
-            ( Available, Forbidden ) ->
                 LT
 
-            ( Available, _ ) ->
+            ( InitialFetching p1, InitialFetching p2 ) ->
+                Basics.compare (ms p1) (ms p2)
+
+            ( InitialFetching _, Available ) ->
+                LT
+
+            ( InitialFetching _, _ ) ->
                 GT
 
-            ( Forbidden, _ ) ->
+            ( Available, _ ) ->
                 GT
 
 
@@ -185,34 +161,132 @@ lessThan a b =
     compare b a == LT
 
 
-isActive : FetchStatus -> Bool
-isActive fetchStatus =
+subscribed : FetchStatus -> Bool
+subscribed fetchStatus =
     case fetchStatus of
-        NeverFetched ->
-            False
-
         Waiting ->
-            True
+            -- Consider as subscribed only after initial fetch succeeded
+            False
 
         NextFetchAt _ _ ->
-            True
-
-        InitialFetching ->
-            False
-
-        ResumeFetching ->
             True
 
         Fetching _ _ ->
             True
 
+        InitialFetching _ ->
+            False
+
         Available ->
             False
 
-        Forbidden ->
+
+dormant : FetchStatus -> Bool
+dormant fetchStatus =
+    case fetchStatus of
+        Available ->
+            True
+
+        _ ->
             False
 
 
-isAvailable : FetchStatus -> Bool
-isAvailable fetchStatus =
-    fetchStatus == Available || isActive fetchStatus
+type Msg
+    = Sub
+    | Unsub
+    | Start Posix
+    | Hit Posix
+    | Miss Posix
+    | Fail
+
+
+update : Msg -> FetchStatus -> { fs : FetchStatus, persist : Bool, updateFAM : Bool }
+update msg fs =
+    let
+        pure fs_ =
+            { fs = fs_, persist = False, updateFAM = False }
+    in
+    case msg of
+        Sub ->
+            case fs of
+                Available ->
+                    pure Waiting
+
+                _ ->
+                    pure fs
+
+        Unsub ->
+            case fs of
+                Available ->
+                    pure fs
+
+                _ ->
+                    { fs = Available, persist = True, updateFAM = True }
+
+        Start posix ->
+            case fs of
+                Waiting ->
+                    pure (InitialFetching posix)
+
+                NextFetchAt _ bo ->
+                    pure (Fetching posix bo)
+
+                _ ->
+                    pure fs
+
+        Hit posix ->
+            case fs of
+                Fetching _ _ ->
+                    { fs = NextFetchAt (TimeExtra.add 2000 posix) BO2, persist = True, updateFAM = False }
+
+                InitialFetching _ ->
+                    { fs = NextFetchAt (TimeExtra.add 2000 posix) BO2, persist = True, updateFAM = True }
+
+                _ ->
+                    pure fs
+
+        Miss posix ->
+            case fs of
+                Fetching _ bo ->
+                    { fs = backoff bo posix, persist = True, updateFAM = False }
+
+                InitialFetching _ ->
+                    { fs = backoff BO2 posix, persist = True, updateFAM = True }
+
+                _ ->
+                    pure fs
+
+        Fail ->
+            case fs of
+                Fetching posix _ ->
+                    { fs = backoff BO30 posix, persist = True, updateFAM = False }
+
+                InitialFetching _ ->
+                    -- This is very rare, but can happen.
+                    -- If it stacks at InitialFetching <-> Waiting, should be cancelled by Unsub
+                    pure Waiting
+
+                _ ->
+                    pure fs
+
+
+backoff : Backoff -> Posix -> FetchStatus
+backoff bo posix =
+    case bo of
+        BO2 ->
+            NextFetchAt (TimeExtra.add 2000 posix) BO5
+
+        BO5 ->
+            NextFetchAt (TimeExtra.add 5000 posix) BO10
+
+        BO10 ->
+            NextFetchAt (TimeExtra.add 10000 posix) BO30
+
+        BO30 ->
+            NextFetchAt (TimeExtra.add 30000 posix) BO60
+
+        BO60 ->
+            NextFetchAt (TimeExtra.add 60000 posix) BO120
+
+        BO120 ->
+            NextFetchAt (TimeExtra.add 120000 posix) BO120

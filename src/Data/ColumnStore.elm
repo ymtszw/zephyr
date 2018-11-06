@@ -32,7 +32,6 @@ import Broker exposing (Broker)
 import Data.Column as Column exposing (Column)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Item exposing (Item)
-import Data.UniqueId
 import Dict exposing (Dict)
 import Extra exposing (map, pure)
 import Json.Decode as D exposing (Decoder)
