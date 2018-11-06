@@ -121,9 +121,13 @@ update msg ({ viewState, env } as m) =
         SelectPick actualMsg ->
             update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
 
-        AddColumn ->
-            -- If Filters are somehow set to the new Column, then persist.
-            pure (addColumn m)
+        AddEmptyColumn ->
+            UniqueId.gen columnIdPrefix m.idGen
+                |> UniqueId.andThen (\( cId, idGen ) -> Column.new idGen cId)
+                |> (\( c, idGen ) ->
+                        -- If Filters are somehow set to the new Column, then persist.
+                        pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
+                   )
 
         AddSimpleColumn fa ->
             UniqueId.genAndMap columnIdPrefix m.idGen (Column.simple fa)
@@ -188,17 +192,6 @@ update msg ({ viewState, env } as m) =
             pure m
 
 
-addColumn : Model -> Model
-addColumn m =
-    let
-        ( newColumn, newIdGen ) =
-            m.idGen
-                |> UniqueId.gen columnIdPrefix
-                |> UniqueId.andThen (\( cId, idGen ) -> Column.new idGen cId)
-    in
-    { m | columnStore = ColumnStore.add newColumn m.columnStore, idGen = newIdGen }
-
-
 columnIdPrefix : String
 columnIdPrefix =
     "column"
@@ -223,26 +216,18 @@ onDragEnter m dest =
 
 
 onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
-onTick posix mOld =
-    case Worque.pop mOld.worque of
+onTick posix m =
+    case Worque.pop m.worque of
         ( Just BrokerScan, newWorque ) ->
-            scanBroker { mOld | worque = newWorque }
+            ColumnStore.consumeBroker m.itemBroker m.columnStore
+                |> (\( cs, persist ) -> ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }, Cmd.none, persist ))
 
         ( Just DiscordFetch, newWorque ) ->
-            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) mOld.producerRegistry
-                |> applyProducerYield { mOld | worque = newWorque }
+            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
+                |> applyProducerYield { m | worque = newWorque }
 
         ( Nothing, newWorque ) ->
-            pure { mOld | worque = newWorque }
-
-
-scanBroker : Model -> ( Model, Cmd Msg, Bool )
-scanBroker m =
-    let
-        ( newColumnStore, shouldPersist ) =
-            ColumnStore.consumeBroker m.itemBroker m.columnStore
-    in
-    ( { m | columnStore = newColumnStore, worque = Worque.push BrokerScan m.worque }, Cmd.none, shouldPersist )
+            pure { m | worque = newWorque }
 
 
 revealColumn : Int -> Cmd Msg

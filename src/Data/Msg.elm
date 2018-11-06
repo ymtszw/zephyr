@@ -27,7 +27,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | SelectToggle String Bool
     | SelectPick Msg
-    | AddColumn
+    | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn Int
     | ToggleColumnSwappable Bool
@@ -74,8 +74,8 @@ logEntry msg =
         SelectPick sMsg ->
             logEntry sMsg
 
-        AddColumn ->
-            Entry "AddColumn" []
+        AddEmptyColumn ->
+            Entry "AddEmptyColumn" []
 
         AddSimpleColumn fa ->
             Entry "AddSimpleColumn" [ Filter.atomToString fa ]
