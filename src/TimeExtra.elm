@@ -30,6 +30,8 @@ local z po =
         , Time.toHour z po |> String.fromInt |> String.padLeft 2 '0'
         , ":"
         , Time.toMinute z po |> String.fromInt |> String.padLeft 2 '0'
+        , ":"
+        , Time.toSecond z po |> String.fromInt |> String.padLeft 2 '0'
         ]
 
 
