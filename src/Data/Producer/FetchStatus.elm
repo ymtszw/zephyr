@@ -1,6 +1,6 @@
 module Data.Producer.FetchStatus exposing
     ( FetchStatus(..), Backoff(..)
-    , encode, decoder, compare, lessThan, subscribed
+    , encode, decoder, compare, lessThan, subscribed, dormant
     , Msg(..), update
     )
 
@@ -10,7 +10,7 @@ On non-transient error, the fetch subject itself should be removed.
 It may be re-introduced/retried by manual actions (such as Discord's rehydration.)
 
 @docs FetchStatus, Backoff, RecentError
-@docs encode, decoder, compare, lessThan, subscribed
+@docs encode, decoder, compare, lessThan, subscribed, dormant
 @docs Msg, update
 
 -}
@@ -178,6 +178,16 @@ subscribed fetchStatus =
             False
 
         Available ->
+            False
+
+
+dormant : FetchStatus -> Bool
+dormant fetchStatus =
+    case fetchStatus of
+        Available ->
+            True
+
+        _ ->
             False
 
 
