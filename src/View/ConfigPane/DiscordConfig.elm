@@ -14,6 +14,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Extra exposing (ite)
+import Html.Attributes
 import Iso8601
 import Octicons
 import View.Parts exposing (..)
@@ -326,7 +327,10 @@ channelRowKeyEl c =
 
                         _ ->
                             "Not subscribed"
-            , el [ width fill ] <| createColumnButtonEl c
+            , row [ width fill, spacing spacingUnit ]
+                [ createColumnButtonEl c
+                , unsubscribeButtonEl c
+                ]
             ]
 
 
@@ -339,6 +343,23 @@ createColumnButtonEl c =
         , enabledFontColor = oneDark.text
         , disabledColor = oneDark.sub
         , disabledFontColor = oneDark.note
-        , enabled = True
+        , enabled = FetchStatus.subscribed c.fetchStatus
         , innerElement = text "Create Column"
         }
+
+
+unsubscribeButtonEl : Channel -> Element Msg
+unsubscribeButtonEl c =
+    roundButtonEl
+        { onPress = Discord.Unsubscribe c.id
+        , enabled = True -- Any channels show up in table are unsubscribable
+        , innerElement =
+            el [ htmlAttribute (Html.Attributes.title ("Unsubscribe #" ++ c.name)) ] <|
+                octiconEl
+                    { size = channelTableFontSize
+                    , color = oneDark.err
+                    , shape = Octicons.circleSlash
+                    }
+        , innerElementSize = channelTableFontSize
+        }
+        |> mapToRoot
