@@ -6,7 +6,7 @@ import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
-import Data.UniqueId exposing (Generator)
+import Data.UniqueIdGen exposing (UniqueIdGen)
 import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
@@ -216,7 +216,7 @@ arraySuite =
 
 
 
--- Data.UniqueId
+-- Data.UniqueIdGen
 
 
 testGen : List ( ( String, Int ), String ) -> Test
@@ -229,12 +229,12 @@ testGen reqExpects =
         \_ ->
             let
                 ( actuals, _ ) =
-                    genAll requests Data.UniqueId.init
+                    genAll requests Data.UniqueIdGen.init
             in
             Expect.equalLists expects actuals
 
 
-genAll : List ( String, Int ) -> Generator -> ( List String, Generator )
+genAll : List ( String, Int ) -> UniqueIdGen -> ( List String, UniqueIdGen )
 genAll requests generator =
     let
         folder ( prefix, howMany ) ( accGenerated, accGenerator ) =
@@ -247,23 +247,23 @@ genAll requests generator =
     List.foldr folder ( [], generator ) requests
 
 
-seqGen : String -> Int -> Generator -> ( String, Generator )
+seqGen : String -> Int -> UniqueIdGen -> ( String, UniqueIdGen )
 seqGen prefix howMany generator =
     seqGenImpl prefix howMany ( "not generated", generator )
 
 
-seqGenImpl : String -> Int -> ( String, Generator ) -> ( String, Generator )
+seqGenImpl : String -> Int -> ( String, UniqueIdGen ) -> ( String, UniqueIdGen )
 seqGenImpl prefix howMany ( lastResult, accGenerator ) =
     if howMany <= 0 then
         ( lastResult, accGenerator )
 
     else
-        seqGenImpl prefix (howMany - 1) (Data.UniqueId.gen prefix accGenerator)
+        seqGenImpl prefix (howMany - 1) (Data.UniqueIdGen.gen prefix accGenerator)
 
 
 uniqueIdSuite : Test
 uniqueIdSuite =
-    describe "Data.UniqueId"
+    describe "Data.UniqueIdGen"
         [ describe "gen"
             [ testGen [ ( ( "prefixA", 0 ), "not generated" ) ]
             , testGen [ ( ( "prefixA", 1 ), "prefixA_0" ) ]
