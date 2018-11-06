@@ -194,6 +194,9 @@ producerMsgToEntry pMsg =
                 Discord.Subscribe cId ->
                     Entry "Discord.Subscribe" [ cId ]
 
+                Discord.Unsubscribe cId ->
+                    Entry "Discord.Unsubscribe" [ cId ]
+
                 Discord.Fetch posix ->
                     Entry "Discord.Fetch" [ Iso8601.fromTime posix ]
 

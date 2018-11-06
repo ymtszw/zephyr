@@ -780,6 +780,7 @@ type Msg
     | Hydrate (Dict String Guild) (Dict String Channel)
     | Rehydrate
     | Subscribe String
+    | Unsubscribe String
     | Fetch Posix
     | Fetched FetchResult
     | APIError Http.Error
@@ -813,6 +814,9 @@ update msg discordMaybe =
 
         ( Subscribe cId, Just discord ) ->
             handleSubscribe cId discord
+
+        ( Unsubscribe cId, Just discord ) ->
+            handleUnsubscribe cId discord
 
         ( Fetch posix, Just discord ) ->
             handleFetch discord posix
@@ -998,6 +1002,46 @@ subscribeImpl tagger cId pov =
 
         Nothing ->
             -- Channel somehow gone; should not basically happen
+            pure (tagger pov)
+
+
+handleUnsubscribe : String -> Discord -> Yield
+handleUnsubscribe cId discord =
+    case discord of
+        Hydrated t pov ->
+            unsubscribeImpl (Hydrated t) cId pov
+
+        Rehydrating t pov ->
+            unsubscribeImpl (Rehydrating t) cId pov
+
+        Switching newSession pov ->
+            unsubscribeImpl (Switching newSession) cId pov
+
+        Expired t pov ->
+            unsubscribeImpl (Expired t) cId pov
+
+        _ ->
+            -- Otherwise you cannot Subscribe
+            pure discord
+
+
+unsubscribeImpl : (POV -> Discord) -> String -> POV -> Yield
+unsubscribeImpl tagger cId pov =
+    case Dict.get cId pov.channels of
+        Just c ->
+            let
+                { fs, persist, updateFAM } =
+                    FetchStatus.update Unsub c.fetchStatus
+
+                newChannels =
+                    Dict.insert cId { c | fetchStatus = fs } pov.channels
+
+                fam =
+                    ite updateFAM (calculateFAM newChannels) KeepFAM
+            in
+            enter (PostProcessBase persist fam Nothing) (tagger { pov | channels = newChannels })
+
+        Nothing ->
             pure (tagger pov)
 
 
