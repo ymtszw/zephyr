@@ -3,7 +3,7 @@ module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init,
 import BoundedDeque exposing (BoundedDeque)
 import Browser.Dom
 import Data.ColorTheme exposing (oneDark)
-import Data.UniqueId as UniqueId
+import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -173,9 +173,9 @@ setMsgFilter ((MsgFilter isPos msg) as mf) (History h) =
 -- APIs
 
 
-push : UniqueId.Generator -> Entry -> History -> ( History, UniqueId.Generator )
+push : UniqueIdGen -> Entry -> History -> ( History, UniqueIdGen )
 push idGen e (History h) =
-    UniqueId.genAndMap "logEntry" idGen <|
+    UniqueIdGen.genAndMap UniqueIdGen.logEntryPrefix idGen <|
         \eId ->
             case h.scroll of
                 AtTop ->

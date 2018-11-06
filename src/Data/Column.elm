@@ -25,7 +25,7 @@ import Broker exposing (Broker, Offset)
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
-import Data.UniqueId as UniqueId
+import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -139,11 +139,11 @@ mediaDecoder =
         ]
 
 
-welcome : UniqueId.Generator -> String -> ( Column, UniqueId.Generator )
+welcome : UniqueIdGen -> String -> ( Column, UniqueIdGen )
 welcome idGen id =
     let
         ( items, newGen ) =
-            UniqueId.sequence "systemMessage" idGen <|
+            UniqueIdGen.sequence UniqueIdGen.systemMessagePrefix idGen <|
                 [ welcomeItem
                 , textOnlyItem "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
                 ]
@@ -183,11 +183,11 @@ welcomeItem id =
         }
 
 
-new : UniqueId.Generator -> String -> ( Column, UniqueId.Generator )
+new : UniqueIdGen -> String -> ( Column, UniqueIdGen )
 new idGen id =
     let
         ( item, newGen ) =
-            UniqueId.genAndMap "systemMessage" idGen <|
+            UniqueIdGen.genAndMap UniqueIdGen.systemMessagePrefix idGen <|
                 textOnlyItem "New column created! Let's configure filters above!"
     in
     ( { id = id

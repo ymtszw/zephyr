@@ -15,7 +15,7 @@ import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
-import Data.UniqueId as UniqueId
+import Data.UniqueIdGen as UniqueIdGen
 import Extra exposing (..)
 import IndexedDb
 import Json.Decode as D
@@ -122,15 +122,15 @@ update msg ({ viewState, env } as m) =
             update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
 
         AddEmptyColumn ->
-            UniqueId.gen columnIdPrefix m.idGen
-                |> UniqueId.andThen (\( cId, idGen ) -> Column.new idGen cId)
+            UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new idGen cId)
                 |> (\( c, idGen ) ->
                         -- If Filters are somehow set to the new Column, then persist.
                         pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
                    )
 
         AddSimpleColumn fa ->
-            UniqueId.genAndMap columnIdPrefix m.idGen (Column.simple fa)
+            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple fa)
                 |> (\( c, idGen ) -> ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, True ))
 
         DelColumn index ->
@@ -190,11 +190,6 @@ update msg ({ viewState, env } as m) =
 
         NoOp ->
             pure m
-
-
-columnIdPrefix : String
-columnIdPrefix =
-    "column"
 
 
 onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )

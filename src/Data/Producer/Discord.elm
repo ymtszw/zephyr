@@ -121,6 +121,15 @@ type alias NewSession =
     }
 
 
+{-| User object.
+
+Note that there is also Guild Member objects, which contains
+Guild-local information of Users such as nicknames.
+This might be introduced later.
+
+<https://discordapp.com/developers/docs/resources/user#user-object>
+
+-}
 type alias User =
     { id : String
     , username : String
@@ -130,6 +139,11 @@ type alias User =
     }
 
 
+{-| Guild object.
+
+<https://discordapp.com/developers/docs/resources/guild#guild-object>
+
+-}
 type alias Guild =
     { id : String
     , name : String
@@ -137,6 +151,11 @@ type alias Guild =
     }
 
 
+{-| Channel object.
+
+<https://discordapp.com/developers/docs/resources/channel#channel-object>
+
+-}
 type alias Channel =
     { id : String
     , name : String
@@ -426,7 +445,7 @@ encodeColor color =
 
         Err _ ->
             -- Should not happen
-            encodeColor color
+            E.int 0
 
 
 encodeEmbedImage : EmbedImage -> E.Value
@@ -1153,7 +1172,6 @@ forbiddenOnFetch : Http.Error -> Bool
 forbiddenOnFetch httpError =
     case httpError of
         Http.BadStatus { status } ->
-            -- Other errors are considered transient, excluding Unauthorized (guarded by unauthorizedOnFetch)
             status.code == 403
 
         _ ->
