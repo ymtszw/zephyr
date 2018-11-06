@@ -45,7 +45,7 @@ configInnerEl m =
         , spacingXY 0 sectionSpacingY
         ]
         [ configSectionWrapper discordConfigTitleEl <|
-            discordConfigEl m.viewState.timezone m.producerRegistry.discord
+            discordConfigEl m.viewState m.producerRegistry.discord
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|

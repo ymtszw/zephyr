@@ -2,6 +2,7 @@ module View.ConfigPane.DiscordConfig exposing (discordConfigEl)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
+import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer
 import Data.Producer.Discord as Discord exposing (Channel, Discord(..), POV, User)
@@ -19,20 +20,21 @@ import Octicons
 import Time
 import TimeExtra
 import View.Parts exposing (..)
+import View.Select as Select exposing (select)
 
 
-discordConfigEl : Time.Zone -> Maybe Discord -> Element Msg
-discordConfigEl tz discordMaybe =
-    discordConfigBodyEl tz (Maybe.withDefault (TokenGiven "") discordMaybe)
+discordConfigEl : ViewState -> Maybe Discord -> Element Msg
+discordConfigEl vs discordMaybe =
+    discordConfigBodyEl vs (Maybe.withDefault (TokenGiven "") discordMaybe)
 
 
-discordConfigBodyEl : Time.Zone -> Discord -> Element Msg
-discordConfigBodyEl tz discord =
+discordConfigBodyEl : ViewState -> Discord -> Element Msg
+discordConfigBodyEl vs discord =
     column [ width fill, spacing spacingUnit ] <|
         [ tokenInputEl discord
         , el [ alignRight ] <| tokenSubmitButtonEl discord
         ]
-            ++ currentStateEl tz discord
+            ++ currentStateEl vs discord
 
 
 tokenInputEl : Discord -> Element Msg
@@ -172,8 +174,8 @@ tokenInputButtonLabel discord =
             "Change Token"
 
 
-currentStateEl : Time.Zone -> Discord -> List (Element Msg)
-currentStateEl tz discord =
+currentStateEl : ViewState -> Discord -> List (Element Msg)
+currentStateEl vs discord =
     case discord of
         Identified newSession ->
             [ userNameAndAvatarEl newSession.user ]
@@ -181,31 +183,31 @@ currentStateEl tz discord =
         Hydrated _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl tz pov
+            , subbedChannelsEl vs pov
             ]
 
         Rehydrating _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl True pov
-            , subbedChannelsEl tz pov
+            , subbedChannelsEl vs pov
             ]
 
         Revisit pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl tz pov
+            , subbedChannelsEl vs pov
             ]
 
         Expired _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl tz pov
+            , subbedChannelsEl vs pov
             ]
 
         Switching newSession pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl tz pov
+            , subbedChannelsEl vs pov
             ]
 
         _ ->
@@ -267,14 +269,14 @@ activeRehydrateButtonColor =
     oneDark.prim
 
 
-subbedChannelsEl : Time.Zone -> POV -> Element Msg
-subbedChannelsEl tz pov =
+subbedChannelsEl : ViewState -> POV -> Element Msg
+subbedChannelsEl vs pov =
     row [ width fill ]
         [ el [ alignTop ] <| text "Channels: "
         , Element.Keyed.column [ width fill, spacing 5, Font.size channelTableFontSize ] <|
             List.concat <|
                 [ [ headerKeyEl ]
-                , channelRows tz pov
+                , channelRows vs pov
                 ]
         ]
 
@@ -284,13 +286,17 @@ channelTableFontSize =
     scale12 1
 
 
-channelRows : Time.Zone -> POV -> List ( String, Element Msg )
-channelRows tz pov =
-    pov.channels
-        |> Dict.values
-        |> List.filter (not << FetchStatus.dormant << .fetchStatus)
-        |> List.sortWith Discord.compareByNames
-        |> List.map (channelRowKeyEl tz)
+channelRows : ViewState -> POV -> List ( String, Element Msg )
+channelRows vs pov =
+    let
+        ( notSubbed, subbed ) =
+            Dict.values pov.channels
+                |> List.sortWith Discord.compareByNames
+                |> List.partition (.fetchStatus >> FetchStatus.dormant)
+    in
+    subbed
+        |> List.map (channelRowKeyEl vs.timezone)
+        |> (::) (subscribeRowKeyEl vs.selectState notSubbed)
 
 
 headerKeyEl : ( String, Element Msg )
@@ -369,3 +375,28 @@ unsubscribeButtonEl c =
         , innerElementSize = channelTableFontSize
         }
         |> mapToRoot
+
+
+subscribeRowKeyEl : Select.State -> List Channel -> ( String, Element Msg )
+subscribeRowKeyEl selectState notSubbed =
+    select
+        { id = channelSelectId
+        , theme = oneDark
+        , onSelect = ProducerCtrl << Producer.DiscordMsg << Discord.Subscribe << .id
+        , selectedOption = Nothing
+        , noMsgOptionEl = discordChannelEl channelTableFontSize
+        }
+        selectState
+        (List.map (\c -> ( c.id, c )) notSubbed)
+        |> el [ width (px channelSelectWidth), alignLeft ]
+        |> Tuple.pair channelSelectId
+
+
+channelSelectId : String
+channelSelectId =
+    "discordChannelSelect"
+
+
+channelSelectWidth : Int
+channelSelectWidth =
+    200
