@@ -235,6 +235,12 @@ type Author
     | WebhookAuthor User
 
 
+{-| Embed object.
+
+TODO There are more fields to be added. Some bots rely on them.
+<https://discordapp.com/developers/docs/resources/channel#embed-object>
+
+-}
 type alias Embed =
     { title : Maybe String
     , description : Maybe String
