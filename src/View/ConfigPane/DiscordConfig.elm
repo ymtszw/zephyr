@@ -15,28 +15,24 @@ import Element.Input
 import Element.Keyed
 import Extra exposing (ite)
 import Html.Attributes
-import Iso8601
 import Octicons
+import Time
+import TimeExtra
 import View.Parts exposing (..)
 
 
-discordConfigEl : Maybe Discord -> Element Msg
-discordConfigEl discordMaybe =
-    case discordMaybe of
-        Just discord ->
-            tokenFormEl discord
-
-        Nothing ->
-            tokenFormEl (TokenGiven "")
+discordConfigEl : Time.Zone -> Maybe Discord -> Element Msg
+discordConfigEl tz discordMaybe =
+    discordConfigBodyEl tz (Maybe.withDefault (TokenGiven "") discordMaybe)
 
 
-tokenFormEl : Discord -> Element Msg
-tokenFormEl discord =
+discordConfigBodyEl : Time.Zone -> Discord -> Element Msg
+discordConfigBodyEl tz discord =
     column [ width fill, spacing spacingUnit ] <|
         [ tokenInputEl discord
         , el [ alignRight ] <| tokenSubmitButtonEl discord
         ]
-            ++ currentStateEl discord
+            ++ currentStateEl tz discord
 
 
 tokenInputEl : Discord -> Element Msg
@@ -176,8 +172,8 @@ tokenInputButtonLabel discord =
             "Change Token"
 
 
-currentStateEl : Discord -> List (Element Msg)
-currentStateEl discord =
+currentStateEl : Time.Zone -> Discord -> List (Element Msg)
+currentStateEl tz discord =
     case discord of
         Identified newSession ->
             [ userNameAndAvatarEl newSession.user ]
@@ -185,31 +181,31 @@ currentStateEl discord =
         Hydrated _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl pov
+            , subbedChannelsEl tz pov
             ]
 
         Rehydrating _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl True pov
-            , subbedChannelsEl pov
+            , subbedChannelsEl tz pov
             ]
 
         Revisit pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl pov
+            , subbedChannelsEl tz pov
             ]
 
         Expired _ pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl pov
+            , subbedChannelsEl tz pov
             ]
 
         Switching newSession pov ->
             [ userNameAndAvatarEl pov.user
             , guildsEl False pov
-            , subbedChannelsEl pov
+            , subbedChannelsEl tz pov
             ]
 
         _ ->
@@ -271,14 +267,14 @@ activeRehydrateButtonColor =
     oneDark.prim
 
 
-subbedChannelsEl : POV -> Element Msg
-subbedChannelsEl pov =
+subbedChannelsEl : Time.Zone -> POV -> Element Msg
+subbedChannelsEl tz pov =
     row [ width fill ]
         [ el [ alignTop ] <| text "Channels: "
         , Element.Keyed.column [ width fill, spacing 5, Font.size channelTableFontSize ] <|
             List.concat <|
                 [ [ headerKeyEl ]
-                , channelRows pov
+                , channelRows tz pov
                 ]
         ]
 
@@ -288,13 +284,13 @@ channelTableFontSize =
     scale12 1
 
 
-channelRows : POV -> List ( String, Element Msg )
-channelRows pov =
+channelRows : Time.Zone -> POV -> List ( String, Element Msg )
+channelRows tz pov =
     pov.channels
         |> Dict.values
-        |> List.filter (FetchStatus.subscribed << .fetchStatus)
+        |> List.filter (not << FetchStatus.dormant << .fetchStatus)
         |> List.sortWith Discord.compareByNames
-        |> List.map channelRowKeyEl
+        |> List.map (channelRowKeyEl tz)
 
 
 headerKeyEl : ( String, Element Msg )
@@ -302,13 +298,13 @@ headerKeyEl =
     Tuple.pair "ChannelHeader" <|
         row [ width fill, spacing 2 ]
             [ el [ width fill, BG.color oneDark.note ] <| text "Name"
-            , el [ width fill, BG.color oneDark.note ] <| text "Next Fetch"
+            , el [ width fill, BG.color oneDark.note ] <| text "Fetch Status"
             , el [ width fill, BG.color oneDark.note ] <| text "Action"
             ]
 
 
-channelRowKeyEl : Channel -> ( String, Element Msg )
-channelRowKeyEl c =
+channelRowKeyEl : Time.Zone -> Channel -> ( String, Element Msg )
+channelRowKeyEl tz c =
     Tuple.pair c.id <|
         row [ width fill, spacing 2, clipX ]
             [ el [ width fill ] <|
@@ -316,22 +312,32 @@ channelRowKeyEl c =
                     [ c.guildMaybe |> Maybe.map (discordGuildIconEl 20) |> Maybe.withDefault none
                     , breakP [] [ breakT ("#" ++ c.name) ]
                     ]
-            , el [ width fill ] <|
-                text <|
-                    case c.fetchStatus of
-                        NextFetchAt posix _ ->
-                            Iso8601.fromTime posix
-
-                        Fetching _ _ ->
-                            "Fetching..."
-
-                        _ ->
-                            "Not subscribed"
+            , el [ width fill ] <| fetchStatusTextEl tz c.fetchStatus
             , row [ width fill, spacing spacingUnit ]
                 [ createColumnButtonEl c
                 , unsubscribeButtonEl c
                 ]
             ]
+
+
+fetchStatusTextEl : Time.Zone -> FetchStatus -> Element Msg
+fetchStatusTextEl tz fs =
+    breakT <|
+        case fs of
+            NextFetchAt posix _ ->
+                "Next: " ++ TimeExtra.local tz posix
+
+            Fetching _ _ ->
+                "Fetching..."
+
+            Waiting ->
+                "Checking availability..."
+
+            InitialFetching _ ->
+                "Checking availability..."
+
+            Available ->
+                "Not subscribed"
 
 
 createColumnButtonEl : Channel -> Element Msg
