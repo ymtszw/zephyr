@@ -779,6 +779,7 @@ type Msg
     | Identify User
     | Hydrate (Dict String Guild) (Dict String Channel)
     | Rehydrate
+    | Subscribe String
     | Fetch Posix
     | Fetched FetchResult
     | APIError Http.Error
@@ -809,6 +810,9 @@ update msg discordMaybe =
 
         ( Rehydrate, Just discord ) ->
             handleRehydrate discord
+
+        ( Subscribe cId, Just discord ) ->
+            handleSubscribe cId discord
 
         ( Fetch posix, Just discord ) ->
             handleFetch discord posix
@@ -962,6 +966,39 @@ handleRehydrate discord =
 
         _ ->
             pure discord
+
+
+handleSubscribe : String -> Discord -> Yield
+handleSubscribe cId discord =
+    case discord of
+        Hydrated t pov ->
+            subscribeImpl (Hydrated t) cId pov
+
+        Rehydrating t pov ->
+            subscribeImpl (Rehydrating t) cId pov
+
+        Switching newSession pov ->
+            subscribeImpl (Switching newSession) cId pov
+
+        _ ->
+            -- Otherwise you cannot Subscribe
+            pure discord
+
+
+subscribeImpl : (POV -> Discord) -> String -> POV -> Yield
+subscribeImpl tagger cId pov =
+    case Dict.get cId pov.channels of
+        Just c ->
+            let
+                { fs } =
+                    FetchStatus.update Sub c.fetchStatus
+            in
+            -- Not pitching another Worque token; let existing one do the work
+            pure (tagger { pov | channels = Dict.insert cId { c | fetchStatus = fs } pov.channels })
+
+        Nothing ->
+            -- Channel somehow gone; should not basically happen
+            pure (tagger pov)
 
 
 {-| Handles Fetch event caused by the root timer.

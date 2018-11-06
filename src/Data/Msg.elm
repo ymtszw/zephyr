@@ -191,6 +191,9 @@ producerMsgToEntry pMsg =
                 Discord.Rehydrate ->
                     Entry "Discord.Rehydrate" []
 
+                Discord.Subscribe cId ->
+                    Entry "Discord.Subscribe" [ cId ]
+
                 Discord.Fetch posix ->
                     Entry "Discord.Fetch" [ Iso8601.fromTime posix ]
 
