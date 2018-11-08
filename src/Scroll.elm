@@ -309,8 +309,11 @@ update msg (Scroll s) =
                 OffTheTop vp ->
                     ( Scroll { s | viewportStatus = Scrolling vp }, queryViewport s.id )
 
-                _ ->
+                AtTop ->
                     ( Scroll s, queryViewport s.id )
+
+                Scrolling _ ->
+                    ( Scroll s, Cmd.none )
 
         ViewportResult (Ok newVp) ->
             if newVp.viewport.y == 0 then

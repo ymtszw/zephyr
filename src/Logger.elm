@@ -240,16 +240,15 @@ filterEntry negMsgFilters posMsgFilters payloadQueries ( _, e ) =
 
 newEntryToastEl : History -> Element Msg
 newEntryToastEl (History h) =
-    case Scroll.pendingSize h.entries of
-        0 ->
-            none
-
-        size ->
-            el [ width fill, alignTop, padding rectElementOuterPadding ] <|
-                Element.Input.button [ width fill, padding rectElementInnerPadding, BG.color oneDark.succ ]
-                    { onPress = Just (ScrollMsg Scroll.BackToTop)
-                    , label = el [ centerX ] <| text ("New Log Entry (" ++ String.fromInt size ++ ")")
-                    }
+    let
+        size =
+            Scroll.pendingSize h.entries
+    in
+    el [ width fill, alignTop, padding rectElementOuterPadding, visible (size /= 0) ] <|
+        Element.Input.button [ width fill, padding rectElementInnerPadding, BG.color oneDark.succ ]
+            { onPress = Just (ScrollMsg Scroll.BackToTop)
+            , label = el [ centerX ] <| text ("New Log Entry (" ++ String.fromInt size ++ ")")
+            }
 
 
 rowKeyEl : List MsgFilter -> ( String, Entry ) -> ( String, Element Msg )
