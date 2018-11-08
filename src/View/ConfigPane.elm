@@ -16,20 +16,17 @@ import View.Parts exposing (..)
 
 configPaneEl : Model -> Element Msg
 configPaneEl m =
-    if m.viewState.configOpen then
-        el
-            [ width (px fixedPaneWidth)
-            , height (fill |> maximum m.env.clientHeight)
-            , alignLeft
-            , padding rectElementOuterPadding
-            , scrollbarY
-            , BG.color oneDark.bg
-            , Font.color oneDark.text
-            ]
-            (configInnerEl m)
-
-    else
-        none
+    el
+        [ width (px fixedPaneWidth)
+        , height (fill |> maximum m.env.clientHeight)
+        , alignLeft
+        , padding rectElementOuterPadding
+        , scrollbarY
+        , visible m.viewState.configOpen
+        , BG.color oneDark.bg
+        , Font.color oneDark.text
+        ]
+        (configInnerEl m)
 
 
 fixedPaneWidth : Int

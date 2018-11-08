@@ -74,7 +74,7 @@ select { id, theme, onSelect, selectedOption, noMsgOptionEl } state options =
     el
         [ width (fill |> minimum 0)
         , height fill
-        , ite opened (below (optionsEl onSelect theme noMsgOptionEl selectedOption options)) noneAttr
+        , below (optionsEl onSelect theme opened noMsgOptionEl selectedOption options)
         ]
         (headerEl (SelectToggle id (not opened)) theme selectedOption noMsgOptionEl)
 
@@ -116,8 +116,8 @@ headerChevronSize =
     20
 
 
-optionsEl : (a -> Msg) -> ColorTheme -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
-optionsEl onSelect theme noMsgOptionEl selectedOption options =
+optionsEl : (a -> Msg) -> ColorTheme -> Bool -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
+optionsEl onSelect theme opened noMsgOptionEl selectedOption options =
     options
         |> List.map (optionEl onSelect theme noMsgOptionEl selectedOption)
         |> Element.Keyed.column
@@ -135,7 +135,7 @@ optionsEl onSelect theme noMsgOptionEl selectedOption options =
                 }
             , BG.color theme.note
             ]
-        |> el [ height (fill |> maximum optionListMaxHeight) ]
+        |> el [ height (fill |> maximum optionListMaxHeight), visible opened ]
 
 
 optionListMinWidth : Int

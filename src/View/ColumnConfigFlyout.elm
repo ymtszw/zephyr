@@ -25,26 +25,23 @@ import View.Select as Select exposing (select)
 
 columnConfigFlyoutEl : Select.State -> FilterAtomMaterial -> Int -> Column.Column -> Element Msg
 columnConfigFlyoutEl ss fam index c =
-    if c.configOpen then
-        column
-            [ width fill
-            , alignTop
-            , padding rectElementInnerPadding
-            , spacing spacingUnit
-            , BG.color flyoutBackground
-            , BD.width 1
-            , BD.color flyoutFrameColor
-            , Font.size baseFontSize
-            ]
-            [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
-            , lazy3 filtersEl ss fam c
-            , dangerZoneHeaderEl
-            , columnDeleteEl index c
-            , lazy columnConfigCloseButtonEl c.id
-            ]
-
-    else
-        none
+    column
+        [ width fill
+        , alignTop
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
+        , visible c.configOpen
+        , BG.color flyoutBackground
+        , BD.width 1
+        , BD.color flyoutFrameColor
+        , Font.size baseFontSize
+        ]
+        [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
+        , lazy3 filtersEl ss fam c
+        , dangerZoneHeaderEl
+        , columnDeleteEl index c
+        , lazy columnConfigCloseButtonEl c.id
+        ]
 
 
 baseFontSize : Int
