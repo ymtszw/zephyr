@@ -801,10 +801,10 @@ update : Msg -> Maybe Discord -> Yield
 update msg discordMaybe =
     case ( msg, discordMaybe ) of
         ( TokenInput str, Just discord ) ->
-            enter noop (tokenInput discord str)
+            pure (tokenInput discord str)
 
         ( TokenInput str, Nothing ) ->
-            enter noop (TokenGiven str)
+            pure (TokenGiven str)
 
         ( CommitToken, Just discord ) ->
             commitToken discord
