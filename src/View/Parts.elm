@@ -593,10 +593,13 @@ manualStyle : Html.Html msg
 manualStyle =
     Html.node "style"
         []
-        [ Html.text "*{scroll-behavior:smooth;}"
-        , Html.text "::-webkit-scrollbar{display:none;}"
-        , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}"
-        , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}"
+        [ Html.text "*{scroll-behavior:smooth;}" -- Smooth-scrolling on JS-invoked scrolls
+        , Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
+        , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}" -- Breakable inline texts
+        , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}" -- Drag handle cursor
+        , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
+        , Html.text "a:link{text-decoration:none;}" -- Disabled browser-default link-underlining
+        , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
         ]
 
 
