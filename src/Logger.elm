@@ -1,7 +1,5 @@
 module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, push, update)
 
-import BoundedDeque exposing (BoundedDeque)
-import Browser.Dom
 import Data.ColorTheme exposing (oneDark)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Element exposing (..)
@@ -16,9 +14,6 @@ import Html
 import Html.Attributes exposing (style, tabindex)
 import Octicons
 import Scroll exposing (Scroll)
-import StringExtra
-import Task
-import Time exposing (Posix)
 import View.Parts exposing (..)
 
 
