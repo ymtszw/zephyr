@@ -408,24 +408,16 @@ payloadCellsEl entry =
 
 payloadCellEl : String -> Element Msg
 payloadCellEl raw =
-    Element.Input.multiline
+    breakP
         [ width fill
         , height (shrink |> maximum payloadCellMaxHeight)
         , padding rectElementInnerPadding
-        , focused []
-        , BD.width 0
+        , scrollbarY
         , BG.color payloadCellBackground
-        , Font.family [ Font.typeface "consolas", Font.monospace ]
-        , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
-        , htmlAttribute (readonly True)
-        , htmlAttribute (tabindex -1)
+        , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+        , htmlAttribute (style "user-select" "all")
         ]
-        { onChange = always NoOp
-        , text = raw
-        , placeholder = Nothing
-        , label = Element.Input.labelHidden "Payload"
-        , spellcheck = False
-        }
+        [ breakT raw ]
 
 
 payloadCellBackground : Color
