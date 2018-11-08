@@ -120,8 +120,6 @@ columnHeaderTextEl fam filters =
         |> List.intersperse (breakT "  ")
         |> breakP
             [ width fill
-
-            -- , padding rectElementInnerPadding
             , Font.size baseHeaderTextSize
             , Font.color baseHeaderTextColor
             ]
