@@ -333,7 +333,7 @@ maxThumbnailWidth =
 
 discordAttachmentEl : Discord.Attachment -> Element Msg
 discordAttachmentEl attachment =
-    if isImageFile attachment.filename then
+    if isImageFile attachment.proxyUrl.path then
         newTabLink []
             { url = Url.toString attachment.url
             , label =
@@ -341,7 +341,7 @@ discordAttachmentEl attachment =
                     addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
             }
 
-    else if isMovieFile attachment.filename then
+    else if isMovieFile attachment.proxyUrl.path then
         let
             posterUrl =
                 attachment.proxyUrl
