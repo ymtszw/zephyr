@@ -26,7 +26,7 @@ import Octicons
 import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
-import View.ColumnItem exposing (columnItemKeyEl)
+import View.ColumnItem exposing (columnItemKeyEl, minimumItemHeight)
 import View.Parts exposing (..)
 
 
@@ -79,7 +79,7 @@ columnKeyEl env vs index c =
         column attrs
             [ lazy2 columnHeaderEl vs.filterAtomMaterial c
             , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
-            , lazy2 itemsEl vs.timezone c.items
+            , lazy3 itemsEl env.clientHeight vs.timezone c.items
             ]
 
 
@@ -194,16 +194,21 @@ columnConfigToggleButtonSize =
     26
 
 
-itemsEl : Time.Zone -> List ColumnItem -> Element Msg
-itemsEl tz items =
+itemsEl : Int -> Time.Zone -> List ColumnItem -> Element Msg
+itemsEl clientHeight tz items =
     case items of
         [] ->
             waitingForFirstItemEl
 
         _ ->
+            let
+                defaultTake =
+                    (clientHeight // minimumItemHeight) + 10
+            in
             -- Do note that items are sorted from latest to oldest
             items
                 |> ListExtra.groupWhile shouldGroup
+                |> List.take defaultTake
                 |> List.map (columnItemKeyEl tz)
                 |> Element.Keyed.column [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
 

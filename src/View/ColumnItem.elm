@@ -1,4 +1,4 @@
-module View.ColumnItem exposing (columnItemKeyEl)
+module View.ColumnItem exposing (columnItemKeyEl, minimumItemHeight)
 
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
@@ -32,9 +32,9 @@ columnItemKeyEl tz closeItems =
         (item :: items) as reversed ->
             row
                 [ width fill
-                , paddingXY 0 5
-                , spacing 5
-                , BD.widthEach { top = 0, bottom = 2, left = 0, right = 0 }
+                , paddingXY 0 rectElementInnerPadding
+                , spacing spacingUnit
+                , BD.widthEach { top = 0, bottom = itemBorderBottom, left = 0, right = 0 }
                 , BD.color oneDark.bd
                 , Font.size baseFontSize
                 ]
@@ -47,6 +47,18 @@ columnItemKeyEl tz closeItems =
 baseFontSize : Int
 baseFontSize =
     scale12 1
+
+
+itemBorderBottom : Int
+itemBorderBottom =
+    2
+
+
+{-| Referenced by other modules.
+-}
+minimumItemHeight : Int
+minimumItemHeight =
+    avatarSize + rectElementInnerPadding + itemBorderBottom
 
 
 columnItemKey : List ColumnItem -> String
