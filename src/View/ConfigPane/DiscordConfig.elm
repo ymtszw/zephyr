@@ -14,6 +14,7 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import Element.Lazy exposing (lazy2)
 import Extra exposing (ite)
 import Html.Attributes
 import Octicons
@@ -31,19 +32,19 @@ discordConfigEl vs discordMaybe =
 discordConfigBodyEl : ViewState -> Discord -> Element Msg
 discordConfigBodyEl vs discord =
     column [ width fill, spacing spacingUnit ] <|
-        [ tokenInputEl discord
-        , el [ alignRight ] <| tokenSubmitButtonEl discord
+        [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
+        , el [ alignRight ] <| lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
         ]
             ++ currentStateEl vs discord
 
 
-tokenInputEl : Discord -> Element Msg
-tokenInputEl discord =
+tokenInputEl : Bool -> String -> Element Msg
+tokenInputEl enabled text =
     textInputEl
         { onChange = Discord.TokenInput
         , theme = oneDark
-        , enabled = tokenInputAllowed discord
-        , text = tokenText discord
+        , enabled = enabled
+        , text = text
         , placeholder = Nothing
         , label = tokenLabelEl
         }
@@ -71,14 +72,14 @@ mapToRoot =
     map (Producer.DiscordMsg >> ProducerCtrl)
 
 
-tokenSubmitButtonEl : Discord -> Element Msg
-tokenSubmitButtonEl discord =
+tokenSubmitButtonEl : Bool -> String -> Element Msg
+tokenSubmitButtonEl enabled text_ =
     primaryButtonEl
         { onPress = Discord.CommitToken
         , width = shrink
         , theme = oneDark
-        , enabled = tokenSubmitAllowed discord
-        , innerElement = text (tokenInputButtonLabel discord)
+        , enabled = enabled
+        , innerElement = text text_
         }
         |> mapToRoot
 
@@ -142,8 +143,8 @@ tokenLabelEl =
             ]
 
 
-tokenInputButtonLabel : Discord -> String
-tokenInputButtonLabel discord =
+tokenSubmitButtonText : Discord -> String
+tokenSubmitButtonText discord =
     case discord of
         TokenGiven _ ->
             "Register"
