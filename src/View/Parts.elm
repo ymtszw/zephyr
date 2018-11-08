@@ -1,5 +1,5 @@
 module View.Parts exposing
-    ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
+    ( noneAttr, visible, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
@@ -15,7 +15,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
+@docs noneAttr, visible, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
 
 
 ## Icons
@@ -75,6 +75,27 @@ import Octicons
 noneAttr : Attribute msg
 noneAttr =
     htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
+
+
+{-| Hide an Element with `display: none;` property.
+
+When supported by popular browsers, it might be better replaced by `visibility: collapse`.
+
+This is actually crucial for rendering performance.
+Since entirely removing DOMs with `none` and re-introducing them afterwards
+causes significant computational overhead for web browsers.
+
+As a rule of thumb, if the DOM tree can be reused, do not delete it, hide it instead.
+If it is really gone, delete it.
+
+-}
+visible : Bool -> Attribute msg
+visible isVisible =
+    if isVisible then
+        noneAttr
+
+    else
+        htmlAttribute (style "display" "none")
 
 
 octiconEl : { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
