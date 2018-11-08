@@ -86,20 +86,28 @@ discordMessageHasMedia mediaFilter dm =
 
 isImageFile : String -> Bool
 isImageFile filename =
-    String.endsWith ".jpg" filename
-        || String.endsWith ".png" filename
-        || String.endsWith ".gif" filename
-        || String.endsWith ".webp" filename
+    let
+        lower =
+            String.toLower filename
+    in
+    String.endsWith ".jpg" lower
+        || String.endsWith ".png" lower
+        || String.endsWith ".gif" lower
+        || String.endsWith ".webp" lower
 
 
 isMovieFile : String -> Bool
 isMovieFile filename =
+    let
+        lower =
+            String.toLower filename
+    in
     -- Files that are likely playable with HTML5 <video>, which in spec does not specify supported formats
-    String.endsWith ".mp4" filename
-        || String.endsWith ".ogg" filename
-        || String.endsWith ".ogv" filename
-        || String.endsWith ".webm" filename
-        || String.endsWith ".mov" filename
+    String.endsWith ".mp4" lower
+        || String.endsWith ".ogg" lower
+        || String.endsWith ".ogv" lower
+        || String.endsWith ".webm" lower
+        || String.endsWith ".mov" lower
 
 
 discordEmbedHasImage : Discord.Embed -> Bool
