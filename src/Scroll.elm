@@ -329,11 +329,17 @@ update msg (Scroll s) =
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
         ViewportResult (Err _) ->
-            ( Scroll { s | viewportStatus = AtTop } |> calculateTier, Cmd.none )
+            ( Scroll { s | viewportStatus = AtTop } |> pendingToBuffer |> calculateTier, Cmd.none )
 
         BackToTop ->
-            -- Lazily resolves viewportStatus; not touching Scroll
-            ( Scroll s, Browser.Dom.setViewportOf s.id 0 0 |> Task.attempt (\_ -> ScrollStart) )
+            -- Lazily resolves viewportStatus, not touching Scroll.
+            -- In my experience, this achieves the most consistent and acceptable behavior
+            ( Scroll s
+            , Task.map2 (\() vpRes -> vpRes)
+                (Browser.Dom.setViewportOf s.id 0 0)
+                (Browser.Dom.getViewportOf s.id)
+                |> Task.attempt ViewportResult
+            )
 
 
 queryViewport : String -> Cmd Msg
