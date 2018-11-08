@@ -28,7 +28,6 @@ bodyEl model =
     backgroundEl <|
         row [ width fill, height fill, clipY ]
             [ sidebarEl model
-            , configPaneEl model
             , columnAreaEl model
             ]
 

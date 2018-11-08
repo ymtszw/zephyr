@@ -23,7 +23,7 @@ configPaneEl m =
         , padding rectElementOuterPadding
         , scrollbarY
         , visible m.viewState.configOpen
-        , BG.color oneDark.bg
+        , BG.color (setAlpha 0.8 oneDark.bg)
         , Font.color oneDark.text
         ]
         (configInnerEl m)

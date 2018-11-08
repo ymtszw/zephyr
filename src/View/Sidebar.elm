@@ -15,16 +15,18 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Octicons
+import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
 
 
 sidebarEl : Model -> Element Msg
-sidebarEl { columnStore, viewState, env } =
+sidebarEl ({ columnStore, viewState, env } as m) =
     column
         [ width (px (buttonSize + paddingX * 2))
         , height (fill |> maximum env.clientHeight)
         , alignLeft
         , paddingXY paddingX sectionSpacingY
+        , onRight (configPaneEl m)
         , BG.color oneDark.bg
         ]
         [ el [ width fill, alignTop ] (columnButtonsEl viewState.filterAtomMaterial columnStore)
