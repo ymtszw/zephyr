@@ -297,7 +297,7 @@ discordSmartThumbnailEl embed element =
                 column wrapperAttrs
                     [ row [ width fill, spacing 5 ]
                         [ element
-                        , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailWidth linkUrlMaybe embedImage
+                        , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailSize linkUrlMaybe embedImage
                         ]
                     , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
                     ]
@@ -320,14 +320,14 @@ iconLike : Maybe Int -> Maybe Int -> Bool
 iconLike widthMaybe heightMaybe =
     let
         mapper w h =
-            w == h || w <= maxThumbnailWidth
+            w == h || (w <= maxThumbnailSize && h <= maxThumbnailSize)
     in
     Maybe.map2 mapper widthMaybe heightMaybe
         |> Maybe.withDefault False
 
 
-maxThumbnailWidth : Int
-maxThumbnailWidth =
+maxThumbnailSize : Int
+maxThumbnailSize =
     60
 
 
