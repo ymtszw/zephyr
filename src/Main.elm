@@ -97,7 +97,8 @@ update msg ({ viewState, env } as m) =
             ( m, adjustMaxHeight, False )
 
         GetViewport { viewport } ->
-            -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
+            -- On the other hand, getViewport is using clientHeight, which does not include scrollbars.
+            -- Scrolls are resized on BrokerScan
             pure { m | env = { env | clientHeight = round viewport.height } }
 
         GetTimeZone ( _, zone ) ->
@@ -196,7 +197,7 @@ onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
 onTick posix m =
     case Worque.pop m.worque of
         ( Just BrokerScan, newWorque ) ->
-            ColumnStore.consumeBroker m.itemBroker m.columnStore
+            ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
                 |> (\( cs, persist ) -> ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }, Cmd.none, persist ))
 
         ( Just DiscordFetch, newWorque ) ->

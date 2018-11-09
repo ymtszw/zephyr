@@ -132,8 +132,8 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Broker Item -> ColumnStore -> ( ColumnStore, Bool )
-consumeBroker broker columnStore =
+consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
+consumeBroker clientHeight broker columnStore =
     let
         ( newDict, shouldPersist ) =
             Dict.foldl reducer ( Dict.empty, False ) columnStore.dict
@@ -141,12 +141,13 @@ consumeBroker broker columnStore =
         scanCountPerColumn =
             maxScanCount // Dict.size columnStore.dict
 
-        reducer cId column ( accDict, accSP ) =
+        reducer cId column ( accDict, accPersist ) =
             column
+                |> Column.adjustScroll clientHeight
                 |> Column.consumeBroker scanCountPerColumn broker
                 |> Tuple.mapBoth
                     (\newColumn -> Dict.insert cId newColumn accDict)
-                    ((||) accSP)
+                    ((||) accPersist)
     in
     ( { columnStore | dict = newDict }, shouldPersist )
 
