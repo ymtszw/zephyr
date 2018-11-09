@@ -45,10 +45,10 @@ type alias ColumnStore =
     }
 
 
-decoder : Decoder ColumnStore
-decoder =
+decoder : Int -> Decoder ColumnStore
+decoder clientHeight =
     D.map2 ColumnStore
-        (D.field "dict" (D.dict Column.decoder))
+        (D.field "dict" (D.dict (Column.decoder clientHeight)))
         (D.field "order" (D.array D.string))
 
 

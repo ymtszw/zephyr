@@ -7,14 +7,10 @@ module Data.Column exposing
 
 Items stored in List are ordered from latest to oldest.
 
-
-## Types
+Now that Columns are backed by Scrolls, they have limit on maximum Items.
+Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder
-
-
-## Component API
-
 @docs Msg, update, consumeBroker
 
 -}
@@ -31,12 +27,14 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import Scroll exposing (Scroll)
 import Url
+import View.Parts exposing (itemMinimumHeight)
 
 
 type alias Column =
     { id : String
-    , items : List ColumnItem
+    , items : Scroll ColumnItem
     , filters : Array Filter
     , offset : Maybe Offset
     , configOpen : Bool
@@ -59,7 +57,7 @@ encode : Column -> E.Value
 encode c =
     E.object
         [ ( "id", E.string c.id )
-        , ( "items", E.list encodeColumnItem c.items )
+        , ( "items", Scroll.encode encodeColumnItem c.items )
         , ( "filters", E.array Filter.encode c.filters )
         , ( "offset", E.maybe (E.string << Broker.offsetToString) c.offset )
         ]
@@ -89,17 +87,17 @@ encodeMedia media =
             E.tagged "Movie" (E.string (Url.toString url))
 
 
-decoder : Decoder Column
-decoder =
-    D.map4 (\id items filters offset -> Column id items filters offset False filters "")
-        (D.field "id" D.string)
-        (D.field "items" (D.leakyList columnItemDecoder))
-        (D.oneOf
-            [ D.field "filters" (D.array Filter.decoder)
-            , D.succeed Array.empty -- Migration
-            ]
-        )
-        (D.maybeField "offset" offsetDecoder)
+decoder : Int -> Decoder Column
+decoder clientHeight =
+    D.do (D.field "id" D.string) <|
+        \id ->
+            D.do (D.field "items" (Scroll.decoder (scrollOptions id clientHeight) columnItemDecoder)) <|
+                \items ->
+                    D.do (D.field "filters" (D.array Filter.decoder)) <|
+                        \filters ->
+                            D.do (D.maybeField "offset" offsetDecoder) <|
+                                \offset ->
+                                    D.succeed (Column id items filters offset False filters "")
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -139,8 +137,8 @@ mediaDecoder =
         ]
 
 
-welcome : UniqueIdGen -> String -> ( Column, UniqueIdGen )
-welcome idGen id =
+welcome : Int -> UniqueIdGen -> String -> ( Column, UniqueIdGen )
+welcome clientHeight idGen id =
     let
         ( items, newGen ) =
             UniqueIdGen.sequence UniqueIdGen.systemMessagePrefix idGen <|
@@ -149,7 +147,7 @@ welcome idGen id =
                 ]
     in
     ( { id = id
-      , items = items
+      , items = Scroll.initWith (scrollOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
       , configOpen = True
@@ -158,6 +156,23 @@ welcome idGen id =
       }
     , newGen
     )
+
+
+scrollOptions : String -> Int -> Scroll.Options
+scrollOptions id clientHeight =
+    let
+        base =
+            Scroll.defaultOptions ("scroll-" ++ id)
+
+        baseAmount =
+            clientHeight // itemMinimumHeight
+    in
+    { base | limit = columnItemLimit, baseAmount = baseAmount, tierAmount = baseAmount // 2 }
+
+
+columnItemLimit : Int
+columnItemLimit =
+    2000
 
 
 textOnlyItem : String -> String -> ColumnItem
@@ -183,15 +198,15 @@ welcomeItem id =
         }
 
 
-new : UniqueIdGen -> String -> ( Column, UniqueIdGen )
-new idGen id =
+new : Int -> UniqueIdGen -> String -> ( Column, UniqueIdGen )
+new clientHeight idGen id =
     let
         ( item, newGen ) =
             UniqueIdGen.genAndMap UniqueIdGen.systemMessagePrefix idGen <|
                 textOnlyItem "New column created! Let's configure filters above!"
     in
     ( { id = id
-      , items = [ item ]
+      , items = Scroll.initWith (scrollOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
       , configOpen = True
@@ -202,10 +217,10 @@ new idGen id =
     )
 
 
-simple : FilterAtom -> String -> Column
-simple fa id =
+simple : Int -> FilterAtom -> String -> Column
+simple clientHeight fa id =
     { id = id
-    , items = []
+    , items = Scroll.init (scrollOptions id clientHeight)
     , filters = Array.fromList [ Filter.Singular fa ]
     , offset = Nothing
     , configOpen = False
@@ -261,7 +276,7 @@ update msg c =
             pure { c | pendingFilters = atomOrFilterDeleted }
 
         ConfirmFilter ->
-            ( { c | filters = c.pendingFilters, offset = Nothing, items = [] }, Cmd.none, True )
+            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items }, Cmd.none, True )
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }
@@ -276,7 +291,7 @@ consumeBroker maxCount broker column =
         (( _, newOffset ) :: _) as items ->
             ( { column
                 | offset = Just newOffset
-                , items = List.filterMap (applyFilters column.filters) items ++ column.items
+                , items = Scroll.pushAll (List.filterMap (applyFilters column.filters) items) column.items
               }
             , True
             )
