@@ -1,7 +1,7 @@
 module Scroll exposing
-    ( Scroll, Options, encode, decoder, init, defaultOptions
+    ( Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
     , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-    , push, pop, toList, toListWithFilter, pendingSize
+    , push, pushAll, pop, toList, toListWithFilter, pendingSize
     , Msg(..), update, scrollAttrs
     )
 
@@ -21,9 +21,9 @@ but changes its behavior based on runtime status, and achieves side-effect via c
 Its ever-changing runtime statuses are ephemeral, and not persisted.
 Its internal data structure may be persisted.
 
-@docs Scroll, Options, encode, decoder, init, defaultOptions
+@docs Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
 @docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-@docs push, pop, toList, toListWithFilter, pendingSize
+@docs push, pushAll, pop, toList, toListWithFilter, pendingSize
 @docs Msg, update, scrollAttrs
 
 -}
@@ -71,8 +71,8 @@ encode encodeItem (Scroll s) =
     E.list encodeItem (BoundedDeque.toList s.buffer)
 
 
-decoder : Decoder a -> Options -> Decoder (Scroll a)
-decoder itemDecoder { id, limit, baseAmount, tierAmount, ascendThreshold } =
+decoder : Options -> Decoder a -> Decoder (Scroll a)
+decoder { id, limit, baseAmount, tierAmount, ascendThreshold } itemDecoder =
     D.list itemDecoder
         |> D.map
             (\list ->
@@ -94,6 +94,11 @@ type alias Options =
     { id : String, limit : Int, baseAmount : Int, tierAmount : Int, ascendThreshold : Float }
 
 
+{-| Initialize a Scroll with set of Options.
+
+To change options after initialized, use set\*\*\* functions.
+
+-}
 init : Options -> Scroll a
 init { id, limit, baseAmount, tierAmount, ascendThreshold } =
     Scroll
@@ -159,6 +164,33 @@ setAscendThreshold ascendThreshold (Scroll s) =
     Scroll { s | ascendThreshold = ascendThreshold }
 
 
+{-| Initialize a Scroll with Options and initial items.
+
+Order of initial items are kept as is: head at the front.
+
+-}
+initWith : Options -> List a -> Scroll a
+initWith { id, limit, baseAmount, tierAmount, ascendThreshold } list =
+    Scroll
+        { id = id
+        , buffer = BoundedDeque.fromList limit list
+        , pending = []
+        , pendingSize = 0
+        , viewportStatus = AtTop
+        , tier = Tier 0
+        , baseAmount = baseAmount
+        , tierAmount = tierAmount
+        , ascendThreshold = ascendThreshold
+        }
+
+
+{-| Clear exisitng elements (in `buffer` and `pending`) from a Scroll.
+-}
+clear : Scroll a -> Scroll a
+clear (Scroll s) =
+    Scroll { s | pending = [], buffer = BoundedDeque.empty (BoundedDeque.getMaxSize s.buffer) }
+
+
 
 -- Pure APIs
 
@@ -201,6 +233,18 @@ pushToBuffer a (Scroll s) =
 pushToPending : a -> Scroll a -> Scroll a
 pushToPending a (Scroll s) =
     Scroll { s | pending = a :: s.pending, pendingSize = s.pendingSize + 1 }
+
+
+{-| Push all items in a List to a Scroll. Head-first.
+-}
+pushAll : List a -> Scroll a -> Scroll a
+pushAll list s =
+    case list of
+        [] ->
+            s
+
+        x :: xs ->
+            pushAll xs (push x s)
 
 
 {-| Pop an element from the front of a Scroll.
