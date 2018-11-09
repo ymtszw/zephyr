@@ -1,5 +1,5 @@
 module Data.Column exposing
-    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder
+    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll
     , Msg(..), update, consumeBroker
     )
 
@@ -10,7 +10,7 @@ Items stored in List are ordered from latest to oldest.
 Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
-@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder
+@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll
 @docs Msg, update, consumeBroker
 
 -}
@@ -165,14 +165,19 @@ scrollOptions id clientHeight =
             Scroll.defaultOptions ("scroll-" ++ id)
 
         baseAmount =
-            clientHeight // itemMinimumHeight
+            columnBaseAmount clientHeight
     in
-    { base | limit = columnItemLimit, baseAmount = baseAmount, tierAmount = baseAmount // 2 }
+    { base | limit = columnItemLimit, baseAmount = baseAmount, tierAmount = baseAmount }
 
 
 columnItemLimit : Int
 columnItemLimit =
     2000
+
+
+columnBaseAmount : Int -> Int
+columnBaseAmount clientHeight =
+    clientHeight // itemMinimumHeight
 
 
 textOnlyItem : String -> String -> ColumnItem
@@ -227,6 +232,15 @@ simple clientHeight fa id =
     , pendingFilters = Array.fromList [ Filter.Singular fa ]
     , deleteGate = ""
     }
+
+
+adjustScroll : Int -> Column -> Column
+adjustScroll clientHeight c =
+    let
+        baseAmount =
+            columnBaseAmount clientHeight
+    in
+    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
 
 
 type Msg
