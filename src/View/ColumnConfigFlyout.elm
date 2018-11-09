@@ -75,8 +75,6 @@ filterSectionHeaderEl cId isDirty =
                 , width = shrink |> minimum 60
                 , enabledColor = oneDark.succ
                 , enabledFontColor = oneDark.text
-                , disabledColor = flyoutBackground
-                , disabledFontColor = flyoutFrameColor
                 , enabled = isDirty
                 , innerElement = text "Apply"
                 }

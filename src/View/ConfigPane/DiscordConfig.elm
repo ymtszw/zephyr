@@ -354,8 +354,6 @@ createColumnButtonEl c =
         , width = fill
         , enabledColor = oneDark.prim
         , enabledFontColor = oneDark.text
-        , disabledColor = oneDark.sub
-        , disabledFontColor = oneDark.note
         , enabled = FetchStatus.subscribed c.fetchStatus
         , innerElement = text "Create Column"
         }

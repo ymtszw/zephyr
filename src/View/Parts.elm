@@ -1,5 +1,6 @@
 module View.Parts exposing
-    ( noneAttr, visible, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
+    ( noneAttr, visible, switchCursor, inputScreen, dragHandle
+    , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
@@ -15,7 +16,8 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, visible, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
+@docs noneAttr, visible, switchCursor, inputScreen, dragHandle
+@docs breakP, breakT, breakTColumn, collapsingColumn
 
 
 ## Icons
@@ -34,7 +36,7 @@ module View.Parts exposing
 @docs scale12, css, brightness, setAlpha, manualStyle
 
 
-## Filter
+## Column Filter
 
 @docs filtersToIconEl
 
@@ -96,6 +98,13 @@ visible isVisible =
 
     else
         htmlAttribute (style "display" "none")
+
+
+{-| Cursor helper for input elements. When False, use cursor: default;
+-}
+switchCursor : Bool -> Attribute msg
+switchCursor enabled =
+    ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
 
 
 octiconEl : { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
@@ -197,9 +206,10 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , BD.width 0
         , BD.rounded rectElementRound
         , Font.color theme.text
+        , switchCursor enabled
         , customPlaceholder theme placeholder text
+        , inputScreen enabled
         , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onChange = onChange
@@ -247,8 +257,6 @@ primaryButtonEl { onPress, width, theme, enabled, innerElement } =
         , width = width
         , enabledColor = theme.prim
         , enabledFontColor = theme.text
-        , disabledColor = theme.sub
-        , disabledFontColor = theme.note
         , enabled = enabled
         , innerElement = innerElement
         }
@@ -268,8 +276,6 @@ successButtonEl { onPress, width, theme, enabled, innerElement } =
         , width = width
         , enabledColor = theme.succ
         , enabledFontColor = theme.text
-        , disabledColor = theme.sub
-        , disabledFontColor = theme.note
         , enabled = enabled
         , innerElement = innerElement
         }
@@ -289,8 +295,6 @@ dangerButtonEl { onPress, width, theme, enabled, innerElement } =
         , width = width
         , enabledColor = theme.err
         , enabledFontColor = theme.text
-        , disabledColor = theme.sub
-        , disabledFontColor = theme.note
         , enabled = enabled
         , innerElement = innerElement
         }
@@ -301,22 +305,20 @@ rectButtonEl :
     , width : Length
     , enabledColor : Color
     , enabledFontColor : Color
-    , disabledColor : Color
-    , disabledFontColor : Color
     , enabled : Bool
     , innerElement : Element msg
     }
     -> Element msg
-rectButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
+rectButtonEl { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
     Element.Input.button
         [ Element.width width
         , padding rectButtonPadding
         , BD.rounded rectElementRound
-        , BG.color (ite enabled enabledColor disabledColor)
-        , Font.color (ite enabled enabledFontColor disabledFontColor)
+        , BG.color enabledColor
+        , Font.color enabledFontColor
         , clip
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        , inputScreen enabled
+        , switchCursor enabled
         ]
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
@@ -328,27 +330,41 @@ rectButtonPadding =
     10
 
 
+{-| Concealing screen over input elements, hiding it when disabled (False).
+
+This is introduced in order to reduce style recalculation.
+In elm-ui, changing color of an element causes replacing of class and style element,
+thus triggering style recalc, which can be costly if there are thousands of DOM elements to traverse.
+
+This, on the other hand, places static element with transparent black background,
+over the target input element. And when the input is enabled, its turned off via display: none;
+whcih does not cause style recalc nor layout/reflow (due to inFront == position: absolute;)
+
+-}
+inputScreen : Bool -> Attribute msg
+inputScreen enabled =
+    inFront <| el [ width fill, height fill, visible (not enabled), BG.color (rgba255 0 0 0 0.5) ] none
+
+
 thinButtonEl :
     { onPress : msg
     , width : Length
     , enabledColor : Color
     , enabledFontColor : Color
-    , disabledColor : Color
-    , disabledFontColor : Color
     , enabled : Bool
     , innerElement : Element msg
     }
     -> Element msg
-thinButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
+thinButtonEl { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
     Element.Input.button
         [ Element.width width
         , padding thinButtonPadding
         , BD.rounded thinButtonPadding
-        , BG.color (ite enabled enabledColor disabledColor)
-        , Font.color (ite enabled enabledFontColor disabledFontColor)
+        , BG.color enabledColor
+        , Font.color enabledFontColor
         , clip
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        , inputScreen enabled
+        , switchCursor enabled
         ]
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
@@ -376,12 +392,26 @@ roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
         [ width (px innerElementSize)
         , height (px innerElementSize)
         , BD.rounded (innerElementSize // 2 + 1)
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , switchCursor enabled
+        , roundInputScreen innerElementSize enabled
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
         }
+
+
+roundInputScreen : Int -> Bool -> Attribute msg
+roundInputScreen size enabled =
+    inFront <|
+        el
+            [ width fill
+            , height fill
+            , BD.rounded (size // 2 + 1)
+            , visible (not enabled)
+            , BG.color (rgba255 0 0 0 0.5)
+            ]
+            none
 
 
 squareButtonEl :
@@ -396,7 +426,8 @@ squareButtonEl { onPress, enabled, innerElement, innerElementSize } =
         [ width (px innerElementSize)
         , height (px innerElementSize)
         , clip
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , switchCursor enabled
+        , inputScreen enabled
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onPress = ite enabled (Just onPress) Nothing
