@@ -1,4 +1,16 @@
-module Json.DecodeExtra exposing (conditional, fromResult, leakyList, maybeField, succeedIf, tag, tagged, tagged2, tagged3, url, when)
+module Json.DecodeExtra exposing
+    ( when, conditional, succeedIf, do
+    , tag, tagged, tagged2, tagged3
+    , url, leakyList, maybeField, fromResult
+    )
+
+{-| Json.Decode extensions.
+
+@docs when, conditional, succeedIf, do
+@docs tag, tagged, tagged2, tagged3
+@docs url, leakyList, maybeField, fromResult
+
+-}
 
 import Json.Decode exposing (..)
 import Url
@@ -153,3 +165,13 @@ fromResult message result =
 
         Err _ ->
             fail message
+
+
+{-| Flipped `andThen`. Allow combining Decoders in continuation style.
+
+Discussed here: <https://discourse.elm-lang.org/t/experimental-json-decoding-api/2121>
+
+-}
+do : Decoder a -> (a -> Decoder b) -> Decoder b
+do dec cont =
+    andThen cont dec
