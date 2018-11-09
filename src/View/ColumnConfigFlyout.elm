@@ -459,10 +459,7 @@ columnDeleteGateEl cId deleteGate =
         , enabled = True
         , text = deleteGate
         , label = Element.Input.labelHidden "Delete Confirmation"
-        , placeholder =
-            Just <|
-                Element.Input.placeholder [] <|
-                    el [ centerY ] (text "Type DELETE to delete this column")
+        , placeholder = Just (text "Type DELETE to delete this column")
         }
 
 

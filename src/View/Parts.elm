@@ -185,7 +185,7 @@ textInputEl :
     , enabled : Bool
     , text : String
     , label : Element.Input.Label msg
-    , placeholder : Maybe (Element.Input.Placeholder msg)
+    , placeholder : Maybe (Element msg)
     }
     -> Element msg
 textInputEl { onChange, theme, enabled, text, label, placeholder } =
@@ -197,13 +197,14 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , BD.width 0
         , BD.rounded rectElementRound
         , Font.color theme.text
+        , customPlaceholder theme placeholder text
         , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
         , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onChange = onChange
         , text = text
-        , placeholder = placeholder
+        , placeholder = Nothing
         , label = label
         }
 
@@ -211,6 +212,25 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
 textInputPadding : Int
 textInputPadding =
     5
+
+
+customPlaceholder : ColorTheme -> Maybe (Element msg) -> String -> Attribute msg
+customPlaceholder theme phMaybe text =
+    -- elm-ui's placeholder uses opacity to switch visibility, but it triggers style recalculation on change.
+    -- Whereas display property does not trigger style recalculation, and with inFront (position: absolute;), no layout/reflow.
+    case phMaybe of
+        Just ph ->
+            inFront <|
+                el
+                    [ padding textInputPadding
+                    , centerY
+                    , visible (String.isEmpty text)
+                    , Font.color (setAlpha 0.5 theme.text)
+                    ]
+                    ph
+
+        Nothing ->
+            noneAttr
 
 
 primaryButtonEl :

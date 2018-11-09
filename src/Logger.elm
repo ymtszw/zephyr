@@ -55,10 +55,13 @@ historyElementId =
 
 defaultFilters : List MsgFilter
 defaultFilters =
-    -- Timer ticks are good candidates of default filters
+    -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
     , MsgFilter False "Logger.ScrollStart"
     , MsgFilter False "Logger.ViewportOk"
+    , MsgFilter False "Logger.FilterInput"
+    , MsgFilter False "Discord.TokenInput"
+    , MsgFilter False "Column.DeleteGateInput"
     ]
 
 
@@ -379,9 +382,5 @@ payloadFilterInputEl (History h) =
         , enabled = True
         , text = h.payloadFilter
         , label = Element.Input.labelHidden "Log Payload Filter"
-        , placeholder =
-            Just <|
-                Element.Input.placeholder [] <|
-                    el [ centerY ] <|
-                        text "Payload OR Filter (Space-delimited, Case-sensitive)"
+        , placeholder = Just (text "Payload OR Filter (Space-delimited, Case-sensitive)")
         }
