@@ -25,26 +25,23 @@ import View.Select as Select exposing (select)
 
 columnConfigFlyoutEl : Select.State -> FilterAtomMaterial -> Int -> Column.Column -> Element Msg
 columnConfigFlyoutEl ss fam index c =
-    if c.configOpen then
-        column
-            [ width fill
-            , alignTop
-            , padding rectElementInnerPadding
-            , spacing spacingUnit
-            , BG.color flyoutBackground
-            , BD.width 1
-            , BD.color flyoutFrameColor
-            , Font.size baseFontSize
-            ]
-            [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
-            , lazy3 filtersEl ss fam c
-            , dangerZoneHeaderEl
-            , columnDeleteEl index c
-            , lazy columnConfigCloseButtonEl c.id
-            ]
-
-    else
-        none
+    column
+        [ width fill
+        , alignTop
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
+        , visible c.configOpen
+        , BG.color flyoutBackground
+        , BD.width 1
+        , BD.color flyoutFrameColor
+        , Font.size baseFontSize
+        ]
+        [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
+        , lazy3 filtersEl ss fam c
+        , dangerZoneHeaderEl
+        , columnDeleteEl index c
+        , lazy columnConfigCloseButtonEl c.id
+        ]
 
 
 baseFontSize : Int
@@ -72,17 +69,14 @@ filterSectionHeaderEl cId isDirty =
         , Font.color flyoutFrameColor
         ]
         [ text "Filter Rules"
-        , el [ alignRight, Font.size baseFontSize ] <|
-            thinButtonEl
-                { onPress = ColumnCtrl cId ConfirmFilter
-                , width = shrink |> minimum 60
-                , enabledColor = oneDark.succ
-                , enabledFontColor = oneDark.text
-                , disabledColor = flyoutBackground
-                , disabledFontColor = flyoutFrameColor
-                , enabled = isDirty
-                , innerElement = text "Apply"
-                }
+        , thinButtonEl [ alignRight, Font.size baseFontSize ]
+            { onPress = ColumnCtrl cId ConfirmFilter
+            , width = shrink |> minimum 60
+            , enabledColor = oneDark.succ
+            , enabledFontColor = oneDark.text
+            , enabled = isDirty
+            , innerElement = text "Apply"
+            }
         ]
 
 
@@ -179,12 +173,11 @@ deleteFilterButtonEl cId editorType =
                 ]
                 { onPress = Just (ColumnCtrl cId (DelFilter fi))
                 , label =
-                    el [ centerY, centerX ] <|
-                        octiconEl
-                            { size = deleteFilterIconSize
-                            , color = defaultOcticonColor
-                            , shape = Octicons.trashcan
-                            }
+                    octiconEl [ centerY, centerX ]
+                        { size = deleteFilterIconSize
+                        , color = defaultOcticonColor
+                        , shape = Octicons.trashcan
+                        }
                 }
 
         AddF ->
@@ -249,16 +242,15 @@ filterAtomCtorSelectEl selectState fam cId faInputType =
                 GenFilter ->
                     ( cId ++ "-newFilter", Nothing )
     in
-    el [ width (px filterAtomCtorFixedWidth) ] <|
-        select
-            { id = selectId
-            , theme = oneDark
-            , onSelect = filterAtomOnSelect cId faInputType
-            , selectedOption = selectedOption
-            , noMsgOptionEl = filterAtomCtorOptionEl
-            }
-            selectState
-            (availableFilterAtomsWithDefaultArguments fam faInputType)
+    select [ width (px filterAtomCtorFixedWidth) ]
+        { state = selectState
+        , id = selectId
+        , theme = oneDark
+        , onSelect = filterAtomOnSelect cId faInputType
+        , selectedOption = selectedOption
+        , options = availableFilterAtomsWithDefaultArguments fam faInputType
+        , optionEl = filterAtomCtorOptionEl
+        }
 
 
 filterAtomCtorFixedWidth : Int
@@ -372,7 +364,9 @@ filterAtomVariableInputEl ss fam cId fi ai fa =
                             channels |> ListExtra.findOne (\c -> c.id == channelId) |> Maybe.withDefault fallbackChannel
                     in
                     channelSelectEl selectedChannel <|
-                        ( List.map (\c -> ( c.id, c )) channels, discordChannelEl discordGuildIconSize )
+                        ( List.map (\c -> ( c.id, c )) channels
+                        , \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
+                        )
 
                 Nothing ->
                     channelSelectEl fallbackChannel ( [], always none )
@@ -416,15 +410,15 @@ filterAtomVariableSelectEl :
     -> ( List ( String, a ), a -> Element Msg )
     -> Element Msg
 filterAtomVariableSelectEl tagger selectState cId fi ai selected ( options, optionEl ) =
-    select
-        { id = cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_variable"
+    select []
+        { state = selectState
+        , id = cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_variable"
         , theme = oneDark
         , onSelect = \option -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger option })
         , selectedOption = Just selected
-        , noMsgOptionEl = optionEl
+        , options = options
+        , optionEl = optionEl
         }
-        selectState
-        options
 
 
 mediaTypeOptionEl : MediaFilter -> Element msg
@@ -462,16 +456,13 @@ columnDeleteGateEl cId deleteGate =
         , enabled = True
         , text = deleteGate
         , label = Element.Input.labelHidden "Delete Confirmation"
-        , placeholder =
-            Just <|
-                Element.Input.placeholder [] <|
-                    el [ centerY ] (text "Type DELETE to delete this column")
+        , placeholder = Just (text "Type DELETE to delete this column")
         }
 
 
 columnDeleteButtonEl : Int -> Bool -> Element Msg
 columnDeleteButtonEl index confirmed =
-    dangerButtonEl
+    dangerButtonEl []
         { onPress = DelColumn index
         , width = px deleteButtonWidth
         , theme = oneDark
@@ -489,7 +480,7 @@ columnConfigCloseButtonEl : String -> Element Msg
 columnConfigCloseButtonEl cId =
     Element.Input.button [ width fill, BG.color oneDark.sub ]
         { onPress = Just (ColumnCtrl cId (Column.ToggleConfig False))
-        , label = octiconEl { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
+        , label = octiconEl [] { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
         }
 
 

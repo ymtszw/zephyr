@@ -115,7 +115,7 @@ welcomeModel env navKey =
         ( welcomeColumn, finalGen ) =
             UniqueIdGen.init
                 |> UniqueIdGen.gen UniqueIdGen.columnPrefix
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome idGen cId)
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome env.clientHeight idGen cId)
     in
     { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init

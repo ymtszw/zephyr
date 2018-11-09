@@ -22,20 +22,22 @@ import Time exposing (Posix)
 import Url
 
 
+suite : Test
+suite =
+    describe "test"
+        [ listSuite
+        , stringSuite
+        , arraySuite
+        , uniqueIdSuite
+        , textRendererSuite
+        , filterSuite
+        , fetchStatusSuite
+        , discordSuite
+        ]
+
+
 
 -- ListExtra
-
-
-testGroupWhile : (Int -> Int -> Bool) -> List Int -> List (List Int) -> Test
-testGroupWhile checker initial expected =
-    test ("should group " ++ Debug.toString initial ++ " to " ++ Debug.toString expected) <|
-        \_ ->
-            initial
-                |> ListExtra.groupWhile checker
-                |> Expect.all
-                    [ Expect.equal expected
-                    , List.concat >> Expect.equal initial
-                    ]
 
 
 listSuite : Test
@@ -56,15 +58,20 @@ listSuite =
         ]
 
 
+testGroupWhile : (Int -> Int -> Bool) -> List Int -> List (List Int) -> Test
+testGroupWhile checker initial expected =
+    test ("should group " ++ Debug.toString initial ++ " to " ++ Debug.toString expected) <|
+        \_ ->
+            initial
+                |> ListExtra.groupWhile checker
+                |> Expect.all
+                    [ Expect.equal expected
+                    , List.concat >> Expect.equal initial
+                    ]
+
+
 
 -- StringExtra
-
-
-testStringSplitAt : String -> Int -> List String -> Test
-testStringSplitAt initial index expected =
-    test ("should split '" ++ initial ++ "' at: " ++ fromInt index) <|
-        \_ ->
-            initial |> StringExtra.splitAt index |> Expect.equal expected
 
 
 stringSuite : Test
@@ -85,53 +92,15 @@ stringSuite =
         ]
 
 
+testStringSplitAt : String -> Int -> List String -> Test
+testStringSplitAt initial index expected =
+    test ("should split '" ++ initial ++ "' at: " ++ fromInt index) <|
+        \_ ->
+            initial |> StringExtra.splitAt index |> Expect.equal expected
+
+
 
 -- ArrayExtra
-
-
-testArraySplitAt : List a -> Int -> ( List a, List a ) -> Test
-testArraySplitAt initial index ( expectFront, expectRear ) =
-    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index:" ++ fromInt index) <|
-        \_ ->
-            fromList initial
-                |> Array.splitAt index
-                |> Expect.equal ( fromList expectFront, fromList expectRear )
-
-
-testRemoveAt : List a -> Int -> List a -> Test
-testRemoveAt initial index expect =
-    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index: " ++ fromInt index) <|
-        \_ ->
-            fromList initial
-                |> Array.removeAt index
-                |> Expect.equal (fromList expect)
-
-
-testMoveFromTo : List a -> Int -> Int -> List a -> Test
-testMoveFromTo initial from to expect =
-    test ("should work with size:" ++ fromInt (List.length initial) ++ ", from:" ++ fromInt from ++ ", to:" ++ fromInt to) <|
-        \_ ->
-            fromList initial
-                |> Array.moveFromTo from to
-                |> Expect.equal (fromList expect)
-
-
-testSqueeze : List a -> Int -> a -> List a -> Test
-testSqueeze initial index element expected =
-    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index:" ++ fromInt index) <|
-        \_ ->
-            fromList initial
-                |> Array.squeeze index element
-                |> Expect.equal (fromList expected)
-
-
-testAll : List a -> (a -> Bool) -> Bool -> Test
-testAll initial check expected =
-    test ("should work with Array: " ++ Debug.toString initial) <|
-        \_ ->
-            fromList initial
-                |> Array.all check
-                |> Expect.equal expected
 
 
 arraySuite : Test
@@ -215,8 +184,70 @@ arraySuite =
         ]
 
 
+testArraySplitAt : List a -> Int -> ( List a, List a ) -> Test
+testArraySplitAt initial index ( expectFront, expectRear ) =
+    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index:" ++ fromInt index) <|
+        \_ ->
+            fromList initial
+                |> Array.splitAt index
+                |> Expect.equal ( fromList expectFront, fromList expectRear )
+
+
+testRemoveAt : List a -> Int -> List a -> Test
+testRemoveAt initial index expect =
+    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index: " ++ fromInt index) <|
+        \_ ->
+            fromList initial
+                |> Array.removeAt index
+                |> Expect.equal (fromList expect)
+
+
+testMoveFromTo : List a -> Int -> Int -> List a -> Test
+testMoveFromTo initial from to expect =
+    test ("should work with size:" ++ fromInt (List.length initial) ++ ", from:" ++ fromInt from ++ ", to:" ++ fromInt to) <|
+        \_ ->
+            fromList initial
+                |> Array.moveFromTo from to
+                |> Expect.equal (fromList expect)
+
+
+testSqueeze : List a -> Int -> a -> List a -> Test
+testSqueeze initial index element expected =
+    test ("should work with size:" ++ fromInt (List.length initial) ++ ", index:" ++ fromInt index) <|
+        \_ ->
+            fromList initial
+                |> Array.squeeze index element
+                |> Expect.equal (fromList expected)
+
+
+testAll : List a -> (a -> Bool) -> Bool -> Test
+testAll initial check expected =
+    test ("should work with Array: " ++ Debug.toString initial) <|
+        \_ ->
+            fromList initial
+                |> Array.all check
+                |> Expect.equal expected
+
+
 
 -- Data.UniqueIdGen
+
+
+uniqueIdSuite : Test
+uniqueIdSuite =
+    describe "Data.UniqueIdGen"
+        [ describe "gen"
+            [ testGen [ ( ( "prefixA", 0 ), "not generated" ) ]
+            , testGen [ ( ( "prefixA", 1 ), "prefixA_0" ) ]
+            , testGen [ ( ( "prefixA", 11 ), "prefixA_10" ) ]
+            , testGen [ ( ( "prefixA", 101 ), "prefixA_100" ) ]
+            , testGen
+                [ ( ( "prefixA", 10 ), "prefixA_9" )
+                , ( ( "prefixB", 20 ), "prefixB_19" )
+                , ( ( "prefixC", 0 ), "not generated" )
+                ]
+            ]
+        ]
 
 
 testGen : List ( ( String, Int ), String ) -> Test
@@ -261,34 +292,8 @@ seqGenImpl prefix howMany ( lastResult, accGenerator ) =
         seqGenImpl prefix (howMany - 1) (Data.UniqueIdGen.gen prefix accGenerator)
 
 
-uniqueIdSuite : Test
-uniqueIdSuite =
-    describe "Data.UniqueIdGen"
-        [ describe "gen"
-            [ testGen [ ( ( "prefixA", 0 ), "not generated" ) ]
-            , testGen [ ( ( "prefixA", 1 ), "prefixA_0" ) ]
-            , testGen [ ( ( "prefixA", 11 ), "prefixA_10" ) ]
-            , testGen [ ( ( "prefixA", 101 ), "prefixA_100" ) ]
-            , testGen
-                [ ( ( "prefixA", 10 ), "prefixA_9" )
-                , ( ( "prefixB", 20 ), "prefixB_19" )
-                , ( ( "prefixC", 0 ), "not generated" )
-                ]
-            ]
-        ]
-
-
 
 -- Data.TextRenderer
-
-
-testParseIntoStringOrUrlList : String -> List StringOrUrl -> Test
-testParseIntoStringOrUrlList string expect =
-    test ("should work for text: '" ++ string ++ "'") <|
-        \_ ->
-            string
-                |> Parser.run Data.TextRenderer.parseIntoStringOrUrlList
-                |> Expect.equal (Ok expect)
 
 
 textRendererSuite : Test
@@ -320,6 +325,15 @@ textRendererSuite =
                 ]
             ]
         ]
+
+
+testParseIntoStringOrUrlList : String -> List StringOrUrl -> Test
+testParseIntoStringOrUrlList string expect =
+    test ("should work for text: '" ++ string ++ "'") <|
+        \_ ->
+            string
+                |> Parser.run Data.TextRenderer.parseIntoStringOrUrlList
+                |> Expect.equal (Ok expect)
 
 
 exampleCom : Url.Url
@@ -453,6 +467,21 @@ testLessThan a b =
 -- Data.Producer.Discord
 
 
+discordSuite : Test
+discordSuite =
+    describe "Data.Producer.Discord"
+        [ describe "colorDecoder/encodeColor"
+            [ testColorSerDe 0 "000000"
+            , testColorSerDe 15 "00000f"
+            , testColorSerDe 255 "0000ff"
+            , testColorSerDe 4095 "000fff"
+            , testColorSerDe 65535 "00ffff"
+            , testColorSerDe 1048575 "0fffff"
+            , testColorSerDe 16777215 "ffffff"
+            ]
+        ]
+
+
 testColorSerDe : Int -> String -> Test
 testColorSerDe colorNum expectedHex =
     test ("should decode/encode color integer " ++ fromInt colorNum) <|
@@ -473,36 +502,3 @@ testColorSerDe colorNum expectedHex =
                     , Result.map (Data.Producer.Discord.encodeColor >> encode 0 >> toInt)
                         >> Expect.equal (Ok (Just colorNum))
                     ]
-
-
-discordSuite : Test
-discordSuite =
-    describe "Data.Producer.Discord"
-        [ describe "colorDecoder/encodeColor"
-            [ testColorSerDe 0 "000000"
-            , testColorSerDe 15 "00000f"
-            , testColorSerDe 255 "0000ff"
-            , testColorSerDe 4095 "000fff"
-            , testColorSerDe 65535 "00ffff"
-            , testColorSerDe 1048575 "0fffff"
-            , testColorSerDe 16777215 "ffffff"
-            ]
-        ]
-
-
-
--- MAIN
-
-
-suite : Test
-suite =
-    describe "test"
-        [ listSuite
-        , stringSuite
-        , arraySuite
-        , uniqueIdSuite
-        , textRendererSuite
-        , filterSuite
-        , fetchStatusSuite
-        , discordSuite
-        ]

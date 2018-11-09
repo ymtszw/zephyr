@@ -1,5 +1,6 @@
 module View.Parts exposing
-    ( noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
+    ( noneAttr, visible, switchCursor, inputScreen, dragHandle
+    , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
@@ -7,7 +8,7 @@ module View.Parts exposing
     , filtersToIconEl
     , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , columnAreaParentId, defaultOcticonColor
+    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
     )
 
 {-| View parts, complementing Element and Html.
@@ -15,7 +16,8 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, breakP, breakT, breakTColumn, collapsingColumn, dragHandle
+@docs noneAttr, visible, switchCursor, inputScreen, dragHandle
+@docs breakP, breakT, breakTColumn, collapsingColumn
 
 
 ## Icons
@@ -34,7 +36,7 @@ module View.Parts exposing
 @docs scale12, css, brightness, setAlpha, manualStyle
 
 
-## Filter
+## Column Filter
 
 @docs filtersToIconEl
 
@@ -47,7 +49,7 @@ module View.Parts exposing
 ## Constants
 
 @docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs columnAreaParentId, defaultOcticonColor
+@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
 
 -}
 
@@ -77,37 +79,68 @@ noneAttr =
     htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
 
 
-octiconEl : { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
-octiconEl { size, color, shape } =
+{-| Hide an Element with `display: none;` property.
+
+When supported by popular browsers, it might be better replaced by `visibility: collapse`.
+
+This is actually crucial for rendering performance.
+Since entirely removing DOMs with `none` and re-introducing them afterwards
+causes significant computational overhead for web browsers.
+
+As a rule of thumb, if the DOM tree can be reused, do not delete it, hide it instead.
+If it is really gone, delete it.
+
+-}
+visible : Bool -> Attribute msg
+visible isVisible =
+    if isVisible then
+        noneAttr
+
+    else
+        htmlAttribute (style "display" "none")
+
+
+{-| Cursor helper for input elements. When False, use cursor: default;
+-}
+switchCursor : Bool -> Attribute msg
+switchCursor enabled =
+    ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+
+
+octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
+octiconEl attrs { size, color, shape } =
     Octicons.defaultOptions
         |> Octicons.color (css color)
         |> Octicons.size size
         |> shape
         |> html
+        |> el attrs
 
 
-squareIconOrHeadEl : Int -> String -> Maybe String -> Element msg
-squareIconOrHeadEl size name urlMaybe =
+squareIconOrHeadEl : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Element msg
+squareIconOrHeadEl userAttrs { size, name, url } =
     let
         ( attr, fallbackContent ) =
-            case urlMaybe of
-                Just url ->
-                    ( BG.uncropped url, none )
+            case url of
+                Just url_ ->
+                    ( BG.uncropped url_, none )
 
                 Nothing ->
                     ( Font.size (size // 2), el [ centerX, centerY ] (text (String.left 1 name)) )
+
+        attrs =
+            [ width (px size)
+            , height (px size)
+            , alignTop
+            , BG.color iconBackground
+            , BD.rounded (iconRounding size)
+            , clip
+            , htmlAttribute (Html.Attributes.title name)
+            , attr
+            ]
+                ++ userAttrs
     in
-    el
-        [ width (px size)
-        , height (px size)
-        , alignTop
-        , BG.color iconBackground
-        , BD.rounded (iconRounding size)
-        , clip
-        , htmlAttribute (Html.Attributes.title name)
-        , attr
-        ]
-        fallbackContent
+    el attrs fallbackContent
 
 
 iconBackground : Color
@@ -121,13 +154,15 @@ iconRounding badgeSize =
 
 
 iconWithBadgeEl :
-    { size : Int
-    , badge : Maybe (Int -> Element msg)
-    , fallback : String
-    , url : Maybe String
-    }
+    List (Attribute msg)
+    ->
+        { size : Int
+        , badge : Maybe (Int -> Element msg)
+        , fallback : String
+        , url : Maybe String
+        }
     -> Element msg
-iconWithBadgeEl { size, badge, fallback, url } =
+iconWithBadgeEl userAttrs { size, badge, fallback, url } =
     let
         bottomRightBadgeAttrs =
             case badge of
@@ -153,9 +188,9 @@ iconWithBadgeEl { size, badge, fallback, url } =
         innerIconPadding =
             max 1 (size // 20)
     in
-    squareIconOrHeadEl (size - (innerIconPadding * 2)) fallback url
-        |> el [ padding innerIconPadding ]
-        |> el bottomRightBadgeAttrs
+    el (bottomRightBadgeAttrs ++ userAttrs) <|
+        squareIconOrHeadEl [ padding innerIconPadding ]
+            { size = size - (innerIconPadding * 2), name = fallback, url = url }
 
 
 textInputEl :
@@ -164,7 +199,7 @@ textInputEl :
     , enabled : Bool
     , text : String
     , label : Element.Input.Label msg
-    , placeholder : Maybe (Element.Input.Placeholder msg)
+    , placeholder : Maybe (Element msg)
     }
     -> Element msg
 textInputEl { onChange, theme, enabled, text, label, placeholder } =
@@ -176,13 +211,15 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , BD.width 0
         , BD.rounded rectElementRound
         , Font.color theme.text
+        , switchCursor enabled
+        , customPlaceholder theme placeholder text
+        , inputScreen enabled
         , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onChange = onChange
         , text = text
-        , placeholder = placeholder
+        , placeholder = Nothing
         , label = label
         }
 
@@ -192,91 +229,114 @@ textInputPadding =
     5
 
 
+customPlaceholder : ColorTheme -> Maybe (Element msg) -> String -> Attribute msg
+customPlaceholder theme phMaybe text =
+    -- elm-ui's placeholder uses opacity to switch visibility, but it triggers style recalculation on change.
+    -- Whereas display property does not trigger style recalculation, and with inFront (position: absolute;), no layout/reflow.
+    case phMaybe of
+        Just ph ->
+            inFront <|
+                el
+                    [ padding textInputPadding
+                    , centerY
+                    , visible (String.isEmpty text)
+                    , Font.color (setAlpha 0.5 theme.text)
+                    ]
+                    ph
+
+        Nothing ->
+            noneAttr
+
+
 primaryButtonEl :
-    { onPress : msg
-    , width : Length
-    , theme : ColorTheme
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , theme : ColorTheme
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-primaryButtonEl { onPress, width, theme, enabled, innerElement } =
-    rectButtonEl
+primaryButtonEl attrs { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl attrs
         { onPress = onPress
         , width = width
         , enabledColor = theme.prim
         , enabledFontColor = theme.text
-        , disabledColor = theme.sub
-        , disabledFontColor = theme.note
         , enabled = enabled
         , innerElement = innerElement
         }
 
 
 successButtonEl :
-    { onPress : msg
-    , width : Length
-    , theme : ColorTheme
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , theme : ColorTheme
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-successButtonEl { onPress, width, theme, enabled, innerElement } =
-    rectButtonEl
+successButtonEl attrs { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl attrs
         { onPress = onPress
         , width = width
         , enabledColor = theme.succ
         , enabledFontColor = theme.text
-        , disabledColor = theme.sub
-        , disabledFontColor = theme.note
         , enabled = enabled
         , innerElement = innerElement
         }
 
 
 dangerButtonEl :
-    { onPress : msg
-    , width : Length
-    , theme : ColorTheme
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , theme : ColorTheme
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-dangerButtonEl { onPress, width, theme, enabled, innerElement } =
-    rectButtonEl
+dangerButtonEl attrs { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl attrs
         { onPress = onPress
         , width = width
         , enabledColor = theme.err
         , enabledFontColor = theme.text
-        , disabledColor = theme.sub
-        , disabledFontColor = theme.note
         , enabled = enabled
         , innerElement = innerElement
         }
 
 
 rectButtonEl :
-    { onPress : msg
-    , width : Length
-    , enabledColor : Color
-    , enabledFontColor : Color
-    , disabledColor : Color
-    , disabledFontColor : Color
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , enabledColor : Color
+        , enabledFontColor : Color
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-rectButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
-    Element.Input.button
-        [ Element.width width
-        , padding rectButtonPadding
-        , BD.rounded rectElementRound
-        , BG.color (ite enabled enabledColor disabledColor)
-        , Font.color (ite enabled enabledFontColor disabledFontColor)
-        , clip
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
-        ]
+rectButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
+    let
+        attrs =
+            [ Element.width width
+            , padding rectButtonPadding
+            , BD.rounded rectElementRound
+            , BG.color enabledColor
+            , Font.color enabledFontColor
+            , clip
+            , inputScreen enabled
+            , switchCursor enabled
+            ]
+                ++ userAttrs
+    in
+    Element.Input.button attrs
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
         }
@@ -287,28 +347,48 @@ rectButtonPadding =
     10
 
 
+{-| Concealing screen over input elements, hiding it when disabled (False).
+
+This is introduced in order to reduce style recalculation.
+In elm-ui, changing color of an element causes replacing of class and style element,
+thus triggering style recalc, which can be costly if there are thousands of DOM elements to traverse.
+
+This, on the other hand, places static element with transparent black background,
+over the target input element. And when the input is enabled, its turned off via display: none;
+whcih does not cause style recalc nor layout/reflow (due to inFront == position: absolute;)
+
+-}
+inputScreen : Bool -> Attribute msg
+inputScreen enabled =
+    inFront <| el [ width fill, height fill, visible (not enabled), BG.color (rgba255 0 0 0 0.5) ] none
+
+
 thinButtonEl :
-    { onPress : msg
-    , width : Length
-    , enabledColor : Color
-    , enabledFontColor : Color
-    , disabledColor : Color
-    , disabledFontColor : Color
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , enabledColor : Color
+        , enabledFontColor : Color
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-thinButtonEl { onPress, width, enabledColor, enabledFontColor, disabledColor, disabledFontColor, enabled, innerElement } =
-    Element.Input.button
-        [ Element.width width
-        , padding thinButtonPadding
-        , BD.rounded thinButtonPadding
-        , BG.color (ite enabled enabledColor disabledColor)
-        , Font.color (ite enabled enabledFontColor disabledFontColor)
-        , clip
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
-        ]
+thinButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
+    let
+        attrs =
+            [ Element.width width
+            , padding thinButtonPadding
+            , BD.rounded thinButtonPadding
+            , BG.color enabledColor
+            , Font.color enabledFontColor
+            , clip
+            , inputScreen enabled
+            , switchCursor enabled
+            ]
+                ++ userAttrs
+    in
+    Element.Input.button attrs
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
         }
@@ -335,32 +415,50 @@ roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
         [ width (px innerElementSize)
         , height (px innerElementSize)
         , BD.rounded (innerElementSize // 2 + 1)
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+        , switchCursor enabled
+        , roundInputScreen innerElementSize enabled
         , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
         ]
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
         }
+
+
+roundInputScreen : Int -> Bool -> Attribute msg
+roundInputScreen size enabled =
+    inFront <|
+        el
+            [ width fill
+            , height fill
+            , BD.rounded (size // 2 + 1)
+            , visible (not enabled)
+            , BG.color (rgba255 0 0 0 0.5)
+            ]
+            none
 
 
 squareButtonEl :
-    { onPress : msg
-    , enabled : Bool
-    , innerElement : Element msg
-    , innerElementSize : Int
-    }
-    -> Element msg
-squareButtonEl { onPress, enabled, innerElement, innerElementSize } =
-    Element.Input.button
-        [ width (px innerElementSize)
-        , height (px innerElementSize)
-        , clip
-        , ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
-        ]
-        { onPress = ite enabled (Just onPress) Nothing
-        , label = el [ centerX, centerY ] innerElement
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , enabled : Bool
+        , innerElement : Element msg
+        , innerElementSize : Int
         }
+    -> Element msg
+squareButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
+    let
+        attrs =
+            [ width (px innerElementSize)
+            , height (px innerElementSize)
+            , clip
+            , switchCursor enabled
+            , inputScreen enabled
+            , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+            ]
+                ++ userAttrs
+    in
+    Element.Input.button attrs { onPress = ite enabled (Just onPress) Nothing, label = el [ centerX, centerY ] innerElement }
 
 
 {-| Text that can break on parent inline element width.
@@ -475,15 +573,15 @@ dragHandleClassName =
     "dragHandle"
 
 
-filtersToIconEl : Int -> FilterAtomMaterial -> Array Filter -> Element msg
-filtersToIconEl size fam filters =
+filtersToIconEl : List (Attribute msg) -> { size : Int, fam : FilterAtomMaterial, filters : Array Filter } -> Element msg
+filtersToIconEl attrs { size, fam, filters } =
     filters
-        |> Array.foldl (filterToIconEl size fam) Nothing
-        |> Maybe.withDefault (lazy fallbackIconEl size)
+        |> Array.foldl (filterToIconEl attrs size fam) Nothing
+        |> Maybe.withDefault (lazy2 fallbackIconEl attrs size)
 
 
-filterToIconEl : Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
-filterToIconEl size fam filter elMaybe =
+filterToIconEl : List (Attribute msg) -> Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
+filterToIconEl attrs size fam filter elMaybe =
     let
         reducer filterAtom acc =
             case ( acc, filterAtom ) of
@@ -491,7 +589,7 @@ filterToIconEl size fam filter elMaybe =
                     acc
 
                 ( _, OfDiscordChannel cId ) ->
-                    FAM.mapDiscordChannel cId fam (discordChannelIconEl size)
+                    FAM.mapDiscordChannel cId fam (discordChannelIconEl attrs size)
 
                 ( _, _ ) ->
                     Nothing
@@ -499,11 +597,11 @@ filterToIconEl size fam filter elMaybe =
     Data.Filter.fold reducer elMaybe filter
 
 
-discordChannelIconEl : Int -> Discord.ChannelCache -> Element msg
-discordChannelIconEl size c =
+discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
+discordChannelIconEl attrs size c =
     case c.guildMaybe of
         Just guild ->
-            iconWithBadgeEl
+            iconWithBadgeEl attrs
                 { size = size
                 , badge = Just (lazy discordBadgeEl)
                 , fallback = c.name
@@ -511,7 +609,7 @@ discordChannelIconEl size c =
                 }
 
         Nothing ->
-            iconWithBadgeEl
+            iconWithBadgeEl attrs
                 { size = size
                 , badge = Nothing
                 , fallback = c.name
@@ -529,32 +627,37 @@ discordBadgeEl badgeSize =
         none
 
 
-fallbackIconEl : Int -> Element msg
-fallbackIconEl size =
-    el
-        [ width (px size)
-        , height (px size)
-        , clip
-        , BD.width 1
-        , BD.color oneDark.note
-        , BD.rounded rectElementRound
-        , Font.size (size // 2)
-        , Font.family [ Font.serif ]
-        ]
-        (el [ centerX, centerY ] <| text "Z")
+fallbackIconEl : List (Attribute msg) -> Int -> Element msg
+fallbackIconEl userAttrs size =
+    let
+        attrs =
+            [ width (px size)
+            , height (px size)
+            , clip
+            , BD.width 1
+            , BD.color oneDark.note
+            , BD.rounded rectElementRound
+            , Font.size (size // 2)
+            , Font.family [ Font.serif ]
+            ]
+                ++ userAttrs
+    in
+    el attrs <| el [ centerX, centerY ] <| text "Z"
 
 
-discordGuildIconEl : Int -> Discord.Guild -> Element msg
-discordGuildIconEl size guild =
-    guild.icon
-        |> Maybe.map (Discord.imageUrlNoFallback (Just size))
-        |> squareIconOrHeadEl size guild.name
+discordGuildIconEl : List (Attribute msg) -> Int -> Discord.Guild -> Element msg
+discordGuildIconEl attrs size guild =
+    squareIconOrHeadEl attrs
+        { size = size
+        , name = guild.name
+        , url = Maybe.map (Discord.imageUrlNoFallback (Just size)) guild.icon
+        }
 
 
-discordChannelEl : Int -> { x | name : String, guildMaybe : Maybe Discord.Guild } -> Element msg
-discordChannelEl size channel =
-    row [ spacing discordGuildIconSpacingX ]
-        [ channel.guildMaybe |> Maybe.map (discordGuildIconEl size) |> Maybe.withDefault none
+discordChannelEl : List (Attribute msg) -> { size : Int, channel : { x | name : String, guildMaybe : Maybe Discord.Guild } } -> Element msg
+discordChannelEl attrs { size, channel } =
+    row ([ spacing discordGuildIconSpacingX ] ++ attrs)
+        [ channel.guildMaybe |> Maybe.map (discordGuildIconEl [] size) |> Maybe.withDefault none
         , text ("#" ++ channel.name)
         ]
 
@@ -572,10 +675,13 @@ manualStyle : Html.Html msg
 manualStyle =
     Html.node "style"
         []
-        [ Html.text "*{scroll-behavior:smooth;}"
-        , Html.text "::-webkit-scrollbar{display:none;}"
-        , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}"
-        , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}"
+        [ Html.text "*{scroll-behavior:smooth;}" -- Smooth-scrolling on JS-invoked scrolls
+        , Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
+        , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}" -- Breakable inline texts
+        , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}" -- Drag handle cursor
+        , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
+        , Html.text "a:link{text-decoration:none;}" -- Disabled browser-default link-underlining
+        , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
         ]
 
 
@@ -616,3 +722,18 @@ columnAreaParentId =
 defaultOcticonColor : Color
 defaultOcticonColor =
     oneDark.note
+
+
+itemMinimumHeight : Int
+itemMinimumHeight =
+    itemAvatarSize + rectElementInnerPadding + itemBorderBottom
+
+
+itemAvatarSize : Int
+itemAvatarSize =
+    40
+
+
+itemBorderBottom : Int
+itemBorderBottom =
+    2

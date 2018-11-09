@@ -15,16 +15,18 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Octicons
+import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
 
 
 sidebarEl : Model -> Element Msg
-sidebarEl { columnStore, viewState, env } =
+sidebarEl ({ columnStore, viewState, env } as m) =
     column
         [ width (px (buttonSize + paddingX * 2))
         , height (fill |> maximum env.clientHeight)
         , alignLeft
         , paddingXY paddingX sectionSpacingY
+        , onRight (configPaneEl m)
         , BG.color oneDark.bg
         ]
         [ el [ width fill, alignTop ] (columnButtonsEl viewState.filterAtomMaterial columnStore)
@@ -60,17 +62,11 @@ columnButtonsEl fam columnStore =
 
 columnButtonKeyEl : FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
 columnButtonKeyEl fam index { id, filters } =
-    filtersToIconEl buttonSize fam filters
-        |> asColumnButton index id
-        |> Tuple.pair ("sidebarButton_" ++ id)
-
-
-asColumnButton : Int -> String -> Element Msg -> Element Msg
-asColumnButton index cId element =
     Element.Input.button [ width (px buttonSize), height (px buttonSize) ]
         { onPress = Just (RevealColumn index)
-        , label = element
+        , label = filtersToIconEl [] { size = buttonSize, fam = fam, filters = filters }
         }
+        |> Tuple.pair ("sidebarButton_" ++ id)
 
 
 columnAddButtonKeyEl : ( String, Element Msg )
@@ -87,8 +83,7 @@ columnAddButtonKeyEl =
         ]
         { onPress = Just AddEmptyColumn
         , label =
-            el [ centerX, centerY ] <|
-                octiconEl { size = buttonSize // 2, color = defaultOcticonColor, shape = Octicons.plus }
+            octiconEl [ centerX, centerY ] { size = buttonSize // 2, color = defaultOcticonColor, shape = Octicons.plus }
         }
         |> el [ width fill ]
         |> Tuple.pair "columnAddButton"
@@ -109,8 +104,7 @@ otherButtonsEl configOpen =
             ]
             { onPress = Just (ToggleConfig (not configOpen))
             , label =
-                el [ centerX, centerY ] <|
-                    octiconEl { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.gear }
+                octiconEl [ centerX, centerY ] { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.gear }
             }
         , newTabLink
             [ width (px buttonSize)
@@ -120,8 +114,7 @@ otherButtonsEl configOpen =
             ]
             { url = "https://github.com/ymtszw/zephyr"
             , label =
-                el [ centerX, centerY ] <|
-                    octiconEl { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.markGithub }
+                octiconEl [ centerX, centerY ] { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.markGithub }
             }
         ]
 

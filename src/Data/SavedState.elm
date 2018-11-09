@@ -19,56 +19,18 @@ type alias SavedState =
     }
 
 
-decoder : UniqueIdGen -> Decoder SavedState
-decoder idGen =
+decoder : Int -> UniqueIdGen -> Decoder SavedState
+decoder clientHeight idGen =
     -- Write new decoder and migration logic when you change SavedState structure
     D.oneOf
-        [ v3StateDecoder
-        , v2StateDecoder
-        , v1StateDecoder idGen
+        [ v3StateDecoder clientHeight
         ]
 
 
-v3StateDecoder : Decoder SavedState
-v3StateDecoder =
+v3StateDecoder : Int -> Decoder SavedState
+v3StateDecoder clientHeight =
     D.map4 SavedState
-        (D.field "columnStore" ColumnStore.decoder)
+        (D.field "columnStore" (ColumnStore.decoder clientHeight))
         (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
         (D.field "producerRegistry" Producer.registryDecoder)
         (D.field "idGen" UniqueIdGen.generatorDecoder)
-
-
-v2StateDecoder : Decoder SavedState
-v2StateDecoder =
-    D.map convertFromV2State <|
-        D.map2 Tuple.pair
-            (D.field "columnStore" ColumnStore.decoder)
-            (D.field "idGen" UniqueIdGen.generatorDecoder)
-
-
-convertFromV2State : ( ColumnStore, UniqueIdGen ) -> SavedState
-convertFromV2State ( columnStore, idGen ) =
-    SavedState columnStore ItemBroker.init Producer.initRegistry idGen
-
-
-v1StateDecoder : UniqueIdGen -> Decoder SavedState
-v1StateDecoder idGen =
-    D.field "columns" (D.list Column.decoder)
-        |> D.andThen (convertFromV1State idGen)
-        |> D.map convertFromV2State
-
-
-convertFromV1State : UniqueIdGen -> List Column -> Decoder ( ColumnStore, UniqueIdGen )
-convertFromV1State idGen columns =
-    case columns of
-        (_ :: _) as nonEmptyColumns ->
-            let
-                applyId decoded ( accColumnStore, accIdGen ) =
-                    UniqueIdGen.genAndMap UniqueIdGen.columnPrefix accIdGen <|
-                        \newId ->
-                            ColumnStore.add { decoded | id = newId } accColumnStore
-            in
-            D.succeed <| List.foldr applyId ( ColumnStore.init, idGen ) nonEmptyColumns
-
-        [] ->
-            D.fail "No saved columns. Go to fallback."

@@ -1,7 +1,5 @@
 module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, push, update)
 
-import BoundedDeque exposing (BoundedDeque)
-import Browser.Dom
 import Data.ColorTheme exposing (oneDark)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Element exposing (..)
@@ -11,15 +9,11 @@ import Element.Font as Font exposing (bold)
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
-import Extra exposing (doAfter, ite)
+import Extra exposing (ite)
 import Html
-import Html.Attributes exposing (id, readonly, style, tabindex)
-import Html.Events
-import Json.Decode as D
+import Html.Attributes exposing (style, tabindex)
 import Octicons
-import StringExtra
-import Task
-import Time exposing (Posix)
+import Scroll exposing (Scroll)
 import View.Parts exposing (..)
 
 
@@ -29,34 +23,16 @@ import View.Parts exposing (..)
 
 type History
     = History
-        { buffer : BoundedDeque ( String, Entry )
-        , pending : List ( String, Entry )
-        , scroll : Scroll
+        { entries : Scroll ( String, Entry )
         , payloadFilter : String
         , msgFilters : List MsgFilter
         }
 
 
 type alias Entry =
-    { ctor : String -- Must not include whitespaces
+    { ctor : String
     , payload : List String
     }
-
-
-type Scroll
-    = Scrolling Browser.Dom.Viewport
-    | OffTheTop Browser.Dom.Viewport
-    | AtTop
-
-
-type Msg
-    = ScrollStart
-    | ViewportResult (Result Browser.Dom.Error ( Posix, Browser.Dom.Viewport ))
-    | BackToTop
-    | FilterInput String
-    | SetMsgFilter MsgFilter
-    | DelMsgFilter MsgFilter
-    | NoOp
 
 
 type MsgFilter
@@ -66,25 +42,26 @@ type MsgFilter
 init : History
 init =
     History
-        { buffer = BoundedDeque.empty historyLimit
-        , pending = []
-        , scroll = AtTop
+        { entries = Scroll.defaultOptions historyElementId |> Scroll.init
         , payloadFilter = ""
         , msgFilters = defaultFilters
         }
 
 
-historyLimit : Int
-historyLimit =
-    1000
+historyElementId : String
+historyElementId =
+    "loggerHistory"
 
 
 defaultFilters : List MsgFilter
 defaultFilters =
-    -- Timer ticks are good candidates of default filters
+    -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
     , MsgFilter False "Logger.ScrollStart"
     , MsgFilter False "Logger.ViewportOk"
+    , MsgFilter False "Logger.FilterInput"
+    , MsgFilter False "Discord.TokenInput"
+    , MsgFilter False "Column.DeleteGateInput"
     ]
 
 
@@ -92,63 +69,31 @@ defaultFilters =
 -- Component
 
 
+type Msg
+    = ScrollMsg Scroll.Msg
+    | FilterInput String
+    | SetMsgFilter MsgFilter
+    | DelMsgFilter MsgFilter
+
+
 update : Msg -> History -> ( History, Cmd Msg )
 update msg (History h) =
-    case ( msg, h.scroll ) of
-        ( ScrollStart, OffTheTop vp ) ->
-            ( History { h | scroll = Scrolling vp }, queryViewport )
+    case msg of
+        ScrollMsg sMsg ->
+            let
+                ( newEntries, cmd ) =
+                    Scroll.update sMsg h.entries
+            in
+            ( History { h | entries = newEntries }, Cmd.map ScrollMsg cmd )
 
-        ( ScrollStart, _ ) ->
-            ( History h, queryViewport )
-
-        ( BackToTop, _ ) ->
-            ( History h, Browser.Dom.setViewportOf historyElementId 0 0 |> Task.attempt (\_ -> ScrollStart) )
-
-        ( ViewportResult (Ok ( _, newVp )), Scrolling oldVp ) ->
-            if newVp.viewport.y == 0 then
-                ( History { h | scroll = AtTop } |> pendingToBuffer, Cmd.none )
-
-            else if newVp == oldVp then
-                ( History { h | scroll = OffTheTop newVp }, Cmd.none )
-
-            else
-                ( History { h | scroll = Scrolling newVp }, queryViewport )
-
-        ( ViewportResult (Ok ( _, newVp )), _ ) ->
-            if newVp.viewport.y == 0 then
-                ( History { h | scroll = AtTop } |> pendingToBuffer, Cmd.none )
-
-            else
-                ( History { h | scroll = OffTheTop newVp }, Cmd.none )
-
-        ( ViewportResult (Err _), _ ) ->
-            ( History { h | scroll = AtTop }, Cmd.none )
-
-        ( FilterInput pf, _ ) ->
+        FilterInput pf ->
             ( History { h | payloadFilter = pf }, Cmd.none )
 
-        ( SetMsgFilter mf, _ ) ->
+        SetMsgFilter mf ->
             ( setMsgFilter mf (History h), Cmd.none )
 
-        ( DelMsgFilter mf, _ ) ->
+        DelMsgFilter mf ->
             ( History { h | msgFilters = List.filter ((/=) mf) h.msgFilters }, Cmd.none )
-
-        ( NoOp, _ ) ->
-            ( History h, Cmd.none )
-
-
-queryViewport : Cmd Msg
-queryViewport =
-    doAfter 50 ViewportResult (Browser.Dom.getViewportOf historyElementId)
-
-
-pendingToBuffer : History -> History
-pendingToBuffer (History h) =
-    History <|
-        { h
-            | buffer = List.foldr BoundedDeque.pushFront h.buffer h.pending
-            , pending = []
-        }
 
 
 setMsgFilter : MsgFilter -> History -> History
@@ -177,42 +122,17 @@ push : UniqueIdGen -> Entry -> History -> ( History, UniqueIdGen )
 push idGen e (History h) =
     UniqueIdGen.genAndMap UniqueIdGen.logEntryPrefix idGen <|
         \eId ->
-            case h.scroll of
-                AtTop ->
-                    pendingToBuffer (History h) |> pushToBuffer ( eId, e )
+            -- Simple Pop & Dedup
+            case Scroll.pop h.entries of
+                ( Just ( _, d ), popped ) ->
+                    if e.ctor == d.ctor then
+                        History { h | entries = Scroll.push ( eId, e ) popped }
 
-                _ ->
-                    pushToPending ( eId, e ) (History h)
+                    else
+                        History { h | entries = Scroll.push ( eId, e ) h.entries }
 
-
-pushToBuffer : ( String, Entry ) -> History -> History
-pushToBuffer ( eId, e ) (History h) =
-    History <|
-        case BoundedDeque.popFront h.buffer of
-            ( Just ( _, top ), popped ) ->
-                if top.ctor == e.ctor then
-                    { h | buffer = BoundedDeque.pushFront ( eId, e ) popped }
-
-                else
-                    { h | buffer = BoundedDeque.pushFront ( eId, e ) h.buffer }
-
-            ( Nothing, _ ) ->
-                { h | buffer = BoundedDeque.pushFront ( eId, e ) h.buffer }
-
-
-pushToPending : ( String, Entry ) -> History -> History
-pushToPending ( eId, e ) (History h) =
-    History <|
-        case h.pending of
-            [] ->
-                { h | pending = [ ( eId, e ) ] }
-
-            ( _, p ) :: ps ->
-                if p.ctor == e.ctor then
-                    { h | pending = ( eId, e ) :: ps }
-
-                else
-                    { h | pending = ( eId, e ) :: h.pending }
+                ( Nothing, _ ) ->
+                    History { h | entries = Scroll.push ( eId, e ) h.entries }
 
 
 
@@ -256,8 +176,7 @@ historyTableEl (History h) =
             h.payloadFilter |> String.split " " |> List.filter (not << String.isEmpty)
 
         data =
-            BoundedDeque.toList h.buffer
-                |> List.filter (filterEntry negMsgFilters posMsgFilters payloadQueries)
+            Scroll.toListWithFilter (filterEntry negMsgFilters posMsgFilters payloadQueries) h.entries
 
         columnAttrs =
             [ width fill
@@ -266,9 +185,8 @@ historyTableEl (History h) =
             , spacing historyTableCellSpacing
             , clipX
             , BG.color historyTableBackground
-            , htmlAttribute (id historyElementId)
-            , detectScroll (History h)
             ]
+                ++ List.map htmlAttribute (Scroll.scrollAttrs ScrollMsg h.entries)
     in
     Element.Keyed.column columnAttrs <|
         ( "LogHeaders"
@@ -300,11 +218,6 @@ historyTableHeaderBackground =
     oneDark.note
 
 
-historyElementId : String
-historyElementId =
-    "loggerHistory"
-
-
 ctorColumnWidth : Length
 ctorColumnWidth =
     fillPortion 1
@@ -313,19 +226,6 @@ ctorColumnWidth =
 payloadColumnWidth : Length
 payloadColumnWidth =
     fillPortion 2
-
-
-detectScroll : History -> Element.Attribute Msg
-detectScroll (History h) =
-    case h.scroll of
-        AtTop ->
-            htmlAttribute <| Html.Events.on "scroll" (D.succeed ScrollStart)
-
-        OffTheTop _ ->
-            htmlAttribute <| Html.Events.on "scroll" (D.succeed ScrollStart)
-
-        Scrolling _ ->
-            noneAttr
 
 
 filterEntry : List MsgFilter -> List MsgFilter -> List String -> ( String, Entry ) -> Bool
@@ -343,16 +243,15 @@ filterEntry negMsgFilters posMsgFilters payloadQueries ( _, e ) =
 
 newEntryToastEl : History -> Element Msg
 newEntryToastEl (History h) =
-    case h.pending of
-        [] ->
-            none
-
-        ps ->
-            el [ width fill, alignTop, padding rectElementOuterPadding ] <|
-                Element.Input.button [ width fill, padding rectElementInnerPadding, BG.color oneDark.succ ]
-                    { onPress = Just BackToTop
-                    , label = el [ centerX ] <| text ("New Log Entry (" ++ String.fromInt (List.length ps) ++ ")")
-                    }
+    let
+        size =
+            Scroll.pendingSize h.entries
+    in
+    el [ width fill, alignTop, padding rectElementOuterPadding, visible (size /= 0) ] <|
+        Element.Input.button [ width fill, padding rectElementInnerPadding, BG.color oneDark.succ ]
+            { onPress = Just (ScrollMsg Scroll.BackToTop)
+            , label = el [ centerX ] <| text ("New Log Entry (" ++ String.fromInt size ++ ")")
+            }
 
 
 rowKeyEl : List MsgFilter -> ( String, Entry ) -> ( String, Element Msg )
@@ -372,24 +271,24 @@ ctorCellEl msgFilters entry =
         , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
-                , label = el [ BG.color oneDark.succ ] <| ctorFilterButtonEl Octicons.diffAdded
+                , label = ctorFilterButtonEl [ BG.color oneDark.succ ] Octicons.diffAdded
                 }
 
             else
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
-                , label = el [] <| ctorFilterButtonEl Octicons.diffAdded
+                , label = ctorFilterButtonEl [] Octicons.diffAdded
                 }
         , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
-            , label = el [] <| ctorFilterButtonEl Octicons.diffRemoved
+            , label = ctorFilterButtonEl [] Octicons.diffRemoved
             }
         ]
 
 
-ctorFilterButtonEl : (Octicons.Options -> Html.Html Msg) -> Element Msg
-ctorFilterButtonEl shape =
-    octiconEl
+ctorFilterButtonEl : List (Attribute Msg) -> (Octicons.Options -> Html.Html Msg) -> Element Msg
+ctorFilterButtonEl attrs shape =
+    octiconEl attrs
         { size = ctorFilterButtonSize
         , color = defaultOcticonColor
         , shape = shape
@@ -408,24 +307,16 @@ payloadCellsEl entry =
 
 payloadCellEl : String -> Element Msg
 payloadCellEl raw =
-    Element.Input.multiline
+    breakP
         [ width fill
         , height (shrink |> maximum payloadCellMaxHeight)
         , padding rectElementInnerPadding
-        , focused []
-        , BD.width 0
+        , scrollbarY
         , BG.color payloadCellBackground
-        , Font.family [ Font.typeface "consolas", Font.monospace ]
-        , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
-        , htmlAttribute (readonly True)
-        , htmlAttribute (tabindex -1)
+        , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+        , htmlAttribute (style "user-select" "all")
         ]
-        { onChange = always NoOp
-        , text = raw
-        , placeholder = Nothing
-        , label = Element.Input.labelHidden "Payload"
-        , spellcheck = False
-        }
+        [ breakT raw ]
 
 
 payloadCellBackground : Color
@@ -463,7 +354,7 @@ msgFilterEl ((MsgFilter isPos ctor) as mf) =
             , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = rectElementRound, bottomRight = rectElementRound }
             ]
             { onPress = Just (DelMsgFilter mf)
-            , label = octiconEl { size = msgFilterDeleteIconSize, color = msgFilterDeleteIconColor, shape = Octicons.trashcan }
+            , label = octiconEl [] { size = msgFilterDeleteIconSize, color = msgFilterDeleteIconColor, shape = Octicons.trashcan }
             }
         ]
 
@@ -491,9 +382,5 @@ payloadFilterInputEl (History h) =
         , enabled = True
         , text = h.payloadFilter
         , label = Element.Input.labelHidden "Log Payload Filter"
-        , placeholder =
-            Just <|
-                Element.Input.placeholder [] <|
-                    el [ centerY ] <|
-                        text "Payload OR Filter (Space-delimited, Case-sensitive)"
+        , placeholder = Just (text "Payload OR Filter (Space-delimited, Case-sensitive)")
         }

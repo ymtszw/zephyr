@@ -14,6 +14,7 @@ import Iso8601
 import Json.Decode as D
 import Json.Encode as E
 import Logger exposing (Entry)
+import Scroll
 import String exposing (fromInt)
 import Time exposing (Posix, Zone)
 import Url
@@ -146,17 +147,8 @@ viewportToString vp =
 loggerMsgToEntry : Logger.Msg -> Entry
 loggerMsgToEntry lMsg =
     case lMsg of
-        Logger.ScrollStart ->
-            Entry "Logger.ScrollStart" []
-
-        Logger.BackToTop ->
-            Entry "Logger.BackToTop" []
-
-        Logger.ViewportResult (Ok ( _, vp )) ->
-            Entry "Logger.ViewportOk" [ viewportToString vp ]
-
-        Logger.ViewportResult (Err _) ->
-            Entry "Logger.ViewportNotFound" []
+        Logger.ScrollMsg sMsg ->
+            scrollMsgToEntry "Logger" sMsg
 
         Logger.FilterInput query ->
             Entry "Logger.FilterInput" [ query ]
@@ -167,8 +159,21 @@ loggerMsgToEntry lMsg =
         Logger.DelMsgFilter (Logger.MsgFilter isPos ctor) ->
             Entry "Logger.DelMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
 
-        Logger.NoOp ->
-            Entry "Logger.NoOp" []
+
+scrollMsgToEntry : String -> Scroll.Msg -> Entry
+scrollMsgToEntry prefix sMsg =
+    case sMsg of
+        Scroll.ScrollStart ->
+            Entry (prefix ++ ".ScrollStart") []
+
+        Scroll.ViewportResult (Ok vp) ->
+            Entry (prefix ++ ".ViewportOk") [ viewportToString vp ]
+
+        Scroll.ViewportResult (Err _) ->
+            Entry (prefix ++ ".ViewportNotFound") []
+
+        Scroll.BackToTop ->
+            Entry (prefix ++ ".BackToTop") []
 
 
 producerMsgToEntry : Producer.Msg -> Entry
@@ -236,3 +241,6 @@ columnMsgToEntry cId cMsg =
 
         Column.DeleteGateInput input ->
             Entry "Column.DeleteGateInput" [ cId, input ]
+
+        Column.ScrollMsg sMsg ->
+            scrollMsgToEntry "Column" sMsg

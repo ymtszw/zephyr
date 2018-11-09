@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder
-    , add, get, indexedMap, removeAt, updateById, applyOrder
-    , discordChannelIds, consumeBroker
+    , add, get, map, indexedMap, removeAt, updateById, applyOrder
+    , consumeBroker
     )
 
 {-| Order-aware Column storage.
@@ -9,20 +9,9 @@ module Data.ColumnStore exposing
 Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
-
-## Types
-
 @docs ColumnStore, init, encode, decoder
-
-
-## APIs
-
-@docs add, get, indexedMap, removeAt, updateById, applyOrder
-
-
-## Producer/Consumer APIs
-
-@docs discordChannelIds, consumeBroker
+@docs add, get, map, indexedMap, removeAt, updateById, applyOrder
+@docs consumeBroker
 
 -}
 
@@ -33,7 +22,7 @@ import Data.Column as Column exposing (Column)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Item exposing (Item)
 import Dict exposing (Dict)
-import Extra exposing (map, pure)
+import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Set
@@ -45,10 +34,10 @@ type alias ColumnStore =
     }
 
 
-decoder : Decoder ColumnStore
-decoder =
+decoder : Int -> Decoder ColumnStore
+decoder clientHeight =
     D.map2 ColumnStore
-        (D.field "dict" (D.dict Column.decoder))
+        (D.field "dict" (D.dict (Column.decoder clientHeight)))
         (D.field "order" (D.array D.string))
 
 
@@ -102,7 +91,7 @@ updateById cId cMsg columnStore =
     case Dict.get cId columnStore.dict of
         Just c ->
             Column.update cMsg c
-                |> map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
+                |> Extra.map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
 
         Nothing ->
             pure columnStore
@@ -110,6 +99,11 @@ updateById cId cMsg columnStore =
 
 
 -- BULK APIs
+
+
+map : (Column -> Column) -> ColumnStore -> ColumnStore
+map mapper columnStore =
+    { columnStore | dict = Dict.map (\_ c -> mapper c) columnStore.dict }
 
 
 indexedMap : (Int -> Column -> a) -> ColumnStore -> List a
@@ -138,8 +132,8 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Broker Item -> ColumnStore -> ( ColumnStore, Bool )
-consumeBroker broker columnStore =
+consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
+consumeBroker clientHeight broker columnStore =
     let
         ( newDict, shouldPersist ) =
             Dict.foldl reducer ( Dict.empty, False ) columnStore.dict
@@ -147,12 +141,13 @@ consumeBroker broker columnStore =
         scanCountPerColumn =
             maxScanCount // Dict.size columnStore.dict
 
-        reducer cId column ( accDict, accSP ) =
+        reducer cId column ( accDict, accPersist ) =
             column
+                |> Column.adjustScroll clientHeight
                 |> Column.consumeBroker scanCountPerColumn broker
                 |> Tuple.mapBoth
                     (\newColumn -> Dict.insert cId newColumn accDict)
-                    ((||) accSP)
+                    ((||) accPersist)
     in
     ( { columnStore | dict = newDict }, shouldPersist )
 
@@ -160,27 +155,3 @@ consumeBroker broker columnStore =
 maxScanCount : Int
 maxScanCount =
     500
-
-
-
--- Producer APIs
-
-
-{-| Enumerate Discord channel IDs which are currently subscribed.
--}
-discordChannelIds : ColumnStore -> List String
-discordChannelIds columnStore =
-    let
-        channelIdInFilterAtom filterAtom accSet =
-            case filterAtom of
-                OfDiscordChannel cId ->
-                    Set.insert cId accSet
-
-                _ ->
-                    accSet
-    in
-    columnStore.dict
-        |> Dict.foldl
-            (\_ c s -> Array.foldl (\f ss -> Data.Filter.fold channelIdInFilterAtom ss f) s c.filters)
-            Set.empty
-        |> Set.toList

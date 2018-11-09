@@ -97,7 +97,8 @@ update msg ({ viewState, env } as m) =
             ( m, adjustMaxHeight, False )
 
         GetViewport { viewport } ->
-            -- On the other hand, getViewport is using clientHeight, which does not include scrollbars
+            -- On the other hand, getViewport is using clientHeight, which does not include scrollbars.
+            -- Scrolls are resized on BrokerScan
             pure { m | env = { env | clientHeight = round viewport.height } }
 
         GetTimeZone ( _, zone ) ->
@@ -123,14 +124,14 @@ update msg ({ viewState, env } as m) =
 
         AddEmptyColumn ->
             UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new idGen cId)
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen cId)
                 |> (\( c, idGen ) ->
                         -- If Filters are somehow set to the new Column, then persist.
                         pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
                    )
 
         AddSimpleColumn fa ->
-            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple fa)
+            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa)
                 |> (\( c, idGen ) -> ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, True ))
 
         DelColumn index ->
@@ -196,7 +197,7 @@ onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
 onTick posix m =
     case Worque.pop m.worque of
         ( Just BrokerScan, newWorque ) ->
-            ColumnStore.consumeBroker m.itemBroker m.columnStore
+            ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
                 |> (\( cs, persist ) -> ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }, Cmd.none, persist ))
 
         ( Just DiscordFetch, newWorque ) ->
@@ -295,7 +296,7 @@ sub : Model -> Sub Msg
 sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
-        , IndexedDb.load m.idGen
+        , IndexedDb.load m.env.clientHeight m.idGen
         , Time.every globalTimerIntervalMillis Tick
         , toggleColumnSwap m.viewState.columnSwappable
         ]

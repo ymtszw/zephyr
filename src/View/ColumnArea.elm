@@ -23,6 +23,7 @@ import Html.Events
 import Json.Decode as D exposing (Decoder)
 import ListExtra
 import Octicons
+import Scroll exposing (Scroll)
 import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
@@ -79,7 +80,7 @@ columnKeyEl env vs index c =
         column attrs
             [ lazy2 columnHeaderEl vs.filterAtomMaterial c
             , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
-            , lazy2 itemsEl vs.timezone c.items
+            , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
             ]
 
 
@@ -97,7 +98,7 @@ columnHeaderEl fam c =
         , spacing spacingUnit
         , BG.color oneDark.sub
         ]
-        [ lazy3 filtersToIconEl columnHeaderIconSize fam c.filters
+        [ filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy2 columnHeaderTextEl fam c.filters
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
@@ -120,8 +121,6 @@ columnHeaderTextEl fam filters =
         |> List.intersperse (breakT "  ")
         |> breakP
             [ width fill
-
-            -- , padding rectElementInnerPadding
             , Font.size baseHeaderTextSize
             , Font.color baseHeaderTextColor
             ]
@@ -148,13 +147,13 @@ filterAtomTextEl fam fa =
             breakT ("\"" ++ query ++ "\"")
 
         ByMedia HasImage ->
-            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
+            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
 
         ByMedia HasMovie ->
-            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
+            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
 
         ByMedia HasNone ->
-            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
+            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
 
         RemoveMe ->
             none
@@ -177,18 +176,17 @@ importantFilterTextColor =
 
 columnConfigToggleButtonEl : Bool -> String -> Element Msg
 columnConfigToggleButtonEl configOpen id =
-    el [ alignRight ] <|
-        squareButtonEl
-            { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
-            , enabled = True
-            , innerElement =
-                octiconEl
-                    { size = columnConfigToggleButtonSize
-                    , color = defaultOcticonColor
-                    , shape = Octicons.settings
-                    }
-            , innerElementSize = columnConfigToggleButtonSize
-            }
+    squareButtonEl [ alignRight, BD.rounded rectElementRound ]
+        { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
+        , enabled = True
+        , innerElement =
+            octiconEl []
+                { size = columnConfigToggleButtonSize
+                , color = defaultOcticonColor
+                , shape = Octicons.settings
+                }
+        , innerElementSize = columnConfigToggleButtonSize
+        }
 
 
 columnConfigToggleButtonSize : Int
@@ -196,18 +194,23 @@ columnConfigToggleButtonSize =
     26
 
 
-itemsEl : Time.Zone -> List ColumnItem -> Element Msg
-itemsEl tz items =
-    case items of
-        [] ->
-            waitingForFirstItemEl
+itemsEl : Int -> Time.Zone -> String -> Scroll ColumnItem -> Element Msg
+itemsEl clientHeight tz cId items =
+    if Scroll.isEmpty items then
+        waitingForFirstItemEl
 
-        _ ->
-            -- Do note that items are sorted from latest to oldest
-            items
-                |> ListExtra.groupWhile shouldGroup
-                |> List.map (columnItemKeyEl tz)
-                |> Element.Keyed.column [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
+    else
+        let
+            columnAttrs =
+                [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
+                    ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
+        in
+        -- Do note that items are sorted from latest to oldest
+        items
+            |> Scroll.toList
+            |> ListExtra.groupWhile shouldGroup
+            |> List.map (columnItemKeyEl tz)
+            |> Element.Keyed.column columnAttrs
 
 
 waitingForFirstItemEl : Element Msg

@@ -18,9 +18,21 @@ import View.Sidebar exposing (sidebarEl)
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ layout [ dragEventHandlers m.viewState.columnSwapMaybe ] (bodyEl m)
+    [ layoutWith
+        { options = [ focusStyle globalFocusStyle ] }
+        [ dragEventHandlers m.viewState.columnSwapMaybe ]
+        (bodyEl m)
     , manualStyle
     ]
+
+
+globalFocusStyle : FocusStyle
+globalFocusStyle =
+    -- Disabling default focus style, apply via manual CSS
+    { borderColor = Nothing
+    , backgroundColor = Nothing
+    , shadow = Nothing
+    }
 
 
 bodyEl : Model -> Element Msg
@@ -28,7 +40,6 @@ bodyEl model =
     backgroundEl <|
         row [ width fill, height fill, clipY ]
             [ sidebarEl model
-            , configPaneEl model
             , columnAreaEl model
             ]
 
