@@ -1,4 +1,4 @@
-module View.ColumnItem exposing (columnItemKeyEl, minimumItemHeight)
+module View.ColumnItem exposing (columnItemKeyEl)
 
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
@@ -49,18 +49,6 @@ baseFontSize =
     scale12 1
 
 
-itemBorderBottom : Int
-itemBorderBottom =
-    2
-
-
-{-| Referenced by other modules.
--}
-minimumItemHeight : Int
-minimumItemHeight =
-    avatarSize + rectElementInnerPadding + itemBorderBottom
-
-
 columnItemKey : List ColumnItem -> String
 columnItemKey closeItems =
     closeItems
@@ -85,25 +73,20 @@ itemAvatarEl item =
                     iconWithBadgeEl []
                         { badge = Nothing
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
-                        , size = avatarSize
+                        , url = Just <| Discord.imageUrlWithFallback (Just itemAvatarSize) user.discriminator user.avatar
+                        , size = itemAvatarSize
                         }
 
                 Discord.WebhookAuthor user ->
                     iconWithBadgeEl []
                         { badge = Just botIconEl
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
-                        , size = avatarSize
+                        , url = Just <| Discord.imageUrlWithFallback (Just itemAvatarSize) user.discriminator user.avatar
+                        , size = itemAvatarSize
                         }
 
         System _ _ ->
-            iconWithBadgeEl [] { badge = Nothing, fallback = "Zephyr", url = Nothing, size = avatarSize }
-
-
-avatarSize : Int
-avatarSize =
-    40
+            iconWithBadgeEl [] { badge = Nothing, fallback = "Zephyr", url = Nothing, size = itemAvatarSize }
 
 
 botIconEl : Int -> Element Msg
@@ -229,7 +212,7 @@ discordEmbedAuthorEl author =
     row [ spacing 5, Font.bold ]
         [ wrapWithLink <|
             squareIconOrHeadEl []
-                { size = avatarSize // 2
+                { size = itemAvatarSize // 2
                 , name = author.name
                 , url = Maybe.map Url.toString author.proxyIconUrl
                 }
@@ -460,7 +443,7 @@ imageEl desc url =
 
 maxMediaWidth : Int
 maxMediaWidth =
-    fixedColumnWidth - avatarSize - 20
+    fixedColumnWidth - itemAvatarSize - 20
 
 
 videoEl : Maybe Url.Url -> Url.Url -> Element Msg

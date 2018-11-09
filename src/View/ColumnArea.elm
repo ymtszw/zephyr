@@ -26,7 +26,7 @@ import Octicons
 import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
-import View.ColumnItem exposing (columnItemKeyEl, minimumItemHeight)
+import View.ColumnItem exposing (columnItemKeyEl)
 import View.Parts exposing (..)
 
 
@@ -202,7 +202,7 @@ itemsEl clientHeight tz items =
         _ ->
             let
                 defaultTake =
-                    (clientHeight // minimumItemHeight) + 10
+                    (clientHeight // itemMinimumHeight) + 10
             in
             -- Do note that items are sorted from latest to oldest
             items
