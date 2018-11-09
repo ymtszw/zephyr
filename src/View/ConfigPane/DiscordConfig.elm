@@ -33,7 +33,7 @@ discordConfigBodyEl : ViewState -> Discord -> Element Msg
 discordConfigBodyEl vs discord =
     column [ width fill, spacing spacingUnit ] <|
         [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
-        , el [ alignRight ] <| lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
+        , lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
         ]
             ++ currentStateEl vs discord
 
@@ -74,7 +74,7 @@ mapToRoot =
 
 tokenSubmitButtonEl : Bool -> String -> Element Msg
 tokenSubmitButtonEl enabled text_ =
-    primaryButtonEl
+    primaryButtonEl [ alignRight ]
         { onPress = Discord.CommitToken
         , width = shrink
         , theme = oneDark
@@ -138,9 +138,14 @@ tokenLabelEl =
     Element.Input.labelAbove [] <|
         column [ spacing spacingUnit ]
             [ el [] (text "Token")
-            , paragraph [ Font.color oneDark.note, Font.size (scale12 1) ]
+            , paragraph [ Font.color oneDark.note, Font.size smallFontSize ]
                 [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
             ]
+
+
+smallFontSize : Int
+smallFontSize =
+    scale12 1
 
 
 tokenSubmitButtonText : Discord -> String
@@ -220,15 +225,20 @@ userNameAndAvatarEl user =
     row [ width fill, spacing spacingUnit ]
         [ el [] (text "User: ")
         , el
-            [ width (px 32)
-            , height (px 32)
-            , BD.rounded 16
-            , BG.uncropped (Discord.imageUrlWithFallback (Just 32) user.discriminator user.avatar)
+            [ width (px userAvatarSize)
+            , height (px userAvatarSize)
+            , BD.rounded (userAvatarSize // 2 + 1)
+            , BG.uncropped (Discord.imageUrlWithFallback (Just userAvatarSize) user.discriminator user.avatar)
             ]
             none
-        , text user.username
-        , el [ centerY, Font.size (scale12 1), Font.color oneDark.note ] (text ("#" ++ user.discriminator))
+        , breakT user.username
+        , el [ Font.size smallFontSize, Font.color oneDark.note ] (breakT ("#" ++ user.discriminator))
         ]
+
+
+userAvatarSize : Int
+userAvatarSize =
+    32
 
 
 guildsEl : Bool -> POV -> Element Msg
@@ -239,9 +249,14 @@ guildsEl rehydrating pov =
             , rehydrateButtonEl rehydrating pov
             ]
         , pov.guilds
-            |> Dict.foldl (\_ guild acc -> discordGuildIconEl 50 guild :: acc) []
-            |> wrappedRow [ width fill, spacing 5 ]
+            |> Dict.foldl (\_ guild acc -> discordGuildIconEl [] guildIconSize guild :: acc) []
+            |> wrappedRow [ width fill, spacing spacingUnit ]
         ]
+
+
+guildIconSize : Int
+guildIconSize =
+    50
 
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
@@ -251,7 +266,7 @@ rehydrateButtonEl rehydrating pov =
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
         , innerElement =
-            octiconEl
+            octiconEl []
                 { size = rehydrateButtonSize
                 , color = ite rehydrating defaultOcticonColor activeRehydrateButtonColor
                 , shape = Octicons.sync
@@ -284,7 +299,7 @@ subbedChannelsEl vs pov =
 
 channelTableFontSize : Int
 channelTableFontSize =
-    scale12 1
+    smallFontSize
 
 
 channelRows : ViewState -> POV -> List ( String, Element Msg )
@@ -314,11 +329,7 @@ channelRowKeyEl : Time.Zone -> Channel -> ( String, Element Msg )
 channelRowKeyEl tz c =
     Tuple.pair c.id <|
         row [ width fill, spacing 2, clipX ]
-            [ el [ width fill ] <|
-                row [ spacing 2 ]
-                    [ c.guildMaybe |> Maybe.map (discordGuildIconEl 20) |> Maybe.withDefault none
-                    , breakP [] [ breakT ("#" ++ c.name) ]
-                    ]
+            [ discordChannelEl [ width fill ] { size = smallFontSize, channel = c }
             , el [ width fill ] <| fetchStatusTextEl tz c.fetchStatus
             , row [ width fill, spacing spacingUnit ]
                 [ createColumnButtonEl c
@@ -349,7 +360,7 @@ fetchStatusTextEl tz fs =
 
 createColumnButtonEl : Channel -> Element Msg
 createColumnButtonEl c =
-    thinButtonEl
+    thinButtonEl []
         { onPress = AddSimpleColumn (OfDiscordChannel c.id)
         , width = fill
         , enabledColor = oneDark.prim
@@ -365,12 +376,11 @@ unsubscribeButtonEl c =
         { onPress = Discord.Unsubscribe c.id
         , enabled = True -- Any channels show up in table are unsubscribable
         , innerElement =
-            el [ htmlAttribute (Html.Attributes.title ("Unsubscribe #" ++ c.name)) ] <|
-                octiconEl
-                    { size = channelTableFontSize
-                    , color = oneDark.err
-                    , shape = Octicons.circleSlash
-                    }
+            octiconEl [ htmlAttribute (Html.Attributes.title ("Unsubscribe #" ++ c.name)) ]
+                { size = channelTableFontSize
+                , color = oneDark.err
+                , shape = Octicons.circleSlash
+                }
         , innerElementSize = channelTableFontSize
         }
         |> mapToRoot
@@ -378,16 +388,15 @@ unsubscribeButtonEl c =
 
 subscribeRowKeyEl : Select.State -> List Channel -> ( String, Element Msg )
 subscribeRowKeyEl selectState notSubbed =
-    select
-        { id = channelSelectId
+    select [ width (px channelSelectWidth), alignLeft ]
+        { state = selectState
+        , id = channelSelectId
         , theme = oneDark
         , onSelect = ProducerCtrl << Producer.DiscordMsg << Discord.Subscribe << .id
         , selectedOption = Nothing
-        , noMsgOptionEl = discordChannelEl channelTableFontSize
+        , options = List.map (\c -> ( c.id, c )) notSubbed
+        , optionEl = \c -> discordChannelEl [] { size = channelTableFontSize, channel = c }
         }
-        selectState
-        (List.map (\c -> ( c.id, c )) notSubbed)
-        |> el [ width (px channelSelectWidth), alignLeft ]
         |> Tuple.pair channelSelectId
 
 

@@ -97,7 +97,7 @@ columnHeaderEl fam c =
         , spacing spacingUnit
         , BG.color oneDark.sub
         ]
-        [ lazy3 filtersToIconEl columnHeaderIconSize fam c.filters
+        [ filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy2 columnHeaderTextEl fam c.filters
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
@@ -146,13 +146,13 @@ filterAtomTextEl fam fa =
             breakT ("\"" ++ query ++ "\"")
 
         ByMedia HasImage ->
-            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
+            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
 
         ByMedia HasMovie ->
-            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
+            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
 
         ByMedia HasNone ->
-            octiconEl { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
+            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
 
         RemoveMe ->
             none
@@ -175,18 +175,17 @@ importantFilterTextColor =
 
 columnConfigToggleButtonEl : Bool -> String -> Element Msg
 columnConfigToggleButtonEl configOpen id =
-    el [ alignRight ] <|
-        squareButtonEl
-            { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
-            , enabled = True
-            , innerElement =
-                octiconEl
-                    { size = columnConfigToggleButtonSize
-                    , color = defaultOcticonColor
-                    , shape = Octicons.settings
-                    }
-            , innerElementSize = columnConfigToggleButtonSize
-            }
+    squareButtonEl [ alignRight, BD.rounded rectElementRound ]
+        { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
+        , enabled = True
+        , innerElement =
+            octiconEl []
+                { size = columnConfigToggleButtonSize
+                , color = defaultOcticonColor
+                , shape = Octicons.settings
+                }
+        , innerElementSize = columnConfigToggleButtonSize
+        }
 
 
 columnConfigToggleButtonSize : Int

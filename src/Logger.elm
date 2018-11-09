@@ -271,24 +271,24 @@ ctorCellEl msgFilters entry =
         , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
-                , label = el [ BG.color oneDark.succ ] <| ctorFilterButtonEl Octicons.diffAdded
+                , label = ctorFilterButtonEl [ BG.color oneDark.succ ] Octicons.diffAdded
                 }
 
             else
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
-                , label = el [] <| ctorFilterButtonEl Octicons.diffAdded
+                , label = ctorFilterButtonEl [] Octicons.diffAdded
                 }
         , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
-            , label = el [] <| ctorFilterButtonEl Octicons.diffRemoved
+            , label = ctorFilterButtonEl [] Octicons.diffRemoved
             }
         ]
 
 
-ctorFilterButtonEl : (Octicons.Options -> Html.Html Msg) -> Element Msg
-ctorFilterButtonEl shape =
-    octiconEl
+ctorFilterButtonEl : List (Attribute Msg) -> (Octicons.Options -> Html.Html Msg) -> Element Msg
+ctorFilterButtonEl attrs shape =
+    octiconEl attrs
         { size = ctorFilterButtonSize
         , color = defaultOcticonColor
         , shape = shape
@@ -354,7 +354,7 @@ msgFilterEl ((MsgFilter isPos ctor) as mf) =
             , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = rectElementRound, bottomRight = rectElementRound }
             ]
             { onPress = Just (DelMsgFilter mf)
-            , label = octiconEl { size = msgFilterDeleteIconSize, color = msgFilterDeleteIconColor, shape = Octicons.trashcan }
+            , label = octiconEl [] { size = msgFilterDeleteIconSize, color = msgFilterDeleteIconColor, shape = Octicons.trashcan }
             }
         ]
 

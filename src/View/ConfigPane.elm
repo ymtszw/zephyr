@@ -92,7 +92,7 @@ sectionBaseFontSize =
 discordConfigTitleEl : Element Msg
 discordConfigTitleEl =
     row [ spacing spacingUnit ]
-        [ iconWithBadgeEl
+        [ iconWithBadgeEl []
             { size = sectionTitleFontSize
             , badge = Nothing
             , fallback = "Discord"

@@ -107,37 +107,40 @@ switchCursor enabled =
     ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
 
 
-octiconEl : { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
-octiconEl { size, color, shape } =
+octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
+octiconEl attrs { size, color, shape } =
     Octicons.defaultOptions
         |> Octicons.color (css color)
         |> Octicons.size size
         |> shape
         |> html
+        |> el attrs
 
 
-squareIconOrHeadEl : Int -> String -> Maybe String -> Element msg
-squareIconOrHeadEl size name urlMaybe =
+squareIconOrHeadEl : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Element msg
+squareIconOrHeadEl userAttrs { size, name, url } =
     let
         ( attr, fallbackContent ) =
-            case urlMaybe of
-                Just url ->
-                    ( BG.uncropped url, none )
+            case url of
+                Just url_ ->
+                    ( BG.uncropped url_, none )
 
                 Nothing ->
                     ( Font.size (size // 2), el [ centerX, centerY ] (text (String.left 1 name)) )
+
+        attrs =
+            [ width (px size)
+            , height (px size)
+            , alignTop
+            , BG.color iconBackground
+            , BD.rounded (iconRounding size)
+            , clip
+            , htmlAttribute (Html.Attributes.title name)
+            , attr
+            ]
+                ++ userAttrs
     in
-    el
-        [ width (px size)
-        , height (px size)
-        , alignTop
-        , BG.color iconBackground
-        , BD.rounded (iconRounding size)
-        , clip
-        , htmlAttribute (Html.Attributes.title name)
-        , attr
-        ]
-        fallbackContent
+    el attrs fallbackContent
 
 
 iconBackground : Color
@@ -151,13 +154,15 @@ iconRounding badgeSize =
 
 
 iconWithBadgeEl :
-    { size : Int
-    , badge : Maybe (Int -> Element msg)
-    , fallback : String
-    , url : Maybe String
-    }
+    List (Attribute msg)
+    ->
+        { size : Int
+        , badge : Maybe (Int -> Element msg)
+        , fallback : String
+        , url : Maybe String
+        }
     -> Element msg
-iconWithBadgeEl { size, badge, fallback, url } =
+iconWithBadgeEl userAttrs { size, badge, fallback, url } =
     let
         bottomRightBadgeAttrs =
             case badge of
@@ -183,9 +188,9 @@ iconWithBadgeEl { size, badge, fallback, url } =
         innerIconPadding =
             max 1 (size // 20)
     in
-    squareIconOrHeadEl (size - (innerIconPadding * 2)) fallback url
-        |> el [ padding innerIconPadding ]
-        |> el bottomRightBadgeAttrs
+    el (bottomRightBadgeAttrs ++ userAttrs) <|
+        squareIconOrHeadEl [ padding innerIconPadding ]
+            { size = size - (innerIconPadding * 2), name = fallback, url = url }
 
 
 textInputEl :
@@ -244,15 +249,17 @@ customPlaceholder theme phMaybe text =
 
 
 primaryButtonEl :
-    { onPress : msg
-    , width : Length
-    , theme : ColorTheme
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , theme : ColorTheme
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-primaryButtonEl { onPress, width, theme, enabled, innerElement } =
-    rectButtonEl
+primaryButtonEl attrs { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl attrs
         { onPress = onPress
         , width = width
         , enabledColor = theme.prim
@@ -263,15 +270,17 @@ primaryButtonEl { onPress, width, theme, enabled, innerElement } =
 
 
 successButtonEl :
-    { onPress : msg
-    , width : Length
-    , theme : ColorTheme
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , theme : ColorTheme
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-successButtonEl { onPress, width, theme, enabled, innerElement } =
-    rectButtonEl
+successButtonEl attrs { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl attrs
         { onPress = onPress
         , width = width
         , enabledColor = theme.succ
@@ -282,15 +291,17 @@ successButtonEl { onPress, width, theme, enabled, innerElement } =
 
 
 dangerButtonEl :
-    { onPress : msg
-    , width : Length
-    , theme : ColorTheme
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , theme : ColorTheme
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-dangerButtonEl { onPress, width, theme, enabled, innerElement } =
-    rectButtonEl
+dangerButtonEl attrs { onPress, width, theme, enabled, innerElement } =
+    rectButtonEl attrs
         { onPress = onPress
         , width = width
         , enabledColor = theme.err
@@ -301,25 +312,31 @@ dangerButtonEl { onPress, width, theme, enabled, innerElement } =
 
 
 rectButtonEl :
-    { onPress : msg
-    , width : Length
-    , enabledColor : Color
-    , enabledFontColor : Color
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , enabledColor : Color
+        , enabledFontColor : Color
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-rectButtonEl { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
-    Element.Input.button
-        [ Element.width width
-        , padding rectButtonPadding
-        , BD.rounded rectElementRound
-        , BG.color enabledColor
-        , Font.color enabledFontColor
-        , clip
-        , inputScreen enabled
-        , switchCursor enabled
-        ]
+rectButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
+    let
+        attrs =
+            [ Element.width width
+            , padding rectButtonPadding
+            , BD.rounded rectElementRound
+            , BG.color enabledColor
+            , Font.color enabledFontColor
+            , clip
+            , inputScreen enabled
+            , switchCursor enabled
+            ]
+                ++ userAttrs
+    in
+    Element.Input.button attrs
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
         }
@@ -347,25 +364,31 @@ inputScreen enabled =
 
 
 thinButtonEl :
-    { onPress : msg
-    , width : Length
-    , enabledColor : Color
-    , enabledFontColor : Color
-    , enabled : Bool
-    , innerElement : Element msg
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , width : Length
+        , enabledColor : Color
+        , enabledFontColor : Color
+        , enabled : Bool
+        , innerElement : Element msg
+        }
     -> Element msg
-thinButtonEl { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
-    Element.Input.button
-        [ Element.width width
-        , padding thinButtonPadding
-        , BD.rounded thinButtonPadding
-        , BG.color enabledColor
-        , Font.color enabledFontColor
-        , clip
-        , inputScreen enabled
-        , switchCursor enabled
-        ]
+thinButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled, innerElement } =
+    let
+        attrs =
+            [ Element.width width
+            , padding thinButtonPadding
+            , BD.rounded thinButtonPadding
+            , BG.color enabledColor
+            , Font.color enabledFontColor
+            , clip
+            , inputScreen enabled
+            , switchCursor enabled
+            ]
+                ++ userAttrs
+    in
+    Element.Input.button attrs
         { onPress = ite enabled (Just onPress) Nothing
         , label = el [ centerX, centerY ] innerElement
         }
@@ -415,24 +438,27 @@ roundInputScreen size enabled =
 
 
 squareButtonEl :
-    { onPress : msg
-    , enabled : Bool
-    , innerElement : Element msg
-    , innerElementSize : Int
-    }
-    -> Element msg
-squareButtonEl { onPress, enabled, innerElement, innerElementSize } =
-    Element.Input.button
-        [ width (px innerElementSize)
-        , height (px innerElementSize)
-        , clip
-        , switchCursor enabled
-        , inputScreen enabled
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
-        ]
-        { onPress = ite enabled (Just onPress) Nothing
-        , label = el [ centerX, centerY ] innerElement
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , enabled : Bool
+        , innerElement : Element msg
+        , innerElementSize : Int
         }
+    -> Element msg
+squareButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
+    let
+        attrs =
+            [ width (px innerElementSize)
+            , height (px innerElementSize)
+            , clip
+            , switchCursor enabled
+            , inputScreen enabled
+            , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+            ]
+                ++ userAttrs
+    in
+    Element.Input.button attrs { onPress = ite enabled (Just onPress) Nothing, label = el [ centerX, centerY ] innerElement }
 
 
 {-| Text that can break on parent inline element width.
@@ -547,15 +573,15 @@ dragHandleClassName =
     "dragHandle"
 
 
-filtersToIconEl : Int -> FilterAtomMaterial -> Array Filter -> Element msg
-filtersToIconEl size fam filters =
+filtersToIconEl : List (Attribute msg) -> { size : Int, fam : FilterAtomMaterial, filters : Array Filter } -> Element msg
+filtersToIconEl attrs { size, fam, filters } =
     filters
-        |> Array.foldl (filterToIconEl size fam) Nothing
-        |> Maybe.withDefault (lazy fallbackIconEl size)
+        |> Array.foldl (filterToIconEl attrs size fam) Nothing
+        |> Maybe.withDefault (lazy2 fallbackIconEl attrs size)
 
 
-filterToIconEl : Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
-filterToIconEl size fam filter elMaybe =
+filterToIconEl : List (Attribute msg) -> Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
+filterToIconEl attrs size fam filter elMaybe =
     let
         reducer filterAtom acc =
             case ( acc, filterAtom ) of
@@ -563,7 +589,7 @@ filterToIconEl size fam filter elMaybe =
                     acc
 
                 ( _, OfDiscordChannel cId ) ->
-                    FAM.mapDiscordChannel cId fam (discordChannelIconEl size)
+                    FAM.mapDiscordChannel cId fam (discordChannelIconEl attrs size)
 
                 ( _, _ ) ->
                     Nothing
@@ -571,11 +597,11 @@ filterToIconEl size fam filter elMaybe =
     Data.Filter.fold reducer elMaybe filter
 
 
-discordChannelIconEl : Int -> Discord.ChannelCache -> Element msg
-discordChannelIconEl size c =
+discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
+discordChannelIconEl attrs size c =
     case c.guildMaybe of
         Just guild ->
-            iconWithBadgeEl
+            iconWithBadgeEl attrs
                 { size = size
                 , badge = Just (lazy discordBadgeEl)
                 , fallback = c.name
@@ -583,7 +609,7 @@ discordChannelIconEl size c =
                 }
 
         Nothing ->
-            iconWithBadgeEl
+            iconWithBadgeEl attrs
                 { size = size
                 , badge = Nothing
                 , fallback = c.name
@@ -601,32 +627,37 @@ discordBadgeEl badgeSize =
         none
 
 
-fallbackIconEl : Int -> Element msg
-fallbackIconEl size =
-    el
-        [ width (px size)
-        , height (px size)
-        , clip
-        , BD.width 1
-        , BD.color oneDark.note
-        , BD.rounded rectElementRound
-        , Font.size (size // 2)
-        , Font.family [ Font.serif ]
-        ]
-        (el [ centerX, centerY ] <| text "Z")
+fallbackIconEl : List (Attribute msg) -> Int -> Element msg
+fallbackIconEl userAttrs size =
+    let
+        attrs =
+            [ width (px size)
+            , height (px size)
+            , clip
+            , BD.width 1
+            , BD.color oneDark.note
+            , BD.rounded rectElementRound
+            , Font.size (size // 2)
+            , Font.family [ Font.serif ]
+            ]
+                ++ userAttrs
+    in
+    el attrs <| el [ centerX, centerY ] <| text "Z"
 
 
-discordGuildIconEl : Int -> Discord.Guild -> Element msg
-discordGuildIconEl size guild =
-    guild.icon
-        |> Maybe.map (Discord.imageUrlNoFallback (Just size))
-        |> squareIconOrHeadEl size guild.name
+discordGuildIconEl : List (Attribute msg) -> Int -> Discord.Guild -> Element msg
+discordGuildIconEl attrs size guild =
+    squareIconOrHeadEl attrs
+        { size = size
+        , name = guild.name
+        , url = Maybe.map (Discord.imageUrlNoFallback (Just size)) guild.icon
+        }
 
 
-discordChannelEl : Int -> { x | name : String, guildMaybe : Maybe Discord.Guild } -> Element msg
-discordChannelEl size channel =
-    row [ spacing discordGuildIconSpacingX ]
-        [ channel.guildMaybe |> Maybe.map (discordGuildIconEl size) |> Maybe.withDefault none
+discordChannelEl : List (Attribute msg) -> { size : Int, channel : { x | name : String, guildMaybe : Maybe Discord.Guild } } -> Element msg
+discordChannelEl attrs { size, channel } =
+    row ([ spacing discordGuildIconSpacingX ] ++ attrs)
+        [ channel.guildMaybe |> Maybe.map (discordGuildIconEl [] size) |> Maybe.withDefault none
         , text ("#" ++ channel.name)
         ]
 

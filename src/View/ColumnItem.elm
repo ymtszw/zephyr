@@ -82,7 +82,7 @@ itemAvatarEl item =
         Product _ (DiscordItem { author }) ->
             case author of
                 Discord.UserAuthor user ->
-                    iconWithBadgeEl
+                    iconWithBadgeEl []
                         { badge = Nothing
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
@@ -90,7 +90,7 @@ itemAvatarEl item =
                         }
 
                 Discord.WebhookAuthor user ->
-                    iconWithBadgeEl
+                    iconWithBadgeEl []
                         { badge = Just botIconEl
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just avatarSize) user.discriminator user.avatar
@@ -98,7 +98,7 @@ itemAvatarEl item =
                         }
 
         System _ _ ->
-            iconWithBadgeEl { badge = Nothing, fallback = "Zephyr", url = Nothing, size = avatarSize }
+            iconWithBadgeEl [] { badge = Nothing, fallback = "Zephyr", url = Nothing, size = avatarSize }
 
 
 avatarSize : Int
@@ -108,8 +108,8 @@ avatarSize =
 
 botIconEl : Int -> Element Msg
 botIconEl badgeSize =
-    el [ BG.color botIconBackground, htmlAttribute (title "BOT") ] <|
-        octiconEl { size = badgeSize, color = botIconColor, shape = Octicons.zap }
+    octiconEl [ BG.color botIconBackground, htmlAttribute (title "BOT") ]
+        { size = badgeSize, color = botIconColor, shape = Octicons.zap }
 
 
 botIconColor : Color
@@ -227,7 +227,12 @@ discordEmbedAuthorEl author =
                     element
     in
     row [ spacing 5, Font.bold ]
-        [ wrapWithLink <| squareIconOrHeadEl (avatarSize // 2) author.name <| Maybe.map Url.toString author.proxyIconUrl
+        [ wrapWithLink <|
+            squareIconOrHeadEl []
+                { size = avatarSize // 2
+                , name = author.name
+                , url = Maybe.map Url.toString author.proxyIconUrl
+                }
         , paragraph [] [ wrapWithLink <| text author.name ]
         ]
 
@@ -389,12 +394,11 @@ discordAttachmentEl attachment =
                         , Font.color attachmentFilenameColor
                         ]
                         [ breakT attachment.filename ]
-                    , el [ alignRight ] <|
-                        octiconEl
-                            { size = downloadIconSize
-                            , color = defaultOcticonColor
-                            , shape = Octicons.cloudDownload
-                            }
+                    , octiconEl [ alignRight ]
+                        { size = downloadIconSize
+                        , color = defaultOcticonColor
+                        , shape = Octicons.cloudDownload
+                        }
                     ]
             }
 
