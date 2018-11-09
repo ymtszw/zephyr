@@ -241,3 +241,6 @@ columnMsgToEntry cId cMsg =
 
         Column.DeleteGateInput input ->
             Entry "Column.DeleteGateInput" [ cId, input ]
+
+        Column.ScrollMsg sMsg ->
+            scrollMsgToEntry "Column" sMsg

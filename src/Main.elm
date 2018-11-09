@@ -123,14 +123,14 @@ update msg ({ viewState, env } as m) =
 
         AddEmptyColumn ->
             UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new idGen cId)
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen cId)
                 |> (\( c, idGen ) ->
                         -- If Filters are somehow set to the new Column, then persist.
                         pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
                    )
 
         AddSimpleColumn fa ->
-            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple fa)
+            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa)
                 |> (\( c, idGen ) -> ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, True ))
 
         DelColumn index ->
@@ -295,7 +295,7 @@ sub : Model -> Sub Msg
 sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
-        , IndexedDb.load m.idGen
+        , IndexedDb.load m.env.clientHeight m.idGen
         , Time.every globalTimerIntervalMillis Tick
         , toggleColumnSwap m.viewState.columnSwappable
         ]

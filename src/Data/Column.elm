@@ -252,6 +252,7 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
+    | ScrollMsg Scroll.Msg
 
 
 update : Msg -> Column -> ( Column, Cmd Msg, Bool )
@@ -294,6 +295,9 @@ update msg c =
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }
+
+        ScrollMsg sMsg ->
+            Scroll.update sMsg c.items |> (\( items, cmd ) -> ( { c | items = items }, Cmd.map ScrollMsg cmd, False ))
 
 
 consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )

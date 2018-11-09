@@ -23,6 +23,7 @@ import Html.Events
 import Json.Decode as D exposing (Decoder)
 import ListExtra
 import Octicons
+import Scroll exposing (Scroll)
 import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
@@ -79,7 +80,7 @@ columnKeyEl env vs index c =
         column attrs
             [ lazy2 columnHeaderEl vs.filterAtomMaterial c
             , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
-            , lazy3 itemsEl env.clientHeight vs.timezone c.items
+            , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
             ]
 
 
@@ -193,23 +194,23 @@ columnConfigToggleButtonSize =
     26
 
 
-itemsEl : Int -> Time.Zone -> List ColumnItem -> Element Msg
-itemsEl clientHeight tz items =
-    case items of
-        [] ->
-            waitingForFirstItemEl
+itemsEl : Int -> Time.Zone -> String -> Scroll ColumnItem -> Element Msg
+itemsEl clientHeight tz cId items =
+    if Scroll.isEmpty items then
+        waitingForFirstItemEl
 
-        _ ->
-            let
-                defaultTake =
-                    (clientHeight // itemMinimumHeight) + 10
-            in
-            -- Do note that items are sorted from latest to oldest
-            items
-                |> ListExtra.groupWhile shouldGroup
-                |> List.take defaultTake
-                |> List.map (columnItemKeyEl tz)
-                |> Element.Keyed.column [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
+    else
+        let
+            columnAttrs =
+                [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
+                    ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
+        in
+        -- Do note that items are sorted from latest to oldest
+        items
+            |> Scroll.toList
+            |> ListExtra.groupWhile shouldGroup
+            |> List.map (columnItemKeyEl tz)
+            |> Element.Keyed.column columnAttrs
 
 
 waitingForFirstItemEl : Element Msg

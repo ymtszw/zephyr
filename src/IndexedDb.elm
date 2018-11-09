@@ -15,14 +15,14 @@ import Json.Decode as D
 import Json.Encode as E
 
 
-load : UniqueIdGen -> Sub Msg
-load idGen =
-    loadFromJs (loadMsg idGen)
+load : Int -> UniqueIdGen -> Sub Msg
+load clientHeight idGen =
+    loadFromJs (loadMsg clientHeight idGen)
 
 
-loadMsg : UniqueIdGen -> E.Value -> Msg
-loadMsg idGen value =
-    case D.decodeValue (SavedState.decoder idGen) value of
+loadMsg : Int -> UniqueIdGen -> E.Value -> Msg
+loadMsg clientHeight idGen value =
+    case D.decodeValue (SavedState.decoder clientHeight idGen) value of
         Ok savedState ->
             LoadOk savedState
 
