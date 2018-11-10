@@ -1,7 +1,7 @@
 module Scroll exposing
     ( Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
     , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-    , push, pushAll, pop, toList, toListWithFilter, pendingSize, isEmpty
+    , push, pushAll, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
 
@@ -23,7 +23,7 @@ Its internal data structure may be persisted.
 
 @docs Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
 @docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-@docs push, pushAll, pop, toList, toListWithFilter, pendingSize, isEmpty
+@docs push, pushAll, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
 -}
@@ -338,6 +338,19 @@ pendingSize (Scroll s) =
 isEmpty : Scroll a -> Bool
 isEmpty (Scroll s) =
     BoundedDeque.isEmpty s.buffer
+
+
+scrolled : Scroll a -> Bool
+scrolled (Scroll s) =
+    case s.viewportStatus of
+        AtTop ->
+            False
+
+        OffTheTop _ ->
+            True
+
+        Scrolling _ ->
+            True
 
 
 
