@@ -14,10 +14,11 @@ import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
-import Element.Events
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Keyed
 import Element.Lazy exposing (..)
+import Extra exposing (ite)
 import Html.Attributes exposing (draggable, id, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
@@ -99,7 +100,7 @@ columnHeaderEl fam c =
         , BG.color oneDark.sub
         ]
         [ filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
-        , lazy2 columnHeaderTextEl fam c.filters
+        , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
 
@@ -109,8 +110,8 @@ columnHeaderIconSize =
     32
 
 
-columnHeaderTextEl : FilterAtomMaterial -> Array Filter -> Element Msg
-columnHeaderTextEl fam filters =
+columnHeaderTextEl : FilterAtomMaterial -> String -> Bool -> Array Filter -> Element Msg
+columnHeaderTextEl fam cId scrolled filters =
     let
         arrayReducer f acc =
             List.sortWith Filter.compareFAM (Filter.toList f) :: acc
@@ -120,9 +121,15 @@ columnHeaderTextEl fam filters =
         |> List.concatMap (List.map (filterAtomTextEl fam))
         |> List.intersperse (breakT "  ")
         |> breakP
-            [ width fill
+            [ centerY
             , Font.size baseHeaderTextSize
             , Font.color baseHeaderTextColor
+            ]
+        |> el
+            [ width fill
+            , height fill
+            , ite scrolled pointer noneAttr
+            , ite scrolled (onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop))) noneAttr
             ]
 
 
