@@ -125,7 +125,8 @@ welcomeModel env navKey =
 encodeForPersistence : Model -> E.Value
 encodeForPersistence m =
     E.object
-        [ ( "columnStore", ColumnStore.encode m.columnStore )
+        [ ( "id", E.string "primary" )
+        , ( "columnStore", ColumnStore.encode m.columnStore )
         , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
         , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
         , ( "idGen", UniqueIdGen.encodeGenerator m.idGen )

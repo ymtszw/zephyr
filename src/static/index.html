@@ -82,9 +82,8 @@
           err(`Failed to retrieve state from IndexedDB! ${event}`)
         }
 
-        // State dump
+        // State dump; expects obj.id exists and has proper id
         app.ports.sendToJs.subscribe((obj) => {
-          obj.id = "primary" // Destructive assign
           db.transaction("state", "readwrite")
             .objectStore("state")
             .put(obj)
