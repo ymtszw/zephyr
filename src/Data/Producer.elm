@@ -1,20 +1,12 @@
 module Data.Producer exposing
-    ( ProducerRegistry, Msg(..), GrossReload, registryDecoder
-    , initRegistry, reloadAll, update
-    , Yield, encodeRegistry
+    ( ProducerRegistry, initRegistry, encodeRegistry, registryDecoder
+    , GrossReload, reloadAll, Msg(..), Yield, update
     )
 
 {-| Types and functions representing data produecr in Zephyr.
 
-
-## Types
-
-@docs ProducerRegistry, Msg, GrossReload, Yield encodeRegistry, registryDecoder
-
-
-## Component APIs
-
-@docs initRegistry, reloadAll, update
+@docs ProducerRegistry, initRegistry, encodeRegistry, registryDecoder
+@docs GrossReload, reloadAll, Msg, Yield, update
 
 -}
 
@@ -22,6 +14,7 @@ import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
 import Data.Item exposing (Item(..))
 import Data.Producer.Base exposing (PostProcessBase, UpdateFAM(..), YieldBase)
 import Data.Producer.Discord as Discord exposing (Discord)
+import Data.Storable exposing (Storable)
 import Json.Decode as D exposing (Decoder, Value)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -68,9 +61,9 @@ oldProducerDecoder =
         ]
 
 
-encodeRegistry : ProducerRegistry -> E.Value
+encodeRegistry : ProducerRegistry -> Storable
 encodeRegistry producerRegistry =
-    E.object
+    Data.Storable.encode "producerRegistry"
         [ ( "discord", E.maybe Discord.encode producerRegistry.discord ) ]
 
 

@@ -22,6 +22,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.Storable
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Encode as E
 import Logger
@@ -126,8 +127,8 @@ encodeForPersistence : Model -> E.Value
 encodeForPersistence m =
     E.object
         [ ( "id", E.string "primary" )
-        , ( "columnStore", ColumnStore.encode m.columnStore )
+        , ( "columnStore", ColumnStore.encode m.columnStore |> Data.Storable.finalize )
         , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
-        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
-        , ( "idGen", UniqueIdGen.encodeGenerator m.idGen )
+        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry |> Data.Storable.finalize )
+        , ( "idGen", UniqueIdGen.encode m.idGen )
         ]

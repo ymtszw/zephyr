@@ -21,6 +21,7 @@ import Broker exposing (Broker)
 import Data.Column as Column exposing (Column)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Item exposing (Item)
+import Data.Storable exposing (Storable)
 import Dict exposing (Dict)
 import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
@@ -41,9 +42,9 @@ decoder clientHeight =
         (D.field "order" (D.array D.string))
 
 
-encode : ColumnStore -> E.Value
+encode : ColumnStore -> Storable
 encode { dict, order } =
-    E.object
+    Data.Storable.encode "columnStore"
         [ ( "dict", E.dict identity Column.encode dict )
         , ( "order", E.array E.string order )
         ]
