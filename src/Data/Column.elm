@@ -309,7 +309,7 @@ consumeBroker maxCount broker column =
         (( _, newOffset ) :: _) as items ->
             ( { column
                 | offset = Just newOffset
-                , items = Scroll.pushAll (List.filterMap (applyFilters column.filters) items) column.items
+                , items = Scroll.prependList (List.filterMap (applyFilters column.filters) items) column.items
               }
             , True
             )

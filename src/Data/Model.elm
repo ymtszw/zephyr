@@ -5,14 +5,7 @@ module Data.Model exposing
 
 {-| Model of the app.
 
-
-## Types
-
 @docs Model, ViewState, Env, ColumnSwap
-
-
-## APIs
-
 @docs init, welcomeModel, encodeForPersistence
 
 -}

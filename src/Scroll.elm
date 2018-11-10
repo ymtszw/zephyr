@@ -1,7 +1,7 @@
 module Scroll exposing
     ( Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
     , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-    , push, pushAll, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
+    , push, pushAll, prependList, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
 
@@ -23,7 +23,7 @@ Its internal data structure may be persisted.
 
 @docs Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
 @docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-@docs push, pushAll, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
+@docs push, pushAll, prependList, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
 -}
@@ -245,6 +245,17 @@ pushAll list s =
 
         x :: xs ->
             pushAll xs (push x s)
+
+
+{-| Prepend List of items to a Scroll. Consider as tail-first pushAll.
+-}
+prependList : List a -> Scroll a -> Scroll a
+prependList list (Scroll s) =
+    let
+        size =
+            BoundedDeque.getMaxSize s.buffer
+    in
+    Scroll { s | buffer = BoundedDeque.append (BoundedDeque.fromList size list) s.buffer }
 
 
 {-| Pop an element from the front of a Scroll.

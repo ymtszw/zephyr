@@ -244,11 +244,11 @@ shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool
 shouldGroupDiscordMessage dNewer dOlder =
     (dNewer.channelId == dOlder.channelId)
         && (dNewer.author == dOlder.author)
-        && (ms dOlder.timestamp + groupingIntervalSeconds > ms dNewer.timestamp)
+        && (ms dOlder.timestamp + groupingIntervalMillis > ms dNewer.timestamp)
 
 
-groupingIntervalSeconds : Int
-groupingIntervalSeconds =
+groupingIntervalMillis : Int
+groupingIntervalMillis =
     60000
 
 
