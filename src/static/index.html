@@ -72,7 +72,8 @@
       }
 
       function withIndexedDb(app, db) {
-        getAndSend("primary"); // Initial state load
+        const firstObjectToLoad = "columnStore"
+        getAndSend(firstObjectToLoad); // Initial state load
 
         app.ports.sendToJs.subscribe(obj => {
           if (obj.__requestId) {
