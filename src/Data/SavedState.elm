@@ -19,8 +19,8 @@ type alias SavedState =
     }
 
 
-decoder : Int -> UniqueIdGen -> Decoder SavedState
-decoder clientHeight idGen =
+decoder : Int -> Decoder SavedState
+decoder clientHeight =
     -- Write new decoder and migration logic when you change SavedState structure
     D.oneOf
         [ v3StateDecoder clientHeight

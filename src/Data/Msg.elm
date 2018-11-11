@@ -1,13 +1,17 @@
 module Data.Msg exposing (Msg(..), logEntry)
 
 import Array exposing (Array)
+import Broker exposing (Broker)
 import Browser
 import Browser.Dom
 import Data.Column as Column
+import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
-import Data.Producer as Producer
+import Data.Item exposing (Item)
+import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
+import Data.UniqueIdGen exposing (UniqueIdGen)
 import HttpExtra
 import Iso8601
 import Json.Decode as D
@@ -35,6 +39,9 @@ type Msg
     | DragStart Int String
     | DragEnter (Array String)
     | DragEnd
+    | LoadColumnStore ( ColumnStore, UniqueIdGen )
+    | LoadItemBroker (Broker Item)
+    | LoadProducerRegistry ProducerRegistry
     | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
@@ -95,6 +102,15 @@ logEntry msg =
 
         DragEnd ->
             Entry "DragEnd" []
+
+        LoadColumnStore _ ->
+            Entry "LoadColumnStore" [ "<columnStore>" ]
+
+        LoadItemBroker _ ->
+            Entry "LoadItemBroker" [ "<itemBroker>" ]
+
+        LoadProducerRegistry _ ->
+            Entry "LoadProducerRegistry" [ "<producerRegistry>" ]
 
         LoadOk _ ->
             Entry "LoadOk" [ "<savedState>" ]

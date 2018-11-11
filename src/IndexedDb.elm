@@ -1,6 +1,6 @@
 port module IndexedDb exposing
-    ( ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry
-    , load, postUpdate, noPersist
+    ( load, requestItemBroker, requestProducerRegistry
+    , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
     )
 
 {-| Handles persistence of application state to IndexedDB.
@@ -8,21 +8,26 @@ port module IndexedDb exposing
 Follow the best practices!!
 <https://developers.google.com/web/fundamentals/instant-and-offline/web-storage/indexeddb-best-practices>
 
-@docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry
-@docs load, postUpdate, noPersist
+@docs load, requestItemBroker, requestProducerRegistry
+@docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
 
 -}
 
-import Data.ColumnStore
-import Data.ItemBroker
+import Data.ColumnStore as ColumnStore
+import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
-import Data.Producer
+import Data.Producer as Producer
 import Data.SavedState as SavedState
-import Data.Storable exposing (Storable)
+import Data.Storable as Storable exposing (Storable)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
-import Json.Decode as D
+import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
+
+
+
+-- Load State
 
 
 load : Int -> UniqueIdGen -> Sub Msg
@@ -32,15 +37,55 @@ load clientHeight idGen =
 
 loadMsg : Int -> UniqueIdGen -> E.Value -> Msg
 loadMsg clientHeight idGen value =
-    case D.decodeValue (SavedState.decoder clientHeight idGen) value of
-        Ok savedState ->
-            LoadOk savedState
+    case D.decodeValue (stateDecoder clientHeight) value of
+        Ok msg ->
+            msg
 
         Err e ->
             LoadErr e
 
 
-port loadFromJs : (E.Value -> msg) -> Sub msg
+stateDecoder : Int -> Decoder Msg
+stateDecoder clientHeight =
+    D.oneOf
+        [ D.do (D.field "id" D.string) <|
+            \id ->
+                if id == ColumnStore.storeId then
+                    D.map2 (\cs idGen -> LoadColumnStore ( cs, idGen ))
+                        (ColumnStore.decoder clientHeight)
+                        (D.field idGenStoreId UniqueIdGen.decoder)
+
+                else if id == ItemBroker.storeId then
+                    D.map LoadItemBroker ItemBroker.decoder
+
+                else if id == Producer.registryStoreId then
+                    D.map LoadProducerRegistry Producer.registryDecoder
+
+                else
+                    D.fail ("Unknown state id: " ++ id)
+
+        -- Old format
+        , D.map LoadOk <| SavedState.decoder clientHeight
+        ]
+
+
+requestItemBroker : Cmd msg
+requestItemBroker =
+    requestStored ItemBroker.storeId
+
+
+requestProducerRegistry : Cmd msg
+requestProducerRegistry =
+    requestStored Producer.registryStoreId
+
+
+requestStored : String -> Cmd msg
+requestStored id =
+    sendToJs (E.object [ ( "__requestId", E.string id ) ])
+
+
+
+-- Save State
 
 
 type ChangeSet
@@ -112,16 +157,21 @@ changeSetToCmds m (ChangeSet cs) =
     [ toCmd cs.columnStore <|
         \_ ->
             doPersist <|
-                Data.Storable.append [ ( "idGen", UniqueIdGen.encode m.idGen ) ] <|
-                    Data.ColumnStore.encode m.columnStore
+                Storable.append [ ( idGenStoreId, UniqueIdGen.encode m.idGen ) ] <|
+                    ColumnStore.encode m.columnStore
     , toCmd cs.itemBroker <|
         \_ ->
-            doPersist (Data.ItemBroker.encode m.itemBroker)
+            doPersist (ItemBroker.encode m.itemBroker)
     , toCmd cs.producerRegistry <|
         \_ ->
-            doPersist (Data.Producer.encodeRegistry m.producerRegistry)
+            doPersist (Producer.encodeRegistry m.producerRegistry)
     ]
         |> List.filterMap identity
+
+
+idGenStoreId : String
+idGenStoreId =
+    "idGen"
 
 
 toCmd : Bool -> (() -> Cmd Msg) -> Maybe (Cmd Msg)
@@ -135,10 +185,7 @@ toCmd switch genCmd =
 
 doPersist : Storable -> Cmd msg
 doPersist storable =
-    sendToJs (Data.Storable.finalize storable)
-
-
-port sendToJs : E.Value -> Cmd msg
+    sendToJs (Storable.finalize storable)
 
 
 {-| A Glue function that connects ordinary component update output into postUpdate.
@@ -146,3 +193,13 @@ port sendToJs : E.Value -> Cmd msg
 noPersist : ( model, Cmd msg ) -> ( model, Cmd msg, ChangeSet )
 noPersist ( m, cmd ) =
     ( m, cmd, changeSet )
+
+
+
+-- Ports
+
+
+port loadFromJs : (E.Value -> msg) -> Sub msg
+
+
+port sendToJs : E.Value -> Cmd msg

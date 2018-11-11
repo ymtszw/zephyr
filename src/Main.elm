@@ -177,6 +177,15 @@ update msg ({ viewState, env } as m) =
             -- So we always turn off swap mode at dragend
             pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
 
+        LoadColumnStore ( cs, idGen ) ->
+            noPersist ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker )
+
+        LoadItemBroker itemBroker ->
+            noPersist ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry )
+
+        LoadProducerRegistry pr ->
+            reloadProducers { m | producerRegistry = pr, worque = Worque.push Worque.BrokerScan m.worque }
+
         LoadOk ss ->
             -- TODO break them apart; save/load one gigantic state object is one of anti-pattern
             reloadProducers <|
