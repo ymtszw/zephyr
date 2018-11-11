@@ -33,4 +33,4 @@ v3StateDecoder clientHeight =
         (D.field "columnStore" (ColumnStore.decoder clientHeight))
         (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
         (D.field "producerRegistry" Producer.registryDecoder)
-        (D.field "idGen" UniqueIdGen.generatorDecoder)
+        (D.field "idGen" UniqueIdGen.decoder)
