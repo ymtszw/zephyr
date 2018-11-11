@@ -1,5 +1,5 @@
 module Data.ColumnStore exposing
-    ( ColumnStore, init, encode, decoder
+    ( ColumnStore, init, encode, decoder, storeId
     , add, get, map, indexedMap, removeAt, updateById, applyOrder
     , consumeBroker
     )
@@ -9,7 +9,7 @@ module Data.ColumnStore exposing
 Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
-@docs ColumnStore, init, encode, decoder
+@docs ColumnStore, init, encode, decoder, storeId
 @docs add, get, map, indexedMap, removeAt, updateById, applyOrder
 @docs consumeBroker
 
@@ -44,10 +44,15 @@ decoder clientHeight =
 
 encode : ColumnStore -> Storable
 encode { dict, order } =
-    Data.Storable.encode "columnStore"
+    Data.Storable.encode storeId
         [ ( "dict", E.dict identity Column.encode dict )
         , ( "order", E.array E.string order )
         ]
+
+
+storeId : String
+storeId =
+    "columnStore"
 
 
 init : ColumnStore

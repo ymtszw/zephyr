@@ -1,11 +1,11 @@
 module Data.Producer exposing
-    ( ProducerRegistry, initRegistry, encodeRegistry, registryDecoder
+    ( ProducerRegistry, initRegistry, encodeRegistry, registryDecoder, registryStoreId
     , GrossReload, reloadAll, Msg(..), Yield, update
     )
 
 {-| Types and functions representing data produecr in Zephyr.
 
-@docs ProducerRegistry, initRegistry, encodeRegistry, registryDecoder
+@docs ProducerRegistry, initRegistry, encodeRegistry, registryDecoder, registryStoreId
 @docs GrossReload, reloadAll, Msg, Yield, update
 
 -}
@@ -63,8 +63,13 @@ oldProducerDecoder =
 
 encodeRegistry : ProducerRegistry -> Storable
 encodeRegistry producerRegistry =
-    Data.Storable.encode "producerRegistry"
+    Data.Storable.encode registryStoreId
         [ ( "discord", E.maybe Discord.encode producerRegistry.discord ) ]
+
+
+registryStoreId : String
+registryStoreId =
+    "producerRegistry"
 
 
 initRegistry : ProducerRegistry

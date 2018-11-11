@@ -1,4 +1,4 @@
-module Data.ItemBroker exposing (bulkAppend, bulkRead, decoder, encode, init)
+module Data.ItemBroker exposing (bulkAppend, bulkRead, decoder, encode, init, storeId)
 
 import Broker exposing (Broker, Offset)
 import Data.Item as Item exposing (Item)
@@ -14,9 +14,14 @@ init =
 
 encode : Broker Item -> Storable
 encode itemBroker =
-    Data.Storable.encode "itemBroker"
+    Data.Storable.encode storeId
         [ ( "broker", Broker.encode Item.encode itemBroker )
         ]
+
+
+storeId : String
+storeId =
+    "itemBroker"
 
 
 decoder : Decoder (Broker Item)

@@ -1,5 +1,20 @@
 module Main exposing (main)
 
+{-| Entry point of Zephyr main app.
+
+The application's Model starts with almost-empty initial model.
+
+  - If IndexedDB is unavailable, it immediately transits to Model.welcome.
+  - If IndexedDB is available, it subscribes to state load:
+      - State loading is initiated from JavaScript codes in static/index.html
+      - It loads saved states in the order of ColumnStore & UniqueIdGen => ItemBroker => ProducerRegistry
+      - If the saved states are corrupted and somehow cannot be decoded,
+        it defaults to appropriate preset values.
+      - If a decoding attempt failed without any clue of "phase",
+        it bails out the sequence as the last resport.
+
+-}
+
 import Array
 import ArrayExtra as Array
 import Broker exposing (Broker)
@@ -63,7 +78,11 @@ log u msg m =
 
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
-    ( Model.init env navKey
+    ( if env.indexedDBAvailable then
+        Model.init env navKey
+
+      else
+        Model.welcome env navKey
     , Cmd.batch
         [ adjustMaxHeight
         , getTimeZone
@@ -166,10 +185,12 @@ update msg ({ viewState, env } as m) =
                     , itemBroker = ss.itemBroker
                     , producerRegistry = ss.producerRegistry
                     , idGen = ss.idGen
+                    , worque = Worque.push Worque.BrokerScan m.worque
                 }
 
         LoadErr _ ->
-            pure m
+            -- Hard failure of initial state load; start app normally as the last resport
+            pure { m | worque = Worque.push Worque.BrokerScan m.worque }
 
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
@@ -333,7 +354,11 @@ sub : Model -> Sub Msg
 sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
-        , IndexedDb.load m.env.clientHeight m.idGen
+        , if m.env.indexedDBAvailable then
+            IndexedDb.load m.env.clientHeight m.idGen
+
+          else
+            Sub.none
         , Time.every globalTimerIntervalMillis Tick
         , toggleColumnSwap m.viewState.columnSwappable
         ]

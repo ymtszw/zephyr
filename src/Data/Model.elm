@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcomeModel, encodeForPersistence
+    , init, welcome, encodeForPersistence
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcomeModel, encodeForPersistence
+@docs init, welcome, encodeForPersistence
 
 -}
 
@@ -81,7 +81,7 @@ initModel env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueIdGen.init
-        , worque = Worque.init |> Worque.push BrokerScan
+        , worque = Worque.init
         , log = Logger.init
         , navKey = navKey
         , viewState = defaultViewState
@@ -89,7 +89,7 @@ initModel env navKey =
         }
 
     else
-        welcomeModel env navKey
+        welcome env navKey
 
 
 defaultViewState : ViewState
@@ -103,8 +103,8 @@ defaultViewState =
     }
 
 
-welcomeModel : Env -> Key -> Model
-welcomeModel env navKey =
+welcome : Env -> Key -> Model
+welcome env navKey =
     let
         ( welcomeColumn, finalGen ) =
             UniqueIdGen.init
@@ -114,7 +114,7 @@ welcomeModel env navKey =
     { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
-    , worque = Worque.init |> Worque.push BrokerScan
+    , worque = Worque.init
     , idGen = finalGen
     , log = Logger.init
     , navKey = navKey
