@@ -184,7 +184,8 @@ update msg ({ viewState, env } as m) =
             ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry, saveItemBroker changeSet )
 
         LoadProducerRegistry pr ->
-            reloadProducers { m | producerRegistry = pr, worque = Worque.push Worque.BrokerScan m.worque }
+            reloadProducers <|
+                { m | producerRegistry = pr, worque = Worque.pushAll [ Worque.DropOldState, Worque.BrokerScan ] m.worque }
 
         LoadOk ss ->
             -- Old method; remove after migration
@@ -262,6 +263,10 @@ onTick posix m =
         ( Just DiscordFetch, newWorque ) ->
             Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
                 |> applyProducerYield { m | worque = newWorque }
+
+        ( Just DropOldState, newWorque ) ->
+            -- Finalize migration
+            noPersist ( m, IndexedDb.dropOldState )
 
         ( Nothing, newWorque ) ->
             pure { m | worque = newWorque }

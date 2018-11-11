@@ -15,6 +15,7 @@ type Worque
 type Work
     = BrokerScan
     | DiscordFetch
+    | DropOldState
 
 
 init : Worque

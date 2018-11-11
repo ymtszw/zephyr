@@ -1,5 +1,5 @@
 port module IndexedDb exposing
-    ( load, requestItemBroker, requestProducerRegistry
+    ( load, requestItemBroker, requestProducerRegistry, dropOldState
     , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
     )
 
@@ -8,7 +8,7 @@ port module IndexedDb exposing
 Follow the best practices!!
 <https://developers.google.com/web/fundamentals/instant-and-offline/web-storage/indexeddb-best-practices>
 
-@docs load, requestItemBroker, requestProducerRegistry
+@docs load, requestItemBroker, requestProducerRegistry, dropOldState
 @docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
 
 -}
@@ -82,6 +82,11 @@ requestProducerRegistry =
 requestStored : String -> Cmd msg
 requestStored id =
     sendToJs (E.object [ ( "__requestId", E.string id ) ])
+
+
+dropOldState : Cmd msg
+dropOldState =
+    sendToJs (E.object [ ( "__dropOldState", E.bool True ) ])
 
 
 
