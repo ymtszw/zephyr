@@ -93,9 +93,11 @@
 
         // State dump; expects obj.id exists and has proper id
         app.ports.sendToJs.subscribe(obj => {
-          db.transaction("state", "readwrite")
-            .objectStore("state")
-            .put(obj);
+          if (obj.id) {
+            db.transaction("state", "readwrite")
+              .objectStore("state")
+              .put(obj);
+          }
         });
       }
 
