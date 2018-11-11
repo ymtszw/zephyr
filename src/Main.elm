@@ -16,8 +16,7 @@ import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen
-import Extra exposing (..)
-import IndexedDb
+import IndexedDb exposing (ChangeSet, changeSet, noPersist, saveColumnStore, saveItemBroker, saveProducerRegistry)
 import Json.Decode as D
 import Json.DecodeExtra as D
 import Logger
@@ -47,7 +46,7 @@ main =
         }
 
 
-log : (Msg -> Model -> ( Model, Cmd Msg, Bool )) -> Msg -> Model -> ( Model, Cmd Msg, Bool )
+log : (Msg -> Model -> ( Model, Cmd Msg, ChangeSet )) -> Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
 log u msg m =
     u msg <|
         if m.env.isLocalDevelopment then
@@ -64,11 +63,12 @@ log u msg m =
 
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
-    Model.init env navKey
-        |> andDo
-            [ adjustMaxHeight
-            , getTimeZone
-            ]
+    ( Model.init env navKey
+    , Cmd.batch
+        [ adjustMaxHeight
+        , getTimeZone
+        ]
+    )
 
 
 adjustMaxHeight : Cmd Msg
@@ -89,12 +89,12 @@ getTimeZone =
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, Bool )
+update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
 update msg ({ viewState, env } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
-            ( m, adjustMaxHeight, False )
+            noPersist ( m, adjustMaxHeight )
 
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars.
@@ -108,10 +108,10 @@ update msg ({ viewState, env } as m) =
             Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
 
         LinkClicked (Browser.Internal url) ->
-            ( m, Nav.pushUrl m.navKey (Url.toString url), False )
+            noPersist ( m, Nav.pushUrl m.navKey (Url.toString url) )
 
         LinkClicked (Browser.External url) ->
-            ( m, Nav.load url, False )
+            noPersist ( m, Nav.load url )
 
         SelectToggle sId True ->
             pure { m | viewState = { viewState | selectState = View.Select.open sId viewState.selectState } }
@@ -131,11 +131,14 @@ update msg ({ viewState, env } as m) =
                    )
 
         AddSimpleColumn fa ->
-            UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa)
-                |> (\( c, idGen ) -> ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, True ))
+            let
+                ( c, idGen ) =
+                    UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa)
+            in
+            ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         DelColumn index ->
-            ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, True )
+            ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         ToggleColumnSwappable True ->
             pure { m | viewState = { viewState | columnSwappable = True } }
@@ -172,7 +175,18 @@ update msg ({ viewState, env } as m) =
             pure { m | viewState = { viewState | configOpen = opened } }
 
         ColumnCtrl cId cMsg ->
-            map (\cs -> { m | columnStore = cs }) (ColumnCtrl cId) <| ColumnStore.updateById cId cMsg m.columnStore
+            let
+                ( cs, cmd, persist ) =
+                    ColumnStore.updateById cId cMsg m.columnStore
+            in
+            ( { m | columnStore = cs }
+            , Cmd.map (ColumnCtrl cId) cmd
+            , if persist then
+                saveColumnStore changeSet
+
+              else
+                changeSet
+            )
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -181,7 +195,7 @@ update msg ({ viewState, env } as m) =
             onTick posix m
 
         RevealColumn index ->
-            ( m, revealColumn index, False )
+            noPersist ( m, revealColumn index )
 
         DomOp (Ok ()) ->
             pure m
@@ -193,12 +207,27 @@ update msg ({ viewState, env } as m) =
             pure m
 
 
-onTick : Posix -> Model -> ( Model, Cmd Msg, Bool )
+pure : Model -> ( Model, Cmd Msg, ChangeSet )
+pure m =
+    ( m, Cmd.none, changeSet )
+
+
+onTick : Posix -> Model -> ( Model, Cmd Msg, ChangeSet )
 onTick posix m =
     case Worque.pop m.worque of
         ( Just BrokerScan, newWorque ) ->
-            ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
-                |> (\( cs, persist ) -> ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }, Cmd.none, persist ))
+            let
+                ( cs, persist ) =
+                    ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
+            in
+            ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }
+            , Cmd.none
+            , if persist then
+                saveColumnStore changeSet
+
+              else
+                changeSet
+            )
 
         ( Just DiscordFetch, newWorque ) ->
             Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
@@ -236,10 +265,10 @@ scrollToColumn index parentVp =
 
 {-| Restart producers on savedState reload.
 
-Always persist state in order to apply new encoding format, if any.
+Always persist producerRegistry in order to apply new encoding format, if any.
 
 -}
-reloadProducers : Model -> ( Model, Cmd Msg, Bool )
+reloadProducers : Model -> ( Model, Cmd Msg, ChangeSet )
 reloadProducers ({ viewState } as m) =
     let
         reloaded =
@@ -251,11 +280,11 @@ reloadProducers ({ viewState } as m) =
         , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial }
       }
     , Cmd.map ProducerCtrl reloaded.cmd
-    , True
+    , saveProducerRegistry changeSet
     )
 
 
-applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, Bool )
+applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
 applyProducerYield ({ viewState } as m) y =
     case y.items of
         [] ->
@@ -269,7 +298,11 @@ applyProducerYield ({ viewState } as m) y =
                     }
               }
             , Cmd.map ProducerCtrl y.cmd
-            , y.postProcess.persist
+            , if y.postProcess.persist then
+                saveProducerRegistry changeSet
+
+              else
+                changeSet
             )
 
         nonEmptyYields ->
@@ -284,7 +317,11 @@ applyProducerYield ({ viewState } as m) y =
                     }
               }
             , Cmd.map ProducerCtrl y.cmd
-            , y.postProcess.persist
+            , if y.postProcess.persist then
+                changeSet |> saveProducerRegistry |> saveItemBroker
+
+              else
+                saveItemBroker changeSet
             )
 
 
