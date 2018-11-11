@@ -125,11 +125,14 @@ columnHeaderTextEl fam cId scrolled filters =
             , Font.color baseHeaderTextColor
             ]
         |> el
-            [ width fill
-            , height fill
-            , ite scrolled pointer noneAttr
-            , ite scrolled (onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop))) noneAttr
-            ]
+            ([ width fill, height fill ]
+                ++ (if scrolled then
+                        [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
+
+                    else
+                        []
+                   )
+            )
 
 
 baseHeaderTextSize : Int

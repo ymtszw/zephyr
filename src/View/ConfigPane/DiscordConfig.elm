@@ -15,7 +15,6 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy2)
-import Extra exposing (ite)
 import Html.Attributes
 import Octicons
 import Time
@@ -268,7 +267,12 @@ rehydrateButtonEl rehydrating pov =
         , innerElement =
             octiconEl []
                 { size = rehydrateButtonSize
-                , color = ite rehydrating defaultOcticonColor activeRehydrateButtonColor
+                , color =
+                    if rehydrating then
+                        defaultOcticonColor
+
+                    else
+                        activeRehydrateButtonColor
                 , shape = Octicons.sync
                 }
         }
