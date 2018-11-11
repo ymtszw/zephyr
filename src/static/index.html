@@ -60,15 +60,6 @@
             store.createIndex("id", "id", {
               unique: true
             });
-            store.transaction.oncomplete = event => {
-              // Called after DB creation
-              newDb
-                .transaction(STATE, "readwrite")
-                .objectStore(STATE)
-                .add({
-                  id: "primary"
-                });
-            };
           }
           if (0 < event.oldVersion && event.oldVersion < 3) {
             newDb.deleteObjectStore("flags");
