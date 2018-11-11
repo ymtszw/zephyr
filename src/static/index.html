@@ -72,12 +72,26 @@
       }
 
       function withIndexedDb(app, db) {
-        const firstObjectToLoad = "columnStore"
+        const firstObjectToLoad = "columnStore";
         getAndSend(firstObjectToLoad); // Initial state load
 
         app.ports.sendToJs.subscribe(obj => {
           if (obj.__requestId) {
             getAndSend(obj.__requestId); // Continue state load
+          } else if (obj.__dropOldState) {
+            const idToDelete = "primary";
+            db
+              .transaction(STATE)
+              .objectStore(STATE)
+              .count(idToDelete).onsuccess = event => {
+              if (event.target.result > 0) {
+                db
+                  .transaction(STATE, "readwrite")
+                  .objectStore(STATE)
+                  .delete(idToDelete).onsuccess = () =>
+                  log("Deleted old savedState from IndexedDB.");
+              }
+            };
           } else if (obj.id) {
             // State dump
             db.transaction(STATE, "readwrite")

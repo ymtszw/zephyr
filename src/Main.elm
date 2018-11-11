@@ -244,14 +244,19 @@ pure m =
 
 
 onTick : Posix -> Model -> ( Model, Cmd Msg, ChangeSet )
-onTick posix m =
-    case Worque.pop m.worque of
-        ( Just BrokerScan, newWorque ) ->
+onTick posix m_ =
+    let
+        ( workMaybe, m ) =
+            Worque.pop m_.worque
+                |> Tuple.mapSecond (\newWorque -> { m_ | worque = newWorque })
+    in
+    case workMaybe of
+        Just BrokerScan ->
             let
                 ( cs, persist ) =
                     ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
             in
-            ( { m | columnStore = cs, worque = Worque.push BrokerScan newWorque }
+            ( { m | columnStore = cs, worque = Worque.push BrokerScan m.worque }
             , Cmd.none
             , if persist then
                 saveColumnStore changeSet
@@ -260,16 +265,16 @@ onTick posix m =
                 changeSet
             )
 
-        ( Just DiscordFetch, newWorque ) ->
+        Just DiscordFetch ->
             Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
-                |> applyProducerYield { m | worque = newWorque }
+                |> applyProducerYield m
 
-        ( Just DropOldState, newWorque ) ->
-            -- Finalize migration
+        Just DropOldState ->
+            -- Finalize migration; may remove if migration propagated
             noPersist ( m, IndexedDb.dropOldState )
 
-        ( Nothing, newWorque ) ->
-            pure { m | worque = newWorque }
+        Nothing ->
+            pure m
 
 
 revealColumn : Int -> Cmd Msg
