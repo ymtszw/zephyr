@@ -64,7 +64,7 @@ stateDecoder clientHeight =
                 else
                     D.fail ("Unknown state id: " ++ id)
 
-        -- Old format
+        -- Old format; may remove after migration
         , D.map LoadOk <| SavedState.decoder clientHeight
         ]
 
@@ -130,11 +130,6 @@ saveProducerRegistry (ChangeSet cs) =
 It is intended to be called with specialized update output,
 which has third tuple element instructing this function
 whether the model should be persisted or not.
-
-TODO change shouldPersist Bool into PersistenceInstruction record,
-telling which portion of the Model should be persisted,
-with breaking SavedState into separate IndexedDB objects.
-So that parts of the Model can be efficiently saved/loaded.
 
 -}
 postUpdate : ( Model, Cmd Msg, ChangeSet ) -> ( Model, Cmd Msg )
