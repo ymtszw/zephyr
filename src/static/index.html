@@ -95,6 +95,9 @@
         });
 
         function getAndSend(id) {
+          // Note: "Get" transactions never fail for non-existing object IDs;
+          // they succeed and give `undefined` as result.
+          // <https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/get>
           const getReq = (db
             .transaction(STATE)
             .objectStore(STATE)
