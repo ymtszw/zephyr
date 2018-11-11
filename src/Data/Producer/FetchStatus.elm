@@ -15,7 +15,6 @@ It may be re-introduced/retried by manual actions (such as Discord's rehydration
 
 -}
 
-import Extra exposing (ite)
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D

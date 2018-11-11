@@ -18,7 +18,6 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Keyed
 import Element.Lazy exposing (..)
-import Extra exposing (ite)
 import Html.Attributes exposing (draggable, id, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
