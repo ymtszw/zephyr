@@ -72,26 +72,26 @@
       }
 
       function withIndexedDb(app, db) {
+        // Initial state load
         const firstObjectToLoad = "columnStore";
-        getAndSend(firstObjectToLoad); // Initial state load
+        const v3StateId = "primary";
+        ifExists(
+          firstObjectToLoad,
+          () => getAndSend(firstObjectToLoad),
+          () => getAndSend(v3StateId)
+        );
 
         app.ports.sendToJs.subscribe(obj => {
           if (obj.__requestId) {
             getAndSend(obj.__requestId); // Continue state load
           } else if (obj.__dropOldState) {
-            const idToDelete = "primary";
-            db
-              .transaction(STATE)
-              .objectStore(STATE)
-              .count(idToDelete).onsuccess = event => {
-              if (event.target.result > 0) {
-                db
-                  .transaction(STATE, "readwrite")
-                  .objectStore(STATE)
-                  .delete(idToDelete).onsuccess = () =>
-                  log("Deleted old savedState from IndexedDB.");
-              }
-            };
+            ifExists(v3StateId, () => {
+              db
+                .transaction(STATE, "readwrite")
+                .objectStore(STATE)
+                .delete(v3StateId).onsuccess = () =>
+                log("Deleted old savedState from IndexedDB.");
+            });
           } else if (obj.id) {
             // State dump
             db.transaction(STATE, "readwrite")
@@ -113,6 +113,21 @@
             err(
               `Failed to retrieve state from IndexedDB! ${event.target.error}`
             );
+        }
+
+        function ifExists(id, thenDo, elseDo) {
+          db
+            .transaction(STATE)
+            .objectStore(STATE)
+            .count(id).onsuccess = event => {
+            if (event.target.result > 0) {
+              thenDo();
+            } else {
+              if (elseDo) {
+                elseDo();
+              }
+            }
+          };
         }
       }
 
