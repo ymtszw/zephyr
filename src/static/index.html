@@ -40,6 +40,7 @@
           clientHeight
         }
       });
+      const STATE = "state";
 
       if (indexedDBAvailable) {
         const openRequest = window.indexedDB.open("ZephyrDB", 4); // Increment version for migration
@@ -53,7 +54,7 @@
           const newDb = event.target.result;
           // Note that oldVersion property is always 0 on initial DB creation
           if (event.oldVersion < 2) {
-            const store = newDb.createObjectStore("state", {
+            const store = newDb.createObjectStore(STATE, {
               keyPath: "id"
             });
             store.createIndex("id", "id", {
@@ -62,8 +63,8 @@
             store.transaction.oncomplete = event => {
               // Called after DB creation
               newDb
-                .transaction("state", "readwrite")
-                .objectStore("state")
+                .transaction(STATE, "readwrite")
+                .objectStore(STATE)
                 .add({
                   id: "primary"
                 });
@@ -80,25 +81,30 @@
       }
 
       function withIndexedDb(app, db) {
-        // Initial state load
-        const stateLoadReq = (db
-          .transaction("state")
-          .objectStore("state")
-          .get("primary").onsuccess = event =>
-          app.ports.loadFromJs.send(event.target.result));
-        stateLoadReq.onerror = event => {
-          // app.ports.indexedDBError.send(event)
-          err(`Failed to retrieve state from IndexedDB! ${event}`);
-        };
+        getAndSend("primary"); // Initial state load
 
-        // State dump; expects obj.id exists and has proper id
         app.ports.sendToJs.subscribe(obj => {
-          if (obj.id) {
-            db.transaction("state", "readwrite")
-              .objectStore("state")
+          if (obj.__requestId) {
+            getAndSend(obj.__requestId); // Continue state load
+          } else if (obj.id) {
+            // State dump
+            db.transaction(STATE, "readwrite")
+              .objectStore(STATE)
               .put(obj);
           }
         });
+
+        function getAndSend(id) {
+          const getReq = (db
+            .transaction(STATE)
+            .objectStore(STATE)
+            .get(id).onsuccess = event =>
+            app.ports.loadFromJs.send(event.target.result));
+          getReq.onerror = event =>
+            err(
+              `Failed to retrieve state from IndexedDB! ${event.target.error}`
+            );
+        }
       }
 
       // Helpers
