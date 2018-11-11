@@ -14,7 +14,6 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
-import Extra exposing (ite)
 import Html.Attributes exposing (style)
 import ListExtra
 import Octicons
@@ -467,7 +466,13 @@ columnDeleteButtonEl index confirmed =
         , width = px deleteButtonWidth
         , theme = oneDark
         , enabled = confirmed
-        , innerElement = text (ite confirmed "Delete!" "Delete?")
+        , innerElement =
+            text <|
+                if confirmed then
+                    "Delete!"
+
+                else
+                    "Delete?"
         }
 
 

@@ -1,4 +1,4 @@
-module Extra exposing (andDo, divMod, doAfter, ite, map, pure, setTimeout)
+module Extra exposing (doAfter, map, pure, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
@@ -6,13 +6,6 @@ module Extra exposing (andDo, divMod, doAfter, ite, map, pure, setTimeout)
 import Process
 import Task exposing (Task)
 import Time exposing (Posix)
-
-
-{-| Replacement of (!) in 0.18.
--}
-andDo : List (Cmd msg) -> model -> ( model, Cmd msg )
-andDo cmds model =
-    ( model, Cmd.batch cmds )
 
 
 {-| Just apply new Model, without any Cmd. Hence the name.
@@ -29,34 +22,6 @@ map :
     -> ( outerModel, Cmd outerMsg, Bool )
 map modelTagger msgTagger ( m, cmd, shouldPersist ) =
     ( modelTagger m, Cmd.map msgTagger cmd, shouldPersist )
-
-
-{-| Oneline if-then-else.
-
-Avoiding elm-format expansion.
-
--}
-ite : Bool -> a -> a -> a
-ite condition then_ else_ =
-    if condition then
-        then_
-
-    else
-        else_
-
-
-{-| Integer division and modBy at once.
-
-    divMod 2 5 == ( 2, 1 )
-
-    divMod 25 100 == ( 4, 0 )
-
-    divMod 4 -3 == ( 0, 1 )
-
--}
-divMod : Int -> Int -> ( Int, Int )
-divMod divisor dividend =
-    ( dividend // divisor, modBy divisor dividend )
 
 
 {-| Convenient timer.

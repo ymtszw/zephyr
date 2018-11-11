@@ -45,7 +45,6 @@ import Data.Producer.Base as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), Msg(..))
 import Dict exposing (Dict)
 import Element
-import Extra exposing (ite)
 import Hex
 import Http
 import HttpExtra as Http
@@ -1041,14 +1040,21 @@ unsubscribeImpl tagger cId pov =
 
                 newChannels =
                     Dict.insert cId { c | fetchStatus = fs } pov.channels
-
-                fam =
-                    ite updateFAM (calculateFAM newChannels) KeepFAM
             in
-            enter (PostProcessBase persist fam Nothing) (tagger { pov | channels = newChannels })
+            enter (PostProcessBase persist (updateOrKeepFAM updateFAM newChannels) Nothing)
+                (tagger { pov | channels = newChannels })
 
         Nothing ->
             pure (tagger pov)
+
+
+updateOrKeepFAM : Bool -> Dict String Channel -> UpdateFAM
+updateOrKeepFAM doUpdate channels =
+    if doUpdate then
+        calculateFAM channels
+
+    else
+        KeepFAM
 
 
 {-| Handles Fetch event caused by the root timer.
@@ -1141,12 +1147,13 @@ updatePovOk tagger cId ms posix pov =
 
                         newChannels =
                             Dict.insert cId { c | fetchStatus = fs } pov.channels
-
-                        fam =
-                            ite updateFAM (calculateFAM newChannels) KeepFAM
                     in
-                    enter (PostProcessBase persist fam (Just Worque.DiscordFetch)) <|
-                        tagger { pov | channels = newChannels }
+                    enter
+                        (PostProcessBase persist
+                            (updateOrKeepFAM updateFAM newChannels)
+                            (Just Worque.DiscordFetch)
+                        )
+                        (tagger { pov | channels = newChannels })
 
                 m :: _ ->
                     let
@@ -1156,13 +1163,12 @@ updatePovOk tagger cId ms posix pov =
                         newChannels =
                             -- Discord API returns latest to oldest; save first item's ID in lastMessageId,
                             Dict.insert cId { c | fetchStatus = fs, lastMessageId = Just (MessageId m.id) } pov.channels
-
-                        fam =
-                            ite updateFAM (calculateFAM newChannels) KeepFAM
                     in
                     -- Then reverse items for post-processing
-                    yield (List.reverse ms) fam (Just Worque.DiscordFetch) <|
-                        tagger { pov | channels = newChannels }
+                    yield (List.reverse ms)
+                        (updateOrKeepFAM updateFAM newChannels)
+                        (Just Worque.DiscordFetch)
+                        (tagger { pov | channels = newChannels })
 
         Nothing ->
             -- Target Channel somehow gone; deleted?
@@ -1233,12 +1239,13 @@ updatePovErr tagger cId httpError pov =
 
                     newChannels =
                         Dict.insert cId { c | fetchStatus = fs } pov.channels
-
-                    fam =
-                        ite updateFAM (calculateFAM newChannels) KeepFAM
                 in
-                enter (PostProcessBase persist fam (Just Worque.DiscordFetch)) <|
-                    tagger { pov | channels = newChannels }
+                enter
+                    (PostProcessBase persist
+                        (updateOrKeepFAM updateFAM newChannels)
+                        (Just Worque.DiscordFetch)
+                    )
+                    (tagger { pov | channels = newChannels })
 
         Nothing ->
             -- Channel gone; Error was inevitable

@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcomeModel, encodeForPersistence
+    , init, welcome, encodeForPersistence
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcomeModel, encodeForPersistence
+@docs init, welcome, encodeForPersistence
 
 -}
 
@@ -22,6 +22,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.Storable
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Encode as E
 import Logger
@@ -80,7 +81,7 @@ initModel env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueIdGen.init
-        , worque = Worque.init |> Worque.push BrokerScan
+        , worque = Worque.init
         , log = Logger.init
         , navKey = navKey
         , viewState = defaultViewState
@@ -88,7 +89,7 @@ initModel env navKey =
         }
 
     else
-        welcomeModel env navKey
+        welcome env navKey
 
 
 defaultViewState : ViewState
@@ -102,8 +103,8 @@ defaultViewState =
     }
 
 
-welcomeModel : Env -> Key -> Model
-welcomeModel env navKey =
+welcome : Env -> Key -> Model
+welcome env navKey =
     let
         ( welcomeColumn, finalGen ) =
             UniqueIdGen.init
@@ -113,7 +114,7 @@ welcomeModel env navKey =
     { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
-    , worque = Worque.init |> Worque.push BrokerScan
+    , worque = Worque.init
     , idGen = finalGen
     , log = Logger.init
     , navKey = navKey
@@ -125,8 +126,9 @@ welcomeModel env navKey =
 encodeForPersistence : Model -> E.Value
 encodeForPersistence m =
     E.object
-        [ ( "columnStore", ColumnStore.encode m.columnStore )
+        [ ( "id", E.string "primary" )
+        , ( "columnStore", ColumnStore.encode m.columnStore |> Data.Storable.finalize )
         , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
-        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry )
-        , ( "idGen", UniqueIdGen.encodeGenerator m.idGen )
+        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry |> Data.Storable.finalize )
+        , ( "idGen", UniqueIdGen.encode m.idGen )
         ]

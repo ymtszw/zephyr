@@ -1,12 +1,12 @@
 module Data.UniqueIdGen exposing
-    ( UniqueIdGen, encodeGenerator, generatorDecoder, init
+    ( UniqueIdGen, encode, decoder, init
     , gen, genAndMap, andThen, sequence
     , columnPrefix, systemMessagePrefix, logEntryPrefix
     )
 
 {-| Generates Unique (sequenced) ID string.
 
-@docs UniqueIdGen, encodeGenerator, generatorDecoder, init
+@docs UniqueIdGen, encode, decoder, init
 @docs gen, genAndMap, andThen, sequence
 @docs columnPrefix, systemMessagePrefix, logEntryPrefix
 
@@ -26,13 +26,13 @@ init =
     UniqueIdGen Dict.empty
 
 
-encodeGenerator : UniqueIdGen -> E.Value
-encodeGenerator (UniqueIdGen dict) =
+encode : UniqueIdGen -> E.Value
+encode (UniqueIdGen dict) =
     E.dict identity E.int dict
 
 
-generatorDecoder : Decoder UniqueIdGen
-generatorDecoder =
+decoder : Decoder UniqueIdGen
+decoder =
     D.map UniqueIdGen (D.dict D.int)
 
 

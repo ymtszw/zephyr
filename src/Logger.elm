@@ -9,7 +9,6 @@ import Element.Font as Font exposing (bold)
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
-import Extra exposing (ite)
 import Html
 import Html.Attributes exposing (style, tabindex)
 import Octicons
@@ -340,7 +339,12 @@ msgFilterEl ((MsgFilter isPos ctor) as mf) =
     row
         [ width shrink
         , BD.rounded rectElementRound
-        , BG.color (ite isPos oneDark.succ oneDark.err)
+        , BG.color <|
+            if isPos then
+                oneDark.succ
+
+            else
+                oneDark.err
         ]
         [ el
             [ padding msgFilterPadding

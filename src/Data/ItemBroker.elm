@@ -1,12 +1,32 @@
-module Data.ItemBroker exposing (bulkAppend, bulkRead, init)
+module Data.ItemBroker exposing (bulkAppend, bulkRead, decoder, encode, init, storeId)
 
 import Broker exposing (Broker, Offset)
 import Data.Item as Item exposing (Item)
+import Data.Storable exposing (Storable)
+import Json.Decode as D exposing (Decoder)
+import Json.Encode as E
 
 
 init : Broker Item
 init =
     Broker.initialize { numSegments = 100, segmentSize = 1000 }
+
+
+encode : Broker Item -> Storable
+encode itemBroker =
+    Data.Storable.encode storeId
+        [ ( "broker", Broker.encode Item.encode itemBroker )
+        ]
+
+
+storeId : String
+storeId =
+    "itemBroker"
+
+
+decoder : Decoder (Broker Item)
+decoder =
+    D.field "broker" (Broker.decoder Item.decoder)
 
 
 {-| Append all Items in a List to a Broker.

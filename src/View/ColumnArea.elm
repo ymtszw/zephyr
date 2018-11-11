@@ -18,7 +18,6 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Keyed
 import Element.Lazy exposing (..)
-import Extra exposing (ite)
 import Html.Attributes exposing (draggable, id, style)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
@@ -126,11 +125,14 @@ columnHeaderTextEl fam cId scrolled filters =
             , Font.color baseHeaderTextColor
             ]
         |> el
-            [ width fill
-            , height fill
-            , ite scrolled pointer noneAttr
-            , ite scrolled (onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop))) noneAttr
-            ]
+            ([ width fill, height fill ]
+                ++ (if scrolled then
+                        [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
+
+                    else
+                        []
+                   )
+            )
 
 
 baseHeaderTextSize : Int

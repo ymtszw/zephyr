@@ -1,14 +1,17 @@
 module Data.Msg exposing (Msg(..), logEntry)
 
 import Array exposing (Array)
+import Broker exposing (Broker)
 import Browser
 import Browser.Dom
 import Data.Column as Column
+import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
-import Data.Producer as Producer
+import Data.Item exposing (Item)
+import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
-import Extra exposing (ite)
+import Data.UniqueIdGen exposing (UniqueIdGen)
 import HttpExtra
 import Iso8601
 import Json.Decode as D
@@ -36,6 +39,9 @@ type Msg
     | DragStart Int String
     | DragEnter (Array String)
     | DragEnd
+    | LoadColumnStore ( ColumnStore, UniqueIdGen )
+    | LoadItemBroker (Broker Item)
+    | LoadProducerRegistry ProducerRegistry
     | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
@@ -71,7 +77,7 @@ logEntry msg =
             Entry "LinkClicked.External" [ str ]
 
         SelectToggle sId bool ->
-            Entry "SelectToggle" [ sId, ite bool "True" "False" ]
+            Entry "SelectToggle" [ sId, boolStr bool ]
 
         SelectPick sMsg ->
             logEntry sMsg
@@ -86,7 +92,7 @@ logEntry msg =
             Entry "DelColumn" [ fromInt index ]
 
         ToggleColumnSwappable bool ->
-            Entry "ToggleColumnSwappable" [ ite bool "True" "False" ]
+            Entry "ToggleColumnSwappable" [ boolStr bool ]
 
         DragStart index cId ->
             Entry "DragStart" [ fromInt index, cId ]
@@ -97,14 +103,24 @@ logEntry msg =
         DragEnd ->
             Entry "DragEnd" []
 
+        LoadColumnStore _ ->
+            Entry "LoadColumnStore" [ "<columnStore>" ]
+
+        LoadItemBroker _ ->
+            Entry "LoadItemBroker" [ "<itemBroker>" ]
+
+        LoadProducerRegistry _ ->
+            Entry "LoadProducerRegistry" [ "<producerRegistry>" ]
+
         LoadOk _ ->
+            -- Old gigantic state load; remove after migration
             Entry "LoadOk" [ "<savedState>" ]
 
         LoadErr e ->
             Entry "LoadErr" [ D.errorToString e ]
 
         ToggleConfig bool ->
-            Entry "ToggleConfig" [ ite bool "True" "False" ]
+            Entry "ToggleConfig" [ boolStr bool ]
 
         ColumnCtrl cId cMsg ->
             columnMsgToEntry cId cMsg
@@ -123,6 +139,15 @@ logEntry msg =
 
         Tick posix ->
             Entry "Tick" [ Iso8601.fromTime posix ]
+
+
+boolStr : Bool -> String
+boolStr b =
+    if b then
+        "True"
+
+    else
+        "False"
 
 
 viewportToString : Browser.Dom.Viewport -> String
@@ -146,6 +171,14 @@ viewportToString vp =
 
 loggerMsgToEntry : Logger.Msg -> Entry
 loggerMsgToEntry lMsg =
+    let
+        filterMode isPos =
+            if isPos then
+                "Include: "
+
+            else
+                "Exclude: "
+    in
     case lMsg of
         Logger.ScrollMsg sMsg ->
             scrollMsgToEntry "Logger" sMsg
@@ -154,10 +187,10 @@ loggerMsgToEntry lMsg =
             Entry "Logger.FilterInput" [ query ]
 
         Logger.SetMsgFilter (Logger.MsgFilter isPos ctor) ->
-            Entry "Logger.SetMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
+            Entry "Logger.SetMsgFilter" [ filterMode isPos ++ ctor ]
 
         Logger.DelMsgFilter (Logger.MsgFilter isPos ctor) ->
-            Entry "Logger.DelMsgFilter" [ ite isPos "Include: " "Exclude: " ++ ctor ]
+            Entry "Logger.DelMsgFilter" [ filterMode isPos ++ ctor ]
 
 
 scrollMsgToEntry : String -> Scroll.Msg -> Entry
@@ -219,7 +252,7 @@ columnMsgToEntry : String -> Column.Msg -> Entry
 columnMsgToEntry cId cMsg =
     case cMsg of
         Column.ToggleConfig bool ->
-            Entry "Column.ToggleConfig" [ cId, ite bool "True" "False" ]
+            Entry "Column.ToggleConfig" [ cId, boolStr bool ]
 
         Column.AddFilter filter ->
             Entry "Column.AddFilter" [ cId, Filter.toString filter ]

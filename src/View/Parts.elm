@@ -64,7 +64,6 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
-import Extra exposing (ite)
 import Html
 import Html.Attributes exposing (class, draggable, style)
 import Html.Events
@@ -104,7 +103,11 @@ visible isVisible =
 -}
 switchCursor : Bool -> Attribute msg
 switchCursor enabled =
-    ite enabled noneAttr (htmlAttribute (style "cursor" "default"))
+    if enabled then
+        noneAttr
+
+    else
+        htmlAttribute (style "cursor" "default")
 
 
 octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
@@ -215,13 +218,22 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , customPlaceholder theme placeholder text
         , inputScreen enabled
         , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        , disabled (not enabled)
         ]
         { onChange = onChange
         , text = text
         , placeholder = Nothing
         , label = label
         }
+
+
+disabled : Bool -> Attribute msg
+disabled disabled_ =
+    if disabled_ then
+        htmlAttribute (Html.Attributes.disabled True)
+
+    else
+        noneAttr
 
 
 textInputPadding : Int
@@ -337,7 +349,12 @@ rectButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled
                 ++ userAttrs
     in
     Element.Input.button attrs
-        { onPress = ite enabled (Just onPress) Nothing
+        { onPress =
+            if enabled then
+                Just onPress
+
+            else
+                Nothing
         , label = el [ centerX, centerY ] innerElement
         }
 
@@ -389,7 +406,12 @@ thinButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled
                 ++ userAttrs
     in
     Element.Input.button attrs
-        { onPress = ite enabled (Just onPress) Nothing
+        { onPress =
+            if enabled then
+                Just onPress
+
+            else
+                Nothing
         , label = el [ centerX, centerY ] innerElement
         }
 
@@ -417,9 +439,14 @@ roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
         , BD.rounded (innerElementSize // 2 + 1)
         , switchCursor enabled
         , roundInputScreen innerElementSize enabled
-        , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+        , disabled (not enabled)
         ]
-        { onPress = ite enabled (Just onPress) Nothing
+        { onPress =
+            if enabled then
+                Just onPress
+
+            else
+                Nothing
         , label = el [ centerX, centerY ] innerElement
         }
 
@@ -454,11 +481,19 @@ squareButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
             , clip
             , switchCursor enabled
             , inputScreen enabled
-            , ite enabled noneAttr (htmlAttribute (Html.Attributes.disabled True))
+            , disabled (not enabled)
             ]
                 ++ userAttrs
     in
-    Element.Input.button attrs { onPress = ite enabled (Just onPress) Nothing, label = el [ centerX, centerY ] innerElement }
+    Element.Input.button attrs
+        { onPress =
+            if enabled then
+                Just onPress
+
+            else
+                Nothing
+        , label = el [ centerX, centerY ] innerElement
+        }
 
 
 {-| Text that can break on parent inline element width.

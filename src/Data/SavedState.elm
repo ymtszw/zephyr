@@ -1,5 +1,7 @@
 module Data.SavedState exposing (SavedState, decoder)
 
+-- DEPRACATED; may remove after migration
+
 import Broker exposing (Broker)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
@@ -19,8 +21,8 @@ type alias SavedState =
     }
 
 
-decoder : Int -> UniqueIdGen -> Decoder SavedState
-decoder clientHeight idGen =
+decoder : Int -> Decoder SavedState
+decoder clientHeight =
     -- Write new decoder and migration logic when you change SavedState structure
     D.oneOf
         [ v3StateDecoder clientHeight
@@ -33,4 +35,4 @@ v3StateDecoder clientHeight =
         (D.field "columnStore" (ColumnStore.decoder clientHeight))
         (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
         (D.field "producerRegistry" Producer.registryDecoder)
-        (D.field "idGen" UniqueIdGen.generatorDecoder)
+        (D.field "idGen" UniqueIdGen.decoder)

@@ -9,7 +9,6 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Extra exposing (ite)
 import Octicons
 import View.Parts exposing (..)
 
@@ -168,7 +167,11 @@ optionRowKeyEl onSelect theme optionEl selectedOption ( optionKey, option ) =
         [ width fill
         , padding optionPadding
         , mouseOver [ BG.color theme.sub ]
-        , ite (selectedOption == Just option) (BG.color theme.prim) noneAttr
+        , if selectedOption == Just option then
+            BG.color theme.prim
+
+          else
+            noneAttr
         ]
         { onPress = Just (SelectPick (onSelect option))
         , label = optionEl option
