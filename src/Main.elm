@@ -187,7 +187,7 @@ update msg ({ viewState, env } as m) =
             reloadProducers { m | producerRegistry = pr, worque = Worque.push Worque.BrokerScan m.worque }
 
         LoadOk ss ->
-            -- TODO break them apart; save/load one gigantic state object is one of anti-pattern
+            -- Old method; remove after migration
             reloadProducers <|
                 { m
                     | columnStore = ss.columnStore

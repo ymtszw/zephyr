@@ -113,6 +113,7 @@ logEntry msg =
             Entry "LoadProducerRegistry" [ "<producerRegistry>" ]
 
         LoadOk _ ->
+            -- Old gigantic state load; remove after migration
             Entry "LoadOk" [ "<savedState>" ]
 
         LoadErr e ->
