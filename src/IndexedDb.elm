@@ -146,11 +146,7 @@ postUpdate ( model, cmd, cs ) =
                 cmd
 
             nonEmpty ->
-                Cmd.batch <|
-                    [ cmd
-                    , sendToJs (Model.encodeForPersistence model) -- Old format
-                    ]
-                        ++ nonEmpty
+                Cmd.batch (cmd :: nonEmpty)
 
       else
         cmd
