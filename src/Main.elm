@@ -178,10 +178,10 @@ update msg ({ viewState, env } as m) =
             pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
 
         LoadColumnStore ( cs, idGen ) ->
-            noPersist ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker )
+            ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
 
         LoadItemBroker itemBroker ->
-            noPersist ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry )
+            ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry, saveItemBroker changeSet )
 
         LoadProducerRegistry pr ->
             reloadProducers { m | producerRegistry = pr, worque = Worque.push Worque.BrokerScan m.worque }
