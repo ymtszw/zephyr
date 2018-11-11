@@ -91,11 +91,16 @@ postUpdate : ( Model, Cmd Msg, ChangeSet ) -> ( Model, Cmd Msg )
 postUpdate ( model, cmd, cs ) =
     ( model
     , if model.env.indexedDBAvailable then
-        Cmd.batch <|
-            [ cmd
-            , sendToJs (Model.encodeForPersistence model) -- Old format
-            ]
-                ++ changeSetToCmds model cs
+        case changeSetToCmds model cs of
+            [] ->
+                cmd
+
+            nonEmpty ->
+                Cmd.batch <|
+                    [ cmd
+                    , sendToJs (Model.encodeForPersistence model) -- Old format
+                    ]
+                        ++ nonEmpty
 
       else
         cmd
