@@ -89,6 +89,15 @@ stringSuite =
             , testStringSplitAt "initial" -1 [ "initial" ]
             , testStringSplitAt "" 0 [ "" ]
             ]
+        , describe "punctuateNumber"
+            [ testPunctuateNumber 1 "1"
+            , testPunctuateNumber 12 "12"
+            , testPunctuateNumber 123 "123"
+            , testPunctuateNumber 1234 "1,234"
+            , testPunctuateNumber 12345 "12,345"
+            , testPunctuateNumber 123456 "123,456"
+            , testPunctuateNumber 1234567 "1,234,567"
+            ]
         ]
 
 
@@ -97,6 +106,13 @@ testStringSplitAt initial index expected =
     test ("should split '" ++ initial ++ "' at: " ++ fromInt index) <|
         \_ ->
             initial |> StringExtra.splitAt index |> Expect.equal expected
+
+
+testPunctuateNumber : Int -> String -> Test
+testPunctuateNumber initial expected =
+    test ("should punctuate '" ++ String.fromInt initial ++ "' to " ++ expected) <|
+        \_ ->
+            initial |> StringExtra.punctuateNumber |> Expect.equal expected
 
 
 
