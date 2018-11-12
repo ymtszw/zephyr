@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId
-    , add, get, map, indexedMap, removeAt
+    , add, get, map, mapForView, removeAt
     , updateById, applyOrder, consumeBroker, updateFAM
     )
 
@@ -10,7 +10,7 @@ Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
 @docs ColumnStore, init, encode, decoder, storeId
-@docs add, get, map, indexedMap, removeAt
+@docs add, get, map, mapForView, removeAt
 @docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
@@ -106,13 +106,13 @@ map mapper columnStore =
     { columnStore | dict = Dict.map (\_ c -> mapper c) columnStore.dict }
 
 
-indexedMap : (Int -> Column -> a) -> ColumnStore -> List a
-indexedMap mapper { dict, order } =
-    indexedMapImpl mapper dict (Array.toList order) 0 []
+mapForView : (FilterAtomMaterial -> Int -> Column -> a) -> ColumnStore -> List a
+mapForView mapper { dict, order, fam } =
+    mapForViewImpl (mapper fam) dict (Array.toList order) 0 []
 
 
-indexedMapImpl : (Int -> Column -> a) -> Dict String Column -> List String -> Int -> List a -> List a
-indexedMapImpl mapper dict idList index acc =
+mapForViewImpl : (Int -> Column -> a) -> Dict String Column -> List String -> Int -> List a -> List a
+mapForViewImpl mapper dict idList index acc =
     case idList of
         [] ->
             List.reverse acc
@@ -120,11 +120,11 @@ indexedMapImpl mapper dict idList index acc =
         id :: ids ->
             case Dict.get id dict of
                 Just column ->
-                    indexedMapImpl mapper dict ids (index + 1) (mapper index column :: acc)
+                    mapForViewImpl mapper dict ids (index + 1) (mapper index column :: acc)
 
                 Nothing ->
                     -- Should not happen as long as contents of ColumnStore are manipulated by functions in this module
-                    indexedMapImpl mapper dict ids index acc
+                    mapForViewImpl mapper dict ids index acc
 
 
 

@@ -41,11 +41,11 @@ columnAreaEl m =
         , htmlAttribute (id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
-        (ColumnStore.indexedMap (columnKeyEl m.env m.viewState) m.columnStore)
+        (ColumnStore.mapForView (columnKeyEl m.env m.viewState) m.columnStore)
 
 
-columnKeyEl : Env -> ViewState -> Int -> Column.Column -> ( String, Element Msg )
-columnKeyEl env vs index c =
+columnKeyEl : Env -> ViewState -> FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
+columnKeyEl env vs fam index c =
     let
         baseAttrs =
             [ width (px fixedColumnWidth)
@@ -78,8 +78,8 @@ columnKeyEl env vs index c =
     in
     Tuple.pair c.id <|
         column attrs
-            [ lazy2 columnHeaderEl vs.filterAtomMaterial c
-            , lazy4 columnConfigFlyoutEl vs.selectState vs.filterAtomMaterial index c
+            [ lazy2 columnHeaderEl fam c
+            , lazy4 columnConfigFlyoutEl vs.selectState fam index c
             , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
             ]
 
