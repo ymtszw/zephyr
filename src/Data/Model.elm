@@ -50,7 +50,7 @@ type alias ViewState =
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
-    , filterAtomMaterial : FilterAtomMaterial
+    , filterAtomMaterial : FilterAtomMaterial -- Old data; may remove after migration
     }
 
 
@@ -99,7 +99,7 @@ defaultViewState =
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
-    , filterAtomMaterial = FAM.init
+    , filterAtomMaterial = FAM.init -- Old data; may remove after migration
     }
 
 

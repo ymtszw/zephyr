@@ -315,6 +315,7 @@ reloadProducers ({ viewState } as m) =
             Producer.reloadAll m.producerRegistry
 
         ( newFAM, _ ) =
+            -- Old data; may remove after migration
             FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial
 
         ( newColumnStore, _ ) =
@@ -335,6 +336,7 @@ applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
 applyProducerYield ({ viewState } as m_) y =
     let
         ( newFAM, _ ) =
+            -- Old data; may remove after migration
             FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
 
         ( newColumnStore, persistColumnStore ) =

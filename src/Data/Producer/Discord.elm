@@ -172,7 +172,7 @@ type alias Channel =
 {-| Rarely updated part of Channel.
 Namely, omitting lastMessageId and fetchStatus.
 
-Used for caching of FilterAtomMaterial.
+Used for caching in FilterAtomMaterial.
 
 -}
 type alias ChannelCache =
