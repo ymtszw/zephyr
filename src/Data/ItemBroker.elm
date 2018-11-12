@@ -14,12 +14,12 @@ init =
 
 numSegments : Int
 numSegments =
-    100
+    50
 
 
 segmentSize : Int
 segmentSize =
-    1000
+    100
 
 
 encode : Broker Item -> Storable
