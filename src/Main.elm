@@ -313,11 +313,14 @@ reloadProducers ({ viewState } as m) =
     let
         reloaded =
             Producer.reloadAll m.producerRegistry
+
+        ( newFAM, _ ) =
+            FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial
     in
     ( { m
         | producerRegistry = reloaded.producerRegistry
         , worque = Worque.pushAll reloaded.works m.worque
-        , viewState = { viewState | filterAtomMaterial = FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial }
+        , viewState = { viewState | filterAtomMaterial = newFAM }
       }
     , Cmd.map ProducerCtrl reloaded.cmd
     , saveProducerRegistry changeSet
@@ -325,43 +328,39 @@ reloadProducers ({ viewState } as m) =
 
 
 applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
-applyProducerYield ({ viewState } as m) y =
-    case y.items of
-        [] ->
-            ( { m
+applyProducerYield ({ viewState } as m_) y =
+    let
+        ( newFAM, persistFAM ) =
+            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
+
+        m =
+            { m_
                 | producerRegistry = y.producerRegistry
-                , worque = y.postProcess.work |> Maybe.map (\w -> Worque.push w m.worque) |> Maybe.withDefault m.worque
-                , viewState =
-                    { viewState
-                        | filterAtomMaterial =
-                            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
-                    }
-              }
-            , Cmd.map ProducerCtrl y.cmd
-            , if y.postProcess.persist then
+                , worque =
+                    case y.postProcess.work of
+                        Just w ->
+                            Worque.push w m_.worque
+
+                        Nothing ->
+                            m_.worque
+                , viewState = { viewState | filterAtomMaterial = newFAM }
+            }
+
+        changeSetBase =
+            if y.postProcess.persist then
                 saveProducerRegistry changeSet
 
-              else
+            else
                 changeSet
-            )
+    in
+    case y.items of
+        [] ->
+            ( m, Cmd.map ProducerCtrl y.cmd, changeSetBase )
 
         nonEmptyYields ->
-            ( { m
-                | itemBroker = ItemBroker.bulkAppend nonEmptyYields m.itemBroker
-                , producerRegistry = y.producerRegistry
-                , worque = y.postProcess.work |> Maybe.map (\w -> Worque.push w m.worque) |> Maybe.withDefault m.worque
-                , viewState =
-                    { viewState
-                        | filterAtomMaterial =
-                            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
-                    }
-              }
+            ( { m | itemBroker = ItemBroker.bulkAppend nonEmptyYields m.itemBroker }
             , Cmd.map ProducerCtrl y.cmd
-            , if y.postProcess.persist then
-                changeSet |> saveProducerRegistry |> saveItemBroker
-
-              else
-                saveItemBroker changeSet
+            , saveItemBroker changeSetBase
             )
 
 
