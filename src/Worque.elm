@@ -1,6 +1,10 @@
 module Worque exposing (Work(..), Worque, init, pop, push, pushAll)
 
 {-| Serializer of Works (chunk of things to do that may require some time).
+
+It is just a (Double-ended) FIFO Queue.
+Make sure latest one is always saved in Model after pushed/popped.
+
 -}
 
 import Deque exposing (Deque)
