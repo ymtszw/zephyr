@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId
-    , add, get, map, indexedMap, removeAt, updateById, applyOrder
-    , consumeBroker
+    , add, get, map, indexedMap, removeAt
+    , updateById, applyOrder, consumeBroker, updateFAM
     )
 
 {-| Order-aware Column storage.
@@ -10,8 +10,8 @@ Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
 @docs ColumnStore, init, encode, decoder, storeId
-@docs add, get, map, indexedMap, removeAt, updateById, applyOrder
-@docs consumeBroker
+@docs add, get, map, indexedMap, removeAt
+@docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
 
@@ -20,7 +20,7 @@ import ArrayExtra as Array
 import Broker exposing (Broker)
 import Data.Column as Column exposing (Column)
 import Data.Filter exposing (FilterAtom(..))
-import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
 import Dict exposing (Dict)
@@ -97,17 +97,6 @@ removeAt index columnStore =
             columnStore
 
 
-updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Cmd Column.Msg, Bool )
-updateById cId cMsg columnStore =
-    case Dict.get cId columnStore.dict of
-        Just c ->
-            Column.update cMsg c
-                |> Extra.map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
-
-        Nothing ->
-            pure columnStore
-
-
 
 -- BULK APIs
 
@@ -138,6 +127,21 @@ indexedMapImpl mapper dict idList index acc =
                     indexedMapImpl mapper dict ids index acc
 
 
+
+-- Component APIs
+
+
+updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Cmd Column.Msg, Bool )
+updateById cId cMsg columnStore =
+    case Dict.get cId columnStore.dict of
+        Just c ->
+            Column.update cMsg c
+                |> Extra.map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
+
+        Nothing ->
+            pure columnStore
+
+
 applyOrder : Array String -> ColumnStore -> ColumnStore
 applyOrder order columnStore =
     { columnStore | order = order }
@@ -166,3 +170,9 @@ consumeBroker clientHeight broker columnStore =
 maxScanCount : Int
 maxScanCount =
     500
+
+
+updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )
+updateFAM instructions columnStore =
+    FAM.update instructions columnStore.fam
+        |> Tuple.mapFirst (\newFAM -> { columnStore | fam = newFAM })
