@@ -20,11 +20,13 @@ import ArrayExtra as Array
 import Broker exposing (Broker)
 import Data.Column as Column exposing (Column)
 import Data.Filter exposing (FilterAtom(..))
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
 import Dict exposing (Dict)
 import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import Set
 
@@ -32,21 +34,24 @@ import Set
 type alias ColumnStore =
     { dict : Dict String Column
     , order : Array String
+    , fam : FilterAtomMaterial
     }
 
 
 decoder : Int -> Decoder ColumnStore
 decoder clientHeight =
-    D.map2 ColumnStore
+    D.map3 ColumnStore
         (D.field "dict" (D.dict (Column.decoder clientHeight)))
         (D.field "order" (D.array D.string))
+        (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init))
 
 
 encode : ColumnStore -> Storable
-encode { dict, order } =
+encode columnStore =
     Data.Storable.encode storeId
-        [ ( "dict", E.dict identity Column.encode dict )
-        , ( "order", E.array E.string order )
+        [ ( "dict", E.dict identity Column.encode columnStore.dict )
+        , ( "order", E.array E.string columnStore.order )
+        , ( "fam", FAM.encode columnStore.fam )
         ]
 
 
@@ -57,7 +62,7 @@ storeId =
 
 init : ColumnStore
 init =
-    ColumnStore Dict.empty Array.empty
+    ColumnStore Dict.empty Array.empty FAM.init
 
 
 
