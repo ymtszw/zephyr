@@ -1,4 +1,4 @@
-module Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..), mapDiscordChannel, update)
+module Data.FilterAtomMaterial exposing (FilterAtomMaterial, UpdateInstruction(..), init, mapDiscordChannel, update)
 
 {-| Cache of relatively long-living information used for rendering FilterAtom.
 -}
@@ -16,6 +16,11 @@ type alias FilterAtomMaterial =
 
 type UpdateInstruction
     = DiscordInstruction (UpdateFAM ( FilterAtom, List Discord.ChannelCache ))
+
+
+init : FilterAtomMaterial
+init =
+    { ofDiscordChannel = Nothing }
 
 
 update : List UpdateInstruction -> FilterAtomMaterial -> FilterAtomMaterial

@@ -16,7 +16,7 @@ import Browser.Navigation exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter exposing (FilterAtom)
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
@@ -99,7 +99,7 @@ defaultViewState =
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
-    , filterAtomMaterial = { ofDiscordChannel = Nothing }
+    , filterAtomMaterial = FAM.init
     }
 
 
