@@ -1,5 +1,5 @@
 module Data.Filter exposing
-    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, encodeFilterAtom, decoder, toString, atomToString, compareFAM
+    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString, compareFAM
     , append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
     )
 
@@ -18,7 +18,7 @@ However, adding new FilterAtom in a Filter is better be implemented in "append" 
 since IMO, that matches better with users' expectations in those kind of GUIs.
 For that, this module reluctantly exposes `append` API.
 
-@docs Filter, FilterAtom, MediaFilter, encode, encodeFilterAtom, decoder, toString, atomToString, compareFAM
+@docs Filter, FilterAtom, MediaFilter, encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString, compareFAM
 @docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
 
 -}
