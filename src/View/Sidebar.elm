@@ -29,7 +29,7 @@ sidebarEl ({ columnStore, viewState, env } as m) =
         , onRight (configPaneEl m)
         , BG.color oneDark.bg
         ]
-        [ el [ width fill, alignTop ] (columnButtonsEl viewState.filterAtomMaterial columnStore)
+        [ el [ width fill, alignTop ] (columnButtonsEl columnStore)
         , el [ width fill, alignBottom ] (lazy otherButtonsEl viewState.configOpen)
         ]
 
@@ -49,9 +49,9 @@ sectionSpacingY =
     10
 
 
-columnButtonsEl : FilterAtomMaterial -> ColumnStore -> Element Msg
-columnButtonsEl fam columnStore =
-    (columnAddButtonKeyEl :: ColumnStore.indexedMap (columnButtonKeyEl fam) columnStore)
+columnButtonsEl : ColumnStore -> Element Msg
+columnButtonsEl columnStore =
+    (columnAddButtonKeyEl :: ColumnStore.mapForView columnButtonKeyEl columnStore)
         |> Element.Keyed.column
             [ width fill
             , paddingXY 0 sectionSpacingY

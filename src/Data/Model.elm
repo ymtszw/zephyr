@@ -16,7 +16,7 @@ import Browser.Navigation exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter exposing (FilterAtom)
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
@@ -50,7 +50,6 @@ type alias ViewState =
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
-    , filterAtomMaterial : FilterAtomMaterial
     }
 
 
@@ -71,11 +70,6 @@ type alias Env =
 
 init : Env -> Key -> Model
 init env navKey =
-    initModel env navKey
-
-
-initModel : Env -> Key -> Model
-initModel env navKey =
     if env.indexedDBAvailable then
         { columnStore = ColumnStore.init
         , itemBroker = ItemBroker.init
@@ -99,7 +93,6 @@ defaultViewState =
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
-    , filterAtomMaterial = { ofDiscordChannel = Nothing }
     }
 
 
