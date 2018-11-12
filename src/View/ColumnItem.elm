@@ -420,6 +420,7 @@ messageToParagraph message =
         none
 
     else
+        -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
         message
             |> Data.TextRenderer.default oneDark
             |> List.map html
