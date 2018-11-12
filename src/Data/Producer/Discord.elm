@@ -326,8 +326,8 @@ encodePov pov =
     E.object
         [ ( "token", E.string pov.token )
         , ( "user", encodeUser pov.user )
-        , ( "guilds", encodeGuildDict pov.guilds )
-        , ( "channels", encodeChannelDict pov.channels )
+        , ( "guilds", E.dict identity encodeGuild pov.guilds )
+        , ( "channels", E.dict identity encodeChannel pov.channels )
         ]
 
 
@@ -355,11 +355,6 @@ encodeImage image =
             E.string hash
 
 
-encodeGuildDict : Dict String Guild -> E.Value
-encodeGuildDict guilds =
-    guilds |> Dict.map (\_ v -> encodeGuild v) |> Dict.toList |> E.object
-
-
 encodeGuild : Guild -> E.Value
 encodeGuild guild =
     E.object
@@ -367,11 +362,6 @@ encodeGuild guild =
         , ( "name", E.string guild.name )
         , ( "icon", E.maybe encodeImage guild.icon )
         ]
-
-
-encodeChannelDict : Dict String Channel -> E.Value
-encodeChannelDict channels =
-    channels |> Dict.map (\_ v -> encodeChannel v) |> Dict.toList |> E.object
 
 
 encodeChannel : Channel -> E.Value
