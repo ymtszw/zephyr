@@ -181,7 +181,15 @@ update msg ({ viewState, env } as m) =
             ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
 
         LoadItemBroker itemBroker ->
-            ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry, saveItemBroker changeSet )
+            if Broker.capacity itemBroker == Broker.capacity m.itemBroker then
+                ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry, saveItemBroker changeSet )
+
+            else
+                -- Broker reset and migration; reset columns' Offsets, discarding old itemBroker
+                ( { m | columnStore = ColumnStore.map (\c -> { c | offset = Nothing }) m.columnStore }
+                , IndexedDb.requestProducerRegistry
+                , changeSet |> saveItemBroker |> saveColumnStore
+                )
 
         LoadProducerRegistry pr ->
             reloadProducers <|

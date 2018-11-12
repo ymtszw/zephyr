@@ -9,7 +9,17 @@ import Json.Encode as E
 
 init : Broker Item
 init =
-    Broker.initialize { numSegments = 100, segmentSize = 1000 }
+    Broker.initialize { numSegments = numSegments, segmentSize = segmentSize }
+
+
+numSegments : Int
+numSegments =
+    100
+
+
+segmentSize : Int
+segmentSize =
+    1000
 
 
 encode : Broker Item -> Storable
