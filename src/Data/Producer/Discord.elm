@@ -1,8 +1,9 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), User, POV, Guild, Channel, ChannelCache, Msg(..), FetchResult(..), decoder, encode, encodeUser
+    ( Discord(..), User, POV, Guild, Channel, decoder, encode, encodeUser
+    , ChannelCache, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
-    , reload, update
+    , Msg(..), FetchResult(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, unavailableChannel, compareByNames
     )
@@ -19,7 +20,8 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, User, POV, Guild, Channel, ChannelCache, Msg, FetchResult, decoder, encode, encodeUser
+@docs Discord, User, POV, Guild, Channel, decoder, encode, encodeUser
+@docs ChannelCache, encodeChannelCache, channelCacheDecoder
 
 
 ## Message
@@ -30,7 +32,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Component APIs
 
-@docs reload, update
+@docs Msg, FetchResult, reload, update
 
 
 ## Runtime APIs
@@ -374,14 +376,32 @@ encodeChannelDict channels =
 
 encodeChannel : Channel -> E.Value
 encodeChannel channel =
-    E.object
-        [ ( "id", E.string channel.id )
-        , ( "name", E.string channel.name )
-        , ( "type", encodeChannelType channel.type_ )
-        , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
-        , ( "last_message_id", E.maybe (\(MessageId mid) -> E.tagged "MessageId" (E.string mid)) channel.lastMessageId )
-        , ( "fetchStatus", FetchStatus.encode channel.fetchStatus )
-        ]
+    E.object <|
+        encodeChannelShared channel
+            ++ [ ( "last_message_id", E.maybe (\(MessageId mid) -> E.tagged "MessageId" (E.string mid)) channel.lastMessageId )
+               , ( "fetchStatus", FetchStatus.encode channel.fetchStatus )
+               ]
+
+
+encodeChannelCache : ChannelCache -> E.Value
+encodeChannelCache c =
+    E.object (encodeChannelShared c)
+
+
+encodeChannelShared :
+    { x
+        | id : String
+        , name : String
+        , type_ : ChannelType
+        , guildMaybe : Maybe Guild
+    }
+    -> List ( String, E.Value )
+encodeChannelShared channel =
+    [ ( "id", E.string channel.id )
+    , ( "name", E.string channel.name )
+    , ( "type", encodeChannelType channel.type_ )
+    , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
+    ]
 
 
 encodeChannelType : ChannelType -> E.Value
@@ -560,19 +580,29 @@ guildDecoder =
 
 channelDecoder : Dict String Guild -> Decoder Channel
 channelDecoder guilds =
-    -- Here we deliberately ignore last_message_id from Discord API.
+    -- Here we deliberately ignore last_message_id from Discord API (bare IDs).
     -- That way, FetchStatus can be tidier.
-    let
-        populateGuild guildIdMaybe =
-            Maybe.andThen (\gId -> Dict.get gId guilds) guildIdMaybe
-    in
     D.map6 Channel
         (D.field "id" D.string)
         (D.field "name" D.string)
         (D.field "type" channelTypeDecoder)
-        (D.maybeField "guild_id" D.string |> D.map populateGuild)
+        (D.maybeField "guild_id" D.string |> D.map (populateGuild guilds))
         (D.maybeField "last_message_id" (D.tagged "MessageId" MessageId D.string))
         (D.maybeField "fetchStatus" FetchStatus.decoder |> D.map (Maybe.withDefault Available))
+
+
+populateGuild : Dict String Guild -> Maybe String -> Maybe Guild
+populateGuild guilds guildIdMaybe =
+    Maybe.andThen (\gId -> Dict.get gId guilds) guildIdMaybe
+
+
+channelCacheDecoder : Dict String Guild -> Decoder ChannelCache
+channelCacheDecoder guilds =
+    D.map4 ChannelCache
+        (D.field "id" D.string)
+        (D.field "name" D.string)
+        (D.field "type" channelTypeDecoder)
+        (D.maybeField "guild_id" D.string |> D.map (populateGuild guilds))
 
 
 channelTypeDecoder : Decoder ChannelType
