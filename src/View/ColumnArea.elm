@@ -224,7 +224,7 @@ itemsEl clientHeight tz cId items =
 
 waitingForFirstItemEl : Element Msg
 waitingForFirstItemEl =
-    el [ width fill, height (px 50), alignTop, paddingXY 5 0 ] <|
+    el [ width fill, height fill, paddingXY 5 0 ] <|
         el [ centerX, centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
             text "Waiting for messages..."
 

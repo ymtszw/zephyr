@@ -485,7 +485,7 @@ columnConfigCloseButtonEl : String -> Element Msg
 columnConfigCloseButtonEl cId =
     Element.Input.button [ width fill, BG.color oneDark.sub ]
         { onPress = Just (ColumnCtrl cId (Column.ToggleConfig False))
-        , label = octiconEl [] { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
+        , label = octiconEl [ centerX ] { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
         }
 
 
