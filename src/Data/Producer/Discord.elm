@@ -1,6 +1,6 @@
 module Data.Producer.Discord exposing
     ( Discord(..), User, POV, Guild, Channel, decoder, encode, encodeUser
-    , ChannelCache, encodeChannelCache, channelCacheDecoder
+    , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , Msg(..), FetchResult(..), reload, update
@@ -21,7 +21,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 ## Types
 
 @docs Discord, User, POV, Guild, Channel, decoder, encode, encodeUser
-@docs ChannelCache, encodeChannelCache, channelCacheDecoder
+@docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 
 
 ## Message
