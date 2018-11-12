@@ -309,14 +309,10 @@ Always persist producerRegistry in order to apply new encoding format, if any.
 
 -}
 reloadProducers : Model -> ( Model, Cmd Msg, ChangeSet )
-reloadProducers ({ viewState } as m) =
+reloadProducers m =
     let
         reloaded =
             Producer.reloadAll m.producerRegistry
-
-        ( newFAM, _ ) =
-            -- Old data; may remove after migration
-            FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial
 
         ( newColumnStore, _ ) =
             ColumnStore.updateFAM reloaded.famInstructions m.columnStore
@@ -325,7 +321,6 @@ reloadProducers ({ viewState } as m) =
         | producerRegistry = reloaded.producerRegistry
         , columnStore = newColumnStore
         , worque = Worque.pushAll reloaded.works m.worque
-        , viewState = { viewState | filterAtomMaterial = newFAM }
       }
     , Cmd.map ProducerCtrl reloaded.cmd
     , changeSet |> saveProducerRegistry |> saveColumnStore
@@ -333,12 +328,8 @@ reloadProducers ({ viewState } as m) =
 
 
 applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
-applyProducerYield ({ viewState } as m_) y =
+applyProducerYield m_ y =
     let
-        ( newFAM, _ ) =
-            -- Old data; may remove after migration
-            FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
-
         ( newColumnStore, persistColumnStore ) =
             ColumnStore.updateFAM [ y.postProcess.famInstruction ] m_.columnStore
 
@@ -353,7 +344,6 @@ applyProducerYield ({ viewState } as m_) y =
 
                         Nothing ->
                             m_.worque
-                , viewState = { viewState | filterAtomMaterial = newFAM }
             }
 
         changeSetBase =
