@@ -316,26 +316,34 @@ reloadProducers ({ viewState } as m) =
 
         ( newFAM, _ ) =
             FilterAtomMaterial.update reloaded.famInstructions viewState.filterAtomMaterial
+
+        ( newColumnStore, _ ) =
+            ColumnStore.updateFAM reloaded.famInstructions m.columnStore
     in
     ( { m
         | producerRegistry = reloaded.producerRegistry
+        , columnStore = newColumnStore
         , worque = Worque.pushAll reloaded.works m.worque
         , viewState = { viewState | filterAtomMaterial = newFAM }
       }
     , Cmd.map ProducerCtrl reloaded.cmd
-    , saveProducerRegistry changeSet
+    , changeSet |> saveProducerRegistry |> saveColumnStore
     )
 
 
 applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
 applyProducerYield ({ viewState } as m_) y =
     let
-        ( newFAM, persistFAM ) =
+        ( newFAM, _ ) =
             FilterAtomMaterial.update [ y.postProcess.famInstruction ] viewState.filterAtomMaterial
+
+        ( newColumnStore, persistColumnStore ) =
+            ColumnStore.updateFAM [ y.postProcess.famInstruction ] m_.columnStore
 
         m =
             { m_
                 | producerRegistry = y.producerRegistry
+                , columnStore = newColumnStore
                 , worque =
                     case y.postProcess.work of
                         Just w ->
@@ -347,11 +355,18 @@ applyProducerYield ({ viewState } as m_) y =
             }
 
         changeSetBase =
-            if y.postProcess.persist then
-                saveProducerRegistry changeSet
+            case ( y.postProcess.persist, persistColumnStore ) of
+                ( True, True ) ->
+                    changeSet |> saveProducerRegistry |> saveColumnStore
 
-            else
-                changeSet
+                ( True, False ) ->
+                    changeSet |> saveProducerRegistry
+
+                ( False, True ) ->
+                    changeSet |> saveColumnStore
+
+                ( False, False ) ->
+                    changeSet
     in
     case y.items of
         [] ->
