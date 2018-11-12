@@ -108,26 +108,24 @@ statusTitleEl =
 
 statusEl : Model -> Element Msg
 statusEl m =
-    column [ spacing spacingUnit, Font.size statusFontSize ] <|
-        List.map (row [ spacing spacingUnit ])
-            [ [ text "Local message buffer capacity: ", text <| StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
-            , [ text "Number of columns: ", text <| StringExtra.punctuateNumber <| Dict.size m.columnStore.dict ]
-            , [ text "ClientHeight: ", text <| StringExtra.punctuateNumber m.env.clientHeight ]
-            , [ text "ServiceWorker: "
-              , text <|
-                    if m.env.serviceWorkerAvailable then
-                        "Registered"
+    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size statusFontSize ] <|
+        List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
+            [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
+            , [ "Number of columns", StringExtra.punctuateNumber <| Dict.size m.columnStore.dict ]
+            , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
+            , [ "ServiceWorker"
+              , if m.env.serviceWorkerAvailable then
+                    "Registered"
 
-                    else
-                        "Not available"
+                else
+                    "Not available"
               ]
-            , [ text "IndexedDB: "
-              , text <|
-                    if m.env.indexedDBAvailable then
-                        "Used"
+            , [ "IndexedDB"
+              , if m.env.indexedDBAvailable then
+                    "Used"
 
-                    else
-                        "Not available"
+                else
+                    "Not available"
               ]
             ]
 
