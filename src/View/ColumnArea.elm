@@ -113,7 +113,7 @@ columnHeaderTextEl : FilterAtomMaterial -> String -> Bool -> Array Filter -> Ele
 columnHeaderTextEl fam cId scrolled filters =
     let
         arrayReducer f acc =
-            List.sortWith Filter.compareFAM (Filter.toList f) :: acc
+            List.sortWith Filter.compareFilterAtom (Filter.toList f) :: acc
     in
     filters
         |> Array.foldr arrayReducer []

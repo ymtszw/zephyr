@@ -354,44 +354,44 @@ exampleCom =
 filterSuite : Test
 filterSuite =
     describe "Data.Filter"
-        [ describe "compareFAM"
-            [ testCompareFAM (OfDiscordChannel "b") (OfDiscordChannel "a") GT
-            , testCompareFAM (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
-            , testCompareFAM (OfDiscordChannel "a") (OfDiscordChannel "b") LT
-            , testCompareFAM (OfDiscordChannel "a") (ByMessage "a") LT
-            , testCompareFAM (OfDiscordChannel "a") (ByMedia HasImage) LT
-            , testCompareFAM (OfDiscordChannel "a") RemoveMe LT
-            , testCompareFAM (ByMessage "a") (OfDiscordChannel "a") GT
-            , testCompareFAM (ByMessage "b") (ByMessage "a") GT
-            , testCompareFAM (ByMessage "a") (ByMessage "a") EQ
-            , testCompareFAM (ByMessage "a") (ByMessage "b") LT
-            , testCompareFAM (ByMessage "a") (ByMedia HasNone) LT
-            , testCompareFAM (ByMessage "a") RemoveMe LT
-            , testCompareFAM (ByMedia HasImage) (OfDiscordChannel "a") GT
-            , testCompareFAM (ByMedia HasImage) (ByMessage "a") GT
-            , testCompareFAM (ByMedia HasNone) (ByMedia HasImage) GT
-            , testCompareFAM (ByMedia HasNone) (ByMedia HasMovie) GT
-            , testCompareFAM (ByMedia HasMovie) (ByMedia HasImage) GT
-            , testCompareFAM (ByMedia HasImage) (ByMedia HasImage) EQ
-            , testCompareFAM (ByMedia HasMovie) (ByMedia HasMovie) EQ
-            , testCompareFAM (ByMedia HasNone) (ByMedia HasNone) EQ
-            , testCompareFAM (ByMedia HasImage) (ByMedia HasMovie) LT
-            , testCompareFAM (ByMedia HasImage) (ByMedia HasNone) LT
-            , testCompareFAM (ByMedia HasMovie) (ByMedia HasNone) LT
-            , testCompareFAM (ByMedia HasImage) RemoveMe LT
-            , testCompareFAM RemoveMe (OfDiscordChannel "a") LT
-            , testCompareFAM RemoveMe (ByMessage "a") LT
-            , testCompareFAM RemoveMe (ByMedia HasImage) LT
-            , testCompareFAM RemoveMe RemoveMe EQ
+        [ describe "compareFilterAtom"
+            [ testcompareFilterAtom (OfDiscordChannel "b") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
+            , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "b") LT
+            , testcompareFilterAtom (OfDiscordChannel "a") (ByMessage "a") LT
+            , testcompareFilterAtom (OfDiscordChannel "a") (ByMedia HasImage) LT
+            , testcompareFilterAtom (OfDiscordChannel "a") RemoveMe LT
+            , testcompareFilterAtom (ByMessage "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMessage "b") (ByMessage "a") GT
+            , testcompareFilterAtom (ByMessage "a") (ByMessage "a") EQ
+            , testcompareFilterAtom (ByMessage "a") (ByMessage "b") LT
+            , testcompareFilterAtom (ByMessage "a") (ByMedia HasNone) LT
+            , testcompareFilterAtom (ByMessage "a") RemoveMe LT
+            , testcompareFilterAtom (ByMedia HasImage) (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMedia HasImage) (ByMessage "a") GT
+            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasImage) GT
+            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasMovie) GT
+            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasImage) GT
+            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasImage) EQ
+            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasMovie) EQ
+            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasNone) EQ
+            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasMovie) LT
+            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasNone) LT
+            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasNone) LT
+            , testcompareFilterAtom (ByMedia HasImage) RemoveMe LT
+            , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") LT
+            , testcompareFilterAtom RemoveMe (ByMessage "a") LT
+            , testcompareFilterAtom RemoveMe (ByMedia HasImage) LT
+            , testcompareFilterAtom RemoveMe RemoveMe EQ
             ]
         ]
 
 
-testCompareFAM : FilterAtom -> FilterAtom -> Order -> Test
-testCompareFAM fa1 fa2 expected =
+testcompareFilterAtom : FilterAtom -> FilterAtom -> Order -> Test
+testcompareFilterAtom fa1 fa2 expected =
     test (String.join " " [ Debug.toString fa1, Debug.toString expected, Debug.toString fa2 ]) <|
         \_ ->
-            Filter.compareFAM fa1 fa2 |> Expect.equal expected
+            Filter.compareFilterAtom fa1 fa2 |> Expect.equal expected
 
 
 

@@ -1,6 +1,6 @@
 module Data.Filter exposing
-    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString, compareFAM
-    , append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
+    ( Filter(..), FilterAtom(..), MediaFilter(..), encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString
+    , append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList, compareFilterAtom
     )
 
 {-| Filter to narrow down Items flowing into a Column.
@@ -18,8 +18,8 @@ However, adding new FilterAtom in a Filter is better be implemented in "append" 
 since IMO, that matches better with users' expectations in those kind of GUIs.
 For that, this module reluctantly exposes `append` API.
 
-@docs Filter, FilterAtom, MediaFilter, encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString, compareFAM
-@docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList
+@docs Filter, FilterAtom, MediaFilter, encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString
+@docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList, compareFilterAtom
 
 -}
 
@@ -318,8 +318,8 @@ atomToString fa =
             ""
 
 
-compareFAM : FilterAtom -> FilterAtom -> Order
-compareFAM fa1 fa2 =
+compareFilterAtom : FilterAtom -> FilterAtom -> Order
+compareFilterAtom fa1 fa2 =
     case ( fa1, fa2 ) of
         ( OfDiscordChannel cId1, OfDiscordChannel cId2 ) ->
             compare cId1 cId2
