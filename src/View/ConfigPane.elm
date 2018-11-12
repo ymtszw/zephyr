@@ -2,6 +2,7 @@ module View.ConfigPane exposing (configPaneEl)
 
 import Broker
 import Data.ColorTheme exposing (oneDark)
+import Data.Column
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
@@ -111,6 +112,7 @@ statusEl m =
     column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size statusFontSize ] <|
         List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
             [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
+            , [ "Messages per column", StringExtra.punctuateNumber Data.Column.columnItemLimit ]
             , [ "Number of columns", StringExtra.punctuateNumber <| Dict.size m.columnStore.dict ]
             , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
             , [ "ServiceWorker"

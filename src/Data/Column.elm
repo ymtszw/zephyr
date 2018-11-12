@@ -1,5 +1,5 @@
 module Data.Column exposing
-    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll
+    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
     , Msg(..), update, consumeBroker
     )
 
@@ -10,7 +10,7 @@ Items stored in List are ordered from latest to oldest.
 Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
-@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll
+@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
 @docs Msg, update, consumeBroker
 
 -}
