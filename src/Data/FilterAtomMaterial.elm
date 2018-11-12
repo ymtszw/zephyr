@@ -92,20 +92,25 @@ type UpdateInstruction
     = DiscordInstruction (UpdateFAM ( FilterAtom, List Discord.ChannelCache ))
 
 
-update : List UpdateInstruction -> FilterAtomMaterial -> FilterAtomMaterial
+update : List UpdateInstruction -> FilterAtomMaterial -> ( FilterAtomMaterial, Bool )
 update instructions fam =
+    updateImpl instructions ( fam, False )
+
+
+updateImpl : List UpdateInstruction -> ( FilterAtomMaterial, Bool ) -> ( FilterAtomMaterial, Bool )
+updateImpl instructions ( fam, persist ) =
     case instructions of
         [] ->
-            fam
+            ( fam, persist )
 
         (DiscordInstruction (SetFAM discordFAM)) :: xs ->
-            update xs { fam | ofDiscordChannel = Just discordFAM }
+            updateImpl xs ( { fam | ofDiscordChannel = Just discordFAM }, True )
 
         (DiscordInstruction KeepFAM) :: xs ->
-            update xs fam
+            updateImpl xs ( fam, persist )
 
         (DiscordInstruction DestroyFAM) :: xs ->
-            update xs { fam | ofDiscordChannel = Nothing }
+            updateImpl xs ( { fam | ofDiscordChannel = Nothing }, True )
 
 
 mapDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
