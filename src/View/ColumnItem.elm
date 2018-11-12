@@ -460,6 +460,7 @@ videoEl posterMaybe url =
                 , Html.a
                     [ Html.Attributes.href (Url.toString url)
                     , Html.Attributes.target "_blank"
+                    , Html.Attributes.rel "noreferrer noopener"
                     ]
                     [ Html.text "[Source]" ]
                 ]

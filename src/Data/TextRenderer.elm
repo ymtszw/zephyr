@@ -30,7 +30,7 @@ They must be converted to Element Msg by callers.
 import Data.ColorTheme exposing (ColorTheme)
 import Data.Msg exposing (Msg)
 import Html exposing (..)
-import Html.Attributes exposing (href, style, target)
+import Html.Attributes exposing (href, rel, style, target)
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
 import View.Parts exposing (css)
@@ -77,6 +77,7 @@ stringOrUrlEl theme stringOrUrl =
             a
                 [ href (Url.toString url)
                 , target "_blank"
+                , rel "noreferrer noopener"
                 , style "color" (css theme.link)
                 ]
                 [ text trimmedUrl ]
