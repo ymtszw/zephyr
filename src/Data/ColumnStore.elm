@@ -35,15 +35,19 @@ type alias ColumnStore =
     { dict : Dict String Column
     , order : Array String
     , fam : FilterAtomMaterial
+    , indexToScan : Int
     }
 
 
 decoder : Int -> Decoder ColumnStore
 decoder clientHeight =
-    D.map3 ColumnStore
-        (D.field "dict" (D.dict (Column.decoder clientHeight)))
-        (D.field "order" (D.array D.string))
-        (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init))
+    D.do (D.field "dict" (D.dict (Column.decoder clientHeight))) <|
+        \dict ->
+            D.do (D.field "order" (D.array D.string)) <|
+                \order ->
+                    D.do (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init)) <|
+                        \fam ->
+                            D.succeed (ColumnStore dict order fam 0)
 
 
 encode : ColumnStore -> Storable
@@ -62,7 +66,7 @@ storeId =
 
 init : ColumnStore
 init =
-    ColumnStore Dict.empty Array.empty FAM.init
+    ColumnStore Dict.empty Array.empty FAM.init 0
 
 
 
@@ -149,22 +153,28 @@ applyOrder order columnStore =
 
 consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
 consumeBroker clientHeight broker columnStore =
-    let
-        ( newDict, shouldPersist ) =
-            Dict.foldl reducer ( Dict.empty, False ) columnStore.dict
+    case get columnStore.indexToScan columnStore of
+        Just column ->
+            let
+                scanCountPerColumn =
+                    maxScanCount // Dict.size columnStore.dict
 
-        scanCountPerColumn =
-            maxScanCount // Dict.size columnStore.dict
+                ( newColumn, persist ) =
+                    column
+                        |> Column.adjustScroll clientHeight
+                        |> Column.consumeBroker scanCountPerColumn broker
 
-        reducer cId column ( accDict, accPersist ) =
-            column
-                |> Column.adjustScroll clientHeight
-                |> Column.consumeBroker scanCountPerColumn broker
-                |> Tuple.mapBoth
-                    (\newColumn -> Dict.insert cId newColumn accDict)
-                    ((||) accPersist)
-    in
-    ( { columnStore | dict = newDict }, shouldPersist )
+                nextIndex =
+                    if columnStore.indexToScan < Array.length columnStore.order - 1 then
+                        columnStore.indexToScan + 1
+
+                    else
+                        0
+            in
+            ( { columnStore | indexToScan = nextIndex, dict = Dict.insert column.id newColumn columnStore.dict }, persist )
+
+        Nothing ->
+            ( { columnStore | indexToScan = 0 }, False )
 
 
 maxScanCount : Int
