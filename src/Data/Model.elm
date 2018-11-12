@@ -71,11 +71,6 @@ type alias Env =
 
 init : Env -> Key -> Model
 init env navKey =
-    initModel env navKey
-
-
-initModel : Env -> Key -> Model
-initModel env navKey =
     if env.indexedDBAvailable then
         { columnStore = ColumnStore.init
         , itemBroker = ItemBroker.init
