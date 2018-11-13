@@ -50,6 +50,7 @@ type alias ViewState =
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
+    , visible : Bool
     }
 
 
@@ -93,6 +94,7 @@ defaultViewState =
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
+    , visible = True
     }
 
 

@@ -28,6 +28,7 @@ type Msg
     | Resize Int Int
     | GetViewport Browser.Dom.Viewport
     | GetTimeZone ( String, Zone )
+    | VisibilityChanged Bool
     | LoggerCtrl Logger.Msg
     | LinkClicked Browser.UrlRequest
     | SelectToggle String Bool
@@ -66,6 +67,13 @@ logEntry msg =
 
         GetTimeZone ( name, _ ) ->
             Entry "GetTimeZone" [ name ]
+
+        VisibilityChanged visible ->
+            if visible then
+                Entry "VisibilityChanged" [ "Visible" ]
+
+            else
+                Entry "VisibilityChanged" [ "Hidden" ]
 
         LoggerCtrl lMsg ->
             loggerMsgToEntry lMsg

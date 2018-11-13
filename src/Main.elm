@@ -123,6 +123,12 @@ update msg ({ viewState, env } as m) =
         GetTimeZone ( _, zone ) ->
             pure { m | viewState = { viewState | timezone = zone } }
 
+        VisibilityChanged True ->
+            pure { m | viewState = { viewState | visible = True } }
+
+        VisibilityChanged False ->
+            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing, visible = False } }
+
         LoggerCtrl lMsg ->
             Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
 
@@ -452,12 +458,13 @@ toggleColumnSwap swappable =
             Browser.Events.onKeyUp (D.when (D.field "altKey" D.bool) not (D.succeed (ToggleColumnSwappable False)))
         , Browser.Events.onVisibilityChange <|
             \visibility ->
-                case visibility of
-                    Browser.Events.Visible ->
-                        NoOp
+                VisibilityChanged <|
+                    case visibility of
+                        Browser.Events.Visible ->
+                            True
 
-                    Browser.Events.Hidden ->
-                        ToggleColumnSwappable False
+                        Browser.Events.Hidden ->
+                            False
         ]
 
 
