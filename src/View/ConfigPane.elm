@@ -1,15 +1,20 @@
 module View.ConfigPane exposing (configPaneEl)
 
+import Broker
 import Data.ColorTheme exposing (oneDark)
+import Data.Column
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Dict
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Logger
+import Octicons
+import StringExtra
 import View.ConfigPane.DiscordConfig exposing (discordConfigEl)
 import View.Parts exposing (..)
 
@@ -41,7 +46,8 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper discordConfigTitleEl <|
+        [ configSectionWrapper statusTitleEl <| statusEl m
+        , configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
@@ -87,6 +93,48 @@ sectionTitleFontSize =
 sectionBaseFontSize : Int
 sectionBaseFontSize =
     scale12 2
+
+
+statusTitleEl : Element Msg
+statusTitleEl =
+    row [ spacing spacingUnit ]
+        [ octiconEl []
+            { size = sectionTitleFontSize
+            , color = oneDark.succ
+            , shape = Octicons.pulse
+            }
+        , text "Status"
+        ]
+
+
+statusEl : Model -> Element Msg
+statusEl m =
+    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size statusFontSize ] <|
+        List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
+            [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
+            , [ "Messages per column", StringExtra.punctuateNumber Data.Column.columnItemLimit ]
+            , [ "Number of columns", StringExtra.punctuateNumber <| Dict.size m.columnStore.dict ]
+            , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
+            , [ "ServiceWorker"
+              , if m.env.serviceWorkerAvailable then
+                    "Registered"
+
+                else
+                    "Not available"
+              ]
+            , [ "IndexedDB"
+              , if m.env.indexedDBAvailable then
+                    "Used"
+
+                else
+                    "Not available"
+              ]
+            ]
+
+
+statusFontSize : Int
+statusFontSize =
+    scale12 1
 
 
 discordConfigTitleEl : Element Msg

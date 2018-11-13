@@ -1,4 +1,4 @@
-module StringExtra exposing (appendWithSpace, splitAt)
+module StringExtra exposing (appendWithSpace, punctuateNumber, splitAt)
 
 
 splitAt : Int -> String -> List String
@@ -20,3 +20,20 @@ appendWithSpace front back =
 
     else
         front ++ " " ++ back
+
+
+punctuateNumber : Int -> String
+punctuateNumber decimal =
+    let
+        reducer char ( accChars, accStr ) =
+            case accChars of
+                c1 :: c2 :: c3 :: _ ->
+                    ( [ char ], String.fromList [ ',', c1, c2, c3 ] ++ accStr )
+
+                _ ->
+                    ( char :: accChars, accStr )
+
+        ( rem, punctuated ) =
+            decimal |> String.fromInt |> String.foldr reducer ( [], "" )
+    in
+    String.fromList rem ++ punctuated

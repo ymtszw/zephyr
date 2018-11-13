@@ -154,7 +154,14 @@ update msg ({ viewState, env } as m) =
                 ( c, idGen ) =
                     UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa)
             in
-            ( { m | idGen = idGen, columnStore = ColumnStore.add c m.columnStore }, Cmd.none, saveColumnStore changeSet )
+            ( { m
+                | idGen = idGen
+                , columnStore = ColumnStore.add c m.columnStore
+                , worque = Worque.push (BrokerCatchUp c.id) m.worque
+              }
+            , Cmd.none
+            , saveColumnStore changeSet
+            )
 
         DelColumn index ->
             ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
@@ -181,11 +188,19 @@ update msg ({ viewState, env } as m) =
             ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
 
         LoadItemBroker itemBroker ->
-            ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry, saveItemBroker changeSet )
+            if Broker.capacity itemBroker == Broker.capacity m.itemBroker then
+                ( { m | itemBroker = itemBroker }, IndexedDb.requestProducerRegistry, saveItemBroker changeSet )
+
+            else
+                -- Broker reset and migration; reset columns' Offsets, discarding old itemBroker
+                ( { m | columnStore = ColumnStore.map (\c -> { c | offset = Nothing }) m.columnStore }
+                , IndexedDb.requestProducerRegistry
+                , changeSet |> saveItemBroker |> saveColumnStore
+                )
 
         LoadProducerRegistry pr ->
             reloadProducers <|
-                { m | producerRegistry = pr, worque = Worque.pushAll [ Worque.DropOldState, Worque.BrokerScan ] m.worque }
+                { m | producerRegistry = pr, worque = Worque.pushAll [ DropOldState, initScan m.columnStore ] m.worque }
 
         LoadOk ss ->
             -- Old method; remove after migration
@@ -195,12 +210,12 @@ update msg ({ viewState, env } as m) =
                     , itemBroker = ss.itemBroker
                     , producerRegistry = ss.producerRegistry
                     , idGen = ss.idGen
-                    , worque = Worque.push Worque.BrokerScan m.worque
+                    , worque = Worque.push (initScan ss.columnStore) m.worque
                 }
 
         LoadErr _ ->
             -- Hard failure of initial state load; start app normally as the last resport
-            pure { m | worque = Worque.push Worque.BrokerScan m.worque }
+            pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
@@ -210,14 +225,14 @@ update msg ({ viewState, env } as m) =
                 ( cs, cmd, persist ) =
                     ColumnStore.updateById cId cMsg m.columnStore
             in
-            ( { m | columnStore = cs }
-            , Cmd.map (ColumnCtrl cId) cmd
-            , if persist then
-                saveColumnStore changeSet
+            if persist then
+                ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
+                , Cmd.map (ColumnCtrl cId) cmd
+                , saveColumnStore changeSet
+                )
 
-              else
-                changeSet
-            )
+            else
+                ( { m | columnStore = cs }, Cmd.map (ColumnCtrl cId) cmd, changeSet )
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -251,12 +266,12 @@ onTick posix m_ =
                 |> Tuple.mapSecond (\newWorque -> { m_ | worque = newWorque })
     in
     case workMaybe of
-        Just BrokerScan ->
+        Just (BrokerScan 0) ->
             let
                 ( cs, persist ) =
                     ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
             in
-            ( { m | columnStore = cs, worque = Worque.push BrokerScan m.worque }
+            ( { m | columnStore = cs, worque = Worque.push (initScan cs) m.worque }
             , Cmd.none
             , if persist then
                 saveColumnStore changeSet
@@ -264,6 +279,9 @@ onTick posix m_ =
               else
                 changeSet
             )
+
+        Just (BrokerScan n) ->
+            pure { m | worque = Worque.push (BrokerScan (n - 1)) m.worque }
 
         Just DiscordFetch ->
             Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
@@ -273,8 +291,37 @@ onTick posix m_ =
             -- Finalize migration; may remove if migration propagated
             noPersist ( m, IndexedDb.dropOldState )
 
+        Just (BrokerCatchUp cId) ->
+            case ColumnStore.catchUpBroker m.itemBroker cId m.columnStore of
+                ( cs, True ) ->
+                    ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
+                    , Cmd.none
+                    , saveColumnStore changeSet
+                    )
+
+                ( cs, False ) ->
+                    ( { m | columnStore = cs }, Cmd.none, saveColumnStore changeSet )
+
         Nothing ->
             pure m
+
+
+initScan : ColumnStore -> Work
+initScan cs =
+    let
+        numColumns =
+            ColumnStore.size cs
+    in
+    if numColumns == 0 then
+        BrokerScan maxScanInterval
+
+    else
+        BrokerScan (maxScanInterval // numColumns)
+
+
+maxScanInterval : Int
+maxScanInterval =
+    10
 
 
 revealColumn : Int -> Cmd Msg
@@ -391,8 +438,8 @@ sub m =
 
 globalTimerIntervalMillis : Float
 globalTimerIntervalMillis =
-    -- 6 Hz
-    166.7
+    -- 10 Hz
+    100.0
 
 
 toggleColumnSwap : Bool -> Sub Msg

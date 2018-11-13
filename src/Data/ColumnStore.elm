@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
-    ( ColumnStore, init, encode, decoder, storeId
+    ( ColumnStore, init, encode, decoder, storeId, size
     , add, get, map, mapForView, removeAt
-    , updateById, applyOrder, consumeBroker, updateFAM
+    , updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
     )
 
 {-| Order-aware Column storage.
@@ -9,9 +9,9 @@ module Data.ColumnStore exposing
 Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
-@docs ColumnStore, init, encode, decoder, storeId
+@docs ColumnStore, init, encode, decoder, storeId, size
 @docs add, get, map, mapForView, removeAt
-@docs updateById, applyOrder, consumeBroker, updateFAM
+@docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
 
 -}
 
@@ -28,7 +28,6 @@ import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
-import Set
 
 
 type alias ColumnStore =
@@ -67,6 +66,11 @@ storeId =
 init : ColumnStore
 init =
     ColumnStore Dict.empty Array.empty FAM.init 0
+
+
+size : ColumnStore -> Int
+size cs =
+    Dict.size cs.dict
 
 
 
@@ -180,6 +184,20 @@ consumeBroker clientHeight broker columnStore =
 maxScanCount : Int
 maxScanCount =
     500
+
+
+catchUpBroker : Broker Item -> String -> ColumnStore -> ( ColumnStore, Bool )
+catchUpBroker broker cId columnStore =
+    case Dict.get cId columnStore.dict of
+        Just column ->
+            let
+                ( newColumn, persist ) =
+                    Column.consumeBroker maxScanCount broker column
+            in
+            ( { columnStore | dict = Dict.insert cId newColumn columnStore.dict }, persist )
+
+        Nothing ->
+            ( columnStore, False )
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )

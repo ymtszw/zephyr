@@ -17,9 +17,10 @@ type Worque
 {-| Literally, a token that indicates "there is a work".
 -}
 type Work
-    = BrokerScan
+    = BrokerScan Int
     | DiscordFetch
     | DropOldState
+    | BrokerCatchUp String
 
 
 init : Worque
