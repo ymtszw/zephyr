@@ -67,7 +67,7 @@ columnKeyEl env vs fam index c =
                             newOrder =
                                 ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
                         in
-                        baseAttrs ++ [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter newOrder))) ]
+                        baseAttrs ++ [ htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter newOrder, True ))) ]
 
                 Nothing ->
                     if vs.columnSwappable then
