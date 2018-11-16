@@ -123,14 +123,6 @@ octiconEl attrs { size, color, shape } =
 squareIconOrHeadEl : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Element msg
 squareIconOrHeadEl userAttrs { size, name, url } =
     let
-        ( attr, fallbackContent ) =
-            case url of
-                Just url_ ->
-                    ( BG.uncropped url_, none )
-
-                Nothing ->
-                    ( Font.size (size // 2), el [ centerX, centerY ] (text (String.left 1 name)) )
-
         attrs =
             [ width (px size)
             , height (px size)
@@ -138,12 +130,16 @@ squareIconOrHeadEl userAttrs { size, name, url } =
             , BG.color iconBackground
             , BD.rounded (iconRounding size)
             , clip
-            , htmlAttribute (Html.Attributes.title name)
-            , attr
             ]
                 ++ userAttrs
     in
-    el attrs fallbackContent
+    el attrs <|
+        case url of
+            Just url_ ->
+                image [ width (px size), height (px size) ] { src = url_, description = name }
+
+            Nothing ->
+                el [ centerX, centerY, Font.size (size // 2) ] (text (String.left 1 name))
 
 
 iconBackground : Color
@@ -175,6 +171,7 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
                             size // 3
                     in
                     [ alignTop
+                    , padding innerIconPadding
                     , inFront <|
                         el
                             [ alignBottom
@@ -192,7 +189,7 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
             max 1 (size // 20)
     in
     el (bottomRightBadgeAttrs ++ userAttrs) <|
-        squareIconOrHeadEl [ padding innerIconPadding ]
+        squareIconOrHeadEl []
             { size = size - (innerIconPadding * 2), name = fallback, url = url }
 
 
