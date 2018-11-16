@@ -36,7 +36,6 @@ type Msg
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn Int
-    | ToggleColumnSwappable Bool
     | DragStart Int String
     | DragEnter (Array String)
     | DragEnd
@@ -98,9 +97,6 @@ logEntry msg =
 
         DelColumn index ->
             Entry "DelColumn" [ fromInt index ]
-
-        ToggleColumnSwappable bool ->
-            Entry "ToggleColumnSwappable" [ boolStr bool ]
 
         DragStart index cId ->
             Entry "DragStart" [ fromInt index, cId ]

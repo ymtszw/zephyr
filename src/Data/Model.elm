@@ -46,7 +46,6 @@ type alias Model =
 
 type alias ViewState =
     { configOpen : Bool
-    , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
@@ -90,7 +89,6 @@ init env navKey =
 defaultViewState : ViewState
 defaultViewState =
     { configOpen = False
-    , columnSwappable = False
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc

@@ -127,7 +127,7 @@ update msg ({ viewState, env } as m) =
             pure { m | viewState = { viewState | visible = True } }
 
         VisibilityChanged False ->
-            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing, visible = False } }
+            pure { m | viewState = { viewState | columnSwapMaybe = Nothing, visible = False } }
 
         LoggerCtrl lMsg ->
             Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
@@ -172,13 +172,6 @@ update msg ({ viewState, env } as m) =
         DelColumn index ->
             ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
-        ToggleColumnSwappable True ->
-            pure { m | viewState = { viewState | columnSwappable = True } }
-
-        ToggleColumnSwappable False ->
-            -- DragEnd may get lost. Fix zombie drag here.
-            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
-
         DragStart originalIndex colId ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }
 
@@ -188,7 +181,7 @@ update msg ({ viewState, env } as m) =
         DragEnd ->
             -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
             -- So we always turn off swap mode at dragend
-            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
+            pure { m | viewState = { viewState | columnSwapMaybe = Nothing } }
 
         LoadColumnStore ( cs, idGen ) ->
             ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
@@ -438,24 +431,6 @@ sub m =
           else
             Sub.none
         , Time.every globalTimerIntervalMillis Tick
-        , toggleColumnSwap m.viewState.columnSwappable
-        ]
-
-
-globalTimerIntervalMillis : Float
-globalTimerIntervalMillis =
-    -- 10 Hz
-    100.0
-
-
-toggleColumnSwap : Bool -> Sub Msg
-toggleColumnSwap swappable =
-    Sub.batch
-        [ if not swappable then
-            Browser.Events.onKeyDown (D.when (D.field "altKey" D.bool) identity (D.succeed (ToggleColumnSwappable True)))
-
-          else
-            Browser.Events.onKeyUp (D.when (D.field "altKey" D.bool) not (D.succeed (ToggleColumnSwappable False)))
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 VisibilityChanged <|
@@ -466,6 +441,12 @@ toggleColumnSwap swappable =
                         Browser.Events.Hidden ->
                             False
         ]
+
+
+globalTimerIntervalMillis : Float
+globalTimerIntervalMillis =
+    -- 10 Hz
+    100.0
 
 
 
