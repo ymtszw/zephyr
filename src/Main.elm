@@ -225,6 +225,8 @@ update msg ({ viewState, env } as m) =
                     ColumnStore.updateById cId cMsg m.columnStore
             in
             if persist then
+                -- Currently the only case where Column.update returns persist = True is when filters are confirmed,
+                -- so triggering BrokerCatchUp. Periodic Broker scan is separately handled by Column.consumeBroker.
                 ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
                 , Cmd.map (ColumnCtrl cId) cmd
                 , saveColumnStore changeSet
