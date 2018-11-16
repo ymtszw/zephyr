@@ -94,7 +94,7 @@ columnHeaderEl : FilterAtomMaterial -> Column.Column -> Element Msg
 columnHeaderEl fam c =
     row
         [ width fill
-        , paddingXY rectElementOuterPadding rectElementInnerPadding
+        , padding rectElementInnerPadding
         , spacing spacingUnit
         , BG.color oneDark.sub
         ]
