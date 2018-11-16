@@ -37,6 +37,7 @@ type alias Column =
     , items : Scroll ColumnItem
     , filters : Array Filter
     , offset : Maybe Offset
+    , pinned : Bool
     , configOpen : Bool
     , pendingFilters : Array Filter
     , deleteGate : String
@@ -60,6 +61,7 @@ encode c =
         , ( "items", Scroll.encode encodeColumnItem c.items )
         , ( "filters", E.array Filter.encode c.filters )
         , ( "offset", E.maybe (E.string << Broker.offsetToString) c.offset )
+        , ( "pinned", E.bool c.pinned )
         ]
 
 
@@ -97,7 +99,10 @@ decoder clientHeight =
                         \filters ->
                             D.do (D.maybeField "offset" offsetDecoder) <|
                                 \offset ->
-                                    D.succeed (Column id items filters offset False filters "")
+                                    -- Migration; use field instead of maybeField later
+                                    D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
+                                        \pinned ->
+                                            D.succeed (Column id items filters offset pinned False filters "")
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -150,6 +155,7 @@ welcome clientHeight idGen id =
       , items = Scroll.initWith (scrollOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
+      , pinned = False
       , configOpen = True
       , pendingFilters = Array.empty
       , deleteGate = ""
@@ -214,6 +220,7 @@ new clientHeight idGen id =
       , items = Scroll.initWith (scrollOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
+      , pinned = False
       , configOpen = True
       , pendingFilters = Array.empty
       , deleteGate = ""
@@ -228,6 +235,7 @@ simple clientHeight fa id =
     , items = Scroll.init (scrollOptions id clientHeight)
     , filters = Array.fromList [ Filter.Singular fa ]
     , offset = Nothing
+    , pinned = False
     , configOpen = False
     , pendingFilters = Array.fromList [ Filter.Singular fa ]
     , deleteGate = ""
