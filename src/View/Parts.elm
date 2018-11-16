@@ -240,16 +240,21 @@ textInputPadding =
 
 customPlaceholder : ColorTheme -> Maybe (Element msg) -> String -> Attribute msg
 customPlaceholder theme phMaybe text =
-    -- elm-ui's placeholder uses opacity to switch visibility, but it triggers style recalculation on change.
-    -- Whereas display property does not trigger style recalculation, and with inFront (position: absolute;), no layout/reflow.
+    -- elm-ui's placeholder uses opacity to switch visibility, but it triggers style recalculation on change (don't know why)
+    -- Whereas transforming scale/translate is really cheap and fast, and with inFront (position: absolute;), no layout/reflow.
     case phMaybe of
         Just ph ->
             inFront <|
                 el
-                    [ padding textInputPadding
+                    [ paddingXY textInputPadding 0
                     , centerY
-                    , visible (String.isEmpty text)
                     , Font.color (setAlpha 0.5 theme.text)
+                    , htmlAttribute (style "transition" "transform 0.3s")
+                    , if String.isEmpty text then
+                        noneAttr
+
+                      else
+                        htmlAttribute (style "transform" "scale(0.75) translate(-20%, -150%)")
                     ]
                     ph
 
