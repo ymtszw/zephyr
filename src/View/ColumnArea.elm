@@ -47,38 +47,39 @@ columnAreaEl m =
 columnKeyEl : Env -> ViewState -> FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
 columnKeyEl env vs fam index c =
     let
-        baseAttrs =
+        ( grabbed, dragEnterHandler ) =
+            case vs.columnSwapMaybe of
+                Just swap ->
+                    if swap.grabbedId == c.id then
+                        ( True, noneAttr )
+
+                    else
+                        let
+                            newOrder =
+                                ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
+
+                            handler =
+                                htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter newOrder)))
+                        in
+                        ( False, handler )
+
+                Nothing ->
+                    ( False, noneAttr )
+
+        attrs =
             [ width (px fixedColumnWidth)
             , height (fill |> maximum env.clientHeight)
             , BG.color oneDark.main
             , BD.width columnBorder
             , BD.color oneDark.bg
             , Font.color oneDark.text
+            , inFront (lazy2 dragIndicatorEl env.clientHeight grabbed)
+            , dragEnterHandler
             ]
-
-        attrs =
-            case vs.columnSwapMaybe of
-                Just swap ->
-                    if swap.grabbedId == c.id then
-                        baseAttrs ++ [ inFront (lazy dragIndicatorEl env.clientHeight) ]
-
-                    else
-                        let
-                            newOrder =
-                                ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
-                        in
-                        baseAttrs ++ [ htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter newOrder, True ))) ]
-
-                Nothing ->
-                    if vs.columnSwappable then
-                        baseAttrs ++ dragHandle (D.succeed (DragStart index c.id))
-
-                    else
-                        baseAttrs
     in
     Tuple.pair c.id <|
         column attrs
-            [ lazy2 columnHeaderEl fam c
+            [ lazy3 columnHeaderEl fam index c
             , lazy4 columnConfigFlyoutEl vs.selectState fam index c
             , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
             ]
@@ -90,15 +91,16 @@ columnBorder =
     2
 
 
-columnHeaderEl : FilterAtomMaterial -> Column.Column -> Element Msg
-columnHeaderEl fam c =
+columnHeaderEl : FilterAtomMaterial -> Int -> Column.Column -> Element Msg
+columnHeaderEl fam index c =
     row
         [ width fill
         , padding rectElementInnerPadding
         , spacing spacingUnit
         , BG.color oneDark.sub
         ]
-        [ filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
+        [ grabberEl index c.id
+        , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
@@ -107,6 +109,27 @@ columnHeaderEl fam c =
 columnHeaderIconSize : Int
 columnHeaderIconSize =
     32
+
+
+grabberEl : Int -> String -> Element Msg
+grabberEl index cId =
+    el
+        ([ width (px grabberWidth)
+         , height fill
+         , BG.color oneDark.main
+         , BD.rounded (grabberWidth // 2)
+         , BD.width (grabberWidth // 2)
+         , BD.color oneDark.note
+         , htmlAttribute (style "border-style" "double")
+         ]
+            ++ dragHandle (D.succeed (DragStart index cId))
+        )
+        none
+
+
+grabberWidth : Int
+grabberWidth =
+    8
 
 
 columnHeaderTextEl : FilterAtomMaterial -> String -> Bool -> Array Filter -> Element Msg
@@ -254,11 +277,12 @@ groupingIntervalMillis =
     60000
 
 
-dragIndicatorEl : Int -> Element Msg
-dragIndicatorEl clientHeight =
+dragIndicatorEl : Int -> Bool -> Element Msg
+dragIndicatorEl clientHeight grabbed =
     el
         [ width fill
         , height (px clientHeight)
         , BD.innerGlow oneDark.prim 10
+        , visible grabbed
         ]
         none

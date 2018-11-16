@@ -596,7 +596,7 @@ dragHandle : Decoder msg -> List (Attribute msg)
 dragHandle onDragstart =
     [ htmlAttribute (draggable "true")
     , htmlAttribute (class dragHandleClassName)
-    , htmlAttribute (Html.Events.stopPropagationOn "dragstart" (D.map (\msg -> ( msg, True )) onDragstart))
+    , htmlAttribute (Html.Events.on "dragstart" onDragstart)
     ]
 
 
