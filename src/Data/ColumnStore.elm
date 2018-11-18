@@ -149,7 +149,12 @@ updateById cId cMsg columnStore =
             ( { columnStore | dict = Dict.insert cId newC columnStore.dict }, pp )
 
         Nothing ->
-            ( columnStore, Column.PostProcess Cmd.none False Nothing )
+            pure columnStore
+
+
+pure : ColumnStore -> ( ColumnStore, Column.PostProcess )
+pure columnStore =
+    ( columnStore, Column.PostProcess Cmd.none False Nothing )
 
 
 applyOrder : Array String -> ColumnStore -> ColumnStore
@@ -157,7 +162,7 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
+consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Column.PostProcess )
 consumeBroker clientHeight broker columnStore =
     case get columnStore.indexToScan columnStore of
         Just column ->
@@ -165,10 +170,10 @@ consumeBroker clientHeight broker columnStore =
                 scanCountPerColumn =
                     maxScanCount // Dict.size columnStore.dict
 
-                ( newColumn, persist ) =
+                ( newColumn, pp ) =
                     column
                         |> Column.adjustScroll clientHeight
-                        |> Column.consumeBroker scanCountPerColumn broker
+                        |> Column.update (Column.ScanBroker { broker = broker, maxCount = scanCountPerColumn })
 
                 nextIndex =
                     if columnStore.indexToScan < Array.length columnStore.order - 1 then
@@ -177,10 +182,10 @@ consumeBroker clientHeight broker columnStore =
                     else
                         0
             in
-            ( { columnStore | indexToScan = nextIndex, dict = Dict.insert column.id newColumn columnStore.dict }, persist )
+            ( { columnStore | indexToScan = nextIndex, dict = Dict.insert column.id newColumn columnStore.dict }, pp )
 
         Nothing ->
-            ( { columnStore | indexToScan = 0 }, False )
+            pure { columnStore | indexToScan = 0 }
 
 
 maxScanCount : Int
@@ -188,18 +193,9 @@ maxScanCount =
     500
 
 
-catchUpBroker : Broker Item -> String -> ColumnStore -> ( ColumnStore, Bool )
+catchUpBroker : Broker Item -> String -> ColumnStore -> ( ColumnStore, Column.PostProcess )
 catchUpBroker broker cId columnStore =
-    case Dict.get cId columnStore.dict of
-        Just column ->
-            let
-                ( newColumn, persist ) =
-                    Column.consumeBroker maxScanCount broker column
-            in
-            ( { columnStore | dict = Dict.insert cId newColumn columnStore.dict }, persist )
-
-        Nothing ->
-            ( columnStore, False )
+    updateById cId (Column.ScanBroker { broker = broker, maxCount = maxScanCount }) columnStore
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )

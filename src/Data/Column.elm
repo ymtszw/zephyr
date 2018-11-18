@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
-    , Msg(..), PostProcess, update, consumeBroker
+    , Msg(..), PostProcess, update
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -11,7 +11,7 @@ Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
-@docs Msg, PostProcess, update, consumeBroker
+@docs Msg, PostProcess, update
 
 -}
 
@@ -260,6 +260,7 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
+    | ScanBroker { broker : Broker Item, maxCount : Int }
     | ScrollMsg Scroll.Msg
 
 
@@ -316,6 +317,19 @@ update msg c =
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
+        ScanBroker { broker, maxCount } ->
+            case ItemBroker.bulkRead maxCount c.offset broker of
+                [] ->
+                    pure c
+
+                (( _, newOffset ) :: _) as items ->
+                    ( { c
+                        | offset = Just newOffset
+                        , items = Scroll.prependList (List.filterMap (applyFilters c.filters) items) c.items
+                      }
+                    , PostProcess Cmd.none True Nothing
+                    )
+
         ScrollMsg sMsg ->
             let
                 ( items, cmd ) =
@@ -327,21 +341,6 @@ update msg c =
 pure : Column -> ( Column, PostProcess )
 pure c =
     ( c, PostProcess Cmd.none False Nothing )
-
-
-consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )
-consumeBroker maxCount broker column =
-    case ItemBroker.bulkRead maxCount column.offset broker of
-        [] ->
-            ( column, False )
-
-        (( _, newOffset ) :: _) as items ->
-            ( { column
-                | offset = Just newOffset
-                , items = Scroll.prependList (List.filterMap (applyFilters column.filters) items) column.items
-              }
-            , True
-            )
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem

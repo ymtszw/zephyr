@@ -256,12 +256,12 @@ onTick posix m_ =
     case workMaybe of
         Just (BrokerScan 0) ->
             let
-                ( cs, persist ) =
+                ( cs, pp ) =
                     ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
             in
             ( { m | columnStore = cs, worque = Worque.push (initScan cs) m.worque }
             , Cmd.none
-            , if persist then
+            , if pp.persist then
                 saveColumnStore changeSet
 
               else
@@ -280,15 +280,8 @@ onTick posix m_ =
             noPersist ( m, IndexedDb.dropOldState )
 
         Just (BrokerCatchUp cId) ->
-            case ColumnStore.catchUpBroker m.itemBroker cId m.columnStore of
-                ( cs, True ) ->
-                    ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
-                    , Cmd.none
-                    , saveColumnStore changeSet
-                    )
-
-                ( cs, False ) ->
-                    ( { m | columnStore = cs }, Cmd.none, saveColumnStore changeSet )
+            ColumnStore.catchUpBroker m.itemBroker cId m.columnStore
+                |> applyColumnUpdate m cId
 
         Nothing ->
             pure m
