@@ -179,9 +179,8 @@ update msg ({ viewState, env } as m) =
             pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
 
         DragEnd ->
-            -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
-            -- So we always turn off swap mode at dragend
-            pure { m | viewState = { viewState | columnSwapMaybe = Nothing } }
+            -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
+            ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
         LoadColumnStore ( cs, idGen ) ->
             ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
