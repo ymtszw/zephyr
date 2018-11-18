@@ -65,8 +65,9 @@ columnKeyEl env vs fam index c =
 
                 Nothing ->
                     ( False, noneAttr )
-
-        attrs =
+    in
+    Tuple.pair c.id <|
+        column
             [ width (px fixedColumnWidth)
             , height (fill |> maximum env.clientHeight)
             , BG.color oneDark.main
@@ -77,9 +78,6 @@ columnKeyEl env vs fam index c =
             , dragEnterHandler
             , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
             ]
-    in
-    Tuple.pair c.id <|
-        column attrs
             [ lazy3 columnHeaderEl fam index c
             , lazy4 columnConfigFlyoutEl vs.selectState fam index c
             , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
