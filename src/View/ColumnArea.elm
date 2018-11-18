@@ -75,6 +75,7 @@ columnKeyEl env vs fam index c =
             , Font.color oneDark.text
             , inFront (lazy2 dragIndicatorEl env.clientHeight grabbed)
             , dragEnterHandler
+            , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
             ]
     in
     Tuple.pair c.id <|
