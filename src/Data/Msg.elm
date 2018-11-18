@@ -258,6 +258,9 @@ columnMsgToEntry cId cMsg =
         Column.ToggleConfig bool ->
             Entry "Column.ToggleConfig" [ cId, boolStr bool ]
 
+        Column.Pin bool ->
+            Entry "Column.Pin" [ cId, boolStr bool ]
+
         Column.AddFilter filter ->
             Entry "Column.AddFilter" [ cId, Filter.toString filter ]
 

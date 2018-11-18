@@ -220,20 +220,7 @@ update msg ({ viewState, env } as m) =
             pure { m | viewState = { viewState | configOpen = opened } }
 
         ColumnCtrl cId cMsg ->
-            let
-                ( cs, cmd, persist ) =
-                    ColumnStore.updateById cId cMsg m.columnStore
-            in
-            if persist then
-                -- Currently the only case where Column.update returns persist = True is when filters are confirmed,
-                -- so triggering BrokerCatchUp. Periodic Broker scan is separately handled by Column.consumeBroker.
-                ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
-                , Cmd.map (ColumnCtrl cId) cmd
-                , saveColumnStore changeSet
-                )
-
-            else
-                ( { m | columnStore = cs }, Cmd.map (ColumnCtrl cId) cmd, changeSet )
+            applyColumnUpdate m cId <| ColumnStore.updateById cId cMsg m.columnStore
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -349,6 +336,27 @@ scrollToColumn index parentVp =
 
     else
         Browser.Dom.setViewportOf columnAreaParentId (targetX + cWidth - parentVp.viewport.width) 0
+
+
+applyColumnUpdate : Model -> String -> ( ColumnStore, Column.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
+applyColumnUpdate m cId ( columnStore, pp ) =
+    let
+        worque =
+            case pp.catchUpId of
+                Just id ->
+                    Worque.push (BrokerCatchUp id) m.worque
+
+                Nothing ->
+                    m.worque
+
+        changeSet_ =
+            if pp.persist then
+                saveColumnStore changeSet
+
+            else
+                changeSet
+    in
+    ( { m | columnStore = columnStore, worque = worque }, Cmd.map (ColumnCtrl cId) pp.cmd, changeSet_ )
 
 
 {-| Restart producers on savedState reload.

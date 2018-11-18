@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
-    , Msg(..), update, consumeBroker
+    , Msg(..), PostProcess, update, consumeBroker
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -11,7 +11,7 @@ Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
-@docs Msg, update, consumeBroker
+@docs Msg, PostProcess, update, consumeBroker
 
 -}
 
@@ -22,7 +22,6 @@ import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
-import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -253,6 +252,7 @@ adjustScroll clientHeight c =
 
 type Msg
     = ToggleConfig Bool
+    | Pin Bool
     | AddFilter Filter
     | DelFilter Int
     | AddFilterAtom { filterIndex : Int, atom : FilterAtom }
@@ -263,11 +263,21 @@ type Msg
     | ScrollMsg Scroll.Msg
 
 
-update : Msg -> Column -> ( Column, Cmd Msg, Bool )
+type alias PostProcess =
+    { cmd : Cmd Msg
+    , persist : Bool
+    , catchUpId : Maybe String
+    }
+
+
+update : Msg -> Column -> ( Column, PostProcess )
 update msg c =
     case msg of
         ToggleConfig open ->
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
+
+        Pin pinned ->
+            ( { c | pinned = pinned }, PostProcess Cmd.none True Nothing )
 
         AddFilter filter ->
             pure { c | pendingFilters = Array.push filter c.pendingFilters }
@@ -299,13 +309,24 @@ update msg c =
             pure { c | pendingFilters = atomOrFilterDeleted }
 
         ConfirmFilter ->
-            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items }, Cmd.none, True )
+            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items }
+            , PostProcess Cmd.none True (Just c.id)
+            )
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
         ScrollMsg sMsg ->
-            Scroll.update sMsg c.items |> (\( items, cmd ) -> ( { c | items = items }, Cmd.map ScrollMsg cmd, False ))
+            let
+                ( items, cmd ) =
+                    Scroll.update sMsg c.items
+            in
+            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg cmd) False Nothing )
+
+
+pure : Column -> ( Column, PostProcess )
+pure c =
+    ( c, PostProcess Cmd.none False Nothing )
 
 
 consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )

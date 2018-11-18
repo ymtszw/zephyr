@@ -24,7 +24,6 @@ import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstru
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
 import Dict exposing (Dict)
-import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -139,15 +138,18 @@ mapForViewImpl mapper dict idList index acc =
 -- Component APIs
 
 
-updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Cmd Column.Msg, Bool )
+updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
 updateById cId cMsg columnStore =
     case Dict.get cId columnStore.dict of
         Just c ->
-            Column.update cMsg c
-                |> Extra.map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
+            let
+                ( newC, pp ) =
+                    Column.update cMsg c
+            in
+            ( { columnStore | dict = Dict.insert cId newC columnStore.dict }, pp )
 
         Nothing ->
-            pure columnStore
+            ( columnStore, Column.PostProcess Cmd.none False Nothing )
 
 
 applyOrder : Array String -> ColumnStore -> ColumnStore

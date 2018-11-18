@@ -101,6 +101,7 @@ columnHeaderEl fam index c =
         [ grabberEl index c.id
         , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
+        , lazy2 columnPinButtonEl c.pinned c.id
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
 
@@ -205,6 +206,38 @@ importantFilterTextColor =
     oneDark.text
 
 
+columnPinButtonEl : Bool -> String -> Element Msg
+columnPinButtonEl pinned cId =
+    squareButtonEl [ alignRight, BD.rounded rectElementRound ]
+        { onPress = ColumnCtrl cId (Column.Pin (not pinned))
+        , enabled = True
+        , innerElement =
+            octiconEl
+                [ htmlAttribute (style "transition" "all 0.2s")
+                , if pinned then
+                    htmlAttribute (style "transform" "rotate(-45deg)")
+
+                  else
+                    htmlAttribute (style "transform" "rotate(0)")
+                ]
+                { size = rightButtonSize
+                , color =
+                    if pinned then
+                        oneDark.warn
+
+                    else
+                        defaultOcticonColor
+                , shape = Octicons.pin
+                }
+        , innerElementSize = rightButtonSize
+        }
+
+
+rightButtonSize : Int
+rightButtonSize =
+    26
+
+
 columnConfigToggleButtonEl : Bool -> String -> Element Msg
 columnConfigToggleButtonEl configOpen id =
     squareButtonEl [ alignRight, BD.rounded rectElementRound ]
@@ -212,17 +245,12 @@ columnConfigToggleButtonEl configOpen id =
         , enabled = True
         , innerElement =
             octiconEl []
-                { size = columnConfigToggleButtonSize
+                { size = rightButtonSize
                 , color = defaultOcticonColor
                 , shape = Octicons.settings
                 }
-        , innerElementSize = columnConfigToggleButtonSize
+        , innerElementSize = rightButtonSize
         }
-
-
-columnConfigToggleButtonSize : Int
-columnConfigToggleButtonSize =
-    26
 
 
 itemsEl : Int -> Time.Zone -> String -> Scroll ColumnItem -> Element Msg
