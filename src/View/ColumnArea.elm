@@ -225,7 +225,7 @@ columnPinButtonEl pinned cId =
                 { size = rightButtonSize
                 , color =
                     if pinned then
-                        oneDark.warn
+                        columnPinColor
 
                     else
                         defaultOcticonColor

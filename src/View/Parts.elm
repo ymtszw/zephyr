@@ -8,7 +8,7 @@ module View.Parts exposing
     , filtersToIconEl
     , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
     )
 
 {-| View parts, complementing Element and Html.
@@ -49,7 +49,7 @@ module View.Parts exposing
 ## Constants
 
 @docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
 
 -}
 
@@ -774,3 +774,8 @@ itemAvatarSize =
 itemBorderBottom : Int
 itemBorderBottom =
     2
+
+
+columnPinColor : Color
+columnPinColor =
+    oneDark.warn

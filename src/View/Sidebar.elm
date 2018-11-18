@@ -14,6 +14,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
+import Html.Attributes exposing (style)
 import Octicons
 import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
@@ -61,12 +62,28 @@ columnButtonsEl columnStore =
 
 
 columnButtonKeyEl : FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
-columnButtonKeyEl fam index { id, filters } =
+columnButtonKeyEl fam index { id, filters, pinned } =
     Element.Input.button [ width (px buttonSize), height (px buttonSize) ]
         { onPress = Just (RevealColumn index)
-        , label = filtersToIconEl [] { size = buttonSize, fam = fam, filters = filters }
+        , label =
+            filtersToIconEl [ inFront (pinBadgeEl pinned) ]
+                { size = buttonSize, fam = fam, filters = filters }
         }
         |> Tuple.pair ("sidebarButton_" ++ id)
+
+
+pinBadgeEl : Bool -> Element Msg
+pinBadgeEl pinned =
+    octiconEl
+        [ alignTop
+        , alignRight
+        , visible pinned
+        , htmlAttribute (style "transform" "rotate(-45deg)")
+        ]
+        { size = buttonSize // 3
+        , color = columnPinColor
+        , shape = Octicons.pin
+        }
 
 
 columnAddButtonKeyEl : ( String, Element Msg )
