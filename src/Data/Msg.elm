@@ -36,7 +36,7 @@ type Msg
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn Int
-    | DragStart Int String
+    | DragStart { index : Int, id : String, pinned : Bool }
     | DragEnter (Array String)
     | DragEnd
     | LoadColumnStore ( ColumnStore, UniqueIdGen )
@@ -98,8 +98,8 @@ logEntry msg =
         DelColumn index ->
             Entry "DelColumn" [ fromInt index ]
 
-        DragStart index cId ->
-            Entry "DragStart" [ fromInt index, cId ]
+        DragStart { index, id, pinned } ->
+            Entry "DragStart" [ fromInt index, id, boolStr pinned ]
 
         DragEnter order ->
             Entry "DragEnter" [ String.join "," (Array.toList order) ]

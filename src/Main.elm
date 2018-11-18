@@ -172,8 +172,8 @@ update msg ({ viewState, env } as m) =
         DelColumn index ->
             ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
-        DragStart originalIndex colId ->
-            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }
+        DragStart { index, pinned, id } ->
+            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
 
         DragEnter newOrder ->
             pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }

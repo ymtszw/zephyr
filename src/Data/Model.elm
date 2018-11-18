@@ -55,6 +55,7 @@ type alias ViewState =
 
 type alias ColumnSwap =
     { grabbedId : String
+    , pinned : Bool
     , originalIndex : Int
     , originalOrder : Array String
     }

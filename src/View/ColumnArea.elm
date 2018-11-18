@@ -8,7 +8,7 @@ import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item exposing (Item(..))
-import Data.Model exposing (Env, Model, ViewState)
+import Data.Model exposing (ColumnSwap, Env, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Element exposing (..)
@@ -47,37 +47,19 @@ columnAreaEl m =
 columnKeyEl : Env -> ViewState -> FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
 columnKeyEl env vs fam index c =
     let
-        ( grabbed, dragEnterHandler ) =
-            case vs.columnSwapMaybe of
-                Just swap ->
-                    if swap.grabbedId == c.id then
-                        ( True, noneAttr )
-
-                    else
-                        let
-                            newOrder =
-                                ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
-
-                            handler =
-                                htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter newOrder, True )))
-                        in
-                        ( False, handler )
-
-                Nothing ->
-                    ( False, noneAttr )
-    in
-    Tuple.pair c.id <|
-        column
+        baseAttrs =
             [ width (px fixedColumnWidth)
             , height (fill |> maximum env.clientHeight)
+            , clipY
             , BG.color oneDark.main
             , BD.width columnBorder
             , BD.color oneDark.bg
             , Font.color oneDark.text
-            , inFront (lazy2 dragIndicatorEl env.clientHeight grabbed)
-            , dragEnterHandler
-            , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
+            , htmlAttribute (style "transition" "all 0.15s")
             ]
+    in
+    Tuple.pair c.id <|
+        column (baseAttrs ++ dragAttributes env.clientHeight vs.columnSwapMaybe index c)
             [ lazy3 columnHeaderEl fam index c
             , lazy4 columnConfigFlyoutEl vs.selectState fam index c
             , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
@@ -90,6 +72,37 @@ columnBorder =
     2
 
 
+dragAttributes : Int -> Maybe ColumnSwap -> Int -> Column.Column -> List (Attribute Msg)
+dragAttributes clientHeight columnSwapMaybe index c =
+    -- Here we change styles of big and complex DOMs; must consider performance carefully.
+    -- CSS opacity/transform utilizes GPU support so are quite fast and cheap
+    case columnSwapMaybe of
+        Just swap ->
+            if swap.grabbedId == c.id then
+                [ inFront (lazy2 dragIndicatorEl clientHeight True)
+                , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
+                ]
+
+            else if swap.pinned == c.pinned then
+                let
+                    newOrder =
+                        ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
+                in
+                [ inFront (lazy2 dragIndicatorEl clientHeight False)
+                , htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter newOrder, True )))
+                , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
+                , htmlAttribute (style "transform" "scale(0.98)")
+                ]
+
+            else
+                [ inFront (lazy2 dragIndicatorEl clientHeight False)
+                , htmlAttribute (style "opacity" "0.2")
+                ]
+
+        Nothing ->
+            [ inFront (lazy2 dragIndicatorEl clientHeight False) ]
+
+
 columnHeaderEl : FilterAtomMaterial -> Int -> Column.Column -> Element Msg
 columnHeaderEl fam index c =
     row
@@ -98,7 +111,7 @@ columnHeaderEl fam index c =
         , spacing spacingUnit
         , BG.color oneDark.sub
         ]
-        [ grabberEl index c.id
+        [ lazy3 grabberEl index c.pinned c.id
         , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
         , lazy2 columnPinButtonEl c.pinned c.id
@@ -111,8 +124,8 @@ columnHeaderIconSize =
     32
 
 
-grabberEl : Int -> String -> Element Msg
-grabberEl index cId =
+grabberEl : Int -> Bool -> String -> Element Msg
+grabberEl index pinned cId =
     el
         ([ width (px grabberWidth)
          , height fill
@@ -122,7 +135,7 @@ grabberEl index cId =
          , BD.color oneDark.note
          , htmlAttribute (style "border-style" "double")
          ]
-            ++ dragHandle (D.succeed (DragStart index cId))
+            ++ dragHandle (D.succeed (DragStart { index = index, pinned = pinned, id = cId }))
         )
         none
 
