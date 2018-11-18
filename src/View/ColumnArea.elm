@@ -213,12 +213,14 @@ columnPinButtonEl pinned cId =
         , enabled = True
         , innerElement =
             octiconEl
-                [ htmlAttribute (style "transition" "all 0.2s")
-                , if pinned then
-                    htmlAttribute (style "transform" "rotate(-45deg)")
+                [ htmlAttribute (style "transition" "transform 0.2s")
+                , htmlAttribute <|
+                    style "transform" <|
+                        if pinned then
+                            "rotate(-45deg)"
 
-                  else
-                    htmlAttribute (style "transform" "rotate(0)")
+                        else
+                            "rotate(0)"
                 ]
                 { size = rightButtonSize
                 , color =
