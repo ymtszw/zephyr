@@ -20,15 +20,15 @@ type alias ColorTheme =
 
 oneDark : ColorTheme
 oneDark =
-    ColorTheme
-        (rgb255 32 34 37)
-        (rgb255 54 57 63)
-        (rgb255 47 49 54)
-        (rgb255 62 65 71)
-        (rgb255 220 221 222)
-        (rgb255 96 98 102)
-        (rgb255 15 144 202)
-        (rgb255 103 123 196)
-        (rgb255 115 201 144)
-        (rgb255 226 192 141)
-        (rgb255 224 82 82)
+    { bg = rgb255 32 34 37
+    , main = rgb255 54 57 63
+    , sub = rgb255 47 49 54
+    , bd = rgb255 62 65 71
+    , text = rgb255 220 221 222
+    , note = rgb255 96 98 102
+    , link = rgb255 15 144 202
+    , prim = rgb255 103 123 196
+    , succ = rgb255 115 201 144
+    , warn = rgb255 226 192 141
+    , err = rgb255 224 82 82
+    }
