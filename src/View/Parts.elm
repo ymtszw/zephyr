@@ -4,7 +4,7 @@ module View.Parts exposing
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
-    , scale12, css, brightness, setAlpha, manualStyle
+    , scale12, cssRgb, brightness, setAlpha, manualStyle
     , filtersToIconEl
     , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
@@ -33,7 +33,7 @@ module View.Parts exposing
 
 ## Styles
 
-@docs scale12, css, brightness, setAlpha, manualStyle
+@docs scale12, cssRgb, brightness, setAlpha, manualStyle
 
 
 ## Column Filter
@@ -118,7 +118,7 @@ switchCursor enabled =
 octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
 octiconEl attrs { size, color, shape } =
     Octicons.defaultOptions
-        |> Octicons.color (css color)
+        |> Octicons.color (cssRgb color)
         |> Octicons.size size
         |> shape
         |> html
@@ -585,8 +585,8 @@ setAlpha a color =
 
 {-| Dump a Color to CSS-compatible representaiton
 -}
-css : Color -> String
-css color =
+cssRgb : Color -> String
+cssRgb color =
     let
         { red, green, blue } =
             toRgb color
