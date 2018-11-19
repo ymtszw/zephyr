@@ -38,7 +38,7 @@ columnConfigFlyoutEl ss fam index c =
         , Font.size baseFontSize
         ]
         [ statusHeaderEl
-        , lazy statusEl (Scroll.size c.items)
+        , lazy2 statusEl (Scroll.size c.items) c.pinned
         , lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
         , lazy3 filtersEl ss fam c
         , dangerZoneHeaderEl
@@ -87,9 +87,16 @@ titlePadding =
     2
 
 
-statusEl : Int -> Element Msg
-statusEl nItems =
+statusEl : Int -> Bool -> Element Msg
+statusEl nItems pinned =
     [ [ "Stored messages", StringExtra.punctuateNumber nItems ]
+    , [ "Pinned"
+      , if pinned then
+            "Yes"
+
+        else
+            "No"
+      ]
     ]
         |> List.map (List.intersperse " - " >> List.map text >> row [ spacing spacingUnit ])
         |> column
