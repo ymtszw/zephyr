@@ -1,5 +1,5 @@
 module View.Parts exposing
-    ( noneAttr, style, visible, switchCursor, inputScreen, dragHandle
+    ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
@@ -16,7 +16,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, style, visible, switchCursor, inputScreen, dragHandle
+@docs noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
 @docs breakP, breakT, breakTColumn, collapsingColumn
 
 
@@ -113,6 +113,32 @@ switchCursor enabled =
 
     else
         style "cursor" "default"
+
+
+borderFlash : Bool -> Attribute msg
+borderFlash doFlash =
+    if doFlash then
+        style "animation" "2s ease-out borderFlash"
+
+    else
+        noneAttr
+
+
+borderFlashKeyframesName : String
+borderFlashKeyframesName =
+    "borderFlash"
+
+
+{-| Fired when a CSS animation has been concluded.
+
+The event may not be fired when e.g. the target element is removed.
+
+Do not be confused with `transitionend`, a similar event for CSS transition.
+
+-}
+onAnimationEnd : msg -> Attribute msg
+onAnimationEnd msg =
+    htmlAttribute (Html.Events.on "animationend" (D.succeed msg))
 
 
 octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
@@ -724,6 +750,7 @@ manualStyle =
         , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
         , Html.text "a:link{text-decoration:none;}" -- Disabled browser-default link-underlining
         , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
+        , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
         ]
 
 
