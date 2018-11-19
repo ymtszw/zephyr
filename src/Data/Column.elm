@@ -310,7 +310,7 @@ update msg c =
             pure { c | pendingFilters = atomOrFilterDeleted }
 
         ConfirmFilter ->
-            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items }
+            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
             , PostProcess Cmd.none True (Just c.id)
             )
 
