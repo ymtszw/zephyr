@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size
-    , add, get, map, mapForView, removeAt
+    , add, get, map, mapForView, removeAt, touchAt
     , updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
     )
 
@@ -10,7 +10,7 @@ Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
 @docs ColumnStore, init, encode, decoder, storeId, size
-@docs add, get, map, mapForView, removeAt
+@docs add, get, map, mapForView, removeAt, touchAt
 @docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
 
 -}
@@ -78,10 +78,14 @@ size cs =
 
 add : Column -> ColumnStore -> ColumnStore
 add column columnStore =
-    { columnStore
-        | dict = Dict.insert column.id column columnStore.dict
-        , order = Array.squeeze 0 column.id columnStore.order
-    }
+    let
+        newDict =
+            Dict.insert column.id column columnStore.dict
+
+        newOrder =
+            columnStore.order |> Array.squeeze 0 column.id |> autoArrange newDict
+    in
+    { columnStore | dict = newDict, order = newOrder }
 
 
 get : Int -> ColumnStore -> Maybe Column
@@ -99,6 +103,16 @@ removeAt index columnStore =
                 | dict = Dict.remove id columnStore.dict
                 , order = Array.removeAt index columnStore.order
             }
+
+        Nothing ->
+            columnStore
+
+
+touchAt : Int -> ColumnStore -> ColumnStore
+touchAt index columnStore =
+    case get index columnStore of
+        Just c ->
+            { columnStore | dict = Dict.insert c.id { c | recentlyTouched = True } columnStore.dict }
 
         Nothing ->
             columnStore
@@ -145,8 +159,19 @@ updateById cId cMsg columnStore =
             let
                 ( newC, pp ) =
                     Column.update cMsg c
+
+                newDict =
+                    Dict.insert cId newC columnStore.dict
+
+                newOrder =
+                    case cMsg of
+                        Column.Pin _ ->
+                            autoArrange newDict columnStore.order
+
+                        _ ->
+                            columnStore.order
             in
-            ( { columnStore | dict = Dict.insert cId newC columnStore.dict }, pp )
+            ( { columnStore | dict = newDict, order = newOrder }, pp )
 
         Nothing ->
             pure columnStore
@@ -155,6 +180,27 @@ updateById cId cMsg columnStore =
 pure : ColumnStore -> ( ColumnStore, Column.PostProcess )
 pure columnStore =
     ( columnStore, Column.PostProcess Cmd.none False Nothing )
+
+
+autoArrange : Dict String Column -> Array String -> Array String
+autoArrange dict order =
+    let
+        stableClassify cId ( accPinned, accLoose ) =
+            case Dict.get cId dict of
+                Just c ->
+                    if c.pinned then
+                        ( Array.push cId accPinned, accLoose )
+
+                    else
+                        ( accPinned, Array.push cId accLoose )
+
+                Nothing ->
+                    -- Should not happen
+                    ( accPinned, accLoose )
+    in
+    order
+        |> Array.foldl stableClassify ( Array.empty, Array.empty )
+        |> (\( pinned, loose ) -> Array.append pinned loose)
 
 
 applyOrder : Array String -> ColumnStore -> ColumnStore
