@@ -96,6 +96,7 @@ columnAddButtonKeyEl =
         , BD.width 1
         , BD.color oneDark.note
         , BD.rounded rectElementRound
+        , mouseOver [ BG.color configButtonActiveBackground ]
         ]
         { onPress = Just AddEmptyColumn
         , label =
@@ -120,7 +121,16 @@ otherButtonsEl configOpen =
             ]
             { onPress = Just (ToggleConfig (not configOpen))
             , label =
-                octiconEl [ centerX, centerY ] { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.gear }
+                octiconEl [ centerX, centerY ]
+                    { size = otherButtonSize
+                    , color =
+                        if configOpen then
+                            oneDark.text
+
+                        else
+                            defaultOcticonColor
+                    , shape = Octicons.gear
+                    }
             }
         , newTabLink
             [ width (px buttonSize)

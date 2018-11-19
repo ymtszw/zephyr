@@ -260,7 +260,12 @@ columnConfigToggleButtonEl configOpen id =
         , innerElement =
             octiconEl []
                 { size = rightButtonSize
-                , color = defaultOcticonColor
+                , color =
+                    if configOpen then
+                        oneDark.text
+
+                    else
+                        defaultOcticonColor
                 , shape = Octicons.settings
                 }
         , innerElementSize = rightButtonSize
