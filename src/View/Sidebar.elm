@@ -14,7 +14,6 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
-import Html.Attributes exposing (style)
 import Octicons
 import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
@@ -78,7 +77,7 @@ pinBadgeEl pinned =
         [ alignTop
         , alignRight
         , visible pinned
-        , htmlAttribute (style "transform" "rotate(-45deg)")
+        , style "transform" "rotate(-45deg)"
         ]
         { size = buttonSize // 3
         , color = columnPinColor

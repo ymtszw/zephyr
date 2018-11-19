@@ -18,7 +18,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Keyed
 import Element.Lazy exposing (..)
-import Html.Attributes exposing (draggable, id, style)
+import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import ListExtra
@@ -38,7 +38,7 @@ columnAreaEl m =
         , height (fill |> maximum m.env.clientHeight)
         , scrollbarX
         , Font.regular
-        , htmlAttribute (id columnAreaParentId)
+        , htmlAttribute (Html.Attributes.id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
         (ColumnStore.mapForView (columnKeyEl m.env m.viewState) m.columnStore)
@@ -55,7 +55,7 @@ columnKeyEl env vs fam index c =
             , BD.width columnBorder
             , BD.color oneDark.bg
             , Font.color oneDark.text
-            , htmlAttribute (style "transition" "all 0.15s")
+            , style "transition" "all 0.15s"
             ]
     in
     Tuple.pair c.id <|
@@ -91,12 +91,12 @@ dragAttributes clientHeight columnSwapMaybe index c =
                 [ inFront (lazy2 dragIndicatorEl clientHeight False)
                 , htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter newOrder, True )))
                 , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
-                , htmlAttribute (style "transform" "scale(0.98)")
+                , style "transform" "scale(0.98)"
                 ]
 
             else
                 [ inFront (lazy2 dragIndicatorEl clientHeight False)
-                , htmlAttribute (style "opacity" "0.2")
+                , style "opacity" "0.2"
                 ]
 
         Nothing ->
@@ -133,7 +133,7 @@ grabberEl index pinned cId =
          , BD.rounded (grabberWidth // 2)
          , BD.width (grabberWidth // 2)
          , BD.color oneDark.note
-         , htmlAttribute (style "border-style" "double")
+         , style "border-style" "double"
          ]
             ++ dragHandle (D.succeed (DragStart { index = index, pinned = pinned, id = cId }))
         )
@@ -226,14 +226,13 @@ columnPinButtonEl pinned cId =
         , enabled = True
         , innerElement =
             octiconEl
-                [ htmlAttribute (style "transition" "transform 0.2s")
-                , htmlAttribute <|
-                    style "transform" <|
-                        if pinned then
-                            "rotate(-45deg)"
+                [ style "transition" "transform 0.2s"
+                , style "transform" <|
+                    if pinned then
+                        "rotate(-45deg)"
 
-                        else
-                            "rotate(0)"
+                    else
+                        "rotate(0)"
                 ]
                 { size = rightButtonSize
                 , color =

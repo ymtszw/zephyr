@@ -10,7 +10,7 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Html
-import Html.Attributes exposing (style, tabindex)
+import Html.Attributes
 import Octicons
 import Scroll exposing (Scroll)
 import View.Parts exposing (..)
@@ -266,7 +266,7 @@ ctorCellEl : List MsgFilter -> Entry -> Element Msg
 ctorCellEl msgFilters entry =
     row [ spacing spacingUnit ]
         [ breakP [ bold ] [ breakT entry.ctor ]
-        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (Html.Attributes.tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
                 , label = ctorFilterButtonEl [ BG.color oneDark.succ ] Octicons.diffAdded
@@ -276,7 +276,7 @@ ctorCellEl msgFilters entry =
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
                 , label = ctorFilterButtonEl [] Octicons.diffAdded
                 }
-        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (Html.Attributes.tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
             , label = ctorFilterButtonEl [] Octicons.diffRemoved
@@ -312,7 +312,7 @@ payloadCellEl raw =
         , scrollbarY
         , BG.color payloadCellBackground
         , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
-        , htmlAttribute (style "user-select" "all")
+        , style "user-select" "all"
         ]
         [ breakT raw ]
 
@@ -353,7 +353,7 @@ msgFilterEl ((MsgFilter isPos ctor) as mf) =
         , Element.Input.button
             [ padding msgFilterPadding
             , focused []
-            , htmlAttribute (tabindex -1)
+            , htmlAttribute (Html.Attributes.tabindex -1)
             , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = rectElementRound, bottomRight = rectElementRound }
             ]
             { onPress = Just (DelMsgFilter mf)

@@ -1,5 +1,5 @@
 module View.Parts exposing
-    ( noneAttr, visible, switchCursor, inputScreen, dragHandle
+    ( noneAttr, style, visible, switchCursor, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
@@ -16,7 +16,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, visible, switchCursor, inputScreen, dragHandle
+@docs noneAttr, style, visible, switchCursor, inputScreen, dragHandle
 @docs breakP, breakT, breakTColumn, collapsingColumn
 
 
@@ -65,7 +65,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
 import Html
-import Html.Attributes exposing (class, draggable, style)
+import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import Json.Encode
@@ -76,6 +76,11 @@ import Octicons
 noneAttr : Attribute msg
 noneAttr =
     htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
+
+
+style : String -> String -> Attribute msg
+style prop value =
+    htmlAttribute (Html.Attributes.style prop value)
 
 
 {-| Hide an Element with `display: none;` property.
@@ -96,7 +101,7 @@ visible isVisible =
         noneAttr
 
     else
-        htmlAttribute (style "display" "none")
+        style "display" "none"
 
 
 {-| Cursor helper for input elements. When False, use cursor: default;
@@ -107,7 +112,7 @@ switchCursor enabled =
         noneAttr
 
     else
-        htmlAttribute (style "cursor" "default")
+        style "cursor" "default"
 
 
 octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
@@ -214,7 +219,7 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , switchCursor enabled
         , customPlaceholder theme placeholder text
         , inputScreen enabled
-        , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
+        , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
         , disabled (not enabled)
         ]
         { onChange = onChange
@@ -249,12 +254,12 @@ customPlaceholder theme phMaybe text =
                     [ paddingXY textInputPadding 0
                     , centerY
                     , Font.color (setAlpha 0.5 theme.text)
-                    , htmlAttribute (style "transition" "transform 0.3s")
+                    , style "transition" "transform 0.3s"
                     , if String.isEmpty text then
                         noneAttr
 
                       else
-                        htmlAttribute (style "transform" "scale(0.75) translate(-20%, -150%)")
+                        style "transform" "scale(0.75) translate(-20%, -150%)"
                     ]
                     ph
 
@@ -516,7 +521,7 @@ Suitable for user-generated texts. Use with `breakT`.
 -}
 breakP : List (Attribute msg) -> List (Element msg) -> Element msg
 breakP attrs =
-    paragraph <| attrs ++ [ htmlAttribute (class breakClassName) ]
+    paragraph <| attrs ++ [ htmlAttribute (Html.Attributes.class breakClassName) ]
 
 
 breakClassName : String
@@ -528,7 +533,7 @@ breakClassName =
 -}
 breakTColumn : List (Attribute msg) -> List (Element msg) -> Element msg
 breakTColumn attrs =
-    textColumn <| htmlAttribute (class breakClassName) :: attrs
+    textColumn <| htmlAttribute (Html.Attributes.class breakClassName) :: attrs
 
 
 collapsingColumn : List (Attribute msg) -> List (Element msg) -> Element msg
@@ -599,8 +604,8 @@ css color =
 
 dragHandle : Decoder msg -> List (Attribute msg)
 dragHandle onDragstart =
-    [ htmlAttribute (draggable "true")
-    , htmlAttribute (class dragHandleClassName)
+    [ htmlAttribute (Html.Attributes.draggable "true")
+    , htmlAttribute (Html.Attributes.class dragHandleClassName)
     , htmlAttribute (Html.Events.on "dragstart" onDragstart)
     ]
 
