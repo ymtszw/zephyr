@@ -405,7 +405,7 @@ update msg (Scroll s) =
                             ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
                         else
-                            ( Scroll { s | viewportStatus = Scrolling newVp } |> calculateTier, queryViewport s.id )
+                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewport s.id )
 
                     _ ->
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
@@ -431,7 +431,7 @@ queryViewport id =
 
 queryInterval : Float
 queryInterval =
-    150
+    500
 
 
 calculateTier : Scroll a -> Scroll a

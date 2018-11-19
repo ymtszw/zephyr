@@ -212,8 +212,15 @@ update msg ({ viewState, env } as m) =
                 }
 
         LoadErr _ ->
-            -- Hard failure of initial state load; start app normally as the last resport
-            pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
+            if ColumnStore.size m.columnStore == 0 then
+                -- Presumed first visit
+                Model.welcome m.env m.navKey
+                    |> (\welcomeM -> { welcomeM | worque = Worque.push (initScan m.columnStore) m.worque })
+                    |> pure
+
+            else
+                -- Hard failure of initial state load; start app normally as the last resport
+                pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
