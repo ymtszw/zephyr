@@ -18,8 +18,8 @@ import View.Sidebar exposing (sidebarEl)
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ layoutWith { options = [ focusStyle globalFocusStyle ] } [] (bodyEl m)
-    , manualStyle
+    [ manualStyle
+    , layoutWith { options = [ focusStyle globalFocusStyle ] } [] (bodyEl m)
     ]
 
 
