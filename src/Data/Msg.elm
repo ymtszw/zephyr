@@ -261,6 +261,9 @@ columnMsgToEntry cId cMsg =
         Column.Pin bool ->
             Entry "Column.Pin" [ cId, boolStr bool ]
 
+        Column.Calm ->
+            Entry "Column.Calm" [ cId ]
+
         Column.AddFilter filter ->
             Entry "Column.AddFilter" [ cId, Filter.toString filter ]
 

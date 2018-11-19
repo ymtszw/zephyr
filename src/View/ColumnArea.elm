@@ -55,6 +55,8 @@ columnKeyEl env vs fam index c =
             , BD.width columnBorder
             , BD.color oneDark.bg
             , Font.color oneDark.text
+            , borderFlash c.recentlyTouched
+            , onAnimationEnd (ColumnCtrl c.id Column.Calm)
             , style "transition" "all 0.15s"
             ]
     in

@@ -235,7 +235,7 @@ update msg ({ viewState, env } as m) =
             onTick posix m
 
         RevealColumn index ->
-            noPersist ( m, revealColumn index )
+            noPersist ( { m | columnStore = ColumnStore.touchAt index m.columnStore }, revealColumn index )
 
         DomOp (Ok ()) ->
             pure m
