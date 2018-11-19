@@ -37,6 +37,7 @@ type alias Column =
     , filters : Array Filter
     , offset : Maybe Offset
     , pinned : Bool
+    , recentlyTouched : Bool -- This property may become stale, though it should have no harm
     , configOpen : Bool
     , pendingFilters : Array Filter
     , deleteGate : String
@@ -101,7 +102,7 @@ decoder clientHeight =
                                     -- Migration; use field instead of maybeField later
                                     D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
                                         \pinned ->
-                                            D.succeed (Column id items filters offset pinned False filters "")
+                                            D.succeed (Column id items filters offset pinned False False filters "")
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -155,6 +156,7 @@ welcome clientHeight idGen id =
       , filters = Array.empty
       , offset = Nothing
       , pinned = False
+      , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
       , deleteGate = ""
@@ -220,6 +222,7 @@ new clientHeight idGen id =
       , filters = Array.empty
       , offset = Nothing
       , pinned = False
+      , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
       , deleteGate = ""
@@ -235,6 +238,7 @@ simple clientHeight fa id =
     , filters = Array.fromList [ Filter.Singular fa ]
     , offset = Nothing
     , pinned = False
+    , recentlyTouched = True
     , configOpen = False
     , pendingFilters = Array.fromList [ Filter.Singular fa ]
     , deleteGate = ""
@@ -253,6 +257,7 @@ adjustScroll clientHeight c =
 type Msg
     = ToggleConfig Bool
     | Pin Bool
+    | Calm
     | AddFilter Filter
     | DelFilter Int
     | AddFilterAtom { filterIndex : Int, atom : FilterAtom }
@@ -278,7 +283,10 @@ update msg c =
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
 
         Pin pinned ->
-            ( { c | pinned = pinned }, PostProcess Cmd.none True Nothing )
+            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing )
+
+        Calm ->
+            pure { c | recentlyTouched = False }
 
         AddFilter filter ->
             pure { c | pendingFilters = Array.push filter c.pendingFilters }
