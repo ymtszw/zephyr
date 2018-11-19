@@ -431,7 +431,7 @@ queryViewport id =
 
 queryInterval : Float
 queryInterval =
-    500
+    300
 
 
 calculateTier : Scroll a -> Scroll a

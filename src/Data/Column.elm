@@ -184,7 +184,7 @@ columnItemLimit =
 
 columnBaseAmount : Int -> Int
 columnBaseAmount clientHeight =
-    clientHeight // itemMinimumHeight
+    (clientHeight * 3) // (itemMinimumHeight * 5)
 
 
 textOnlyItem : String -> String -> ColumnItem
