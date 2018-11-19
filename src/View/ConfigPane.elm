@@ -21,17 +21,32 @@ import View.Parts exposing (..)
 
 configPaneEl : Model -> Element Msg
 configPaneEl m =
-    el
-        [ width (px fixedPaneWidth)
-        , height (fill |> maximum m.env.clientHeight)
-        , alignLeft
-        , padding rectElementOuterPadding
-        , scrollbarY
-        , visible m.viewState.configOpen
-        , BG.color (setAlpha 0.8 oneDark.bg)
-        , Font.color oneDark.text
-        ]
-        (configInnerEl m)
+    let
+        baseAttrs =
+            [ width (px fixedPaneWidth)
+            , height (fill |> maximum m.env.clientHeight)
+            , alignLeft
+            , padding rectElementOuterPadding
+            , scrollbarY
+            , BG.color (setAlpha 0.8 oneDark.bg)
+            , Font.color oneDark.text
+            , style "transition" "all 0.15s"
+            ]
+
+        toggleAttrs =
+            if m.viewState.configOpen then
+                [ style "visibility" "visible"
+                , style "opacity" "1"
+                , style "transform" "translateX(0px)"
+                ]
+
+            else
+                [ style "visibility" "hidden"
+                , style "opacity" "0"
+                , style "transform" "translateX(-50px)" -- The value sufficient for slide-in effect to be recognizable
+                ]
+    in
+    el (baseAttrs ++ toggleAttrs) (configInnerEl m)
 
 
 fixedPaneWidth : Int

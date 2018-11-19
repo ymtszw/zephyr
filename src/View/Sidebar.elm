@@ -22,7 +22,7 @@ import View.Parts exposing (..)
 sidebarEl : Model -> Element Msg
 sidebarEl ({ columnStore, viewState, env } as m) =
     column
-        [ width (px (buttonSize + paddingX * 2))
+        [ width (px sidebarWidth)
         , height (fill |> maximum env.clientHeight)
         , alignLeft
         , paddingXY paddingX sectionSpacingY
@@ -32,6 +32,11 @@ sidebarEl ({ columnStore, viewState, env } as m) =
         [ el [ width fill, alignTop ] (columnButtonsEl columnStore)
         , el [ width fill, alignBottom ] (lazy otherButtonsEl viewState.configOpen)
         ]
+
+
+sidebarWidth : Int
+sidebarWidth =
+    buttonSize + paddingX * 2
 
 
 buttonSize : Int
