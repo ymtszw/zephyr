@@ -51,6 +51,7 @@ type Msg
     | ProducerCtrl Producer.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
+    | ZephyrMode Bool
     | Tick Posix
 
 
@@ -148,6 +149,9 @@ logEntry msg =
 
         DomOp (Err (Browser.Dom.NotFound id)) ->
             Entry "DomOp.Err.NotFound" [ id ]
+
+        ZephyrMode bool ->
+            Entry "ZephyrMode" [ boolStr bool ]
 
         Tick posix ->
             Entry "Tick" [ Iso8601.fromTime posix ]

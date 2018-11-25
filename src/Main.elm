@@ -250,6 +250,14 @@ update msg ({ viewState, env, pref } as m) =
         DomOp (Err e) ->
             pure m
 
+        ZephyrMode bool ->
+            case Pref.update bool pref of
+                ( newPref, True ) ->
+                    ( { m | pref = newPref }, Cmd.none, savePref changeSet )
+
+                ( newPref, False ) ->
+                    pure { m | pref = newPref }
+
         NoOp ->
             pure m
 
