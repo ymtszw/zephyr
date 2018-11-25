@@ -265,7 +265,7 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
-    | ScanBroker { broker : Broker Item, maxCount : Int }
+    | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int }
     | ScrollMsg Scroll.Msg
 
 
@@ -325,16 +325,17 @@ update msg c =
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
-        ScanBroker { broker, maxCount } ->
+        ScanBroker { broker, maxCount, clientHeight } ->
             case ItemBroker.bulkRead maxCount c.offset broker of
                 [] ->
-                    pure c
+                    pure (adjustScroll clientHeight c)
 
                 (( _, newOffset ) :: _) as items ->
-                    ( { c
-                        | offset = Just newOffset
-                        , items = Scroll.prependList (List.filterMap (applyFilters c.filters) items) c.items
-                      }
+                    ( adjustScroll clientHeight
+                        { c
+                            | offset = Just newOffset
+                            , items = Scroll.prependList (List.filterMap (applyFilters c.filters) items) c.items
+                        }
                     , PostProcess Cmd.none True Nothing
                     )
 

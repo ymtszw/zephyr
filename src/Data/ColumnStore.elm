@@ -23,6 +23,7 @@ import Data.Filter exposing (FilterAtom(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
+import Deque exposing (Deque)
 import Dict exposing (Dict)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -33,7 +34,7 @@ type alias ColumnStore =
     { dict : Dict String Column
     , order : Array String
     , fam : FilterAtomMaterial
-    , indexToScan : Int
+    , scanQueue : Deque String
     }
 
 
@@ -45,7 +46,11 @@ decoder clientHeight =
                 \order ->
                     D.do (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init)) <|
                         \fam ->
-                            D.succeed (ColumnStore dict order fam 0)
+                            let
+                                scanQueue =
+                                    Deque.fromList (Dict.keys dict)
+                            in
+                            D.succeed (ColumnStore dict order fam scanQueue)
 
 
 encode : ColumnStore -> Storable
@@ -64,7 +69,7 @@ storeId =
 
 init : ColumnStore
 init =
-    ColumnStore Dict.empty Array.empty FAM.init 0
+    ColumnStore Dict.empty Array.empty FAM.init Deque.empty
 
 
 size : ColumnStore -> Int
@@ -84,8 +89,12 @@ add column columnStore =
 
         newOrder =
             columnStore.order |> Array.squeeze 0 column.id |> autoArrange newDict
+
+        newScanQueue =
+            -- Previous relative scan ordering is kept
+            Deque.pushFront column.id columnStore.scanQueue
     in
-    { columnStore | dict = newDict, order = newOrder }
+    { columnStore | dict = newDict, order = newOrder, scanQueue = newScanQueue }
 
 
 get : Int -> ColumnStore -> Maybe Column
@@ -99,9 +108,14 @@ removeAt : Int -> ColumnStore -> ColumnStore
 removeAt index columnStore =
     case Array.get index columnStore.order of
         Just id ->
+            let
+                newDict =
+                    Dict.remove id columnStore.dict
+            in
             { columnStore
-                | dict = Dict.remove id columnStore.dict
+                | dict = newDict
                 , order = Array.removeAt index columnStore.order
+                , scanQueue = Deque.fromList (Dict.keys newDict) -- Previous scan ordering is discarded
             }
 
         Nothing ->
@@ -210,28 +224,19 @@ applyOrder order columnStore =
 
 consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Column.PostProcess )
 consumeBroker clientHeight broker columnStore =
-    case get columnStore.indexToScan columnStore of
-        Just column ->
+    case Deque.popBack columnStore.scanQueue of
+        ( Just cId, newScanQueue ) ->
             let
                 scanCountPerColumn =
                     maxScanCount // Dict.size columnStore.dict
 
-                ( newColumn, pp ) =
-                    column
-                        |> Column.adjustScroll clientHeight
-                        |> Column.update (Column.ScanBroker { broker = broker, maxCount = scanCountPerColumn })
-
-                nextIndex =
-                    if columnStore.indexToScan < Array.length columnStore.order - 1 then
-                        columnStore.indexToScan + 1
-
-                    else
-                        0
+                scanMsg =
+                    Column.ScanBroker { broker = broker, maxCount = scanCountPerColumn, clientHeight = clientHeight }
             in
-            ( { columnStore | indexToScan = nextIndex, dict = Dict.insert column.id newColumn columnStore.dict }, pp )
+            updateById cId scanMsg { columnStore | scanQueue = Deque.pushFront cId newScanQueue }
 
-        Nothing ->
-            pure { columnStore | indexToScan = 0 }
+        ( Nothing, _ ) ->
+            pure columnStore
 
 
 maxScanCount : Int
@@ -239,9 +244,13 @@ maxScanCount =
     500
 
 
-catchUpBroker : Broker Item -> String -> ColumnStore -> ( ColumnStore, Column.PostProcess )
-catchUpBroker broker cId columnStore =
-    updateById cId (Column.ScanBroker { broker = broker, maxCount = maxScanCount }) columnStore
+catchUpBroker : Int -> Broker Item -> String -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+catchUpBroker clientHeight broker cId columnStore =
+    let
+        scanMsg =
+            Column.ScanBroker { broker = broker, maxCount = maxScanCount, clientHeight = clientHeight }
+    in
+    updateById cId scanMsg columnStore
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )

@@ -286,7 +286,7 @@ onTick posix m_ =
             noPersist ( m, IndexedDb.dropOldState )
 
         Just (BrokerCatchUp cId) ->
-            ColumnStore.catchUpBroker m.itemBroker cId m.columnStore
+            ColumnStore.catchUpBroker m.env.clientHeight m.itemBroker cId m.columnStore
                 |> applyColumnUpdate m cId
 
         Nothing ->
