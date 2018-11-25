@@ -6,6 +6,7 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Column
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Deque
@@ -63,7 +64,8 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper discordConfigTitleEl <|
+        [ configSectionWrapper prefTitleEl (prefEl m.pref)
+        , configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
         , configSectionWrapper statusTitleEl <| statusEl m
         , if m.env.isLocalDevelopment then
@@ -112,6 +114,62 @@ sectionBaseFontSize =
     scale12 2
 
 
+prefTitleEl : Element Msg
+prefTitleEl =
+    row [ spacing spacingUnit ]
+        [ octiconEl []
+            { size = sectionTitleFontSize
+            , color = oneDark.text
+            , shape = Octicons.settings
+            }
+        , text "Preference"
+        ]
+
+
+prefEl : Pref -> Element Msg
+prefEl pref =
+    column [ width fill, padding rectElementInnerPadding ]
+        [ row [ width fill, spacing spacingUnit ]
+            [ textColumn [ width fill, spacing spacingUnit ]
+                [ text "Zephyr Mode"
+                , paragraph [ Font.size descFontSize, Font.color oneDark.note ]
+                    [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner. Also, columns with new messages will automatically reappear."
+                    ]
+                ]
+            , textColumn [ width fill, spacing spacingUnit ]
+                [ toggleInputEl []
+                    { onChange = ZephyrMode
+                    , height = sectionBaseFontSize
+                    , checked = pref.zephyrMode
+                    }
+                , paragraph [] [ text ("Max columns: " ++ String.fromInt pref.evictThreshold) ]
+                , paragraph [ Font.size descFontSize, Font.color oneDark.note ]
+                    [ text "Automatically calculated based on your screen width."
+                    ]
+                ]
+            ]
+        , row [ width fill, spacing spacingUnit ]
+            []
+        ]
+
+
+discordConfigTitleEl : Element Msg
+discordConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ squareIconOrHeadEl []
+            { size = sectionTitleFontSize
+            , name = "Discord"
+            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Discord"
+        ]
+
+
+descFontSize : Int
+descFontSize =
+    scale12 1
+
+
 statusTitleEl : Element Msg
 statusTitleEl =
     row [ spacing spacingUnit ]
@@ -133,7 +191,7 @@ statusEl m =
         numVisible =
             Array.length m.columnStore.order
     in
-    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size statusFontSize ] <|
+    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
         List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
             [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
             , [ "Maximum messages per column", StringExtra.punctuateNumber Data.Column.columnItemLimit ]
@@ -157,21 +215,3 @@ statusEl m =
                     "Not available"
               ]
             ]
-
-
-statusFontSize : Int
-statusFontSize =
-    scale12 1
-
-
-discordConfigTitleEl : Element Msg
-discordConfigTitleEl =
-    row [ spacing spacingUnit ]
-        [ iconWithBadgeEl []
-            { size = sectionTitleFontSize
-            , badge = Nothing
-            , fallback = "Discord"
-            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
-            }
-        , text "Discord"
-        ]
