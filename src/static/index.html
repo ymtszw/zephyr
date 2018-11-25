@@ -108,8 +108,14 @@
           const getReq = (db
             .transaction(STATE)
             .objectStore(STATE)
-            .get(id).onsuccess = event =>
-            app.ports.loadFromJs.send(event.target.result));
+            .get(id).onsuccess = event => {
+            const result = event.target.result;
+            if (id !== "pref" || result !== undefined) {
+              app.ports.loadFromJs.send(result);
+            } else {
+              // Pref is not found; do nothing and let it fallback
+            }
+          });
           getReq.onerror = event =>
             err(
               `Failed to retrieve state from IndexedDB! ${event.target.error}`

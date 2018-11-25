@@ -1,5 +1,5 @@
 port module IndexedDb exposing
-    ( load, requestItemBroker, requestProducerRegistry, dropOldState
+    ( load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
     , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
     )
 
@@ -8,14 +8,14 @@ port module IndexedDb exposing
 Follow the best practices!!
 <https://developers.google.com/web/fundamentals/instant-and-offline/web-storage/indexeddb-best-practices>
 
-@docs load, requestItemBroker, requestProducerRegistry, dropOldState
+@docs load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
 @docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
 
 -}
 
 import Data.ColumnStore as ColumnStore
 import Data.ItemBroker as ItemBroker
-import Data.Model as Model exposing (Model)
+import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer
 import Data.SavedState as SavedState
@@ -30,14 +30,14 @@ import Json.Encode as E
 -- Load State
 
 
-load : Int -> UniqueIdGen -> Sub Msg
-load clientHeight idGen =
-    loadFromJs (loadMsg clientHeight idGen)
+load : Env -> UniqueIdGen -> Sub Msg
+load env idGen =
+    loadFromJs (loadMsg env idGen)
 
 
-loadMsg : Int -> UniqueIdGen -> E.Value -> Msg
-loadMsg clientHeight idGen value =
-    case D.decodeValue (stateDecoder clientHeight) value of
+loadMsg : Env -> UniqueIdGen -> E.Value -> Msg
+loadMsg env idGen value =
+    case D.decodeValue (stateDecoder env) value of
         Ok msg ->
             msg
 
@@ -45,14 +45,14 @@ loadMsg clientHeight idGen value =
             LoadErr e
 
 
-stateDecoder : Int -> Decoder Msg
-stateDecoder clientHeight =
+stateDecoder : Env -> Decoder Msg
+stateDecoder env =
     D.oneOf
         [ D.do (D.field "id" D.string) <|
             \id ->
                 if id == ColumnStore.storeId then
                     D.map2 (\cs idGen -> LoadColumnStore ( cs, idGen ))
-                        (ColumnStore.decoder clientHeight)
+                        (ColumnStore.decoder env.clientHeight)
                         (D.field idGenStoreId UniqueIdGen.decoder)
 
                 else if id == ItemBroker.storeId then
@@ -65,7 +65,7 @@ stateDecoder clientHeight =
                     D.fail ("Unknown state id: " ++ id)
 
         -- Old format; may remove after migration
-        , D.map LoadOk <| SavedState.decoder clientHeight
+        , D.map LoadOk <| SavedState.decoder env.clientHeight
         ]
 
 
@@ -77,6 +77,11 @@ requestItemBroker =
 requestProducerRegistry : Cmd msg
 requestProducerRegistry =
     requestStored Producer.registryStoreId
+
+
+requestPref : Cmd msg
+requestPref =
+    requestStored Model.prefStoreId
 
 
 requestStored : String -> Cmd msg
@@ -98,6 +103,7 @@ type ChangeSet
         { columnStore : Bool
         , itemBroker : Bool
         , producerRegistry : Bool
+        , pref : Bool
         }
 
 
@@ -107,6 +113,7 @@ changeSet =
         { columnStore = False
         , itemBroker = False
         , producerRegistry = False
+        , pref = False
         }
 
 
@@ -161,6 +168,9 @@ changeSetToCmds m (ChangeSet cs) =
     , toCmd cs.producerRegistry <|
         \_ ->
             doPersist (Producer.encodeRegistry m.producerRegistry)
+    , toCmd cs.pref <|
+        \_ ->
+            doPersist (Model.encodePref m.pref)
     ]
         |> List.filterMap identity
 

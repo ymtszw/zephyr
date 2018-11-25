@@ -13,6 +13,10 @@ If a Column exists in the `dict` but its ID is not found in the `order` Array,
 it is considered as a "shadow" Column. Shadow Columns are updated normally,
 and automatically become visible in "Zephyr mode", if new messages arrived.
 
+In "Zephyr mode", Columns are automatically evicted (dismissed)
+when there are too many Columns displayed.
+This can be toggled at users' preferences. See Data.Model.
+
 @docs ColumnStore, init, encode, decoder, storeId, size
 @docs add, get, map, mapForView, removeAt, touchAt
 @docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM

@@ -104,7 +104,7 @@ getTimeZone =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
-update msg ({ viewState, env } as m) =
+update msg ({ viewState, env, pref } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -113,7 +113,11 @@ update msg ({ viewState, env } as m) =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars.
             -- Scrolls are resized on BrokerScan
-            pure { m | env = { env | clientHeight = round viewport.height, clientWidth = round viewport.width } }
+            pure
+                { m
+                    | env = { env | clientHeight = round viewport.height, clientWidth = round viewport.width }
+                    , pref = { pref | evictThreshold = Model.adjustEvictThreashold (round viewport.width) }
+                }
 
         GetTimeZone ( _, zone ) ->
             pure { m | viewState = { viewState | timezone = zone } }
@@ -430,7 +434,7 @@ sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
         , if m.env.indexedDBAvailable then
-            IndexedDb.load m.env.clientHeight m.idGen
+            IndexedDb.load m.env m.idGen
 
           else
             Sub.none

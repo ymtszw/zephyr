@@ -1,12 +1,14 @@
 module Data.Model exposing
-    ( Model, ViewState, Env, ColumnSwap
-    , init, welcome
+    ( Model, ViewState, Pref, Env, ColumnSwap
+    , init, welcome, adjustEvictThreashold
+    , encodePref, prefDecoder, prefStoreId, updatePref
     )
 
 {-| Model of the app.
 
-@docs Model, ViewState, Env, ColumnSwap
-@docs init, welcome
+@docs Model, ViewState, Pref, Env, ColumnSwap
+@docs init, welcome, adjustEvictThreashold
+@docs encodePref, prefDecoder, prefStoreId, updatePref
 
 -}
 
@@ -22,8 +24,9 @@ import Data.ItemBroker as ItemBroker
 import Data.Msg exposing (Msg)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
-import Data.Storable
+import Data.Storable exposing (Storable)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Logger
 import Time exposing (Zone)
@@ -46,6 +49,13 @@ type alias Model =
     }
 
 
+{-| In "Zephyr mode", Columns are automatically evicted (dismissed)
+and reappear when new messages arrived.
+
+`evictThreshold` dictates how many columns can be displayed at a time, in Zephyr mode.
+This value is automatically adjusted according to clientWidth.
+
+-}
 type alias Pref =
     { zephyrMode : Bool
     , evictThreshold : Int
@@ -100,8 +110,13 @@ init env navKey =
 defaultPref : Int -> Pref
 defaultPref clientWidth =
     { zephyrMode = True
-    , evictThreshold = (clientWidth // fixedColumnWidth) + 1
+    , evictThreshold = adjustEvictThreashold clientWidth
     }
+
+
+adjustEvictThreashold : Int -> Int
+adjustEvictThreashold clientWidth =
+    (clientWidth // fixedColumnWidth) + 1
 
 
 defaultViewState : ViewState
@@ -133,3 +148,34 @@ welcome env navKey =
     , viewState = defaultViewState
     , env = env
     }
+
+
+encodePref : Pref -> Storable
+encodePref pref =
+    Data.Storable.encode prefStoreId
+        [ ( "zephyrMode", E.bool pref.zephyrMode )
+        ]
+
+
+prefStoreId : String
+prefStoreId =
+    "pref"
+
+
+prefDecoder : Int -> Decoder Pref
+prefDecoder clientWidth =
+    D.oneOf
+        [ D.map2 Pref
+            (D.field "zephyrMode" D.bool)
+            (D.succeed (adjustEvictThreashold clientWidth))
+        , D.succeed (defaultPref clientWidth) -- Casually provide the default, rather than fail on Pref load
+        ]
+
+
+updatePref : Bool -> Model -> ( Model, Bool )
+updatePref zephyrMode ({ pref } as m) =
+    if m.pref.zephyrMode == zephyrMode then
+        ( m, False )
+
+    else
+        ( { m | pref = { pref | zephyrMode = zephyrMode } }, True )
