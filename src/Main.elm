@@ -25,6 +25,7 @@ import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
+import Data.Pref as Pref
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen
@@ -116,7 +117,7 @@ update msg ({ viewState, env, pref } as m) =
             pure
                 { m
                     | env = { env | clientHeight = round viewport.height, clientWidth = round viewport.width }
-                    , pref = { pref | evictThreshold = Model.adjustEvictThreashold (round viewport.width) }
+                    , pref = { pref | evictThreshold = Pref.adjustEvictThreashold (round viewport.width) }
                 }
 
         GetTimeZone ( _, zone ) ->
@@ -182,7 +183,10 @@ update msg ({ viewState, env, pref } as m) =
             ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
         LoadColumnStore ( cs, idGen ) ->
-            ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
+            ( { m | columnStore = cs, idGen = idGen }
+            , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref ]
+            , saveColumnStore changeSet
+            )
 
         LoadItemBroker itemBroker ->
             if Broker.capacity itemBroker == Broker.capacity m.itemBroker then
@@ -198,6 +202,10 @@ update msg ({ viewState, env, pref } as m) =
         LoadProducerRegistry pr ->
             reloadProducers <|
                 { m | producerRegistry = pr, worque = Worque.pushAll [ DropOldState, initScan m.columnStore ] m.worque }
+
+        LoadPref loaded ->
+            -- Pref decoding always succeeds, and it is not a part of critical state loading chain.
+            ( { m | pref = loaded }, Cmd.none, savePref changeSet )
 
         LoadOk ss ->
             -- Old method; remove after migration

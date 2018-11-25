@@ -8,6 +8,7 @@ import Data.Column as Column
 import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
+import Data.Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
@@ -42,6 +43,7 @@ type Msg
     | LoadColumnStore ( ColumnStore, UniqueIdGen )
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry
+    | LoadPref Pref
     | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
@@ -115,6 +117,12 @@ logEntry msg =
 
         LoadProducerRegistry _ ->
             Entry "LoadProducerRegistry" [ "<producerRegistry>" ]
+
+        LoadPref { zephyrMode, evictThreshold } ->
+            Entry "LoadPref"
+                [ "zephyrMode: " ++ boolStr zephyrMode
+                , "evictThreshold: " ++ String.fromInt evictThreshold
+                ]
 
         LoadOk _ ->
             -- Old gigantic state load; remove after migration

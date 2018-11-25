@@ -1,14 +1,12 @@
 module Data.Model exposing
-    ( Model, ViewState, Pref, Env, ColumnSwap
-    , init, welcome, adjustEvictThreashold
-    , encodePref, prefDecoder, prefStoreId, updatePref
+    ( Model, ViewState, Env, ColumnSwap
+    , init, welcome
     )
 
 {-| Model of the app.
 
-@docs Model, ViewState, Pref, Env, ColumnSwap
-@docs init, welcome, adjustEvictThreashold
-@docs encodePref, prefDecoder, prefStoreId, updatePref
+@docs Model, ViewState, Env, ColumnSwap
+@docs init, welcome
 
 -}
 
@@ -21,7 +19,7 @@ import Data.Filter exposing (FilterAtom)
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
-import Data.Msg exposing (Msg)
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.Storable exposing (Storable)
@@ -46,19 +44,6 @@ type alias Model =
     , navKey : Key
     , viewState : ViewState
     , env : Env
-    }
-
-
-{-| In "Zephyr mode", Columns are automatically evicted (dismissed)
-and reappear when new messages arrived.
-
-`evictThreshold` dictates how many columns can be displayed at a time, in Zephyr mode.
-This value is automatically adjusted according to clientWidth.
-
--}
-type alias Pref =
-    { zephyrMode : Bool
-    , evictThreshold : Int
     }
 
 
@@ -95,7 +80,7 @@ init env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueIdGen.init
-        , pref = defaultPref env.clientWidth
+        , pref = Pref.init env.clientWidth
         , worque = Worque.init
         , log = Logger.init
         , navKey = navKey
@@ -105,18 +90,6 @@ init env navKey =
 
     else
         welcome env navKey
-
-
-defaultPref : Int -> Pref
-defaultPref clientWidth =
-    { zephyrMode = True
-    , evictThreshold = adjustEvictThreashold clientWidth
-    }
-
-
-adjustEvictThreashold : Int -> Int
-adjustEvictThreashold clientWidth =
-    (clientWidth // fixedColumnWidth) + 1
 
 
 defaultViewState : ViewState
@@ -142,40 +115,9 @@ welcome env navKey =
     , producerRegistry = Producer.initRegistry
     , worque = Worque.init
     , idGen = finalGen
-    , pref = defaultPref env.clientWidth
+    , pref = Pref.init env.clientWidth
     , log = Logger.init
     , navKey = navKey
     , viewState = defaultViewState
     , env = env
     }
-
-
-encodePref : Pref -> Storable
-encodePref pref =
-    Data.Storable.encode prefStoreId
-        [ ( "zephyrMode", E.bool pref.zephyrMode )
-        ]
-
-
-prefStoreId : String
-prefStoreId =
-    "pref"
-
-
-prefDecoder : Int -> Decoder Pref
-prefDecoder clientWidth =
-    D.oneOf
-        [ D.map2 Pref
-            (D.field "zephyrMode" D.bool)
-            (D.succeed (adjustEvictThreashold clientWidth))
-        , D.succeed (defaultPref clientWidth) -- Casually provide the default, rather than fail on Pref load
-        ]
-
-
-updatePref : Bool -> Model -> ( Model, Bool )
-updatePref zephyrMode ({ pref } as m) =
-    if m.pref.zephyrMode == zephyrMode then
-        ( m, False )
-
-    else
-        ( { m | pref = { pref | zephyrMode = zephyrMode } }, True )

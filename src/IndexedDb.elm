@@ -1,6 +1,7 @@
 port module IndexedDb exposing
     ( load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
-    , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
+    , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, savePref
+    , postUpdate, noPersist
     )
 
 {-| Handles persistence of application state to IndexedDB.
@@ -9,7 +10,8 @@ Follow the best practices!!
 <https://developers.google.com/web/fundamentals/instant-and-offline/web-storage/indexeddb-best-practices>
 
 @docs load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
-@docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
+@docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, savePref
+@docs postUpdate, noPersist
 
 -}
 
@@ -17,6 +19,7 @@ import Data.ColumnStore as ColumnStore
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (Msg(..))
+import Data.Pref as Pref
 import Data.Producer as Producer
 import Data.SavedState as SavedState
 import Data.Storable as Storable exposing (Storable)
@@ -61,6 +64,9 @@ stateDecoder env =
                 else if id == Producer.registryStoreId then
                     D.map LoadProducerRegistry Producer.registryDecoder
 
+                else if id == Pref.storeId then
+                    D.map LoadPref (Pref.decoder env.clientWidth)
+
                 else
                     D.fail ("Unknown state id: " ++ id)
 
@@ -81,7 +87,7 @@ requestProducerRegistry =
 
 requestPref : Cmd msg
 requestPref =
-    requestStored Model.prefStoreId
+    requestStored Pref.storeId
 
 
 requestStored : String -> Cmd msg
@@ -132,6 +138,11 @@ saveProducerRegistry (ChangeSet cs) =
     ChangeSet { cs | producerRegistry = True }
 
 
+savePref : ChangeSet -> ChangeSet
+savePref (ChangeSet cs) =
+    ChangeSet { cs | pref = True }
+
+
 {-| A hook to persist Elm application state to IndexedDB via port.
 
 It is intended to be called with specialized update output,
@@ -170,7 +181,7 @@ changeSetToCmds m (ChangeSet cs) =
             doPersist (Producer.encodeRegistry m.producerRegistry)
     , toCmd cs.pref <|
         \_ ->
-            doPersist (Model.encodePref m.pref)
+            doPersist (Pref.encode m.pref)
     ]
         |> List.filterMap identity
 
