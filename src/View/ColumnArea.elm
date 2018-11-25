@@ -143,8 +143,11 @@ grabberEl index pinned cId =
             , BD.color oneDark.note
             , style "border-style" "double"
             ]
+
+        grabberAttrs =
+            dragHandle <| D.succeed <| DragStart { index = index, pinned = pinned, id = cId }
     in
-    el (attrs ++ dragHandle (D.succeed (DragStart { index = index, pinned = pinned, id = cId }))) none
+    el (attrs ++ grabberAttrs) none
 
 
 grabberWidth : Int
