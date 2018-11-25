@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size
-    , add, get, map, mapForView, listShadow, removeAt, touchAt
+    , add, get, map, mapForView, listShadow, removeAt, touchAt, dismissAt
     , updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
     )
 
@@ -18,7 +18,7 @@ when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, init, encode, decoder, storeId, size
-@docs add, get, map, mapForView, listShadow, removeAt, touchAt
+@docs add, get, map, mapForView, listShadow, removeAt, touchAt, dismissAt
 @docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
 
 -}
@@ -138,6 +138,11 @@ touchAt index columnStore =
 
         Nothing ->
             columnStore
+
+
+dismissAt : Int -> ColumnStore -> ColumnStore
+dismissAt index columnStore =
+    { columnStore | order = Array.removeAt index columnStore.order }
 
 
 
