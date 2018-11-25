@@ -5,7 +5,7 @@ module View.Parts exposing
     , textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, cssRgb, brightness, setAlpha, manualStyle
-    , filtersToIconEl
+    , filtersToIconEl, filtersToTextEl
     , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
     , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
@@ -38,7 +38,7 @@ module View.Parts exposing
 
 ## Column Filter
 
-@docs filtersToIconEl
+@docs filtersToIconEl, filtersToTextEl
 
 
 ## Discord
@@ -55,7 +55,7 @@ module View.Parts exposing
 
 import Array exposing (Array)
 import Data.ColorTheme exposing (ColorTheme, oneDark)
-import Data.Filter exposing (Filter, FilterAtom(..))
+import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
 import Element exposing (..)
@@ -726,7 +726,7 @@ filterToIconEl attrs size fam filter elMaybe =
                 ( _, _ ) ->
                     Nothing
     in
-    Data.Filter.fold reducer elMaybe filter
+    Filter.fold reducer elMaybe filter
 
 
 discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
@@ -775,6 +775,52 @@ fallbackIconEl userAttrs size =
                 ++ userAttrs
     in
     el attrs <| el [ centerX, centerY ] <| text "Z"
+
+
+filtersToTextEl :
+    List (Attribute msg)
+    ->
+        { fontSize : Int
+        , color : Color
+        , fam : FilterAtomMaterial
+        , filters : Array Filter
+        }
+    -> Element msg
+filtersToTextEl attrs { fontSize, color, fam, filters } =
+    let
+        arrayReducer f acc =
+            List.sortWith Filter.compareFilterAtom (Filter.toList f) :: acc
+    in
+    filters
+        |> Array.foldr arrayReducer []
+        |> List.concatMap (List.map (filterAtomTextEl fontSize color fam))
+        |> List.intersperse (breakT "  ")
+        |> breakP attrs
+
+
+filterAtomTextEl : Int -> Color -> FilterAtomMaterial -> FilterAtom -> Element msg
+filterAtomTextEl fontSize color fam fa =
+    case fa of
+        OfDiscordChannel cId ->
+            el [ Font.size fontSize, Font.color color, Font.bold ] <|
+                Maybe.withDefault (breakT cId) <|
+                    FAM.mapDiscordChannel cId fam <|
+                        \c -> breakT ("#" ++ c.name)
+
+        ByMessage query ->
+            breakT ("\"" ++ query ++ "\"")
+
+        ByMedia HasImage ->
+            octiconEl [] { size = fontSize, color = color, shape = Octicons.fileMedia }
+
+        ByMedia HasMovie ->
+            octiconEl [] { size = fontSize, color = color, shape = Octicons.deviceCameraVideo }
+
+        ByMedia HasNone ->
+            octiconEl [] { size = fontSize, color = color, shape = Octicons.textSize }
+
+        RemoveMe ->
+            none
 
 
 discordGuildIconEl : List (Attribute msg) -> Int -> Discord.Guild -> Element msg

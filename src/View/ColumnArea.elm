@@ -160,25 +160,25 @@ columnHeaderTextEl fam cId scrolled filters =
     let
         arrayReducer f acc =
             List.sortWith Filter.compareFilterAtom (Filter.toList f) :: acc
+
+        backToTopAttrs =
+            if scrolled then
+                [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
+
+            else
+                []
     in
-    filters
-        |> Array.foldr arrayReducer []
-        |> List.concatMap (List.map (filterAtomTextEl fam))
-        |> List.intersperse (breakT "  ")
-        |> breakP
+    el ([ width fill, height fill ] ++ backToTopAttrs) <|
+        filtersToTextEl
             [ centerY
             , Font.size baseHeaderTextSize
             , Font.color baseHeaderTextColor
             ]
-        |> el
-            ([ width fill, height fill ]
-                ++ (if scrolled then
-                        [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
-
-                    else
-                        []
-                   )
-            )
+            { fontSize = importantFilterTextSize
+            , color = importantFilterTextColor
+            , fam = fam
+            , filters = filters
+            }
 
 
 baseHeaderTextSize : Int
@@ -189,34 +189,6 @@ baseHeaderTextSize =
 baseHeaderTextColor : Color
 baseHeaderTextColor =
     oneDark.note
-
-
-filterAtomTextEl : FilterAtomMaterial -> FilterAtom -> Element Msg
-filterAtomTextEl fam fa =
-    case fa of
-        OfDiscordChannel cId ->
-            FAM.mapDiscordChannel cId fam discordChannelTextEl
-                |> Maybe.withDefault (breakT cId)
-
-        ByMessage query ->
-            breakT ("\"" ++ query ++ "\"")
-
-        ByMedia HasImage ->
-            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
-
-        ByMedia HasMovie ->
-            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
-
-        ByMedia HasNone ->
-            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
-
-        RemoveMe ->
-            none
-
-
-discordChannelTextEl : Discord.ChannelCache -> Element Msg
-discordChannelTextEl c =
-    el [ Font.size importantFilterTextSize, Font.color importantFilterTextColor, Font.bold ] (breakT ("#" ++ c.name))
 
 
 importantFilterTextSize : Int
