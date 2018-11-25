@@ -1,5 +1,5 @@
 module Data.Column exposing
-    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
+    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, columnItemLimit
     , Msg(..), PostProcess, update
     )
 
@@ -10,7 +10,7 @@ Items stored in List are ordered from latest to oldest.
 Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
-@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
+@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, columnItemLimit
 @docs Msg, PostProcess, update
 
 -}
@@ -245,15 +245,6 @@ simple clientHeight fa id =
     }
 
 
-adjustScroll : Int -> Column -> Column
-adjustScroll clientHeight c =
-    let
-        baseAmount =
-            columnBaseAmount clientHeight
-    in
-    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
-
-
 type Msg
     = ToggleConfig Bool
     | Pin Bool
@@ -350,6 +341,15 @@ update msg c =
 pure : Column -> ( Column, PostProcess )
 pure c =
     ( c, PostProcess Cmd.none False Nothing )
+
+
+adjustScroll : Int -> Column -> Column
+adjustScroll clientHeight c =
+    let
+        baseAmount =
+            columnBaseAmount clientHeight
+    in
+    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
