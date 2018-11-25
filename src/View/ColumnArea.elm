@@ -111,7 +111,7 @@ columnHeaderEl fam index c =
         [ width fill
         , padding rectElementInnerPadding
         , spacing spacingUnit
-        , BG.color oneDark.sub
+        , BG.color columnHeaderBackground
         ]
         [ lazy3 grabberEl index c.pinned c.id
         , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
@@ -121,6 +121,11 @@ columnHeaderEl fam index c =
         ]
 
 
+columnHeaderBackground : Color
+columnHeaderBackground =
+    oneDark.sub
+
+
 columnHeaderIconSize : Int
 columnHeaderIconSize =
     32
@@ -128,18 +133,18 @@ columnHeaderIconSize =
 
 grabberEl : Int -> Bool -> String -> Element Msg
 grabberEl index pinned cId =
-    el
-        ([ width (px grabberWidth)
-         , height fill
-         , BG.color oneDark.main
-         , BD.rounded (grabberWidth // 2)
-         , BD.width (grabberWidth // 2)
-         , BD.color oneDark.note
-         , style "border-style" "double"
-         ]
-            ++ dragHandle (D.succeed (DragStart { index = index, pinned = pinned, id = cId }))
-        )
-        none
+    let
+        attrs =
+            [ width (px grabberWidth)
+            , height fill
+            , BG.color oneDark.main
+            , BD.rounded (grabberWidth // 2)
+            , BD.width (grabberWidth // 2)
+            , BD.color oneDark.note
+            , style "border-style" "double"
+            ]
+    in
+    el (attrs ++ dragHandle (D.succeed (DragStart { index = index, pinned = pinned, id = cId }))) none
 
 
 grabberWidth : Int
