@@ -3,7 +3,8 @@ module View.ConfigPane exposing (configPaneEl)
 import Array
 import Broker
 import Data.ColorTheme exposing (oneDark)
-import Data.Column
+import Data.Column as Column
+import Data.ColumnStore as ColumnStore
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
@@ -15,6 +16,7 @@ import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
+import Element.Keyed
 import Logger
 import Octicons
 import StringExtra
@@ -64,7 +66,9 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper prefTitleEl (prefEl m.pref)
+        [ configSectionWrapper prefTitleEl <|
+            prefEl m.pref <|
+                ColumnStore.listShadow m.columnStore
         , configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
         , configSectionWrapper statusTitleEl <| statusEl m
@@ -126,13 +130,13 @@ prefTitleEl =
         ]
 
 
-prefEl : Pref -> Element Msg
-prefEl pref =
-    column [ width fill, padding rectElementInnerPadding ]
+prefEl : Pref -> List Column.Column -> Element Msg
+prefEl pref shadowColumns =
+    column [ width fill, padding rectElementInnerPadding, spacing (spacingUnit * 2) ]
         [ row [ width fill, spacing spacingUnit ]
             [ textColumn [ width fill, spacing spacingUnit ]
                 [ text "Zephyr Mode"
-                , paragraph [ Font.size descFontSize, Font.color oneDark.note ]
+                , description
                     [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner. Also, columns with new messages will automatically reappear."
                     ]
                 ]
@@ -143,14 +147,43 @@ prefEl pref =
                     , checked = pref.zephyrMode
                     }
                 , paragraph [] [ text ("Max columns: " ++ String.fromInt pref.evictThreshold) ]
-                , paragraph [ Font.size descFontSize, Font.color oneDark.note ]
-                    [ text "Automatically calculated based on your screen width."
-                    ]
+                , description [ text "Automatically calculated based on your screen width." ]
                 ]
             ]
         , row [ width fill, spacing spacingUnit ]
-            []
+            [ textColumn [ width fill, spacing spacingUnit ]
+                [ text "Shadow Columns"
+                , description [ text "Currently not displayed columns." ]
+                ]
+            , shadowColumnsEl shadowColumns
+            ]
         ]
+
+
+description : List (Element Msg) -> Element Msg
+description texts =
+    paragraph [ Font.size descFontSize, Font.color oneDark.note ] texts
+
+
+descFontSize : Int
+descFontSize =
+    scale12 1
+
+
+shadowColumnsEl : List Column.Column -> Element Msg
+shadowColumnsEl shadowColumns =
+    Element.Keyed.column [ width fill, spacing spacingUnit ] <|
+        case shadowColumns of
+            [] ->
+                [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]
+
+            _ ->
+                List.map shadowColumnKeyEl shadowColumns
+
+
+shadowColumnKeyEl : Column.Column -> ( String, Element Msg )
+shadowColumnKeyEl c =
+    ( c.id, todo )
 
 
 discordConfigTitleEl : Element Msg
@@ -163,11 +196,6 @@ discordConfigTitleEl =
             }
         , text "Discord"
         ]
-
-
-descFontSize : Int
-descFontSize =
-    scale12 1
 
 
 statusTitleEl : Element Msg
@@ -194,7 +222,7 @@ statusEl m =
     column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
         List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
             [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
-            , [ "Maximum messages per column", StringExtra.punctuateNumber Data.Column.columnItemLimit ]
+            , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
             , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
             , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
             , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]

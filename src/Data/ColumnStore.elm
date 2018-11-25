@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size
-    , add, get, map, mapForView, removeAt, touchAt
+    , add, get, map, mapForView, listShadow, removeAt, touchAt
     , updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
     )
 
@@ -18,7 +18,7 @@ when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, init, encode, decoder, storeId, size
-@docs add, get, map, mapForView, removeAt, touchAt
+@docs add, get, map, mapForView, listShadow, removeAt, touchAt
 @docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
 
 -}
@@ -183,6 +183,19 @@ mapForViewImpl mapper dict idList index acc =
                 Nothing ->
                     -- Should not happen as long as contents of ColumnStore are manipulated by functions in this module
                     mapForViewImpl mapper dict ids index acc
+
+
+listShadow : ColumnStore -> List Column
+listShadow columnStore =
+    let
+        reducer cId c acc =
+            if Array.all ((/=) cId) columnStore.order then
+                c :: acc
+
+            else
+                acc
+    in
+    Dict.foldr reducer [] columnStore.dict
 
 
 
