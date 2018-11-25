@@ -2,7 +2,7 @@ module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+    , textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, cssRgb, brightness, setAlpha, manualStyle
     , filtersToIconEl
@@ -27,7 +27,7 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+@docs textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
@@ -271,8 +271,10 @@ textInputPadding =
 
 customPlaceholder : ColorTheme -> Maybe (Element msg) -> String -> Attribute msg
 customPlaceholder theme phMaybe text =
-    -- elm-ui's placeholder uses opacity to switch visibility, but it triggers style recalculation on change (don't know why)
-    -- Whereas transforming scale/translate is really cheap and fast, and with inFront (position: absolute;), no layout/reflow.
+    -- elm-ui's placeholder uses opacity to switch visibility (which should be fast on paper),
+    -- but it triggers style recalculation somehow in large SPA (probably due to class swapping and diffing on many DOMs).
+    -- Transforming scale/translate directly on specific elements do not trigger style recalculation,
+    -- are cheap and fast, and with inFront (position: absolute;), cause no layout/reflow.
     case phMaybe of
         Just ph ->
             inFront <|
@@ -291,6 +293,68 @@ customPlaceholder theme phMaybe text =
 
         Nothing ->
             noneAttr
+
+
+toggleInputEl :
+    List (Attribute msg)
+    ->
+        { onChange : Bool -> msg
+        , height : Int
+        , checked : Bool
+        }
+    -> Element msg
+toggleInputEl attrs opts =
+    let
+        rounding =
+            max 1 (opts.height // 5)
+
+        innerHeight =
+            opts.height - 2
+
+        baseAttrs =
+            [ width (px (opts.height * 2))
+            , height (px opts.height)
+            , padding 1
+            , BD.rounded rounding
+            , BG.color oneDark.note
+            , behindContent <|
+                el
+                    [ width fill
+                    , height fill
+                    , BD.rounded rounding
+                    , BG.color oneDark.succ
+                    , style "transition" "opacity 0.25s"
+                    , if opts.checked then
+                        style "opacity" "1"
+
+                      else
+                        style "opacity" "0"
+                    ]
+                    none
+            ]
+    in
+    Element.Input.button (baseAttrs ++ attrs)
+        { onPress = Just (opts.onChange (not opts.checked))
+        , label = lazy3 toggleHandleEl rounding innerHeight opts.checked
+        }
+
+
+toggleHandleEl : Int -> Int -> Bool -> Element msg
+toggleHandleEl rounding innerHeight checked =
+    el
+        [ width (px innerHeight)
+        , height (px innerHeight)
+        , BD.rounded rounding
+        , BG.color oneDark.text
+        , alignLeft
+        , style "transition" "transform 0.25s"
+        , if checked then
+            style "transform" ("translateX(" ++ String.fromInt (innerHeight + 1) ++ "px)")
+
+          else
+            style "transform" "translateX(0px)"
+        ]
+        none
 
 
 primaryButtonEl :
