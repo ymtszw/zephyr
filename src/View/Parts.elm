@@ -4,7 +4,7 @@ module View.Parts exposing
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
-    , scale12, cssRgb, brightness, setAlpha, manualStyle
+    , scale12, cssRgba, brightness, setAlpha, manualStyle
     , filtersToIconEl, filtersToTextEl
     , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
@@ -33,7 +33,7 @@ module View.Parts exposing
 
 ## Styles
 
-@docs scale12, cssRgb, brightness, setAlpha, manualStyle
+@docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
 ## Column Filter
@@ -144,7 +144,7 @@ onAnimationEnd msg =
 octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
 octiconEl attrs { size, color, shape } =
     Octicons.defaultOptions
-        |> Octicons.color (cssRgb color)
+        |> Octicons.color (cssRgba color)
         |> Octicons.size size
         |> shape
         |> html
@@ -675,10 +675,10 @@ setAlpha a color =
 
 {-| Dump a Color to CSS-compatible representaiton
 -}
-cssRgb : Color -> String
-cssRgb color =
+cssRgba : Color -> String
+cssRgba color =
     let
-        { red, green, blue } =
+        { red, green, blue, alpha } =
             toRgb color
     in
     String.join ""
@@ -688,6 +688,8 @@ cssRgb color =
         , String.fromFloat (255 * green)
         , ","
         , String.fromFloat (255 * blue)
+        , ","
+        , String.fromFloat alpha
         , ")"
         ]
 
