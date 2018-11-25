@@ -1,5 +1,6 @@
 module View.ConfigPane exposing (configPaneEl)
 
+import Array
 import Broker
 import Data.ColorTheme exposing (oneDark)
 import Data.Column
@@ -7,6 +8,7 @@ import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Deque
 import Dict
 import Element exposing (..)
 import Element.Background as BG
@@ -124,11 +126,20 @@ statusTitleEl =
 
 statusEl : Model -> Element Msg
 statusEl m =
+    let
+        numColumns =
+            Dict.size m.columnStore.dict
+
+        numVisible =
+            Array.length m.columnStore.order
+    in
     column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size statusFontSize ] <|
         List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
             [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
             , [ "Maximum messages per column", StringExtra.punctuateNumber Data.Column.columnItemLimit ]
-            , [ "Number of columns", StringExtra.punctuateNumber <| Dict.size m.columnStore.dict ]
+            , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
+            , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
+            , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
             , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
             , [ "ServiceWorker"
               , if m.env.serviceWorkerAvailable then
