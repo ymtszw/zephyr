@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcome, encodeForPersistence
+    , init, welcome
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcome, encodeForPersistence
+@docs init, welcome
 
 -}
 
@@ -133,14 +133,3 @@ welcome env navKey =
     , viewState = defaultViewState
     , env = env
     }
-
-
-encodeForPersistence : Model -> E.Value
-encodeForPersistence m =
-    E.object
-        [ ( "id", E.string "primary" )
-        , ( "columnStore", ColumnStore.encode m.columnStore |> Data.Storable.finalize )
-        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
-        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry |> Data.Storable.finalize )
-        , ( "idGen", UniqueIdGen.encode m.idGen )
-        ]
