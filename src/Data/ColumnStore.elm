@@ -9,6 +9,10 @@ module Data.ColumnStore exposing
 Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
+If a Column exists in the `dict` but its ID is not found in the `order` Array,
+it is considered as a "shadow" Column. Shadow Columns are updated normally,
+and automatically become visible in "Zephyr mode", if new messages arrived.
+
 @docs ColumnStore, init, encode, decoder, storeId, size
 @docs add, get, map, mapForView, removeAt, touchAt
 @docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
@@ -141,6 +145,21 @@ map mapper columnStore =
     { columnStore | dict = Dict.map (\_ c -> mapper c) columnStore.dict }
 
 
+{-| `indexedMap` intended for view usages.
+
+It returns list of values derived from a mapper function.
+The mapper function receives FAM, index number, and a Column.
+
+It only iterates over Columns whose IDs can be found in `order` Array, i.e. visible Columns.
+
+Other Columns are considered "shadow" Columns which is hidden from the view (at the moment).
+Shadow Columns are re-introduced to the view via side-effect APIs,
+where their IDs are squeezed into `order` Array.
+
+Columns can be "dismissed" also via side-effect APIs, becoming shadow Columns,
+when ther IDs are removed from the `order` Array but not permanently removed from the `dict`.
+
+-}
 mapForView : (FilterAtomMaterial -> Int -> Column -> a) -> ColumnStore -> List a
 mapForView mapper { dict, order, fam } =
     mapForViewImpl (mapper fam) dict (Array.toList order) 0 []
