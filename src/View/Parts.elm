@@ -319,8 +319,8 @@ toggleInputEl attrs opts =
             , BG.color oneDark.note
             , behindContent <|
                 el
-                    [ width fill
-                    , height fill
+                    [ width (px (opts.height * 2))
+                    , height (px opts.height)
                     , BD.rounded rounding
                     , BG.color oneDark.succ
                     , style "transition" "opacity 0.25s"
