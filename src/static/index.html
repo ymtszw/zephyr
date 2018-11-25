@@ -21,7 +21,7 @@
       const serviceWorkerAvailable =
         "serviceWorker" in window.navigator && !isLocalDevelopment;
       const indexedDBAvailable = "indexedDB" in window;
-      const clientHeight = window.document.documentElement.clientHeight;
+      const { clientHeight, clientWidth } = window.document.documentElement;
 
       if (serviceWorkerAvailable) {
         window.navigator.serviceWorker
@@ -37,7 +37,8 @@
           serviceWorkerAvailable,
           indexedDBAvailable,
           isLocalDevelopment,
-          clientHeight
+          clientHeight,
+          clientWidth
         }
       });
       const STATE = "state";

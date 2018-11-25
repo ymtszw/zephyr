@@ -118,7 +118,7 @@ update msg ({ viewState, env } as m) =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars.
             -- Scrolls are resized on BrokerScan
-            pure { m | env = { env | clientHeight = round viewport.height } }
+            pure { m | env = { env | clientHeight = round viewport.height, clientWidth = round viewport.width } }
 
         GetTimeZone ( _, zone ) ->
             pure { m | viewState = { viewState | timezone = zone } }

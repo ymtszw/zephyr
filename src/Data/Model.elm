@@ -27,6 +27,7 @@ import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Encode as E
 import Logger
 import Time exposing (Zone)
+import View.Parts exposing (fixedColumnWidth)
 import View.Select
 import Worque exposing (Work(..), Worque)
 
@@ -36,11 +37,18 @@ type alias Model =
     , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
     , idGen : UniqueIdGen
+    , pref : Pref
     , worque : Worque
     , log : Logger.History
     , navKey : Key
     , viewState : ViewState
     , env : Env
+    }
+
+
+type alias Pref =
+    { zephyrMode : Bool
+    , evictThreshold : Int
     }
 
 
@@ -66,6 +74,7 @@ type alias Env =
     , indexedDBAvailable : Bool
     , isLocalDevelopment : Bool
     , clientHeight : Int
+    , clientWidth : Int
     }
 
 
@@ -76,6 +85,7 @@ init env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueIdGen.init
+        , pref = defaultPref env.clientWidth
         , worque = Worque.init
         , log = Logger.init
         , navKey = navKey
@@ -85,6 +95,13 @@ init env navKey =
 
     else
         welcome env navKey
+
+
+defaultPref : Int -> Pref
+defaultPref clientWidth =
+    { zephyrMode = True
+    , evictThreshold = (clientWidth // fixedColumnWidth) + 1
+    }
 
 
 defaultViewState : ViewState
@@ -110,6 +127,7 @@ welcome env navKey =
     , producerRegistry = Producer.initRegistry
     , worque = Worque.init
     , idGen = finalGen
+    , pref = defaultPref env.clientWidth
     , log = Logger.init
     , navKey = navKey
     , viewState = defaultViewState

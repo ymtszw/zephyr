@@ -141,6 +141,7 @@ statusEl m =
             , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
             , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
             , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
+            , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
             , [ "ServiceWorker"
               , if m.env.serviceWorkerAvailable then
                     "Registered"
