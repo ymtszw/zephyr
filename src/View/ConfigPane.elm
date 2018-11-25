@@ -4,7 +4,8 @@ import Array
 import Broker
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column
-import Data.ColumnStore as ColumnStore
+import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
@@ -67,8 +68,7 @@ configInnerEl m =
         , spacingXY 0 sectionSpacingY
         ]
         [ configSectionWrapper prefTitleEl <|
-            prefEl m.pref <|
-                ColumnStore.listShadow m.columnStore
+            prefEl m.pref m.columnStore
         , configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
         , configSectionWrapper statusTitleEl <| statusEl m
@@ -130,8 +130,8 @@ prefTitleEl =
         ]
 
 
-prefEl : Pref -> List Column.Column -> Element Msg
-prefEl pref shadowColumns =
+prefEl : Pref -> ColumnStore -> Element Msg
+prefEl pref columnStore =
     column [ width fill, padding rectElementInnerPadding, spacing (spacingUnit * 2) ]
         [ row [ width fill, spacing spacingUnit ]
             [ textColumn [ width fill, spacing spacingUnit ]
@@ -155,7 +155,8 @@ prefEl pref shadowColumns =
                 [ text "Shadow Columns"
                 , description [ text "Currently not displayed columns." ]
                 ]
-            , shadowColumnsEl shadowColumns
+            , shadowColumnsEl columnStore.fam <|
+                ColumnStore.listShadow columnStore
             ]
         ]
 
@@ -170,20 +171,24 @@ descFontSize =
     scale12 1
 
 
-shadowColumnsEl : List Column.Column -> Element Msg
-shadowColumnsEl shadowColumns =
+shadowColumnsEl : FilterAtomMaterial -> List Column.Column -> Element Msg
+shadowColumnsEl fam shadowColumns =
     Element.Keyed.column [ width fill, spacing spacingUnit ] <|
         case shadowColumns of
             [] ->
                 [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]
 
             _ ->
-                List.map shadowColumnKeyEl shadowColumns
+                List.map (shadowColumnKeyEl fam) shadowColumns
 
 
-shadowColumnKeyEl : Column.Column -> ( String, Element Msg )
-shadowColumnKeyEl c =
-    ( c.id, todo )
+shadowColumnKeyEl : FilterAtomMaterial -> Column.Column -> ( String, Element Msg )
+shadowColumnKeyEl fam c =
+    Tuple.pair c.id <|
+        row [ width fill, spacing spacingUnit ]
+            [ filtersToIconEl [] { size = descFontSize, fam = fam, filters = c.filters }
+            , filtersToTextEl [] { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
+            ]
 
 
 discordConfigTitleEl : Element Msg
