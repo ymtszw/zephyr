@@ -116,6 +116,7 @@ columnHeaderEl fam index c =
         [ lazy3 grabberEl index c.pinned c.id
         , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
+        , lazy2 columnDismissButtonEl c.pinned index
         , lazy2 columnPinButtonEl c.pinned c.id
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
@@ -199,6 +200,21 @@ importantFilterTextSize =
 importantFilterTextColor : Color
 importantFilterTextColor =
     oneDark.text
+
+
+columnDismissButtonEl : Bool -> Int -> Element Msg
+columnDismissButtonEl pinned index =
+    squareButtonEl [ alignRight, BD.rounded rectElementRound, visible (not pinned) ]
+        { onPress = DismissColumn index
+        , enabled = True
+        , innerElement =
+            octiconEl [ mouseOver [ BG.color oneDark.succ ] ]
+                { size = rightButtonSize
+                , color = defaultOcticonColor
+                , shape = Octicons.check
+                }
+        , innerElementSize = rightButtonSize
+        }
 
 
 columnPinButtonEl : Bool -> String -> Element Msg
