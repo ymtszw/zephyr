@@ -63,9 +63,9 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper statusTitleEl <| statusEl m
-        , configSectionWrapper discordConfigTitleEl <|
+        [ configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
+        , configSectionWrapper statusTitleEl <| statusEl m
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
