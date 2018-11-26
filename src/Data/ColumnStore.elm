@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size, sizePinned
-    , add, get, show, map, mapForView, listShadow, removeAt, touchAt, dismissAt
+    , add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
     , updateById, applyOrder, consumeBroker, updateFAM
     )
 
@@ -18,7 +18,7 @@ when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, init, encode, decoder, storeId, size, sizePinned
-@docs add, get, show, map, mapForView, listShadow, removeAt, touchAt, dismissAt
+@docs add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
 @docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
@@ -137,22 +137,22 @@ show limitMaybe cId columnStore =
     { columnStore | dict = newDict, order = newOrder }
 
 
-removeAt : Int -> ColumnStore -> ColumnStore
-removeAt index columnStore =
-    case Array.get index columnStore.order of
-        Just id ->
-            let
-                newDict =
-                    Dict.remove id columnStore.dict
-            in
-            { columnStore
-                | dict = newDict
-                , order = Array.removeAt index columnStore.order
-                , scanQueue = Deque.fromList (Dict.keys newDict) -- Previous scan ordering is discarded
-            }
+remove : String -> ColumnStore -> ColumnStore
+remove cId columnStore =
+    let
+        cs_ =
+            case Array.findIndex ((==) cId) columnStore.order of
+                Just index ->
+                    { columnStore | order = Array.removeAt index columnStore.order }
 
-        Nothing ->
-            columnStore
+                Nothing ->
+                    columnStore
+
+        newDict =
+            Dict.remove cId columnStore.dict
+    in
+    -- Discard previous scan ordering
+    { cs_ | dict = newDict, scanQueue = Deque.fromList (Dict.keys newDict) }
 
 
 touchAt : Int -> ColumnStore -> ColumnStore

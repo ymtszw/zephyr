@@ -41,7 +41,7 @@ columnConfigFlyoutEl ss fam index c =
         , lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
         , lazy3 filtersEl ss fam c
         , dangerZoneHeaderEl
-        , columnDeleteEl index c
+        , columnDeleteEl c
         , lazy columnConfigCloseButtonEl c.id
         ]
 
@@ -502,8 +502,8 @@ mediaTypeOptionEl mediaType =
             text "None"
 
 
-columnDeleteEl : Int -> Column.Column -> Element Msg
-columnDeleteEl index c =
+columnDeleteEl : Column.Column -> Element Msg
+columnDeleteEl c =
     row
         [ width fill
         , padding rectElementInnerPadding
@@ -512,7 +512,7 @@ columnDeleteEl index c =
         , BD.rounded rectElementRound
         ]
         [ columnDeleteGateEl c.id c.deleteGate
-        , lazy2 columnDeleteButtonEl index (String.toLower c.deleteGate == "delete")
+        , lazy2 columnDeleteButtonEl c.id (String.toLower c.deleteGate == "delete")
         ]
 
 
@@ -528,10 +528,10 @@ columnDeleteGateEl cId deleteGate =
         }
 
 
-columnDeleteButtonEl : Int -> Bool -> Element Msg
-columnDeleteButtonEl index confirmed =
+columnDeleteButtonEl : String -> Bool -> Element Msg
+columnDeleteButtonEl cId confirmed =
     dangerButtonEl []
-        { onPress = DelColumn index
+        { onPress = DelColumn cId
         , width = px deleteButtonWidth
         , theme = oneDark
         , enabled = confirmed

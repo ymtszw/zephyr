@@ -184,8 +184,8 @@ update msg ({ viewState, env, pref } as m) =
             , saveColumnStore changeSet
             )
 
-        DelColumn index ->
-            ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
+        DelColumn cId ->
+            ( { m | columnStore = ColumnStore.remove cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         DismissColumn index ->
             ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )

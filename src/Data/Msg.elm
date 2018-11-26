@@ -37,7 +37,7 @@ type Msg
     | SelectPick Msg
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
-    | DelColumn Int
+    | DelColumn String
     | DismissColumn Int
     | ShowColumn String
     | DragStart { index : Int, id : String, pinned : Bool }
@@ -101,8 +101,8 @@ logEntry msg =
         AddSimpleColumn fa ->
             Entry "AddSimpleColumn" [ Filter.atomToString fa ]
 
-        DelColumn index ->
-            Entry "DelColumn" [ fromInt index ]
+        DelColumn cId ->
+            Entry "DelColumn" [ cId ]
 
         DismissColumn index ->
             Entry "DismissColumn" [ fromInt index ]
