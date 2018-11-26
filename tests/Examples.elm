@@ -121,6 +121,10 @@ testPunctuateNumber initial expected =
 
 arraySuite : Test
 arraySuite =
+    let
+        isEven i =
+            modBy 2 i == 0
+    in
     describe "ArrayExtra"
         [ describe "splitAt"
             [ testArraySplitAt [ 0, 1, 2 ] 0 ( [], [ 0, 1, 2 ] )
@@ -187,15 +191,23 @@ arraySuite =
             , testSqueeze [ 0, 1, 2, 3 ] -3 9 [ 0, 9, 1, 2, 3 ]
             , testSqueeze [ 0, 1, 2, 3 ] -4 9 [ 9, 0, 1, 2, 3 ]
             ]
-        , let
-            isEven i =
-                modBy 2 i == 0
-          in
-          describe "all"
+        , describe "all"
             [ testAll [ 0, 2, 4 ] isEven True
             , testAll [ 0 ] isEven True
             , testAll [] isEven True
             , testAll [ 0, 1, 2 ] isEven False
+            ]
+        , describe "any"
+            [ testAny [ 0, 1, 2 ] isEven True
+            , testAny [ 1, 2 ] isEven True
+            , testAny [ 1 ] isEven False
+            , testAny [] isEven False
+            ]
+        , describe "member"
+            [ testMember [ 0, 1, 2 ] 1 True
+            , testMember [ 1, 2 ] 1 True
+            , testMember [ 1 ] 1 True
+            , testMember [] 1 False
             ]
         ]
 
@@ -242,6 +254,24 @@ testAll initial check expected =
         \_ ->
             fromList initial
                 |> Array.all check
+                |> Expect.equal expected
+
+
+testAny : List a -> (a -> Bool) -> Bool -> Test
+testAny initial check expected =
+    test ("should work with Array: " ++ Debug.toString initial) <|
+        \_ ->
+            fromList initial
+                |> Array.any check
+                |> Expect.equal expected
+
+
+testMember : List a -> a -> Bool -> Test
+testMember initial item expected =
+    test ("should work with Array: " ++ Debug.toString initial) <|
+        \_ ->
+            fromList initial
+                |> Array.member item
                 |> Expect.equal expected
 
 
