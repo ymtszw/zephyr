@@ -59,7 +59,8 @@ type alias ScrollRecord a =
 type ViewportStatus
     = Scrolling Browser.Dom.Viewport
     | OffTheTop Browser.Dom.Viewport
-    | AtTop
+    | AtTop Browser.Dom.Viewport
+    | Initial
 
 
 type Tier
@@ -81,7 +82,7 @@ decoder { id, limit, baseAmount, tierAmount, ascendThreshold } itemDecoder =
                     , buffer = BoundedDeque.fromList limit list
                     , pending = []
                     , pendingSize = 0
-                    , viewportStatus = AtTop
+                    , viewportStatus = Initial
                     , tier = Tier 0
                     , baseAmount = baseAmount
                     , tierAmount = tierAmount
@@ -106,7 +107,7 @@ init { id, limit, baseAmount, tierAmount, ascendThreshold } =
         , buffer = BoundedDeque.empty limit
         , pending = []
         , pendingSize = 0
-        , viewportStatus = AtTop
+        , viewportStatus = Initial
         , tier = Tier 0
         , baseAmount = baseAmount
         , tierAmount = tierAmount
@@ -176,7 +177,7 @@ initWith { id, limit, baseAmount, tierAmount, ascendThreshold } list =
         , buffer = BoundedDeque.fromList limit list
         , pending = []
         , pendingSize = 0
-        , viewportStatus = AtTop
+        , viewportStatus = Initial
         , tier = Tier 0
         , baseAmount = baseAmount
         , tierAmount = tierAmount
@@ -208,7 +209,10 @@ If pushed to `buffer`, `toList` and `toListWithFilter` caches are invalidated.
 push : a -> Scroll a -> Scroll a
 push a (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            Scroll s |> pendingToBuffer |> pushToBuffer a
+
+        AtTop _ ->
             Scroll s |> pendingToBuffer |> pushToBuffer a
 
         _ ->
@@ -267,7 +271,10 @@ depending on `viewportStatus`.
 pop : Scroll a -> ( Maybe a, Scroll a )
 pop (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            Scroll s |> pendingToBuffer |> popFromBuffer
+
+        AtTop _ ->
             Scroll s |> pendingToBuffer |> popFromBuffer
 
         _ ->
@@ -360,7 +367,10 @@ isEmpty (Scroll s) =
 scrolled : Scroll a -> Bool
 scrolled (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            False
+
+        AtTop _ ->
             False
 
         OffTheTop _ ->
@@ -388,7 +398,10 @@ update msg (Scroll s) =
                 OffTheTop vp ->
                     ( Scroll { s | viewportStatus = Scrolling vp }, queryViewport s.id )
 
-                AtTop ->
+                AtTop vp ->
+                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewport s.id )
+
+                Initial ->
                     ( Scroll s, queryViewport s.id )
 
                 Scrolling _ ->
@@ -396,7 +409,7 @@ update msg (Scroll s) =
 
         ViewportResult (Ok newVp) ->
             if newVp.viewport.y == 0 then
-                ( Scroll { s | viewportStatus = AtTop } |> pendingToBuffer |> calculateTier, Cmd.none )
+                ( Scroll { s | viewportStatus = AtTop newVp } |> pendingToBuffer |> calculateTier, Cmd.none )
 
             else
                 case s.viewportStatus of
@@ -410,8 +423,9 @@ update msg (Scroll s) =
                     _ ->
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
-        ViewportResult (Err _) ->
-            ( Scroll { s | viewportStatus = AtTop } |> pendingToBuffer |> calculateTier, Cmd.none )
+        ViewportResult (Err (Browser.Dom.NotFound _)) ->
+            -- Column is dismissed? Keep current state
+            ( Scroll s, Cmd.none )
 
         BackToTop ->
             -- Lazily resolves viewportStatus, not touching Scroll.
@@ -437,7 +451,10 @@ queryInterval =
 calculateTier : Scroll a -> Scroll a
 calculateTier (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            Scroll { s | tier = Tier 0 }
+
+        AtTop _ ->
             Scroll { s | tier = Tier 0 }
 
         OffTheTop vp ->
@@ -463,7 +480,10 @@ calculateTierImpl vp (Scroll s) =
 scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
 scrollAttrs tagger (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+
+        AtTop _ ->
             [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
 
         OffTheTop _ ->
