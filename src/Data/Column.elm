@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, columnItemLimit
-    , Msg(..), PostProcess, update
+    , Msg(..), PostProcess, Position(..), update
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -11,7 +11,7 @@ Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, columnItemLimit
-@docs Msg, PostProcess, update
+@docs Msg, PostProcess, Position, update
 
 -}
 
@@ -256,7 +256,7 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
-    | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int }
+    | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
 
@@ -264,7 +264,14 @@ type alias PostProcess =
     { cmd : Cmd Msg
     , persist : Bool
     , catchUpId : Maybe String
+    , position : Position
     }
+
+
+type Position
+    = Auto
+    | Bump
+    | Keep
 
 
 update : Msg -> Column -> ( Column, PostProcess )
@@ -274,7 +281,7 @@ update msg c =
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
 
         Pin pinned ->
-            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing )
+            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto )
 
         Calm ->
             pure { c | recentlyTouched = False }
@@ -310,37 +317,50 @@ update msg c =
 
         ConfirmFilter ->
             ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
-            , PostProcess Cmd.none True (Just c.id)
+            , PostProcess Cmd.none True (Just c.id) Keep
             )
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
-        ScanBroker { broker, maxCount, clientHeight } ->
+        ScanBroker { broker, maxCount, clientHeight, catchUp } ->
             case ItemBroker.bulkRead maxCount c.offset broker of
                 [] ->
                     pure (adjustScroll clientHeight c)
 
                 (( _, newOffset ) :: _) as items ->
-                    ( adjustScroll clientHeight
-                        { c
-                            | offset = Just newOffset
-                            , items = Scroll.prependList (List.filterMap (applyFilters c.filters) items) c.items
-                        }
-                    , PostProcess Cmd.none True Nothing
-                    )
+                    let
+                        pp =
+                            if catchUp then
+                                -- Do not bump Column during catchUp
+                                PostProcess Cmd.none True (Just c.id) Keep
+
+                            else if c.pinned then
+                                -- Do not bump Pinned Column
+                                PostProcess Cmd.none True Nothing Keep
+
+                            else
+                                PostProcess Cmd.none True Nothing Bump
+
+                        newC =
+                            { c
+                                | offset = Just newOffset
+                                , items = Scroll.prependList (List.filterMap (applyFilters c.filters) items) c.items
+                            }
+                    in
+                    ( adjustScroll clientHeight newC, pp )
 
         ScrollMsg sMsg ->
             let
                 ( items, cmd ) =
                     Scroll.update sMsg c.items
             in
-            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg cmd) False Nothing )
+            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg cmd) False Nothing Keep )
 
 
 pure : Column -> ( Column, PostProcess )
 pure c =
-    ( c, PostProcess Cmd.none False Nothing )
+    ( c, PostProcess Cmd.none False Nothing Keep )
 
 
 adjustScroll : Int -> Column -> Column

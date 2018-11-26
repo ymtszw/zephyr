@@ -26,7 +26,7 @@ This can be toggled at users' preferences. See Data.Model.
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker)
-import Data.Column as Column exposing (Column)
+import Data.Column as Column exposing (Column, Position(..))
 import Data.Filter exposing (FilterAtom(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.Item exposing (Item)
@@ -219,11 +219,11 @@ listShadow : ColumnStore -> List Column
 listShadow columnStore =
     let
         reducer cId c acc =
-            if Array.all ((/=) cId) columnStore.order then
-                c :: acc
+            if Array.member cId columnStore.order then
+                acc
 
             else
-                acc
+                c :: acc
     in
     Dict.foldr reducer [] columnStore.dict
 
@@ -244,11 +244,20 @@ updateById limitMaybe cId cMsg columnStore =
                     Dict.insert cId newC columnStore.dict
 
                 newOrder =
-                    case cMsg of
-                        Column.Pin _ ->
+                    case pp.position of
+                        Auto ->
                             autoArrange limitMaybe newDict columnStore.order
 
-                        _ ->
+                        Bump ->
+                            if Array.member c.id columnStore.order then
+                                -- Already visible columns should not be reordered abruptly, either pinned/loose.
+                                -- Rather we should notify users via e.g. badge on sidebar
+                                columnStore.order
+
+                            else
+                                columnStore.order |> Array.squeeze 0 c.id |> autoArrange limitMaybe newDict
+
+                        Keep ->
                             columnStore.order
             in
             ( { columnStore | dict = newDict, order = newOrder }, pp )
@@ -259,7 +268,7 @@ updateById limitMaybe cId cMsg columnStore =
 
 pure : ColumnStore -> ( ColumnStore, Column.PostProcess )
 pure columnStore =
-    ( columnStore, Column.PostProcess Cmd.none False Nothing )
+    ( columnStore, Column.PostProcess Cmd.none False Nothing Keep )
 
 
 autoArrange : Maybe Int -> Dict String Column -> Array String -> Array String
@@ -300,7 +309,11 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Maybe Int -> { broker : Broker Item, maxCount : Int, clientHeight : Int } -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+consumeBroker :
+    Maybe Int
+    -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    -> ColumnStore
+    -> ( ColumnStore, Column.PostProcess )
 consumeBroker limitMaybe opts columnStore =
     case Deque.popBack columnStore.scanQueue of
         ( Just cId, newScanQueue ) ->

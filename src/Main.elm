@@ -297,6 +297,7 @@ onTick posix m_ =
                         { broker = m.itemBroker
                         , maxCount = maxScanCount // ColumnStore.size m.columnStore
                         , clientHeight = m.env.clientHeight
+                        , catchUp = False
                         }
                         m.columnStore
             in
@@ -322,11 +323,15 @@ onTick posix m_ =
 
         Just (BrokerCatchUp cId) ->
             let
-                scanMsg =
-                    Column.ScanBroker { broker = m.itemBroker, maxCount = maxScanCount, clientHeight = m.env.clientHeight }
+                scanOpts =
+                    { broker = m.itemBroker
+                    , maxCount = maxScanCount
+                    , clientHeight = m.env.clientHeight
+                    , catchUp = True
+                    }
             in
             m.columnStore
-                |> ColumnStore.updateById (columnLimit m.pref) cId scanMsg
+                |> ColumnStore.updateById (columnLimit m.pref) cId (Column.ScanBroker scanOpts)
                 |> applyColumnUpdate m cId
 
         Nothing ->
