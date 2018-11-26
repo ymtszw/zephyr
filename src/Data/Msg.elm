@@ -38,6 +38,7 @@ type Msg
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn Int
     | DismissColumn Int
+    | ShowColumn String
     | DragStart { index : Int, id : String, pinned : Bool }
     | DragEnter (Array String)
     | DragEnd
@@ -104,6 +105,9 @@ logEntry msg =
 
         DismissColumn index ->
             Entry "DismissColumn" [ fromInt index ]
+
+        ShowColumn cId ->
+            Entry "ShowColumn" [ cId ]
 
         DragStart { index, id, pinned } ->
             Entry "DragStart" [ fromInt index, id, boolStr pinned ]

@@ -201,7 +201,7 @@ iconSizeCompensation =
 showColumnButtonEl : String -> Element Msg
 showColumnButtonEl cId =
     thinButtonEl [ alignRight ]
-        { onPress = NoOp
+        { onPress = ShowColumn cId
         , width = px showColumnButtonWidth
         , enabledColor = oneDark.prim
         , enabledFontColor = oneDark.text

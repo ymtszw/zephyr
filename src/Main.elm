@@ -175,6 +175,9 @@ update msg ({ viewState, env, pref } as m) =
         DismissColumn index ->
             ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
+        ShowColumn cId ->
+            ( { m | columnStore = ColumnStore.show cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
+
         DragStart { index, pinned, id } ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
 
