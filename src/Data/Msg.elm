@@ -17,7 +17,8 @@ import HttpExtra
 import Iso8601
 import Json.Decode as D
 import Json.Encode as E
-import Logger exposing (Entry)
+import Logger
+import Logger.Entry exposing (Entry)
 import Scroll
 import String exposing (fromInt)
 import Time exposing (Posix, Zone)

@@ -1,4 +1,4 @@
-module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, push, update)
+module Logger exposing (History, Msg(..), MsgFilter(..), historyEl, init, push, pushAll, update)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
@@ -11,6 +11,7 @@ import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Html
 import Html.Attributes
+import Logger.Entry exposing (Entry)
 import Octicons
 import Scroll exposing (Scroll)
 import View.Parts exposing (..)
@@ -26,12 +27,6 @@ type History
         , payloadFilter : String
         , msgFilters : List MsgFilter
         }
-
-
-type alias Entry =
-    { ctor : String
-    , payload : List String
-    }
 
 
 type MsgFilter
@@ -56,6 +51,7 @@ defaultFilters : List MsgFilter
 defaultFilters =
     -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
+    , MsgFilter False "[Work]"
     , MsgFilter False "NoOp"
     , MsgFilter False "Logger.FilterInput"
     , MsgFilter False "Discord.TokenInput"
@@ -131,6 +127,11 @@ push idGen e (History h) =
 
                 ( Nothing, _ ) ->
                     History { h | entries = Scroll.push ( eId, e ) h.entries }
+
+
+pushAll : UniqueIdGen -> List Entry -> History -> ( History, UniqueIdGen )
+pushAll idGen entries history =
+    List.foldl (\e ( accH, accGen ) -> push accGen e accH) ( history, idGen ) entries
 
 
 
