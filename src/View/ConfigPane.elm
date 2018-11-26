@@ -136,7 +136,7 @@ prefEl pref columnStore =
             [ textColumn [ width fill, spacing spacingUnit, alignTop ]
                 [ text "Zephyr Mode"
                 , description
-                    [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner. Also, columns with new messages will automatically reappear."
+                    [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner."
                     ]
                 ]
             , textColumn [ width fill, spacing spacingUnit, alignTop ]
@@ -146,13 +146,13 @@ prefEl pref columnStore =
                     , checked = pref.zephyrMode
                     }
                 , paragraph [] [ text ("Max columns: " ++ String.fromInt pref.evictThreshold) ]
-                , description [ text "Automatically calculated based on your screen width." ]
+                , description [ text "Automatically calculated based on your screen width. If you pinned columns more than this limit, shadow columns do not automatically reappear." ]
                 ]
             ]
         , row [ width fill, spacing spacingUnit ]
             [ textColumn [ width fill, spacing spacingUnit, alignTop ]
                 [ text "Shadow Columns"
-                , description [ text "Currently not displayed columns." ]
+                , description [ text "Currently not displayed columns. Automatically reappear when new messages arrived." ]
                 ]
             , let
                 slotsAvailable =
