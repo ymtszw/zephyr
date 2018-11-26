@@ -154,7 +154,11 @@ prefEl pref columnStore =
                 [ text "Shadow Columns"
                 , description [ text "Currently not displayed columns." ]
                 ]
-            , shadowColumnsEl columnStore.fam (ColumnStore.sizePinned columnStore < pref.evictThreshold) <|
+            , let
+                slotsAvailable =
+                    not pref.zephyrMode || ColumnStore.sizePinned columnStore < pref.evictThreshold
+              in
+              shadowColumnsEl columnStore.fam slotsAvailable <|
                 ColumnStore.listShadow columnStore
             ]
         ]
@@ -171,24 +175,24 @@ descFontSize =
 
 
 shadowColumnsEl : FilterAtomMaterial -> Bool -> List Column.Column -> Element Msg
-shadowColumnsEl fam enabled shadowColumns =
+shadowColumnsEl fam slotsAvailable shadowColumns =
     Element.Keyed.column [ width fill, spacing spacingUnit, alignTop ] <|
         case shadowColumns of
             [] ->
                 [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]
 
             _ ->
-                List.map (shadowColumnKeyEl fam enabled) shadowColumns
+                List.map (shadowColumnKeyEl fam slotsAvailable) shadowColumns
 
 
 shadowColumnKeyEl : FilterAtomMaterial -> Bool -> Column.Column -> ( String, Element Msg )
-shadowColumnKeyEl fam enabled c =
+shadowColumnKeyEl fam slotsAvailable c =
     Tuple.pair c.id <|
         row [ width fill, spacing spacingUnit ]
             [ filtersToIconEl [] { size = descFontSize + iconSizeCompensation, fam = fam, filters = c.filters }
             , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
                 { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
-            , showColumnButtonEl enabled c.id
+            , showColumnButtonEl slotsAvailable c.id
             ]
 
 
@@ -198,13 +202,13 @@ iconSizeCompensation =
 
 
 showColumnButtonEl : Bool -> String -> Element Msg
-showColumnButtonEl enabled cId =
+showColumnButtonEl slotsAvailable cId =
     thinButtonEl [ alignRight ]
         { onPress = ShowColumn cId
         , width = px showColumnButtonWidth
         , enabledColor = oneDark.prim
         , enabledFontColor = oneDark.text
-        , enabled = enabled
+        , enabled = slotsAvailable
         , innerElement =
             row [ Font.size descFontSize, spacing spacingUnit ]
                 [ octiconEl [] { size = descFontSize, color = oneDark.text, shape = Octicons.arrowRight }

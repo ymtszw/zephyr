@@ -330,25 +330,29 @@ update msg c =
 
                 (( _, newOffset ) :: _) as items ->
                     let
-                        pp =
-                            if catchUp then
-                                -- Do not bump Column during catchUp
-                                PostProcess Cmd.none True (Just c.id) Keep
+                        ( c_, pp ) =
+                            case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
+                                ( True, [] ) ->
+                                    ( c, PostProcess Cmd.none True (Just c.id) Keep )
 
-                            else if c.pinned then
-                                -- Do not bump Pinned Column
-                                PostProcess Cmd.none True Nothing Keep
+                                ( True, newItems ) ->
+                                    -- Do not bump nor flash Column during catchUp
+                                    ( { c | items = Scroll.prependList newItems c.items }, PostProcess Cmd.none True (Just c.id) Keep )
 
-                            else
-                                PostProcess Cmd.none True Nothing Bump
+                                ( False, [] ) ->
+                                    ( c, PostProcess Cmd.none True Nothing Keep )
 
-                        newC =
-                            { c
-                                | offset = Just newOffset
-                                , items = Scroll.prependList (List.filterMap (applyFilters c.filters) items) c.items
-                            }
+                                ( False, newItems ) ->
+                                    ( { c | items = Scroll.prependList newItems c.items, recentlyTouched = True }
+                                    , if c.pinned then
+                                        -- Do not bump Pinned Column
+                                        PostProcess Cmd.none True Nothing Keep
+
+                                      else
+                                        PostProcess Cmd.none True Nothing Bump
+                                    )
                     in
-                    ( adjustScroll clientHeight newC, pp )
+                    ( adjustScroll clientHeight { c_ | offset = Just newOffset }, pp )
 
         ScrollMsg sMsg ->
             let
