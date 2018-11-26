@@ -134,13 +134,13 @@ prefEl : Pref -> ColumnStore -> Element Msg
 prefEl pref columnStore =
     column [ width fill, padding rectElementInnerPadding, spacing (spacingUnit * 2) ]
         [ row [ width fill, spacing spacingUnit ]
-            [ textColumn [ width fill, spacing spacingUnit ]
+            [ textColumn [ width fill, spacing spacingUnit, alignTop ]
                 [ text "Zephyr Mode"
                 , description
                     [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner. Also, columns with new messages will automatically reappear."
                     ]
                 ]
-            , textColumn [ width fill, spacing spacingUnit ]
+            , textColumn [ width fill, spacing spacingUnit, alignTop ]
                 [ toggleInputEl []
                     { onChange = ZephyrMode
                     , height = sectionBaseFontSize
@@ -151,7 +151,7 @@ prefEl pref columnStore =
                 ]
             ]
         , row [ width fill, spacing spacingUnit ]
-            [ textColumn [ width fill, spacing spacingUnit ]
+            [ textColumn [ width fill, spacing spacingUnit, alignTop ]
                 [ text "Shadow Columns"
                 , description [ text "Currently not displayed columns." ]
                 ]
@@ -173,7 +173,7 @@ descFontSize =
 
 shadowColumnsEl : FilterAtomMaterial -> List Column.Column -> Element Msg
 shadowColumnsEl fam shadowColumns =
-    Element.Keyed.column [ width fill, spacing spacingUnit ] <|
+    Element.Keyed.column [ width fill, spacing spacingUnit, alignTop ] <|
         case shadowColumns of
             [] ->
                 [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]

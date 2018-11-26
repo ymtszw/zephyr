@@ -28,7 +28,7 @@ init clientWidth =
 
 adjustEvictThreashold : Int -> Int
 adjustEvictThreashold clientWidth =
-    (clientWidth // fixedColumnWidth) + 1
+    (clientWidth // fixedColumnWidth) + 2
 
 
 encode : Pref -> Storable
