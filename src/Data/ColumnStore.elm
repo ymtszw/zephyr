@@ -1,5 +1,5 @@
 module Data.ColumnStore exposing
-    ( ColumnStore, init, encode, decoder, storeId, size
+    ( ColumnStore, init, encode, decoder, storeId, size, sizePinned
     , add, get, show, map, mapForView, listShadow, removeAt, touchAt, dismissAt
     , updateById, applyOrder, consumeBroker, updateFAM
     )
@@ -17,7 +17,7 @@ In "Zephyr mode", Columns are automatically evicted (dismissed)
 when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
-@docs ColumnStore, init, encode, decoder, storeId, size
+@docs ColumnStore, init, encode, decoder, storeId, size, sizePinned
 @docs add, get, show, map, mapForView, listShadow, removeAt, touchAt, dismissAt
 @docs updateById, applyOrder, consumeBroker, updateFAM
 
@@ -83,6 +83,19 @@ init =
 size : ColumnStore -> Int
 size cs =
     Dict.size cs.dict
+
+
+sizePinned : ColumnStore -> Int
+sizePinned cs =
+    let
+        countPinned _ c acc =
+            if c.pinned then
+                acc + 1
+
+            else
+                acc
+    in
+    Dict.foldl countPinned 0 cs.dict
 
 
 

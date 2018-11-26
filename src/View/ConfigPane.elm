@@ -12,7 +12,6 @@ import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Deque
-import Dict
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -155,7 +154,7 @@ prefEl pref columnStore =
                 [ text "Shadow Columns"
                 , description [ text "Currently not displayed columns." ]
                 ]
-            , shadowColumnsEl columnStore.fam <|
+            , shadowColumnsEl columnStore.fam (ColumnStore.sizePinned columnStore < pref.evictThreshold) <|
                 ColumnStore.listShadow columnStore
             ]
         ]
@@ -171,25 +170,25 @@ descFontSize =
     scale12 1
 
 
-shadowColumnsEl : FilterAtomMaterial -> List Column.Column -> Element Msg
-shadowColumnsEl fam shadowColumns =
+shadowColumnsEl : FilterAtomMaterial -> Bool -> List Column.Column -> Element Msg
+shadowColumnsEl fam enabled shadowColumns =
     Element.Keyed.column [ width fill, spacing spacingUnit, alignTop ] <|
         case shadowColumns of
             [] ->
                 [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]
 
             _ ->
-                List.map (shadowColumnKeyEl fam) shadowColumns
+                List.map (shadowColumnKeyEl fam enabled) shadowColumns
 
 
-shadowColumnKeyEl : FilterAtomMaterial -> Column.Column -> ( String, Element Msg )
-shadowColumnKeyEl fam c =
+shadowColumnKeyEl : FilterAtomMaterial -> Bool -> Column.Column -> ( String, Element Msg )
+shadowColumnKeyEl fam enabled c =
     Tuple.pair c.id <|
         row [ width fill, spacing spacingUnit ]
             [ filtersToIconEl [] { size = descFontSize + iconSizeCompensation, fam = fam, filters = c.filters }
             , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
                 { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
-            , showColumnButtonEl c.id
+            , showColumnButtonEl enabled c.id
             ]
 
 
@@ -198,14 +197,14 @@ iconSizeCompensation =
     4
 
 
-showColumnButtonEl : String -> Element Msg
-showColumnButtonEl cId =
+showColumnButtonEl : Bool -> String -> Element Msg
+showColumnButtonEl enabled cId =
     thinButtonEl [ alignRight ]
         { onPress = ShowColumn cId
         , width = px showColumnButtonWidth
         , enabledColor = oneDark.prim
         , enabledFontColor = oneDark.text
-        , enabled = True
+        , enabled = enabled
         , innerElement =
             row [ Font.size descFontSize, spacing spacingUnit ]
                 [ octiconEl [] { size = descFontSize, color = oneDark.text, shape = Octicons.arrowRight }
@@ -247,7 +246,7 @@ statusEl : Model -> Element Msg
 statusEl m =
     let
         numColumns =
-            Dict.size m.columnStore.dict
+            ColumnStore.size m.columnStore
 
         numVisible =
             Array.length m.columnStore.order
@@ -258,6 +257,7 @@ statusEl m =
             , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
             , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
             , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
+            , [ "* Pinned columns", StringExtra.punctuateNumber <| ColumnStore.sizePinned m.columnStore ]
             , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
             , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
             , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
