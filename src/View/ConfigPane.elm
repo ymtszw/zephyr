@@ -189,11 +189,17 @@ shadowColumnKeyEl : FilterAtomMaterial -> Bool -> Column.Column -> ( String, Ele
 shadowColumnKeyEl fam slotsAvailable c =
     Tuple.pair c.id <|
         row [ width fill, spacing spacingUnit ]
-            [ filtersToIconEl [] { size = descFontSize + iconSizeCompensation, fam = fam, filters = c.filters }
+            [ filtersToIconEl [] { size = shadowColumnIconSize, fam = fam, filters = c.filters }
             , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
                 { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
             , showColumnButtonEl slotsAvailable c.id
+            , deleteColumnButtonEl c.id
             ]
+
+
+shadowColumnIconSize : Int
+shadowColumnIconSize =
+    descFontSize + iconSizeCompensation
 
 
 iconSizeCompensation : Int
@@ -220,6 +226,16 @@ showColumnButtonEl slotsAvailable cId =
 showColumnButtonWidth : Int
 showColumnButtonWidth =
     70
+
+
+deleteColumnButtonEl : String -> Element Msg
+deleteColumnButtonEl cId =
+    squareButtonEl [ alignRight ]
+        { onPress = DelColumn cId
+        , enabled = True
+        , innerElement = octiconEl [] { size = shadowColumnIconSize, color = oneDark.err, shape = Octicons.trashcan }
+        , innerElementSize = shadowColumnIconSize
+        }
 
 
 discordConfigTitleEl : Element Msg
