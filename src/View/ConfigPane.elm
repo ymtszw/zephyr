@@ -187,8 +187,31 @@ shadowColumnKeyEl fam c =
     Tuple.pair c.id <|
         row [ width fill, spacing spacingUnit ]
             [ filtersToIconEl [] { size = descFontSize, fam = fam, filters = c.filters }
-            , filtersToTextEl [] { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
+            , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
+                { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
+            , showColumnButtonEl c.id
             ]
+
+
+showColumnButtonEl : String -> Element Msg
+showColumnButtonEl cId =
+    thinButtonEl [ alignRight ]
+        { onPress = NoOp
+        , width = px showColumnButtonWidth
+        , enabledColor = oneDark.prim
+        , enabledFontColor = oneDark.text
+        , enabled = True
+        , innerElement =
+            row [ Font.size descFontSize, spacing spacingUnit ]
+                [ octiconEl [] { size = descFontSize, color = oneDark.text, shape = Octicons.arrowRight }
+                , text "Show"
+                ]
+        }
+
+
+showColumnButtonWidth : Int
+showColumnButtonWidth =
+    70
 
 
 discordConfigTitleEl : Element Msg
