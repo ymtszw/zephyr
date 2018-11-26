@@ -186,11 +186,16 @@ shadowColumnKeyEl : FilterAtomMaterial -> Column.Column -> ( String, Element Msg
 shadowColumnKeyEl fam c =
     Tuple.pair c.id <|
         row [ width fill, spacing spacingUnit ]
-            [ filtersToIconEl [] { size = descFontSize, fam = fam, filters = c.filters }
+            [ filtersToIconEl [] { size = descFontSize + iconSizeCompensation, fam = fam, filters = c.filters }
             , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
                 { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
             , showColumnButtonEl c.id
             ]
+
+
+iconSizeCompensation : Int
+iconSizeCompensation =
+    4
 
 
 showColumnButtonEl : String -> Element Msg
