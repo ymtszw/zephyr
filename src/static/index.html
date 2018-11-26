@@ -21,7 +21,7 @@
       const serviceWorkerAvailable =
         "serviceWorker" in window.navigator && !isLocalDevelopment;
       const indexedDBAvailable = "indexedDB" in window;
-      const clientHeight = window.document.documentElement.clientHeight;
+      const { clientHeight, clientWidth } = window.document.documentElement;
 
       if (serviceWorkerAvailable) {
         window.navigator.serviceWorker
@@ -37,7 +37,8 @@
           serviceWorkerAvailable,
           indexedDBAvailable,
           isLocalDevelopment,
-          clientHeight
+          clientHeight,
+          clientWidth
         }
       });
       const STATE = "state";
@@ -107,8 +108,14 @@
           const getReq = (db
             .transaction(STATE)
             .objectStore(STATE)
-            .get(id).onsuccess = event =>
-            app.ports.loadFromJs.send(event.target.result));
+            .get(id).onsuccess = event => {
+            const result = event.target.result;
+            if (id !== "pref" || result !== undefined) {
+              app.ports.loadFromJs.send(result);
+            } else {
+              // Pref is not found; do nothing and let it fallback
+            }
+          });
           getReq.onerror = event =>
             err(
               `Failed to retrieve state from IndexedDB! ${event.target.error}`

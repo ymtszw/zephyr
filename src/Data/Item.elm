@@ -39,6 +39,10 @@ matchAtom item filterAtom =
         ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
             cId == channelId
 
+        ( ByMessage "", _ ) ->
+            -- Short-circuit for empty query; this CAN be invalidated on input, but we are slacking
+            True
+
         ( ByMessage text, DiscordItem { content, embeds } ) ->
             String.contains text content || List.any (discordEmbedHasText text) embeds
 

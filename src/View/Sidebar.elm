@@ -22,7 +22,7 @@ import View.Parts exposing (..)
 sidebarEl : Model -> Element Msg
 sidebarEl ({ columnStore, viewState, env } as m) =
     column
-        [ width (px (buttonSize + paddingX * 2))
+        [ width (px sidebarWidth)
         , height (fill |> maximum env.clientHeight)
         , alignLeft
         , paddingXY paddingX sectionSpacingY
@@ -32,6 +32,11 @@ sidebarEl ({ columnStore, viewState, env } as m) =
         [ el [ width fill, alignTop ] (columnButtonsEl columnStore)
         , el [ width fill, alignBottom ] (lazy otherButtonsEl viewState.configOpen)
         ]
+
+
+sidebarWidth : Int
+sidebarWidth =
+    buttonSize + paddingX * 2
 
 
 buttonSize : Int
@@ -61,12 +66,28 @@ columnButtonsEl columnStore =
 
 
 columnButtonKeyEl : FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
-columnButtonKeyEl fam index { id, filters } =
+columnButtonKeyEl fam index { id, filters, pinned } =
     Element.Input.button [ width (px buttonSize), height (px buttonSize) ]
         { onPress = Just (RevealColumn index)
-        , label = filtersToIconEl [] { size = buttonSize, fam = fam, filters = filters }
+        , label =
+            filtersToIconEl [ inFront (pinBadgeEl pinned) ]
+                { size = buttonSize, fam = fam, filters = filters }
         }
         |> Tuple.pair ("sidebarButton_" ++ id)
+
+
+pinBadgeEl : Bool -> Element Msg
+pinBadgeEl pinned =
+    octiconEl
+        [ alignTop
+        , alignRight
+        , visible pinned
+        , style "transform" "rotate(-45deg)"
+        ]
+        { size = buttonSize // 3
+        , color = columnPinColor
+        , shape = Octicons.pin
+        }
 
 
 columnAddButtonKeyEl : ( String, Element Msg )
@@ -80,6 +101,7 @@ columnAddButtonKeyEl =
         , BD.width 1
         , BD.color oneDark.note
         , BD.rounded rectElementRound
+        , mouseOver [ BG.color configButtonActiveBackground ]
         ]
         { onPress = Just AddEmptyColumn
         , label =
@@ -104,7 +126,16 @@ otherButtonsEl configOpen =
             ]
             { onPress = Just (ToggleConfig (not configOpen))
             , label =
-                octiconEl [ centerX, centerY ] { size = otherButtonSize, color = defaultOcticonColor, shape = Octicons.gear }
+                octiconEl [ centerX, centerY ]
+                    { size = otherButtonSize
+                    , color =
+                        if configOpen then
+                            oneDark.text
+
+                        else
+                            defaultOcticonColor
+                    , shape = Octicons.gear
+                    }
             }
         , newTabLink
             [ width (px buttonSize)

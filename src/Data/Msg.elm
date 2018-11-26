@@ -8,6 +8,7 @@ import Data.Column as Column
 import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
+import Data.Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
@@ -16,7 +17,8 @@ import HttpExtra
 import Iso8601
 import Json.Decode as D
 import Json.Encode as E
-import Logger exposing (Entry)
+import Logger
+import Logger.Entry exposing (Entry)
 import Scroll
 import String exposing (fromInt)
 import Time exposing (Posix, Zone)
@@ -35,14 +37,16 @@ type Msg
     | SelectPick Msg
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
-    | DelColumn Int
-    | ToggleColumnSwappable Bool
-    | DragStart Int String
+    | DelColumn String
+    | DismissColumn Int
+    | ShowColumn String
+    | DragStart { index : Int, id : String, pinned : Bool }
     | DragEnter (Array String)
     | DragEnd
     | LoadColumnStore ( ColumnStore, UniqueIdGen )
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry
+    | LoadPref Pref
     | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
@@ -50,6 +54,7 @@ type Msg
     | ProducerCtrl Producer.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
+    | ZephyrMode Bool
     | Tick Posix
 
 
@@ -96,14 +101,17 @@ logEntry msg =
         AddSimpleColumn fa ->
             Entry "AddSimpleColumn" [ Filter.atomToString fa ]
 
-        DelColumn index ->
-            Entry "DelColumn" [ fromInt index ]
+        DelColumn cId ->
+            Entry "DelColumn" [ cId ]
 
-        ToggleColumnSwappable bool ->
-            Entry "ToggleColumnSwappable" [ boolStr bool ]
+        DismissColumn index ->
+            Entry "DismissColumn" [ fromInt index ]
 
-        DragStart index cId ->
-            Entry "DragStart" [ fromInt index, cId ]
+        ShowColumn cId ->
+            Entry "ShowColumn" [ cId ]
+
+        DragStart { index, id, pinned } ->
+            Entry "DragStart" [ fromInt index, id, boolStr pinned ]
 
         DragEnter order ->
             Entry "DragEnter" [ String.join "," (Array.toList order) ]
@@ -119,6 +127,12 @@ logEntry msg =
 
         LoadProducerRegistry _ ->
             Entry "LoadProducerRegistry" [ "<producerRegistry>" ]
+
+        LoadPref { zephyrMode, evictThreshold } ->
+            Entry "LoadPref"
+                [ "zephyrMode: " ++ boolStr zephyrMode
+                , "evictThreshold: " ++ String.fromInt evictThreshold
+                ]
 
         LoadOk _ ->
             -- Old gigantic state load; remove after migration
@@ -144,6 +158,9 @@ logEntry msg =
 
         DomOp (Err (Browser.Dom.NotFound id)) ->
             Entry "DomOp.Err.NotFound" [ id ]
+
+        ZephyrMode bool ->
+            Entry "ZephyrMode" [ boolStr bool ]
 
         Tick posix ->
             Entry "Tick" [ Iso8601.fromTime posix ]
@@ -262,6 +279,12 @@ columnMsgToEntry cId cMsg =
         Column.ToggleConfig bool ->
             Entry "Column.ToggleConfig" [ cId, boolStr bool ]
 
+        Column.Pin bool ->
+            Entry "Column.Pin" [ cId, boolStr bool ]
+
+        Column.Calm ->
+            Entry "Column.Calm" [ cId ]
+
         Column.AddFilter filter ->
             Entry "Column.AddFilter" [ cId, Filter.toString filter ]
 
@@ -282,6 +305,9 @@ columnMsgToEntry cId cMsg =
 
         Column.DeleteGateInput input ->
             Entry "Column.DeleteGateInput" [ cId, input ]
+
+        Column.ScanBroker { maxCount } ->
+            Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]
 
         Column.ScrollMsg sMsg ->
             scrollMsgToEntry "Column" sMsg

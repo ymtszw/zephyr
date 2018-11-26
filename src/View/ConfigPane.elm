@@ -1,17 +1,22 @@
 module View.ConfigPane exposing (configPaneEl)
 
+import Array
 import Broker
 import Data.ColorTheme exposing (oneDark)
-import Data.Column
+import Data.Column as Column
+import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
-import Dict
+import Deque
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
+import Element.Keyed
 import Logger
 import Octicons
 import StringExtra
@@ -21,17 +26,32 @@ import View.Parts exposing (..)
 
 configPaneEl : Model -> Element Msg
 configPaneEl m =
-    el
-        [ width (px fixedPaneWidth)
-        , height (fill |> maximum m.env.clientHeight)
-        , alignLeft
-        , padding rectElementOuterPadding
-        , scrollbarY
-        , visible m.viewState.configOpen
-        , BG.color (setAlpha 0.8 oneDark.bg)
-        , Font.color oneDark.text
-        ]
-        (configInnerEl m)
+    let
+        baseAttrs =
+            [ width (px fixedPaneWidth)
+            , height (fill |> maximum m.env.clientHeight)
+            , alignLeft
+            , padding rectElementOuterPadding
+            , scrollbarY
+            , BG.color (setAlpha 0.8 oneDark.bg)
+            , Font.color oneDark.text
+            , style "transition" "all 0.15s"
+            ]
+
+        toggleAttrs =
+            if m.viewState.configOpen then
+                [ style "visibility" "visible"
+                , style "opacity" "1"
+                , style "transform" "translateX(0px)"
+                ]
+
+            else
+                [ style "visibility" "hidden"
+                , style "opacity" "0"
+                , style "transform" "translateX(-50px)" -- The value sufficient for slide-in effect to be recognizable
+                ]
+    in
+    el (baseAttrs ++ toggleAttrs) (configInnerEl m)
 
 
 fixedPaneWidth : Int
@@ -46,9 +66,11 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper statusTitleEl <| statusEl m
+        [ configSectionWrapper prefTitleEl <|
+            prefEl m.pref m.columnStore
         , configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
+        , configSectionWrapper statusTitleEl <| statusEl m
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -95,6 +117,139 @@ sectionBaseFontSize =
     scale12 2
 
 
+prefTitleEl : Element Msg
+prefTitleEl =
+    row [ spacing spacingUnit ]
+        [ octiconEl []
+            { size = sectionTitleFontSize
+            , color = oneDark.text
+            , shape = Octicons.settings
+            }
+        , text "Preference"
+        ]
+
+
+prefEl : Pref -> ColumnStore -> Element Msg
+prefEl pref columnStore =
+    column [ width fill, padding rectElementInnerPadding, spacing (spacingUnit * 2) ]
+        [ row [ width fill, spacing spacingUnit ]
+            [ textColumn [ width fill, spacing spacingUnit, alignTop ]
+                [ text "Zephyr Mode"
+                , description
+                    [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner."
+                    ]
+                ]
+            , textColumn [ width fill, spacing spacingUnit, alignTop ]
+                [ toggleInputEl []
+                    { onChange = ZephyrMode
+                    , height = sectionBaseFontSize
+                    , checked = pref.zephyrMode
+                    }
+                , paragraph [] [ text ("Max columns: " ++ String.fromInt pref.evictThreshold) ]
+                , description [ text "Automatically calculated based on your screen width. If you pinned columns more than this limit, shadow columns do not automatically reappear." ]
+                ]
+            ]
+        , row [ width fill, spacing spacingUnit ]
+            [ textColumn [ width fill, spacing spacingUnit, alignTop ]
+                [ text "Shadow Columns"
+                , description [ text "Currently not displayed columns. Automatically reappear when new messages arrived." ]
+                ]
+            , let
+                slotsAvailable =
+                    not pref.zephyrMode || ColumnStore.sizePinned columnStore < pref.evictThreshold
+              in
+              shadowColumnsEl columnStore.fam slotsAvailable <|
+                ColumnStore.listShadow columnStore
+            ]
+        ]
+
+
+description : List (Element Msg) -> Element Msg
+description texts =
+    paragraph [ Font.size descFontSize, Font.color oneDark.note ] texts
+
+
+descFontSize : Int
+descFontSize =
+    scale12 1
+
+
+shadowColumnsEl : FilterAtomMaterial -> Bool -> List Column.Column -> Element Msg
+shadowColumnsEl fam slotsAvailable shadowColumns =
+    Element.Keyed.column [ width fill, spacing spacingUnit, alignTop ] <|
+        case shadowColumns of
+            [] ->
+                [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]
+
+            _ ->
+                List.map (shadowColumnKeyEl fam slotsAvailable) shadowColumns
+
+
+shadowColumnKeyEl : FilterAtomMaterial -> Bool -> Column.Column -> ( String, Element Msg )
+shadowColumnKeyEl fam slotsAvailable c =
+    Tuple.pair c.id <|
+        row [ width fill, spacing spacingUnit ]
+            [ filtersToIconEl [] { size = shadowColumnIconSize, fam = fam, filters = c.filters }
+            , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
+                { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
+            , showColumnButtonEl slotsAvailable c.id
+            , deleteColumnButtonEl c.id
+            ]
+
+
+shadowColumnIconSize : Int
+shadowColumnIconSize =
+    descFontSize + iconSizeCompensation
+
+
+iconSizeCompensation : Int
+iconSizeCompensation =
+    4
+
+
+showColumnButtonEl : Bool -> String -> Element Msg
+showColumnButtonEl slotsAvailable cId =
+    thinButtonEl [ alignRight ]
+        { onPress = ShowColumn cId
+        , width = px showColumnButtonWidth
+        , enabledColor = oneDark.prim
+        , enabledFontColor = oneDark.text
+        , enabled = slotsAvailable
+        , innerElement =
+            row [ Font.size descFontSize, spacing spacingUnit ]
+                [ octiconEl [] { size = descFontSize, color = oneDark.text, shape = Octicons.arrowRight }
+                , text "Show"
+                ]
+        }
+
+
+showColumnButtonWidth : Int
+showColumnButtonWidth =
+    70
+
+
+deleteColumnButtonEl : String -> Element Msg
+deleteColumnButtonEl cId =
+    squareButtonEl [ alignRight ]
+        { onPress = DelColumn cId
+        , enabled = True
+        , innerElement = octiconEl [] { size = shadowColumnIconSize, color = oneDark.err, shape = Octicons.trashcan }
+        , innerElementSize = shadowColumnIconSize
+        }
+
+
+discordConfigTitleEl : Element Msg
+discordConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ squareIconOrHeadEl []
+            { size = sectionTitleFontSize
+            , name = "Discord"
+            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Discord"
+        ]
+
+
 statusTitleEl : Element Msg
 statusTitleEl =
     row [ spacing spacingUnit ]
@@ -109,12 +264,23 @@ statusTitleEl =
 
 statusEl : Model -> Element Msg
 statusEl m =
-    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size statusFontSize ] <|
+    let
+        numColumns =
+            ColumnStore.size m.columnStore
+
+        numVisible =
+            Array.length m.columnStore.order
+    in
+    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
         List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
             [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
-            , [ "Messages per column", StringExtra.punctuateNumber Data.Column.columnItemLimit ]
-            , [ "Number of columns", StringExtra.punctuateNumber <| Dict.size m.columnStore.dict ]
+            , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
+            , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
+            , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
+            , [ "* Pinned columns", StringExtra.punctuateNumber <| ColumnStore.sizePinned m.columnStore ]
+            , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
             , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
+            , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
             , [ "ServiceWorker"
               , if m.env.serviceWorkerAvailable then
                     "Registered"
@@ -130,21 +296,3 @@ statusEl m =
                     "Not available"
               ]
             ]
-
-
-statusFontSize : Int
-statusFontSize =
-    scale12 1
-
-
-discordConfigTitleEl : Element Msg
-discordConfigTitleEl =
-    row [ spacing spacingUnit ]
-        [ iconWithBadgeEl []
-            { size = sectionTitleFontSize
-            , badge = Nothing
-            , fallback = "Discord"
-            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
-            }
-        , text "Discord"
-        ]

@@ -1,4 +1,4 @@
-module Logger exposing (Entry, History, Msg(..), MsgFilter(..), historyEl, init, push, update)
+module Logger exposing (History, Msg(..), MsgFilter(..), historyEl, init, push, pushAll, update)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
@@ -10,7 +10,8 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Html
-import Html.Attributes exposing (style, tabindex)
+import Html.Attributes
+import Logger.Entry exposing (Entry)
 import Octicons
 import Scroll exposing (Scroll)
 import View.Parts exposing (..)
@@ -26,12 +27,6 @@ type History
         , payloadFilter : String
         , msgFilters : List MsgFilter
         }
-
-
-type alias Entry =
-    { ctor : String
-    , payload : List String
-    }
 
 
 type MsgFilter
@@ -56,8 +51,8 @@ defaultFilters : List MsgFilter
 defaultFilters =
     -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
-    , MsgFilter False "Logger.ScrollStart"
-    , MsgFilter False "Logger.ViewportOk"
+    , MsgFilter False "[Work]"
+    , MsgFilter False "NoOp"
     , MsgFilter False "Logger.FilterInput"
     , MsgFilter False "Discord.TokenInput"
     , MsgFilter False "Column.DeleteGateInput"
@@ -132,6 +127,11 @@ push idGen e (History h) =
 
                 ( Nothing, _ ) ->
                     History { h | entries = Scroll.push ( eId, e ) h.entries }
+
+
+pushAll : UniqueIdGen -> List Entry -> History -> ( History, UniqueIdGen )
+pushAll idGen entries history =
+    List.foldl (\e ( accH, accGen ) -> push accGen e accH) ( history, idGen ) entries
 
 
 
@@ -267,7 +267,7 @@ ctorCellEl : List MsgFilter -> Entry -> Element Msg
 ctorCellEl msgFilters entry =
     row [ spacing spacingUnit ]
         [ breakP [ bold ] [ breakT entry.ctor ]
-        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (Html.Attributes.tabindex -1) ] <|
             if List.member (MsgFilter True entry.ctor) msgFilters then
                 { onPress = Just (DelMsgFilter (MsgFilter True entry.ctor))
                 , label = ctorFilterButtonEl [ BG.color oneDark.succ ] Octicons.diffAdded
@@ -277,7 +277,7 @@ ctorCellEl msgFilters entry =
                 { onPress = Just (SetMsgFilter (MsgFilter True entry.ctor))
                 , label = ctorFilterButtonEl [] Octicons.diffAdded
                 }
-        , Element.Input.button [ htmlAttribute (tabindex -1) ] <|
+        , Element.Input.button [ htmlAttribute (Html.Attributes.tabindex -1) ] <|
             -- No need for switch since if Negative Filter is set, this entry should be invisible
             { onPress = Just (SetMsgFilter (MsgFilter False entry.ctor))
             , label = ctorFilterButtonEl [] Octicons.diffRemoved
@@ -313,7 +313,7 @@ payloadCellEl raw =
         , scrollbarY
         , BG.color payloadCellBackground
         , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
-        , htmlAttribute (style "user-select" "all")
+        , style "user-select" "all"
         ]
         [ breakT raw ]
 
@@ -354,7 +354,7 @@ msgFilterEl ((MsgFilter isPos ctor) as mf) =
         , Element.Input.button
             [ padding msgFilterPadding
             , focused []
-            , htmlAttribute (tabindex -1)
+            , htmlAttribute (Html.Attributes.tabindex -1)
             , BD.roundEach { topLeft = 0, bottomLeft = 0, topRight = rectElementRound, bottomRight = rectElementRound }
             ]
             { onPress = Just (DelMsgFilter mf)

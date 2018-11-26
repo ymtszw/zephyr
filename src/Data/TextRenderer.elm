@@ -33,7 +33,7 @@ import Html exposing (..)
 import Html.Attributes exposing (href, rel, style, target)
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
-import View.Parts exposing (css)
+import View.Parts exposing (cssRgba)
 
 
 type alias TextRenderer =
@@ -78,7 +78,7 @@ stringOrUrlEl theme stringOrUrl =
                 [ href (Url.toString url)
                 , target "_blank"
                 , rel "noreferrer noopener"
-                , style "color" (css theme.link)
+                , style "color" (cssRgba theme.link)
                 ]
                 [ text trimmedUrl ]
 

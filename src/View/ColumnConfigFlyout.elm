@@ -14,10 +14,11 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
-import Html.Attributes exposing (style)
 import ListExtra
 import Octicons
+import Scroll
 import String exposing (fromInt)
+import StringExtra
 import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
@@ -35,10 +36,12 @@ columnConfigFlyoutEl ss fam index c =
         , BD.color flyoutFrameColor
         , Font.size baseFontSize
         ]
-        [ lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
+        [ statusHeaderEl
+        , lazy3 statusEl (Scroll.size c.items) c.pinned c.id
+        , lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
         , lazy3 filtersEl ss fam c
         , dangerZoneHeaderEl
-        , columnDeleteEl index c
+        , columnDeleteEl c
         , lazy columnConfigCloseButtonEl c.id
         ]
 
@@ -58,24 +61,18 @@ flyoutFrameColor =
     oneDark.note
 
 
-filterSectionHeaderEl : String -> Bool -> Element Msg
-filterSectionHeaderEl cId isDirty =
+statusHeaderEl : Element Msg
+statusHeaderEl =
     row
         [ width fill
         , padding titlePadding
+        , spacing spacingUnit
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
         , Font.color flyoutFrameColor
         ]
-        [ text "Filter Rules"
-        , thinButtonEl [ alignRight, Font.size baseFontSize ]
-            { onPress = ColumnCtrl cId ConfirmFilter
-            , width = shrink |> minimum 60
-            , enabledColor = oneDark.succ
-            , enabledFontColor = oneDark.text
-            , enabled = isDirty
-            , innerElement = text "Apply"
-            }
+        [ octiconEl [] { size = titleFontSize, color = oneDark.succ, shape = Octicons.pulse }
+        , text "Status"
         ]
 
 
@@ -89,16 +86,64 @@ titlePadding =
     2
 
 
-dangerZoneHeaderEl : Element Msg
-dangerZoneHeaderEl =
-    el
+statusEl : Int -> Bool -> String -> Element Msg
+statusEl nItems pinned cId =
+    [ [ "ID", cId ]
+    , [ "Stored messages", StringExtra.punctuateNumber nItems ]
+    , [ "Pinned"
+      , if pinned then
+            "Yes"
+
+        else
+            "No"
+      ]
+    ]
+        |> List.map (List.intersperse " - " >> List.map text >> row [ spacing spacingUnit ])
+        |> column
+            [ width (fill |> minimum 0)
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
+            , BD.rounded rectElementRound
+            , BG.color sectionBackground
+            ]
+
+
+filterSectionHeaderEl : String -> Bool -> Element Msg
+filterSectionHeaderEl cId isDirty =
+    row
         [ width fill
         , padding titlePadding
+        , spacing spacingUnit
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
         , Font.color flyoutFrameColor
         ]
-        (text "Danger Zone")
+        [ octiconEl [] { size = titleFontSize, color = oneDark.prim, shape = Octicons.rocket }
+        , text "Filter Rules"
+        , thinButtonEl [ alignRight, Font.size baseFontSize ]
+            { onPress = ColumnCtrl cId ConfirmFilter
+            , width = shrink |> minimum 60
+            , enabledColor = oneDark.succ
+            , enabledFontColor = oneDark.text
+            , enabled = isDirty
+            , innerElement = text "Apply"
+            }
+        ]
+
+
+dangerZoneHeaderEl : Element Msg
+dangerZoneHeaderEl =
+    row
+        [ width fill
+        , padding titlePadding
+        , spacing spacingUnit
+        , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+        , Font.size titleFontSize
+        , Font.color flyoutFrameColor
+        ]
+        [ octiconEl [] { size = titleFontSize, color = oneDark.err, shape = Octicons.stop }
+        , text "Danger Zone"
+        ]
 
 
 filtersEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -107,6 +152,13 @@ filtersEl ss fam c =
         |> Array.push (filterEditorEl ss fam c.id AddF)
         |> Array.toList
         |> List.intersperse (filterLogicSeparator "AND")
+        |> List.append
+            [ if Array.isEmpty c.filters then
+                none
+
+              else
+                filterHelpEl
+            ]
         |> column
             [ width (fill |> minimum 0)
             , padding rectElementInnerPadding
@@ -119,6 +171,23 @@ filtersEl ss fam c =
 sectionBackground : Color
 sectionBackground =
     oneDark.main
+
+
+filterHelpEl : Element Msg
+filterHelpEl =
+    breakTColumn [ width fill, Font.color flyoutFrameColor ]
+        [ breakP []
+            [ el [ Font.color oneDark.warn, Font.italic ] (breakT "CAUTION: ")
+            , breakT "Messages currently stored in this column will be "
+            , el [ Font.color oneDark.err ] (breakT "discarded")
+            , breakT " when filter rules are updated."
+            ]
+        , breakP []
+            [ breakT "After the update is "
+            , el [ BG.color oneDark.succ, Font.color oneDark.text, paddingXY spacingUnit 0 ] (breakT "Applied,")
+            , breakT " messages still available in the local buffer are re-read and inserted to this column according to the new filter rules."
+            ]
+        ]
 
 
 type FEditorType
@@ -433,8 +502,8 @@ mediaTypeOptionEl mediaType =
             text "None"
 
 
-columnDeleteEl : Int -> Column.Column -> Element Msg
-columnDeleteEl index c =
+columnDeleteEl : Column.Column -> Element Msg
+columnDeleteEl c =
     row
         [ width fill
         , padding rectElementInnerPadding
@@ -443,7 +512,7 @@ columnDeleteEl index c =
         , BD.rounded rectElementRound
         ]
         [ columnDeleteGateEl c.id c.deleteGate
-        , lazy2 columnDeleteButtonEl index (String.toLower c.deleteGate == "delete")
+        , lazy2 columnDeleteButtonEl c.id (String.toLower c.deleteGate == "delete")
         ]
 
 
@@ -459,10 +528,10 @@ columnDeleteGateEl cId deleteGate =
         }
 
 
-columnDeleteButtonEl : Int -> Bool -> Element Msg
-columnDeleteButtonEl index confirmed =
+columnDeleteButtonEl : String -> Bool -> Element Msg
+columnDeleteButtonEl cId confirmed =
     dangerButtonEl []
-        { onPress = DelColumn index
+        { onPress = DelColumn cId
         , width = px deleteButtonWidth
         , theme = oneDark
         , enabled = confirmed

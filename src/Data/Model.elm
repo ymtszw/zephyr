@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcome, encodeForPersistence
+    , init, welcome
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcome, encodeForPersistence
+@docs init, welcome
 
 -}
 
@@ -19,14 +19,16 @@ import Data.Filter exposing (FilterAtom)
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
-import Data.Msg exposing (Msg)
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
-import Data.Storable
+import Data.Storable exposing (Storable)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Logger
 import Time exposing (Zone)
+import View.Parts exposing (fixedColumnWidth)
 import View.Select
 import Worque exposing (Work(..), Worque)
 
@@ -36,6 +38,7 @@ type alias Model =
     , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
     , idGen : UniqueIdGen
+    , pref : Pref
     , worque : Worque
     , log : Logger.History
     , navKey : Key
@@ -46,7 +49,6 @@ type alias Model =
 
 type alias ViewState =
     { configOpen : Bool
-    , columnSwappable : Bool
     , columnSwapMaybe : Maybe ColumnSwap
     , selectState : View.Select.State
     , timezone : Zone
@@ -56,6 +58,7 @@ type alias ViewState =
 
 type alias ColumnSwap =
     { grabbedId : String
+    , pinned : Bool
     , originalIndex : Int
     , originalOrder : Array String
     }
@@ -66,6 +69,7 @@ type alias Env =
     , indexedDBAvailable : Bool
     , isLocalDevelopment : Bool
     , clientHeight : Int
+    , clientWidth : Int
     }
 
 
@@ -76,6 +80,7 @@ init env navKey =
         , itemBroker = ItemBroker.init
         , producerRegistry = Producer.initRegistry
         , idGen = UniqueIdGen.init
+        , pref = Pref.init env.clientWidth
         , worque = Worque.init
         , log = Logger.init
         , navKey = navKey
@@ -90,7 +95,6 @@ init env navKey =
 defaultViewState : ViewState
 defaultViewState =
     { configOpen = False
-    , columnSwappable = False
     , columnSwapMaybe = Nothing
     , selectState = View.Select.init
     , timezone = Time.utc
@@ -106,24 +110,14 @@ welcome env navKey =
                 |> UniqueIdGen.gen UniqueIdGen.columnPrefix
                 |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome env.clientHeight idGen cId)
     in
-    { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
+    { columnStore = ColumnStore.add Nothing welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
     , worque = Worque.init
     , idGen = finalGen
+    , pref = Pref.init env.clientWidth
     , log = Logger.init
     , navKey = navKey
     , viewState = defaultViewState
     , env = env
     }
-
-
-encodeForPersistence : Model -> E.Value
-encodeForPersistence m =
-    E.object
-        [ ( "id", E.string "primary" )
-        , ( "columnStore", ColumnStore.encode m.columnStore |> Data.Storable.finalize )
-        , ( "itemBroker", Broker.encode Item.encode m.itemBroker )
-        , ( "producerRegistry", Producer.encodeRegistry m.producerRegistry |> Data.Storable.finalize )
-        , ( "idGen", UniqueIdGen.encode m.idGen )
-        ]

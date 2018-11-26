@@ -18,11 +18,8 @@ import View.Sidebar exposing (sidebarEl)
 
 body : Model -> List (Html.Html Msg)
 body m =
-    [ layoutWith
-        { options = [ focusStyle globalFocusStyle ] }
-        [ dragEventHandlers m.viewState.columnSwapMaybe ]
-        (bodyEl m)
-    , manualStyle
+    [ manualStyle
+    , layoutWith { options = [ focusStyle globalFocusStyle ] } [] (bodyEl m)
     ]
 
 
@@ -63,13 +60,3 @@ backgroundEl contents =
             ]
             (text "Zephyr")
         ]
-
-
-dragEventHandlers : Maybe ColumnSwap -> Attribute Msg
-dragEventHandlers columnSwapMaybe =
-    case columnSwapMaybe of
-        Just _ ->
-            htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
-
-        Nothing ->
-            noneAttr

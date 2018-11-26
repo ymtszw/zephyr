@@ -15,8 +15,6 @@ The application's Model starts with almost-empty initial model.
 
 -}
 
-import Array
-import ArrayExtra as Array
 import Broker exposing (Broker)
 import Browser
 import Browser.Dom
@@ -24,16 +22,14 @@ import Browser.Events
 import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.FilterAtomMaterial as FilterAtomMaterial
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen
-import IndexedDb exposing (ChangeSet, changeSet, noPersist, saveColumnStore, saveItemBroker, saveProducerRegistry)
-import Json.Decode as D
-import Json.DecodeExtra as D
+import IndexedDb exposing (..)
 import Logger
 import Task exposing (Task)
 import Time exposing (Posix)
@@ -65,7 +61,22 @@ log : (Msg -> Model -> ( Model, Cmd Msg, ChangeSet )) -> Msg -> Model -> ( Model
 log u msg m =
     u msg <|
         if m.env.isLocalDevelopment then
-            Logger.push m.idGen (Data.Msg.logEntry msg) m.log
+            let
+                entries =
+                    case msg of
+                        Tick _ ->
+                            -- Do not commit new worque; we are just logging here
+                            case Worque.pop m.worque of
+                                ( Just w, _ ) ->
+                                    [ Data.Msg.logEntry msg, Worque.logEntry w ]
+
+                                ( Nothing, _ ) ->
+                                    [ Data.Msg.logEntry msg ]
+
+                        _ ->
+                            [ Data.Msg.logEntry msg ]
+            in
+            Logger.pushAll m.idGen entries m.log
                 |> (\( newLog, idGen ) -> { m | log = newLog, idGen = idGen })
 
         else
@@ -109,7 +120,7 @@ getTimeZone =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
-update msg ({ viewState, env } as m) =
+update msg ({ viewState, env, pref } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -118,7 +129,11 @@ update msg ({ viewState, env } as m) =
         GetViewport { viewport } ->
             -- On the other hand, getViewport is using clientHeight, which does not include scrollbars.
             -- Scrolls are resized on BrokerScan
-            pure { m | env = { env | clientHeight = round viewport.height } }
+            pure
+                { m
+                    | env = { env | clientHeight = round viewport.height, clientWidth = round viewport.width }
+                    , pref = { pref | evictThreshold = Pref.adjustEvictThreashold (round viewport.width) }
+                }
 
         GetTimeZone ( _, zone ) ->
             pure { m | viewState = { viewState | timezone = zone } }
@@ -127,7 +142,7 @@ update msg ({ viewState, env } as m) =
             pure { m | viewState = { viewState | visible = True } }
 
         VisibilityChanged False ->
-            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing, visible = False } }
+            pure { m | viewState = { viewState | columnSwapMaybe = Nothing, visible = False } }
 
         LoggerCtrl lMsg ->
             Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
@@ -152,7 +167,7 @@ update msg ({ viewState, env } as m) =
                 |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen cId)
                 |> (\( c, idGen ) ->
                         -- If Filters are somehow set to the new Column, then persist.
-                        pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
+                        pure { m | columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore, idGen = idGen }
                    )
 
         AddSimpleColumn fa ->
@@ -162,36 +177,37 @@ update msg ({ viewState, env } as m) =
             in
             ( { m
                 | idGen = idGen
-                , columnStore = ColumnStore.add c m.columnStore
+                , columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore
                 , worque = Worque.push (BrokerCatchUp c.id) m.worque
               }
             , Cmd.none
             , saveColumnStore changeSet
             )
 
-        DelColumn index ->
-            ( { m | columnStore = ColumnStore.removeAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
+        DelColumn cId ->
+            ( { m | columnStore = ColumnStore.remove cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
-        ToggleColumnSwappable True ->
-            pure { m | viewState = { viewState | columnSwappable = True } }
+        DismissColumn index ->
+            ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
-        ToggleColumnSwappable False ->
-            -- DragEnd may get lost. Fix zombie drag here.
-            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
+        ShowColumn cId ->
+            ( { m | columnStore = ColumnStore.show (columnLimit m.pref) cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
-        DragStart originalIndex colId ->
-            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap colId originalIndex m.columnStore.order) } }
+        DragStart { index, pinned, id } ->
+            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
 
         DragEnter newOrder ->
             pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
 
         DragEnd ->
-            -- During HTML5 drag, KeyboardEvent won't fire (modifier key situations are accessible via DragEvent though).
-            -- So we always turn off swap mode at dragend
-            pure { m | viewState = { viewState | columnSwappable = False, columnSwapMaybe = Nothing } }
+            -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
+            ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
         LoadColumnStore ( cs, idGen ) ->
-            ( { m | columnStore = cs, idGen = idGen }, IndexedDb.requestItemBroker, saveColumnStore changeSet )
+            ( { m | columnStore = cs, idGen = idGen }
+            , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref ]
+            , saveColumnStore changeSet
+            )
 
         LoadItemBroker itemBroker ->
             if Broker.capacity itemBroker == Broker.capacity m.itemBroker then
@@ -208,6 +224,10 @@ update msg ({ viewState, env } as m) =
             reloadProducers <|
                 { m | producerRegistry = pr, worque = Worque.pushAll [ DropOldState, initScan m.columnStore ] m.worque }
 
+        LoadPref loaded ->
+            -- Pref decoding always succeeds, and it is not a part of critical state loading chain.
+            ( { m | pref = loaded }, Cmd.none, savePref changeSet )
+
         LoadOk ss ->
             -- Old method; remove after migration
             reloadProducers <|
@@ -220,25 +240,21 @@ update msg ({ viewState, env } as m) =
                 }
 
         LoadErr _ ->
-            -- Hard failure of initial state load; start app normally as the last resport
-            pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
+            if ColumnStore.size m.columnStore == 0 then
+                -- Presumed first visit
+                Model.welcome m.env m.navKey
+                    |> (\welcomeM -> { welcomeM | worque = Worque.push (initScan m.columnStore) m.worque })
+                    |> pure
+
+            else
+                -- Hard failure of initial state load; start app normally as the last resport
+                pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
 
         ColumnCtrl cId cMsg ->
-            let
-                ( cs, cmd, persist ) =
-                    ColumnStore.updateById cId cMsg m.columnStore
-            in
-            if persist then
-                ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
-                , Cmd.map (ColumnCtrl cId) cmd
-                , saveColumnStore changeSet
-                )
-
-            else
-                ( { m | columnStore = cs }, Cmd.map (ColumnCtrl cId) cmd, changeSet )
+            applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId cMsg m.columnStore
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -247,13 +263,21 @@ update msg ({ viewState, env } as m) =
             onTick posix m
 
         RevealColumn index ->
-            noPersist ( m, revealColumn index )
+            noPersist ( { m | columnStore = ColumnStore.touchAt index m.columnStore }, revealColumn index )
 
         DomOp (Ok ()) ->
             pure m
 
         DomOp (Err e) ->
             pure m
+
+        ZephyrMode bool ->
+            case Pref.update bool pref of
+                ( newPref, True ) ->
+                    ( { m | pref = newPref }, Cmd.none, savePref changeSet )
+
+                ( newPref, False ) ->
+                    pure { m | pref = newPref }
 
         NoOp ->
             pure m
@@ -262,6 +286,15 @@ update msg ({ viewState, env } as m) =
 pure : Model -> ( Model, Cmd Msg, ChangeSet )
 pure m =
     ( m, Cmd.none, changeSet )
+
+
+columnLimit : Pref -> Maybe Int
+columnLimit pref =
+    if pref.zephyrMode then
+        Just pref.evictThreshold
+
+    else
+        Nothing
 
 
 onTick : Posix -> Model -> ( Model, Cmd Msg, ChangeSet )
@@ -274,12 +307,18 @@ onTick posix m_ =
     case workMaybe of
         Just (BrokerScan 0) ->
             let
-                ( cs, persist ) =
-                    ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
+                ( cs, pp ) =
+                    ColumnStore.consumeBroker (columnLimit m.pref)
+                        { broker = m.itemBroker
+                        , maxCount = maxScanCount // ColumnStore.size m.columnStore
+                        , clientHeight = m.env.clientHeight
+                        , catchUp = False
+                        }
+                        m.columnStore
             in
             ( { m | columnStore = cs, worque = Worque.push (initScan cs) m.worque }
             , Cmd.none
-            , if persist then
+            , if pp.persist then
                 saveColumnStore changeSet
 
               else
@@ -298,18 +337,25 @@ onTick posix m_ =
             noPersist ( m, IndexedDb.dropOldState )
 
         Just (BrokerCatchUp cId) ->
-            case ColumnStore.catchUpBroker m.itemBroker cId m.columnStore of
-                ( cs, True ) ->
-                    ( { m | columnStore = cs, worque = Worque.push (BrokerCatchUp cId) m.worque }
-                    , Cmd.none
-                    , saveColumnStore changeSet
-                    )
-
-                ( cs, False ) ->
-                    ( { m | columnStore = cs }, Cmd.none, saveColumnStore changeSet )
+            let
+                scanOpts =
+                    { broker = m.itemBroker
+                    , maxCount = maxScanCount
+                    , clientHeight = m.env.clientHeight
+                    , catchUp = True
+                    }
+            in
+            m.columnStore
+                |> ColumnStore.updateById (columnLimit m.pref) cId (Column.ScanBroker scanOpts)
+                |> applyColumnUpdate m cId
 
         Nothing ->
             pure m
+
+
+maxScanCount : Int
+maxScanCount =
+    500
 
 
 initScan : ColumnStore -> Work
@@ -354,6 +400,27 @@ scrollToColumn index parentVp =
 
     else
         Browser.Dom.setViewportOf columnAreaParentId (targetX + cWidth - parentVp.viewport.width) 0
+
+
+applyColumnUpdate : Model -> String -> ( ColumnStore, Column.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
+applyColumnUpdate m cId ( columnStore, pp ) =
+    let
+        worque =
+            case pp.catchUpId of
+                Just id ->
+                    Worque.push (BrokerCatchUp id) m.worque
+
+                Nothing ->
+                    m.worque
+
+        changeSet_ =
+            if pp.persist then
+                saveColumnStore changeSet
+
+            else
+                changeSet
+    in
+    ( { m | columnStore = columnStore, worque = worque }, Cmd.map (ColumnCtrl cId) pp.cmd, changeSet_ )
 
 
 {-| Restart producers on savedState reload.
@@ -433,29 +500,11 @@ sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
         , if m.env.indexedDBAvailable then
-            IndexedDb.load m.env.clientHeight m.idGen
+            IndexedDb.load m.env m.idGen
 
           else
             Sub.none
         , Time.every globalTimerIntervalMillis Tick
-        , toggleColumnSwap m.viewState.columnSwappable
-        ]
-
-
-globalTimerIntervalMillis : Float
-globalTimerIntervalMillis =
-    -- 10 Hz
-    100.0
-
-
-toggleColumnSwap : Bool -> Sub Msg
-toggleColumnSwap swappable =
-    Sub.batch
-        [ if not swappable then
-            Browser.Events.onKeyDown (D.when (D.field "altKey" D.bool) identity (D.succeed (ToggleColumnSwappable True)))
-
-          else
-            Browser.Events.onKeyUp (D.when (D.field "altKey" D.bool) not (D.succeed (ToggleColumnSwappable False)))
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 VisibilityChanged <|
@@ -466,6 +515,12 @@ toggleColumnSwap swappable =
                         Browser.Events.Hidden ->
                             False
         ]
+
+
+globalTimerIntervalMillis : Float
+globalTimerIntervalMillis =
+    -- 10 Hz
+    100.0
 
 
 

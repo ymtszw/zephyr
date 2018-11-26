@@ -1,6 +1,7 @@
 port module IndexedDb exposing
-    ( load, requestItemBroker, requestProducerRegistry, dropOldState
-    , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
+    ( load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
+    , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, savePref
+    , postUpdate, noPersist
     )
 
 {-| Handles persistence of application state to IndexedDB.
@@ -8,15 +9,17 @@ port module IndexedDb exposing
 Follow the best practices!!
 <https://developers.google.com/web/fundamentals/instant-and-offline/web-storage/indexeddb-best-practices>
 
-@docs load, requestItemBroker, requestProducerRegistry, dropOldState
-@docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, postUpdate, noPersist
+@docs load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
+@docs ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, savePref
+@docs postUpdate, noPersist
 
 -}
 
 import Data.ColumnStore as ColumnStore
 import Data.ItemBroker as ItemBroker
-import Data.Model as Model exposing (Model)
+import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (Msg(..))
+import Data.Pref as Pref
 import Data.Producer as Producer
 import Data.SavedState as SavedState
 import Data.Storable as Storable exposing (Storable)
@@ -30,14 +33,14 @@ import Json.Encode as E
 -- Load State
 
 
-load : Int -> UniqueIdGen -> Sub Msg
-load clientHeight idGen =
-    loadFromJs (loadMsg clientHeight idGen)
+load : Env -> UniqueIdGen -> Sub Msg
+load env idGen =
+    loadFromJs (loadMsg env idGen)
 
 
-loadMsg : Int -> UniqueIdGen -> E.Value -> Msg
-loadMsg clientHeight idGen value =
-    case D.decodeValue (stateDecoder clientHeight) value of
+loadMsg : Env -> UniqueIdGen -> E.Value -> Msg
+loadMsg env idGen value =
+    case D.decodeValue (stateDecoder env) value of
         Ok msg ->
             msg
 
@@ -45,14 +48,14 @@ loadMsg clientHeight idGen value =
             LoadErr e
 
 
-stateDecoder : Int -> Decoder Msg
-stateDecoder clientHeight =
+stateDecoder : Env -> Decoder Msg
+stateDecoder env =
     D.oneOf
         [ D.do (D.field "id" D.string) <|
             \id ->
                 if id == ColumnStore.storeId then
                     D.map2 (\cs idGen -> LoadColumnStore ( cs, idGen ))
-                        (ColumnStore.decoder clientHeight)
+                        (ColumnStore.decoder env.clientHeight)
                         (D.field idGenStoreId UniqueIdGen.decoder)
 
                 else if id == ItemBroker.storeId then
@@ -61,11 +64,14 @@ stateDecoder clientHeight =
                 else if id == Producer.registryStoreId then
                     D.map LoadProducerRegistry Producer.registryDecoder
 
+                else if id == Pref.storeId then
+                    D.map LoadPref (Pref.decoder env.clientWidth)
+
                 else
                     D.fail ("Unknown state id: " ++ id)
 
         -- Old format; may remove after migration
-        , D.map LoadOk <| SavedState.decoder clientHeight
+        , D.map LoadOk <| SavedState.decoder env.clientHeight
         ]
 
 
@@ -77,6 +83,11 @@ requestItemBroker =
 requestProducerRegistry : Cmd msg
 requestProducerRegistry =
     requestStored Producer.registryStoreId
+
+
+requestPref : Cmd msg
+requestPref =
+    requestStored Pref.storeId
 
 
 requestStored : String -> Cmd msg
@@ -98,6 +109,7 @@ type ChangeSet
         { columnStore : Bool
         , itemBroker : Bool
         , producerRegistry : Bool
+        , pref : Bool
         }
 
 
@@ -107,6 +119,7 @@ changeSet =
         { columnStore = False
         , itemBroker = False
         , producerRegistry = False
+        , pref = False
         }
 
 
@@ -123,6 +136,11 @@ saveItemBroker (ChangeSet cs) =
 saveProducerRegistry : ChangeSet -> ChangeSet
 saveProducerRegistry (ChangeSet cs) =
     ChangeSet { cs | producerRegistry = True }
+
+
+savePref : ChangeSet -> ChangeSet
+savePref (ChangeSet cs) =
+    ChangeSet { cs | pref = True }
 
 
 {-| A hook to persist Elm application state to IndexedDB via port.
@@ -161,6 +179,9 @@ changeSetToCmds m (ChangeSet cs) =
     , toCmd cs.producerRegistry <|
         \_ ->
             doPersist (Producer.encodeRegistry m.producerRegistry)
+    , toCmd cs.pref <|
+        \_ ->
+            doPersist (Pref.encode m.pref)
     ]
         |> List.filterMap identity
 

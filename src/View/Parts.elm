@@ -1,14 +1,14 @@
 module View.Parts exposing
-    ( noneAttr, visible, switchCursor, inputScreen, dragHandle
+    ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+    , textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
-    , scale12, css, brightness, setAlpha, manualStyle
-    , filtersToIconEl
+    , scale12, cssRgba, brightness, setAlpha, manualStyle
+    , filtersToIconEl, filtersToTextEl
     , discordGuildIconEl, discordChannelEl
     , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
     )
 
 {-| View parts, complementing Element and Html.
@@ -16,7 +16,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, visible, switchCursor, inputScreen, dragHandle
+@docs noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
 @docs breakP, breakT, breakTColumn, collapsingColumn
 
 
@@ -27,18 +27,18 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+@docs textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
 ## Styles
 
-@docs scale12, css, brightness, setAlpha, manualStyle
+@docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
 ## Column Filter
 
-@docs filtersToIconEl
+@docs filtersToIconEl, filtersToTextEl
 
 
 ## Discord
@@ -49,13 +49,13 @@ module View.Parts exposing
 ## Constants
 
 @docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
 
 -}
 
 import Array exposing (Array)
 import Data.ColorTheme exposing (ColorTheme, oneDark)
-import Data.Filter exposing (Filter, FilterAtom(..))
+import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
 import Element exposing (..)
@@ -65,7 +65,7 @@ import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
 import Html
-import Html.Attributes exposing (class, draggable, style)
+import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import Json.Encode
@@ -76,6 +76,11 @@ import Octicons
 noneAttr : Attribute msg
 noneAttr =
     htmlAttribute (Html.Attributes.property "none" Json.Encode.null)
+
+
+style : String -> String -> Attribute msg
+style prop value =
+    htmlAttribute (Html.Attributes.style prop value)
 
 
 {-| Hide an Element with `display: none;` property.
@@ -96,7 +101,7 @@ visible isVisible =
         noneAttr
 
     else
-        htmlAttribute (style "display" "none")
+        style "display" "none"
 
 
 {-| Cursor helper for input elements. When False, use cursor: default;
@@ -107,13 +112,39 @@ switchCursor enabled =
         noneAttr
 
     else
-        htmlAttribute (style "cursor" "default")
+        style "cursor" "default"
+
+
+borderFlash : Bool -> Attribute msg
+borderFlash doFlash =
+    if doFlash then
+        style "animation" "2s ease-out borderFlash"
+
+    else
+        noneAttr
+
+
+borderFlashKeyframesName : String
+borderFlashKeyframesName =
+    "borderFlash"
+
+
+{-| Fired when a CSS animation has been concluded.
+
+The event may not be fired when e.g. the target element is removed.
+
+Do not be confused with `transitionend`, a similar event for CSS transition.
+
+-}
+onAnimationEnd : msg -> Attribute msg
+onAnimationEnd msg =
+    htmlAttribute (Html.Events.on "animationend" (D.succeed msg))
 
 
 octiconEl : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html.Html msg } -> Element msg
 octiconEl attrs { size, color, shape } =
     Octicons.defaultOptions
-        |> Octicons.color (css color)
+        |> Octicons.color (cssRgba color)
         |> Octicons.size size
         |> shape
         |> html
@@ -214,7 +245,7 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , switchCursor enabled
         , customPlaceholder theme placeholder text
         , inputScreen enabled
-        , htmlAttribute (style "line-height" "1") -- Cancelling line-height introduced by elm-ui
+        , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
         , disabled (not enabled)
         ]
         { onChange = onChange
@@ -240,21 +271,90 @@ textInputPadding =
 
 customPlaceholder : ColorTheme -> Maybe (Element msg) -> String -> Attribute msg
 customPlaceholder theme phMaybe text =
-    -- elm-ui's placeholder uses opacity to switch visibility, but it triggers style recalculation on change.
-    -- Whereas display property does not trigger style recalculation, and with inFront (position: absolute;), no layout/reflow.
+    -- elm-ui's placeholder uses opacity to switch visibility (which should be fast on paper),
+    -- but it triggers style recalculation somehow in large SPA (probably due to class swapping and diffing on many DOMs).
+    -- Transforming scale/translate directly on specific elements do not trigger style recalculation,
+    -- are cheap and fast, and with inFront (position: absolute;), cause no layout/reflow.
     case phMaybe of
         Just ph ->
             inFront <|
                 el
-                    [ padding textInputPadding
+                    [ paddingXY textInputPadding 0
                     , centerY
-                    , visible (String.isEmpty text)
                     , Font.color (setAlpha 0.5 theme.text)
+                    , style "transition" "transform 0.3s"
+                    , if String.isEmpty text then
+                        noneAttr
+
+                      else
+                        style "transform" "scale(0.75) translate(-20%, -150%)"
                     ]
                     ph
 
         Nothing ->
             noneAttr
+
+
+toggleInputEl :
+    List (Attribute msg)
+    ->
+        { onChange : Bool -> msg
+        , height : Int
+        , checked : Bool
+        }
+    -> Element msg
+toggleInputEl attrs opts =
+    let
+        rounding =
+            max 1 (opts.height // 5)
+
+        innerHeight =
+            opts.height - 2
+
+        baseAttrs =
+            [ width (px (opts.height * 2))
+            , height (px opts.height)
+            , padding 1
+            , BD.rounded rounding
+            , BG.color oneDark.note
+            , behindContent <|
+                el
+                    [ width (px (opts.height * 2))
+                    , height (px opts.height)
+                    , BD.rounded rounding
+                    , BG.color oneDark.succ
+                    , style "transition" "opacity 0.25s"
+                    , if opts.checked then
+                        style "opacity" "1"
+
+                      else
+                        style "opacity" "0"
+                    ]
+                    none
+            ]
+    in
+    Element.Input.button (baseAttrs ++ attrs)
+        { onPress = Just (opts.onChange (not opts.checked))
+        , label = lazy3 toggleHandleEl rounding innerHeight opts.checked
+        }
+
+
+toggleHandleEl : Int -> Int -> Bool -> Element msg
+toggleHandleEl rounding innerHeight checked =
+    el
+        [ width (px innerHeight)
+        , height (px innerHeight)
+        , BD.rounded rounding
+        , BG.color oneDark.text
+        , alignLeft
+        , style "transition" "transform 0.25s"
+        , if checked then
+            style "transform" ("translateX(" ++ String.fromInt (innerHeight + 1) ++ "px)")
+
+          else
+            style "transform" "translateX(0px)"
+        ]
+        none
 
 
 primaryButtonEl :
@@ -511,7 +611,7 @@ Suitable for user-generated texts. Use with `breakT`.
 -}
 breakP : List (Attribute msg) -> List (Element msg) -> Element msg
 breakP attrs =
-    paragraph <| attrs ++ [ htmlAttribute (class breakClassName) ]
+    paragraph <| attrs ++ [ htmlAttribute (Html.Attributes.class breakClassName) ]
 
 
 breakClassName : String
@@ -523,7 +623,7 @@ breakClassName =
 -}
 breakTColumn : List (Attribute msg) -> List (Element msg) -> Element msg
 breakTColumn attrs =
-    textColumn <| htmlAttribute (class breakClassName) :: attrs
+    textColumn <| htmlAttribute (Html.Attributes.class breakClassName) :: attrs
 
 
 collapsingColumn : List (Attribute msg) -> List (Element msg) -> Element msg
@@ -575,10 +675,10 @@ setAlpha a color =
 
 {-| Dump a Color to CSS-compatible representaiton
 -}
-css : Color -> String
-css color =
+cssRgba : Color -> String
+cssRgba color =
     let
-        { red, green, blue } =
+        { red, green, blue, alpha } =
             toRgb color
     in
     String.join ""
@@ -588,15 +688,17 @@ css color =
         , String.fromFloat (255 * green)
         , ","
         , String.fromFloat (255 * blue)
+        , ","
+        , String.fromFloat alpha
         , ")"
         ]
 
 
 dragHandle : Decoder msg -> List (Attribute msg)
 dragHandle onDragstart =
-    [ htmlAttribute (draggable "true")
-    , htmlAttribute (class dragHandleClassName)
-    , htmlAttribute (Html.Events.stopPropagationOn "dragstart" (D.map (\msg -> ( msg, True )) onDragstart))
+    [ htmlAttribute (Html.Attributes.draggable "true")
+    , htmlAttribute (Html.Attributes.class dragHandleClassName)
+    , htmlAttribute (Html.Events.on "dragstart" onDragstart)
     ]
 
 
@@ -626,7 +728,7 @@ filterToIconEl attrs size fam filter elMaybe =
                 ( _, _ ) ->
                     Nothing
     in
-    Data.Filter.fold reducer elMaybe filter
+    Filter.fold reducer elMaybe filter
 
 
 discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
@@ -677,6 +779,52 @@ fallbackIconEl userAttrs size =
     el attrs <| el [ centerX, centerY ] <| text "Z"
 
 
+filtersToTextEl :
+    List (Attribute msg)
+    ->
+        { fontSize : Int
+        , color : Color
+        , fam : FilterAtomMaterial
+        , filters : Array Filter
+        }
+    -> Element msg
+filtersToTextEl attrs { fontSize, color, fam, filters } =
+    let
+        arrayReducer f acc =
+            List.sortWith Filter.compareFilterAtom (Filter.toList f) :: acc
+    in
+    filters
+        |> Array.foldr arrayReducer []
+        |> List.concatMap (List.map (filterAtomTextEl fontSize color fam))
+        |> List.intersperse (breakT "  ")
+        |> breakP attrs
+
+
+filterAtomTextEl : Int -> Color -> FilterAtomMaterial -> FilterAtom -> Element msg
+filterAtomTextEl fontSize color fam fa =
+    case fa of
+        OfDiscordChannel cId ->
+            el [ Font.size fontSize, Font.color color, Font.bold ] <|
+                Maybe.withDefault (breakT cId) <|
+                    FAM.mapDiscordChannel cId fam <|
+                        \c -> breakT ("#" ++ c.name)
+
+        ByMessage query ->
+            breakT ("\"" ++ query ++ "\"")
+
+        ByMedia HasImage ->
+            octiconEl [] { size = fontSize, color = color, shape = Octicons.fileMedia }
+
+        ByMedia HasMovie ->
+            octiconEl [] { size = fontSize, color = color, shape = Octicons.deviceCameraVideo }
+
+        ByMedia HasNone ->
+            octiconEl [] { size = fontSize, color = color, shape = Octicons.textSize }
+
+        RemoveMe ->
+            none
+
+
 discordGuildIconEl : List (Attribute msg) -> Int -> Discord.Guild -> Element msg
 discordGuildIconEl attrs size guild =
     squareIconOrHeadEl attrs
@@ -714,6 +862,7 @@ manualStyle =
         , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
         , Html.text "a:link{text-decoration:none;}" -- Disabled browser-default link-underlining
         , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
+        , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
         ]
 
 
@@ -769,3 +918,8 @@ itemAvatarSize =
 itemBorderBottom : Int
 itemBorderBottom =
     2
+
+
+columnPinColor : Color
+columnPinColor =
+    oneDark.warn

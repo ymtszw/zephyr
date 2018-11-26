@@ -1,6 +1,6 @@
 module Data.Column exposing
-    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
-    , Msg(..), update, consumeBroker
+    ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, columnItemLimit
+    , Msg(..), PostProcess, Position(..), update
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -10,8 +10,8 @@ Items stored in List are ordered from latest to oldest.
 Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
-@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, adjustScroll, columnItemLimit
-@docs Msg, update, consumeBroker
+@docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, columnItemLimit
+@docs Msg, PostProcess, Position, update
 
 -}
 
@@ -22,7 +22,6 @@ import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
-import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -37,6 +36,8 @@ type alias Column =
     , items : Scroll ColumnItem
     , filters : Array Filter
     , offset : Maybe Offset
+    , pinned : Bool
+    , recentlyTouched : Bool -- This property may become stale, though it should have no harm
     , configOpen : Bool
     , pendingFilters : Array Filter
     , deleteGate : String
@@ -60,6 +61,7 @@ encode c =
         , ( "items", Scroll.encode encodeColumnItem c.items )
         , ( "filters", E.array Filter.encode c.filters )
         , ( "offset", E.maybe (E.string << Broker.offsetToString) c.offset )
+        , ( "pinned", E.bool c.pinned )
         ]
 
 
@@ -97,7 +99,10 @@ decoder clientHeight =
                         \filters ->
                             D.do (D.maybeField "offset" offsetDecoder) <|
                                 \offset ->
-                                    D.succeed (Column id items filters offset False filters "")
+                                    -- Migration; use field instead of maybeField later
+                                    D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
+                                        \pinned ->
+                                            D.succeed (Column id items filters offset pinned False False filters "")
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -150,6 +155,8 @@ welcome clientHeight idGen id =
       , items = Scroll.initWith (scrollOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
+      , pinned = False
+      , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
       , deleteGate = ""
@@ -177,7 +184,7 @@ columnItemLimit =
 
 columnBaseAmount : Int -> Int
 columnBaseAmount clientHeight =
-    clientHeight // itemMinimumHeight
+    (clientHeight * 3) // (itemMinimumHeight * 5)
 
 
 textOnlyItem : String -> String -> ColumnItem
@@ -214,6 +221,8 @@ new clientHeight idGen id =
       , items = Scroll.initWith (scrollOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
+      , pinned = False
+      , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
       , deleteGate = ""
@@ -228,23 +237,18 @@ simple clientHeight fa id =
     , items = Scroll.init (scrollOptions id clientHeight)
     , filters = Array.fromList [ Filter.Singular fa ]
     , offset = Nothing
+    , pinned = False
+    , recentlyTouched = True
     , configOpen = False
     , pendingFilters = Array.fromList [ Filter.Singular fa ]
     , deleteGate = ""
     }
 
 
-adjustScroll : Int -> Column -> Column
-adjustScroll clientHeight c =
-    let
-        baseAmount =
-            columnBaseAmount clientHeight
-    in
-    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
-
-
 type Msg
     = ToggleConfig Bool
+    | Pin Bool
+    | Calm
     | AddFilter Filter
     | DelFilter Int
     | AddFilterAtom { filterIndex : Int, atom : FilterAtom }
@@ -252,14 +256,35 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
+    | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
 
-update : Msg -> Column -> ( Column, Cmd Msg, Bool )
+type alias PostProcess =
+    { cmd : Cmd Msg
+    , persist : Bool
+    , catchUpId : Maybe String
+    , position : Position
+    }
+
+
+type Position
+    = Auto
+    | Bump
+    | Keep
+
+
+update : Msg -> Column -> ( Column, PostProcess )
 update msg c =
     case msg of
         ToggleConfig open ->
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
+
+        Pin pinned ->
+            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto )
+
+        Calm ->
+            pure { c | recentlyTouched = False }
 
         AddFilter filter ->
             pure { c | pendingFilters = Array.push filter c.pendingFilters }
@@ -291,28 +316,64 @@ update msg c =
             pure { c | pendingFilters = atomOrFilterDeleted }
 
         ConfirmFilter ->
-            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items }, Cmd.none, True )
+            ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
+            , PostProcess Cmd.none True (Just c.id) Keep
+            )
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
+        ScanBroker { broker, maxCount, clientHeight, catchUp } ->
+            case ItemBroker.bulkRead maxCount c.offset broker of
+                [] ->
+                    pure (adjustScroll clientHeight c)
+
+                (( _, newOffset ) :: _) as items ->
+                    let
+                        ( c_, pp ) =
+                            case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
+                                ( True, [] ) ->
+                                    ( c, PostProcess Cmd.none True (Just c.id) Keep )
+
+                                ( True, newItems ) ->
+                                    -- Do not bump nor flash Column during catchUp
+                                    ( { c | items = Scroll.prependList newItems c.items }, PostProcess Cmd.none True (Just c.id) Keep )
+
+                                ( False, [] ) ->
+                                    ( c, PostProcess Cmd.none True Nothing Keep )
+
+                                ( False, newItems ) ->
+                                    ( { c | items = Scroll.prependList newItems c.items, recentlyTouched = True }
+                                    , if c.pinned then
+                                        -- Do not bump Pinned Column
+                                        PostProcess Cmd.none True Nothing Keep
+
+                                      else
+                                        PostProcess Cmd.none True Nothing Bump
+                                    )
+                    in
+                    ( adjustScroll clientHeight { c_ | offset = Just newOffset }, pp )
+
         ScrollMsg sMsg ->
-            Scroll.update sMsg c.items |> (\( items, cmd ) -> ( { c | items = items }, Cmd.map ScrollMsg cmd, False ))
+            let
+                ( items, cmd ) =
+                    Scroll.update sMsg c.items
+            in
+            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg cmd) False Nothing Keep )
 
 
-consumeBroker : Int -> Broker Item -> Column -> ( Column, Bool )
-consumeBroker maxCount broker column =
-    case ItemBroker.bulkRead maxCount column.offset broker of
-        [] ->
-            ( column, False )
+pure : Column -> ( Column, PostProcess )
+pure c =
+    ( c, PostProcess Cmd.none False Nothing Keep )
 
-        (( _, newOffset ) :: _) as items ->
-            ( { column
-                | offset = Just newOffset
-                , items = Scroll.prependList (List.filterMap (applyFilters column.filters) items) column.items
-              }
-            , True
-            )
+
+adjustScroll : Int -> Column -> Column
+adjustScroll clientHeight c =
+    let
+        baseAmount =
+            columnBaseAmount clientHeight
+    in
+    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem

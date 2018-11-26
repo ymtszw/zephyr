@@ -1,4 +1,4 @@
-module ArrayExtra exposing (all, moveFromTo, removeAt, splitAt, squeeze, update)
+module ArrayExtra exposing (all, any, findIndex, member, moveFromTo, removeAt, splitAt, squeeze, update)
 
 import Array exposing (..)
 
@@ -30,7 +30,55 @@ allImpl check index array =
 
         Nothing ->
             -- Should not happen
-            allImpl check index array
+            True
+
+
+findIndex : (a -> Bool) -> Array a -> Maybe Int
+findIndex check array =
+    case length array of
+        0 ->
+            Nothing
+
+        len ->
+            findIndexImpl check (len - 1) array
+
+
+findIndexImpl : (a -> Bool) -> Int -> Array a -> Maybe Int
+findIndexImpl check index array =
+    case get index array of
+        Just item ->
+            if check item then
+                Just index
+
+            else if index > 0 then
+                findIndexImpl check (index - 1) array
+
+            else
+                Nothing
+
+        Nothing ->
+            -- Should not happen
+            Nothing
+
+
+any : (a -> Bool) -> Array a -> Bool
+any check array =
+    case length array of
+        0 ->
+            False
+
+        len ->
+            case findIndexImpl check (len - 1) array of
+                Just _ ->
+                    True
+
+                Nothing ->
+                    False
+
+
+member : a -> Array a -> Bool
+member item array =
+    any ((==) item) array
 
 
 update : Int -> (a -> a) -> Array a -> Array a

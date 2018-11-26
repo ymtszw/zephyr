@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
-    ( ColumnStore, init, encode, decoder, storeId, size
-    , add, get, map, mapForView, removeAt
-    , updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
+    ( ColumnStore, init, encode, decoder, storeId, size, sizePinned
+    , add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
+    , updateById, applyOrder, consumeBroker, updateFAM
     )
 
 {-| Order-aware Column storage.
@@ -9,22 +9,30 @@ module Data.ColumnStore exposing
 Internally, Columns themselves are stored in ID-based Dict,
 whereas their order is stored in Array of IDs.
 
-@docs ColumnStore, init, encode, decoder, storeId, size
-@docs add, get, map, mapForView, removeAt
-@docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
+If a Column exists in the `dict` but its ID is not found in the `order` Array,
+it is considered as a "shadow" Column. Shadow Columns are updated normally,
+and automatically become visible in "Zephyr mode", if new messages arrived.
+
+In "Zephyr mode", Columns are automatically evicted (dismissed)
+when there are too many Columns displayed.
+This can be toggled at users' preferences. See Data.Model.
+
+@docs ColumnStore, init, encode, decoder, storeId, size, sizePinned
+@docs add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
+@docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
 
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker)
-import Data.Column as Column exposing (Column)
+import Data.Column as Column exposing (Column, Position(..))
 import Data.Filter exposing (FilterAtom(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
+import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Extra exposing (pure)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -34,7 +42,7 @@ type alias ColumnStore =
     { dict : Dict String Column
     , order : Array String
     , fam : FilterAtomMaterial
-    , indexToScan : Int
+    , scanQueue : Deque String
     }
 
 
@@ -46,7 +54,11 @@ decoder clientHeight =
                 \order ->
                     D.do (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init)) <|
                         \fam ->
-                            D.succeed (ColumnStore dict order fam 0)
+                            let
+                                scanQueue =
+                                    Deque.fromList (Dict.keys dict)
+                            in
+                            D.succeed (ColumnStore dict order fam scanQueue)
 
 
 encode : ColumnStore -> Storable
@@ -65,7 +77,7 @@ storeId =
 
 init : ColumnStore
 init =
-    ColumnStore Dict.empty Array.empty FAM.init 0
+    ColumnStore Dict.empty Array.empty FAM.init Deque.empty
 
 
 size : ColumnStore -> Int
@@ -73,16 +85,37 @@ size cs =
     Dict.size cs.dict
 
 
+sizePinned : ColumnStore -> Int
+sizePinned cs =
+    let
+        countPinned _ c acc =
+            if c.pinned then
+                acc + 1
+
+            else
+                acc
+    in
+    Dict.foldl countPinned 0 cs.dict
+
+
 
 -- SINGULAR APIs
 
 
-add : Column -> ColumnStore -> ColumnStore
-add column columnStore =
-    { columnStore
-        | dict = Dict.insert column.id column columnStore.dict
-        , order = Array.squeeze 0 column.id columnStore.order
-    }
+add : Maybe Int -> Column -> ColumnStore -> ColumnStore
+add limitMaybe column columnStore =
+    let
+        newDict =
+            Dict.insert column.id column columnStore.dict
+
+        newOrder =
+            columnStore.order |> Array.squeeze 0 column.id |> autoArrange limitMaybe newDict
+
+        newScanQueue =
+            -- Previous relative scan ordering is kept
+            Deque.pushFront column.id columnStore.scanQueue
+    in
+    { columnStore | dict = newDict, order = newOrder, scanQueue = newScanQueue }
 
 
 get : Int -> ColumnStore -> Maybe Column
@@ -92,17 +125,49 @@ get index columnStore =
         |> Maybe.andThen (\id -> Dict.get id columnStore.dict)
 
 
-removeAt : Int -> ColumnStore -> ColumnStore
-removeAt index columnStore =
-    case Array.get index columnStore.order of
-        Just id ->
-            { columnStore
-                | dict = Dict.remove id columnStore.dict
-                , order = Array.removeAt index columnStore.order
-            }
+show : Maybe Int -> String -> ColumnStore -> ColumnStore
+show limitMaybe cId columnStore =
+    let
+        newDict =
+            Dict.update cId (Maybe.map (\c -> { c | recentlyTouched = True })) columnStore.dict
+
+        newOrder =
+            columnStore.order |> Array.squeeze 0 cId |> autoArrange limitMaybe newDict
+    in
+    { columnStore | dict = newDict, order = newOrder }
+
+
+remove : String -> ColumnStore -> ColumnStore
+remove cId columnStore =
+    let
+        cs_ =
+            case Array.findIndex ((==) cId) columnStore.order of
+                Just index ->
+                    { columnStore | order = Array.removeAt index columnStore.order }
+
+                Nothing ->
+                    columnStore
+
+        newDict =
+            Dict.remove cId columnStore.dict
+    in
+    -- Discard previous scan ordering
+    { cs_ | dict = newDict, scanQueue = Deque.fromList (Dict.keys newDict) }
+
+
+touchAt : Int -> ColumnStore -> ColumnStore
+touchAt index columnStore =
+    case get index columnStore of
+        Just c ->
+            { columnStore | dict = Dict.insert c.id { c | recentlyTouched = True } columnStore.dict }
 
         Nothing ->
             columnStore
+
+
+dismissAt : Int -> ColumnStore -> ColumnStore
+dismissAt index columnStore =
+    { columnStore | order = Array.removeAt index columnStore.order }
 
 
 
@@ -114,6 +179,21 @@ map mapper columnStore =
     { columnStore | dict = Dict.map (\_ c -> mapper c) columnStore.dict }
 
 
+{-| `indexedMap` intended for view usages.
+
+It returns list of values derived from a mapper function.
+The mapper function receives FAM, index number, and a Column.
+
+It only iterates over Columns whose IDs can be found in `order` Array, i.e. visible Columns.
+
+Other Columns are considered "shadow" Columns which is hidden from the view (at the moment).
+Shadow Columns are re-introduced to the view via side-effect APIs,
+where their IDs are squeezed into `order` Array.
+
+Columns can be "dismissed" also via side-effect APIs, becoming shadow Columns,
+when ther IDs are removed from the `order` Array but not permanently removed from the `dict`.
+
+-}
 mapForView : (FilterAtomMaterial -> Int -> Column -> a) -> ColumnStore -> List a
 mapForView mapper { dict, order, fam } =
     mapForViewImpl (mapper fam) dict (Array.toList order) 0 []
@@ -135,19 +215,93 @@ mapForViewImpl mapper dict idList index acc =
                     mapForViewImpl mapper dict ids index acc
 
 
+listShadow : ColumnStore -> List Column
+listShadow columnStore =
+    let
+        reducer cId c acc =
+            if Array.member cId columnStore.order then
+                acc
+
+            else
+                c :: acc
+    in
+    Dict.foldr reducer [] columnStore.dict
+
+
 
 -- Component APIs
 
 
-updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Cmd Column.Msg, Bool )
-updateById cId cMsg columnStore =
+updateById : Maybe Int -> String -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+updateById limitMaybe cId cMsg columnStore =
     case Dict.get cId columnStore.dict of
         Just c ->
-            Column.update cMsg c
-                |> Extra.map (\newC -> { columnStore | dict = Dict.insert cId newC columnStore.dict }) identity
+            let
+                ( newC, pp ) =
+                    Column.update cMsg c
+
+                newDict =
+                    Dict.insert cId newC columnStore.dict
+
+                newOrder =
+                    case pp.position of
+                        Auto ->
+                            autoArrange limitMaybe newDict columnStore.order
+
+                        Bump ->
+                            if Array.member c.id columnStore.order then
+                                -- Already visible columns should not be reordered abruptly, either pinned/loose.
+                                -- Rather we should notify users via e.g. badge on sidebar
+                                columnStore.order
+
+                            else
+                                columnStore.order |> Array.squeeze 0 c.id |> autoArrange limitMaybe newDict
+
+                        Keep ->
+                            columnStore.order
+            in
+            ( { columnStore | dict = newDict, order = newOrder }, pp )
 
         Nothing ->
             pure columnStore
+
+
+pure : ColumnStore -> ( ColumnStore, Column.PostProcess )
+pure columnStore =
+    ( columnStore, Column.PostProcess Cmd.none False Nothing Keep )
+
+
+autoArrange : Maybe Int -> Dict String Column -> Array String -> Array String
+autoArrange limitMaybe dict order =
+    let
+        stableClassify cId ( accPinned, accLoose ) =
+            case Dict.get cId dict of
+                Just c ->
+                    if c.pinned then
+                        ( Array.push cId accPinned, accLoose )
+
+                    else
+                        ( accPinned, Array.push cId accLoose )
+
+                Nothing ->
+                    -- Should not happen
+                    ( accPinned, accLoose )
+
+        concatClassified ( pinned, loose ) =
+            case limitMaybe of
+                Just limit ->
+                    let
+                        looseLimit =
+                            max 0 (limit - Array.length pinned)
+                    in
+                    Array.append pinned (Array.slice 0 looseLimit loose)
+
+                Nothing ->
+                    Array.append pinned loose
+    in
+    order
+        |> Array.foldl stableClassify ( Array.empty, Array.empty )
+        |> concatClassified
 
 
 applyOrder : Array String -> ColumnStore -> ColumnStore
@@ -155,49 +309,18 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Bool )
-consumeBroker clientHeight broker columnStore =
-    case get columnStore.indexToScan columnStore of
-        Just column ->
-            let
-                scanCountPerColumn =
-                    maxScanCount // Dict.size columnStore.dict
+consumeBroker :
+    Maybe Int
+    -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    -> ColumnStore
+    -> ( ColumnStore, Column.PostProcess )
+consumeBroker limitMaybe opts columnStore =
+    case Deque.popBack columnStore.scanQueue of
+        ( Just cId, newScanQueue ) ->
+            updateById limitMaybe cId (Column.ScanBroker opts) { columnStore | scanQueue = Deque.pushFront cId newScanQueue }
 
-                ( newColumn, persist ) =
-                    column
-                        |> Column.adjustScroll clientHeight
-                        |> Column.consumeBroker scanCountPerColumn broker
-
-                nextIndex =
-                    if columnStore.indexToScan < Array.length columnStore.order - 1 then
-                        columnStore.indexToScan + 1
-
-                    else
-                        0
-            in
-            ( { columnStore | indexToScan = nextIndex, dict = Dict.insert column.id newColumn columnStore.dict }, persist )
-
-        Nothing ->
-            ( { columnStore | indexToScan = 0 }, False )
-
-
-maxScanCount : Int
-maxScanCount =
-    500
-
-
-catchUpBroker : Broker Item -> String -> ColumnStore -> ( ColumnStore, Bool )
-catchUpBroker broker cId columnStore =
-    case Dict.get cId columnStore.dict of
-        Just column ->
-            let
-                ( newColumn, persist ) =
-                    Column.consumeBroker maxScanCount broker column
-            in
-            ( { columnStore | dict = Dict.insert cId newColumn columnStore.dict }, persist )
-
-        Nothing ->
-            ( columnStore, False )
+        ( Nothing, _ ) ->
+            pure columnStore
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )

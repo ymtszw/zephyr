@@ -8,7 +8,7 @@ import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item exposing (Item(..))
-import Data.Model exposing (Env, Model, ViewState)
+import Data.Model exposing (ColumnSwap, Env, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Element exposing (..)
@@ -18,7 +18,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Keyed
 import Element.Lazy exposing (..)
-import Html.Attributes exposing (draggable, id, style)
+import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import ListExtra
@@ -38,7 +38,7 @@ columnAreaEl m =
         , height (fill |> maximum m.env.clientHeight)
         , scrollbarX
         , Font.regular
-        , htmlAttribute (id columnAreaParentId)
+        , htmlAttribute (Html.Attributes.id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
         (ColumnStore.mapForView (columnKeyEl m.env m.viewState) m.columnStore)
@@ -50,35 +50,19 @@ columnKeyEl env vs fam index c =
         baseAttrs =
             [ width (px fixedColumnWidth)
             , height (fill |> maximum env.clientHeight)
+            , clipY
             , BG.color oneDark.main
             , BD.width columnBorder
             , BD.color oneDark.bg
             , Font.color oneDark.text
+            , borderFlash c.recentlyTouched
+            , onAnimationEnd (ColumnCtrl c.id Column.Calm)
+            , style "transition" "all 0.15s"
             ]
-
-        attrs =
-            case vs.columnSwapMaybe of
-                Just swap ->
-                    if swap.grabbedId == c.id then
-                        baseAttrs ++ [ inFront (lazy dragIndicatorEl env.clientHeight) ]
-
-                    else
-                        let
-                            newOrder =
-                                ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
-                        in
-                        baseAttrs ++ [ htmlAttribute (Html.Events.on "dragenter" (D.succeed (DragEnter newOrder))) ]
-
-                Nothing ->
-                    if vs.columnSwappable then
-                        baseAttrs ++ dragHandle (D.succeed (DragStart index c.id))
-
-                    else
-                        baseAttrs
     in
     Tuple.pair c.id <|
-        column attrs
-            [ lazy2 columnHeaderEl fam c
+        column (baseAttrs ++ dragAttributes env.clientHeight vs.columnSwapMaybe index c)
+            [ lazy3 columnHeaderEl fam index c
             , lazy4 columnConfigFlyoutEl vs.selectState fam index c
             , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
             ]
@@ -90,18 +74,57 @@ columnBorder =
     2
 
 
-columnHeaderEl : FilterAtomMaterial -> Column.Column -> Element Msg
-columnHeaderEl fam c =
+dragAttributes : Int -> Maybe ColumnSwap -> Int -> Column.Column -> List (Attribute Msg)
+dragAttributes clientHeight columnSwapMaybe index c =
+    -- Here we change styles of big and complex DOMs; must consider performance carefully.
+    -- CSS opacity/transform utilizes GPU support so are quite fast and cheap
+    case columnSwapMaybe of
+        Just swap ->
+            if swap.grabbedId == c.id then
+                [ inFront (lazy2 dragIndicatorEl clientHeight True)
+                , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
+                ]
+
+            else if swap.pinned == c.pinned then
+                let
+                    newOrder =
+                        ArrayExtra.moveFromTo swap.originalIndex index swap.originalOrder
+                in
+                [ inFront (lazy2 dragIndicatorEl clientHeight False)
+                , htmlAttribute (Html.Events.preventDefaultOn "dragenter" (D.succeed ( DragEnter newOrder, True )))
+                , htmlAttribute (Html.Events.preventDefaultOn "dragover" (D.succeed ( NoOp, True )))
+                , style "transform" "scale(0.98)"
+                ]
+
+            else
+                [ inFront (lazy2 dragIndicatorEl clientHeight False)
+                , style "opacity" "0.2"
+                ]
+
+        Nothing ->
+            [ inFront (lazy2 dragIndicatorEl clientHeight False) ]
+
+
+columnHeaderEl : FilterAtomMaterial -> Int -> Column.Column -> Element Msg
+columnHeaderEl fam index c =
     row
         [ width fill
         , padding rectElementInnerPadding
         , spacing spacingUnit
-        , BG.color oneDark.sub
+        , BG.color columnHeaderBackground
         ]
-        [ filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
+        [ lazy3 grabberEl index c.pinned c.id
+        , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
         , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
+        , lazy2 columnDismissButtonEl c.pinned index
+        , lazy2 columnPinButtonEl c.pinned c.id
         , lazy2 columnConfigToggleButtonEl c.configOpen c.id
         ]
+
+
+columnHeaderBackground : Color
+columnHeaderBackground =
+    oneDark.sub
 
 
 columnHeaderIconSize : Int
@@ -109,30 +132,54 @@ columnHeaderIconSize =
     32
 
 
+grabberEl : Int -> Bool -> String -> Element Msg
+grabberEl index pinned cId =
+    let
+        attrs =
+            [ width (px grabberWidth)
+            , height fill
+            , BG.color oneDark.main
+            , BD.rounded (grabberWidth // 2)
+            , BD.width (grabberWidth // 2)
+            , BD.color oneDark.note
+            , style "border-style" "double"
+            ]
+
+        grabberAttrs =
+            dragHandle <| D.succeed <| DragStart { index = index, pinned = pinned, id = cId }
+    in
+    el (attrs ++ grabberAttrs) none
+
+
+grabberWidth : Int
+grabberWidth =
+    8
+
+
 columnHeaderTextEl : FilterAtomMaterial -> String -> Bool -> Array Filter -> Element Msg
 columnHeaderTextEl fam cId scrolled filters =
     let
         arrayReducer f acc =
             List.sortWith Filter.compareFilterAtom (Filter.toList f) :: acc
+
+        backToTopAttrs =
+            if scrolled then
+                [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
+
+            else
+                []
     in
-    filters
-        |> Array.foldr arrayReducer []
-        |> List.concatMap (List.map (filterAtomTextEl fam))
-        |> List.intersperse (breakT "  ")
-        |> breakP
+    el ([ width fill, height fill ] ++ backToTopAttrs) <|
+        filtersToTextEl
             [ centerY
             , Font.size baseHeaderTextSize
             , Font.color baseHeaderTextColor
             ]
-        |> el
-            ([ width fill, height fill ]
-                ++ (if scrolled then
-                        [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
-
-                    else
-                        []
-                   )
-            )
+            { fontSize = importantFilterTextSize
+            , color = importantFilterTextColor
+            , fam = fam
+            , filters = filters
+            }
 
 
 baseHeaderTextSize : Int
@@ -145,34 +192,6 @@ baseHeaderTextColor =
     oneDark.note
 
 
-filterAtomTextEl : FilterAtomMaterial -> FilterAtom -> Element Msg
-filterAtomTextEl fam fa =
-    case fa of
-        OfDiscordChannel cId ->
-            FAM.mapDiscordChannel cId fam discordChannelTextEl
-                |> Maybe.withDefault (breakT cId)
-
-        ByMessage query ->
-            breakT ("\"" ++ query ++ "\"")
-
-        ByMedia HasImage ->
-            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.fileMedia }
-
-        ByMedia HasMovie ->
-            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.deviceCameraVideo }
-
-        ByMedia HasNone ->
-            octiconEl [] { size = importantFilterTextSize, color = baseHeaderTextColor, shape = Octicons.textSize }
-
-        RemoveMe ->
-            none
-
-
-discordChannelTextEl : Discord.ChannelCache -> Element Msg
-discordChannelTextEl c =
-    el [ Font.size importantFilterTextSize, Font.color importantFilterTextColor, Font.bold ] (breakT ("#" ++ c.name))
-
-
 importantFilterTextSize : Int
 importantFilterTextSize =
     scale12 2
@@ -183,6 +202,54 @@ importantFilterTextColor =
     oneDark.text
 
 
+columnDismissButtonEl : Bool -> Int -> Element Msg
+columnDismissButtonEl pinned index =
+    squareButtonEl [ alignRight, BD.rounded rectElementRound, visible (not pinned) ]
+        { onPress = DismissColumn index
+        , enabled = True
+        , innerElement =
+            octiconEl [ mouseOver [ BG.color oneDark.succ ] ]
+                { size = rightButtonSize
+                , color = defaultOcticonColor
+                , shape = Octicons.check
+                }
+        , innerElementSize = rightButtonSize
+        }
+
+
+columnPinButtonEl : Bool -> String -> Element Msg
+columnPinButtonEl pinned cId =
+    squareButtonEl [ alignRight, BD.rounded rectElementRound ]
+        { onPress = ColumnCtrl cId (Column.Pin (not pinned))
+        , enabled = True
+        , innerElement =
+            octiconEl
+                [ style "transition" "transform 0.2s"
+                , style "transform" <|
+                    if pinned then
+                        "rotate(-45deg)"
+
+                    else
+                        "rotate(0)"
+                ]
+                { size = rightButtonSize
+                , color =
+                    if pinned then
+                        columnPinColor
+
+                    else
+                        defaultOcticonColor
+                , shape = Octicons.pin
+                }
+        , innerElementSize = rightButtonSize
+        }
+
+
+rightButtonSize : Int
+rightButtonSize =
+    26
+
+
 columnConfigToggleButtonEl : Bool -> String -> Element Msg
 columnConfigToggleButtonEl configOpen id =
     squareButtonEl [ alignRight, BD.rounded rectElementRound ]
@@ -190,17 +257,17 @@ columnConfigToggleButtonEl configOpen id =
         , enabled = True
         , innerElement =
             octiconEl []
-                { size = columnConfigToggleButtonSize
-                , color = defaultOcticonColor
+                { size = rightButtonSize
+                , color =
+                    if configOpen then
+                        oneDark.text
+
+                    else
+                        defaultOcticonColor
                 , shape = Octicons.settings
                 }
-        , innerElementSize = columnConfigToggleButtonSize
+        , innerElementSize = rightButtonSize
         }
-
-
-columnConfigToggleButtonSize : Int
-columnConfigToggleButtonSize =
-    26
 
 
 itemsEl : Int -> Time.Zone -> String -> Scroll ColumnItem -> Element Msg
@@ -254,11 +321,12 @@ groupingIntervalMillis =
     60000
 
 
-dragIndicatorEl : Int -> Element Msg
-dragIndicatorEl clientHeight =
+dragIndicatorEl : Int -> Bool -> Element Msg
+dragIndicatorEl clientHeight grabbed =
     el
         [ width fill
         , height (px clientHeight)
         , BD.innerGlow oneDark.prim 10
+        , visible grabbed
         ]
         none

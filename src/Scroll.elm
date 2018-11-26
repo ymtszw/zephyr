@@ -1,7 +1,7 @@
 module Scroll exposing
     ( Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
     , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-    , push, pushAll, prependList, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
+    , push, pushAll, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
 
@@ -23,7 +23,7 @@ Its internal data structure may be persisted.
 
 @docs Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
 @docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-@docs push, pushAll, prependList, pop, toList, toListWithFilter, pendingSize, isEmpty, scrolled
+@docs push, pushAll, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
 -}
@@ -252,10 +252,10 @@ pushAll list s =
 prependList : List a -> Scroll a -> Scroll a
 prependList list (Scroll s) =
     let
-        size =
+        limit =
             BoundedDeque.getMaxSize s.buffer
     in
-    Scroll { s | buffer = BoundedDeque.append (BoundedDeque.fromList size list) s.buffer }
+    Scroll { s | buffer = BoundedDeque.append (BoundedDeque.fromList limit list) s.buffer }
 
 
 {-| Pop an element from the front of a Scroll.
@@ -336,6 +336,12 @@ toListWithFilter check (Scroll s) =
         |> (\{ list } -> List.reverse list)
 
 
+size : Scroll a -> Int
+size (Scroll s) =
+    -- BoundedDeque.length uses cached List.length (for triggering rebalance) so works in _O(1)_
+    BoundedDeque.length s.buffer + s.pendingSize
+
+
 {-| Cached length of `pending` List. Takes _O(1)_.
 
 As long as elements are pushed/popped via exposed APIs, this value should be accurate
@@ -399,7 +405,7 @@ update msg (Scroll s) =
                             ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
                         else
-                            ( Scroll { s | viewportStatus = Scrolling newVp } |> calculateTier, queryViewport s.id )
+                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewport s.id )
 
                     _ ->
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
@@ -425,7 +431,7 @@ queryViewport id =
 
 queryInterval : Float
 queryInterval =
-    150
+    300
 
 
 calculateTier : Scroll a -> Scroll a
