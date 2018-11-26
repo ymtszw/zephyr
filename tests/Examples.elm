@@ -209,6 +209,13 @@ arraySuite =
             , testMember [ 1 ] 1 True
             , testMember [] 1 False
             ]
+        , describe "findIndex"
+            [ testFindIndex [ 0, 1, 2 ] 0 (Just 0)
+            , testFindIndex [ 0, 1, 2 ] 1 (Just 1)
+            , testFindIndex [ 0, 1, 2 ] 2 (Just 2)
+            , testFindIndex [ 0, 1, 2 ] 3 Nothing
+            , testFindIndex [] 0 Nothing
+            ]
         ]
 
 
@@ -272,6 +279,15 @@ testMember initial item expected =
         \_ ->
             fromList initial
                 |> Array.member item
+                |> Expect.equal expected
+
+
+testFindIndex : List a -> a -> Maybe Int -> Test
+testFindIndex initial item expected =
+    test ("should work with Array: " ++ Debug.toString initial ++ ", target: " ++ Debug.toString item) <|
+        \_ ->
+            fromList initial
+                |> Array.findIndex ((==) item)
                 |> Expect.equal expected
 
 
