@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size
     , add, get, show, map, mapForView, listShadow, removeAt, touchAt, dismissAt
-    , updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
+    , updateById, applyOrder, consumeBroker, updateFAM
     )
 
 {-| Order-aware Column storage.
@@ -19,7 +19,7 @@ This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, init, encode, decoder, storeId, size
 @docs add, get, show, map, mapForView, listShadow, removeAt, touchAt, dismissAt
-@docs updateById, applyOrder, consumeBroker, catchUpBroker, updateFAM
+@docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
 
@@ -89,14 +89,14 @@ size cs =
 -- SINGULAR APIs
 
 
-add : Column -> ColumnStore -> ColumnStore
-add column columnStore =
+add : Maybe Int -> Column -> ColumnStore -> ColumnStore
+add limitMaybe column columnStore =
     let
         newDict =
             Dict.insert column.id column columnStore.dict
 
         newOrder =
-            columnStore.order |> Array.squeeze 0 column.id |> autoArrange newDict
+            columnStore.order |> Array.squeeze 0 column.id |> autoArrange limitMaybe newDict
 
         newScanQueue =
             -- Previous relative scan ordering is kept
@@ -112,14 +112,14 @@ get index columnStore =
         |> Maybe.andThen (\id -> Dict.get id columnStore.dict)
 
 
-show : String -> ColumnStore -> ColumnStore
-show cId columnStore =
+show : Maybe Int -> String -> ColumnStore -> ColumnStore
+show limitMaybe cId columnStore =
     let
         newDict =
             Dict.update cId (Maybe.map (\c -> { c | recentlyTouched = True })) columnStore.dict
 
         newOrder =
-            columnStore.order |> Array.squeeze 0 cId |> autoArrange newDict
+            columnStore.order |> Array.squeeze 0 cId |> autoArrange limitMaybe newDict
     in
     { columnStore | dict = newDict, order = newOrder }
 
@@ -219,8 +219,8 @@ listShadow columnStore =
 -- Component APIs
 
 
-updateById : String -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
-updateById cId cMsg columnStore =
+updateById : Maybe Int -> String -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+updateById limitMaybe cId cMsg columnStore =
     case Dict.get cId columnStore.dict of
         Just c ->
             let
@@ -233,7 +233,7 @@ updateById cId cMsg columnStore =
                 newOrder =
                     case cMsg of
                         Column.Pin _ ->
-                            autoArrange newDict columnStore.order
+                            autoArrange limitMaybe newDict columnStore.order
 
                         _ ->
                             columnStore.order
@@ -249,8 +249,8 @@ pure columnStore =
     ( columnStore, Column.PostProcess Cmd.none False Nothing )
 
 
-autoArrange : Dict String Column -> Array String -> Array String
-autoArrange dict order =
+autoArrange : Maybe Int -> Dict String Column -> Array String -> Array String
+autoArrange limitMaybe dict order =
     let
         stableClassify cId ( accPinned, accLoose ) =
             case Dict.get cId dict of
@@ -264,10 +264,22 @@ autoArrange dict order =
                 Nothing ->
                     -- Should not happen
                     ( accPinned, accLoose )
+
+        concatClassified ( pinned, loose ) =
+            case limitMaybe of
+                Just limit ->
+                    let
+                        looseLimit =
+                            max 0 (limit - Array.length pinned)
+                    in
+                    Array.append pinned (Array.slice 0 looseLimit loose)
+
+                Nothing ->
+                    Array.append pinned loose
     in
     order
         |> Array.foldl stableClassify ( Array.empty, Array.empty )
-        |> (\( pinned, loose ) -> Array.append pinned loose)
+        |> concatClassified
 
 
 applyOrder : Array String -> ColumnStore -> ColumnStore
@@ -275,35 +287,14 @@ applyOrder order columnStore =
     { columnStore | order = order }
 
 
-consumeBroker : Int -> Broker Item -> ColumnStore -> ( ColumnStore, Column.PostProcess )
-consumeBroker clientHeight broker columnStore =
+consumeBroker : Maybe Int -> { broker : Broker Item, maxCount : Int, clientHeight : Int } -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+consumeBroker limitMaybe opts columnStore =
     case Deque.popBack columnStore.scanQueue of
         ( Just cId, newScanQueue ) ->
-            let
-                scanCountPerColumn =
-                    maxScanCount // Dict.size columnStore.dict
-
-                scanMsg =
-                    Column.ScanBroker { broker = broker, maxCount = scanCountPerColumn, clientHeight = clientHeight }
-            in
-            updateById cId scanMsg { columnStore | scanQueue = Deque.pushFront cId newScanQueue }
+            updateById limitMaybe cId (Column.ScanBroker opts) { columnStore | scanQueue = Deque.pushFront cId newScanQueue }
 
         ( Nothing, _ ) ->
             pure columnStore
-
-
-maxScanCount : Int
-maxScanCount =
-    500
-
-
-catchUpBroker : Int -> Broker Item -> String -> ColumnStore -> ( ColumnStore, Column.PostProcess )
-catchUpBroker clientHeight broker cId columnStore =
-    let
-        scanMsg =
-            Column.ScanBroker { broker = broker, maxCount = maxScanCount, clientHeight = clientHeight }
-    in
-    updateById cId scanMsg columnStore
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )

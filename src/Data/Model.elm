@@ -110,7 +110,7 @@ welcome env navKey =
                 |> UniqueIdGen.gen UniqueIdGen.columnPrefix
                 |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome env.clientHeight idGen cId)
     in
-    { columnStore = ColumnStore.add welcomeColumn ColumnStore.init
+    { columnStore = ColumnStore.add Nothing welcomeColumn ColumnStore.init
     , itemBroker = ItemBroker.init
     , producerRegistry = Producer.initRegistry
     , worque = Worque.init

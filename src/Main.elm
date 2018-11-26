@@ -25,7 +25,7 @@ import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
-import Data.Pref as Pref
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen
@@ -152,7 +152,7 @@ update msg ({ viewState, env, pref } as m) =
                 |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen cId)
                 |> (\( c, idGen ) ->
                         -- If Filters are somehow set to the new Column, then persist.
-                        pure { m | columnStore = ColumnStore.add c m.columnStore, idGen = idGen }
+                        pure { m | columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore, idGen = idGen }
                    )
 
         AddSimpleColumn fa ->
@@ -162,7 +162,7 @@ update msg ({ viewState, env, pref } as m) =
             in
             ( { m
                 | idGen = idGen
-                , columnStore = ColumnStore.add c m.columnStore
+                , columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore
                 , worque = Worque.push (BrokerCatchUp c.id) m.worque
               }
             , Cmd.none
@@ -176,7 +176,7 @@ update msg ({ viewState, env, pref } as m) =
             ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         ShowColumn cId ->
-            ( { m | columnStore = ColumnStore.show cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
+            ( { m | columnStore = ColumnStore.show (columnLimit m.pref) cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         DragStart { index, pinned, id } ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
@@ -239,7 +239,7 @@ update msg ({ viewState, env, pref } as m) =
             pure { m | viewState = { viewState | configOpen = opened } }
 
         ColumnCtrl cId cMsg ->
-            applyColumnUpdate m cId <| ColumnStore.updateById cId cMsg m.columnStore
+            applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId cMsg m.columnStore
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| Producer.update pctrl m.producerRegistry
@@ -273,6 +273,15 @@ pure m =
     ( m, Cmd.none, changeSet )
 
 
+columnLimit : Pref -> Maybe Int
+columnLimit pref =
+    if pref.zephyrMode then
+        Just pref.evictThreshold
+
+    else
+        Nothing
+
+
 onTick : Posix -> Model -> ( Model, Cmd Msg, ChangeSet )
 onTick posix m_ =
     let
@@ -284,7 +293,12 @@ onTick posix m_ =
         Just (BrokerScan 0) ->
             let
                 ( cs, pp ) =
-                    ColumnStore.consumeBroker m.env.clientHeight m.itemBroker m.columnStore
+                    ColumnStore.consumeBroker (columnLimit m.pref)
+                        { broker = m.itemBroker
+                        , maxCount = maxScanCount // ColumnStore.size m.columnStore
+                        , clientHeight = m.env.clientHeight
+                        }
+                        m.columnStore
             in
             ( { m | columnStore = cs, worque = Worque.push (initScan cs) m.worque }
             , Cmd.none
@@ -307,11 +321,21 @@ onTick posix m_ =
             noPersist ( m, IndexedDb.dropOldState )
 
         Just (BrokerCatchUp cId) ->
-            ColumnStore.catchUpBroker m.env.clientHeight m.itemBroker cId m.columnStore
+            let
+                scanMsg =
+                    Column.ScanBroker { broker = m.itemBroker, maxCount = maxScanCount, clientHeight = m.env.clientHeight }
+            in
+            m.columnStore
+                |> ColumnStore.updateById (columnLimit m.pref) cId scanMsg
                 |> applyColumnUpdate m cId
 
         Nothing ->
             pure m
+
+
+maxScanCount : Int
+maxScanCount =
+    500
 
 
 initScan : ColumnStore -> Work

@@ -14,7 +14,6 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
-import Html.Attributes exposing (style)
 import ListExtra
 import Octicons
 import Scroll
