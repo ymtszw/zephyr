@@ -35,6 +35,7 @@ import Html
 import Html.Attributes exposing (id)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import Task
 
@@ -72,23 +73,25 @@ encode encodeItem (Scroll s) =
     E.list encodeItem (BoundedDeque.toList s.buffer)
 
 
-decoder : Options -> Decoder a -> Decoder (Scroll a)
+decoder : Options -> Decoder a -> Decoder ( Scroll a, Cmd Msg )
 decoder { id, limit, baseAmount, tierAmount, ascendThreshold } itemDecoder =
-    D.list itemDecoder
-        |> D.map
-            (\list ->
-                Scroll
-                    { id = id
-                    , buffer = BoundedDeque.fromList limit list
-                    , pending = []
-                    , pendingSize = 0
-                    , viewportStatus = Initial
-                    , tier = Tier 0
-                    , baseAmount = baseAmount
-                    , tierAmount = tierAmount
-                    , ascendThreshold = ascendThreshold
-                    }
-            )
+    D.do (D.list itemDecoder) <|
+        \list ->
+            let
+                s =
+                    Scroll
+                        { id = id
+                        , buffer = BoundedDeque.fromList limit list
+                        , pending = []
+                        , pendingSize = 0
+                        , viewportStatus = Initial
+                        , tier = Tier 0
+                        , baseAmount = baseAmount
+                        , tierAmount = tierAmount
+                        , ascendThreshold = ascendThreshold
+                        }
+            in
+            D.succeed ( s, queryViewportWithDelay id )
 
 
 type alias Options =

@@ -203,9 +203,9 @@ update msg ({ viewState, env, pref } as m) =
             -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
             ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
-        LoadColumnStore ( cs, idGen ) ->
+        LoadColumnStore ( cs, idGen, initCmd ) ->
             ( { m | columnStore = cs, idGen = idGen }
-            , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref ]
+            , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref, initCmd ]
             , saveColumnStore changeSet
             )
 

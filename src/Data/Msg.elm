@@ -43,7 +43,7 @@ type Msg
     | DragStart { index : Int, id : String, pinned : Bool }
     | DragEnter (Array String)
     | DragEnd
-    | LoadColumnStore ( ColumnStore, UniqueIdGen )
+    | LoadColumnStore ( ColumnStore, UniqueIdGen, Cmd Msg )
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry
     | LoadPref Pref

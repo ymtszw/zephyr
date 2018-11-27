@@ -54,7 +54,14 @@ stateDecoder env =
         [ D.do (D.field "id" D.string) <|
             \id ->
                 if id == ColumnStore.storeId then
-                    D.map2 (\cs idGen -> LoadColumnStore ( cs, idGen ))
+                    D.map2
+                        (\( cs, idAndCmds ) idGen ->
+                            let
+                                initCmd =
+                                    Cmd.batch <| List.map (\( cId, cCmd ) -> Cmd.map (ColumnCtrl cId) cCmd) <| idAndCmds
+                            in
+                            LoadColumnStore ( cs, idGen, initCmd )
+                        )
                         (ColumnStore.decoder env.clientHeight)
                         (D.field idGenStoreId UniqueIdGen.decoder)
 

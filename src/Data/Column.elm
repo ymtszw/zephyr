@@ -89,12 +89,12 @@ encodeMedia media =
             E.tagged "Movie" (E.string (Url.toString url))
 
 
-decoder : Int -> Decoder Column
+decoder : Int -> Decoder ( Column, Cmd Msg )
 decoder clientHeight =
     D.do (D.field "id" D.string) <|
         \id ->
             D.do (D.field "items" (Scroll.decoder (scrollOptions id clientHeight) columnItemDecoder)) <|
-                \items ->
+                \( items, sCmd ) ->
                     D.do (D.field "filters" (D.array Filter.decoder)) <|
                         \filters ->
                             D.do (D.maybeField "offset" offsetDecoder) <|
@@ -102,7 +102,7 @@ decoder clientHeight =
                                     -- Migration; use field instead of maybeField later
                                     D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
                                         \pinned ->
-                                            D.succeed (Column id items filters offset pinned False False filters "")
+                                            D.succeed ( Column id items filters offset pinned False False filters "", Cmd.map ScrollMsg sCmd )
 
 
 columnItemDecoder : Decoder ColumnItem

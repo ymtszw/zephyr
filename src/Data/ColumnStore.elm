@@ -46,19 +46,35 @@ type alias ColumnStore =
     }
 
 
-decoder : Int -> Decoder ColumnStore
+decoder : Int -> Decoder ( ColumnStore, List ( String, Cmd Column.Msg ) )
 decoder clientHeight =
-    D.do (D.field "dict" (D.dict (Column.decoder clientHeight))) <|
-        \dict ->
-            D.do (D.field "order" (D.array D.string)) <|
-                \order ->
+    D.do (D.field "order" (D.array D.string)) <|
+        \order ->
+            D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order)) <|
+                \( dict, idAndCmds ) ->
                     D.do (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init)) <|
                         \fam ->
                             let
                                 scanQueue =
                                     Deque.fromList (Dict.keys dict)
                             in
-                            D.succeed (ColumnStore dict order fam scanQueue)
+                            D.succeed ( ColumnStore dict order fam scanQueue, idAndCmds )
+
+
+dictAndInitCmdDecoder : Int -> Array String -> Decoder ( Dict String Column, List ( String, Cmd Column.Msg ) )
+dictAndInitCmdDecoder clientHeight order =
+    D.do (D.dict (Column.decoder clientHeight)) <|
+        \dictWithCmds ->
+            let
+                reducer cId ( c, initCmd ) ( accDict, accCmds ) =
+                    Tuple.pair (Dict.insert cId c accDict) <|
+                        if Array.member cId order then
+                            ( cId, initCmd ) :: accCmds
+
+                        else
+                            accCmds
+            in
+            D.succeed (Dict.foldl reducer ( Dict.empty, [] ) dictWithCmds)
 
 
 encode : ColumnStore -> Storable
