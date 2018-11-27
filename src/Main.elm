@@ -307,7 +307,7 @@ onTick posix m_ =
     case workMaybe of
         Just (BrokerScan 0) ->
             let
-                ( cs, pp ) =
+                ( columnStore, ppMaybe ) =
                     ColumnStore.consumeBroker (columnLimit m.pref)
                         { broker = m.itemBroker
                         , maxCount = maxScanCount // ColumnStore.size m.columnStore
@@ -315,15 +315,22 @@ onTick posix m_ =
                         , catchUp = False
                         }
                         m.columnStore
-            in
-            ( { m | columnStore = cs, worque = Worque.push (initScan cs) m.worque }
-            , Cmd.none
-            , if pp.persist then
-                saveColumnStore changeSet
 
-              else
-                changeSet
-            )
+                ( cmd, changeSet_ ) =
+                    case ppMaybe of
+                        Just ( cId, pp ) ->
+                            ( Cmd.map (ColumnCtrl cId) pp.cmd
+                            , if pp.persist then
+                                saveColumnStore changeSet
+
+                              else
+                                changeSet
+                            )
+
+                        Nothing ->
+                            ( Cmd.none, changeSet )
+            in
+            ( { m | columnStore = columnStore, worque = Worque.push (initScan columnStore) m.worque }, cmd, changeSet_ )
 
         Just (BrokerScan n) ->
             pure { m | worque = Worque.push (BrokerScan (n - 1)) m.worque }

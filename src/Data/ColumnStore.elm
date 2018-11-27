@@ -317,14 +317,15 @@ consumeBroker :
     Maybe Int
     -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     -> ColumnStore
-    -> ( ColumnStore, Column.PostProcess )
+    -> ( ColumnStore, Maybe ( String, Column.PostProcess ) )
 consumeBroker limitMaybe opts columnStore =
     case Deque.popBack columnStore.scanQueue of
         ( Just cId, newScanQueue ) ->
             updateById limitMaybe cId (Column.ScanBroker opts) { columnStore | scanQueue = Deque.pushFront cId newScanQueue }
+                |> Tuple.mapSecond (Just << Tuple.pair cId)
 
         ( Nothing, _ ) ->
-            pure columnStore
+            ( columnStore, Nothing )
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )
