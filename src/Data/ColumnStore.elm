@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size, sizePinned
-    , add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
+    , add, get, remove, touchAt, dismissAt, map, mapForView, listShadow
     , updateById, applyOrder, consumeBroker, updateFAM
     )
 
@@ -18,7 +18,7 @@ when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, init, encode, decoder, storeId, size, sizePinned
-@docs add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
+@docs add, get, remove, touchAt, dismissAt, map, mapForView, listShadow
 @docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
@@ -139,18 +139,6 @@ get index columnStore =
     columnStore.order
         |> Array.get index
         |> Maybe.andThen (\id -> Dict.get id columnStore.dict)
-
-
-show : Maybe Int -> String -> ColumnStore -> ColumnStore
-show limitMaybe cId columnStore =
-    let
-        newDict =
-            Dict.update cId (Maybe.map (\c -> { c | recentlyTouched = True })) columnStore.dict
-
-        newOrder =
-            columnStore.order |> Array.squeeze 0 cId |> autoArrange limitMaybe newDict
-    in
-    { columnStore | dict = newDict, order = newOrder }
 
 
 remove : String -> ColumnStore -> ColumnStore

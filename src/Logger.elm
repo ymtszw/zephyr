@@ -74,6 +74,8 @@ update : Msg -> History -> ( History, Cmd Msg )
 update msg (History h) =
     case msg of
         ScrollMsg sMsg ->
+            -- It is possible to use Scroll.Adjust and dynamically adjust Scroll options for slightly better performance,
+            -- but we are skipping it since Logger is development only stuff
             let
                 ( newEntries, cmd ) =
                     Scroll.update sMsg h.entries
@@ -131,6 +133,7 @@ push idGen e (History h) =
 
 pushAll : UniqueIdGen -> List Entry -> History -> ( History, UniqueIdGen )
 pushAll idGen entries history =
+    -- Head-first
     List.foldl (\e ( accH, accGen ) -> push accGen e accH) ( history, idGen ) entries
 
 

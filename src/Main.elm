@@ -191,7 +191,7 @@ update msg ({ viewState, env, pref } as m) =
             ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         ShowColumn cId ->
-            ( { m | columnStore = ColumnStore.show (columnLimit m.pref) cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
+            applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId Column.Show m.columnStore
 
         DragStart { index, pinned, id } ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }

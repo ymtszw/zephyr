@@ -1,7 +1,7 @@
 module Scroll exposing
     ( Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
     , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-    , push, pushAll, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
+    , push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
 
@@ -23,7 +23,7 @@ Its internal data structure may be persisted.
 
 @docs Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
 @docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-@docs push, pushAll, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
+@docs push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
 -}
@@ -258,22 +258,23 @@ pushToPending a (Scroll s) =
     Scroll { s | pending = a :: s.pending, pendingSize = s.pendingSize + 1 }
 
 
-{-| Push all items in a List to a Scroll. Head-first.
--}
-pushAll : List a -> Scroll a -> Scroll a
-pushAll list s =
-    case list of
-        [] ->
-            s
-
-        x :: xs ->
-            pushAll xs (push x s)
-
-
-{-| Prepend List of items to a Scroll. Consider as tail-first pushAll.
+{-| Prepend List of items to a Scroll. Consider as tail-first push.
 -}
 prependList : List a -> Scroll a -> Scroll a
 prependList list (Scroll s) =
+    case s.viewportStatus of
+        Initial ->
+            Scroll s |> pendingToBuffer |> prependToBuffer list
+
+        AtTop _ ->
+            Scroll s |> pendingToBuffer |> prependToBuffer list
+
+        _ ->
+            Scroll { s | pending = list ++ s.pending, pendingSize = s.pendingSize + List.length list }
+
+
+prependToBuffer : List a -> Scroll a -> Scroll a
+prependToBuffer list (Scroll s) =
     let
         limit =
             BoundedDeque.getMaxSize s.buffer
@@ -407,6 +408,8 @@ type Msg
     = ScrollStart
     | ViewportResult (Result Browser.Dom.Error Browser.Dom.Viewport)
     | BackToTop
+    | Reveal
+    | Adjust Int
 
 
 update : Msg -> Scroll a -> ( Scroll a, Cmd Msg )
@@ -428,7 +431,9 @@ update msg (Scroll s) =
 
         ViewportResult (Ok newVp) ->
             if newVp.viewport.y == 0 then
-                ( Scroll { s | viewportStatus = AtTop newVp } |> pendingToBuffer |> calculateTier, Cmd.none )
+                ( Scroll { s | viewportStatus = AtTop newVp } |> pendingToBuffer |> calculateTier
+                , queryViewportWithDelay s.id
+                )
 
             else
                 case s.viewportStatus of
@@ -455,6 +460,16 @@ update msg (Scroll s) =
                 (Browser.Dom.getViewportOf s.id)
                 |> Task.attempt ViewportResult
             )
+
+        Reveal ->
+            ( Scroll { s | viewportStatus = Initial } |> pendingToBuffer |> calculateTier
+            , queryViewportWithDelay s.id
+            )
+
+        Adjust clientHeight ->
+            -- TODO Adjust options dynamically, compared to current clientHeight.
+            -- It is acceptable to do this in non-atomic manner.
+            ( Scroll s, queryViewportWithDelay s.id )
 
 
 queryViewportWithDelay : String -> Cmd Msg

@@ -248,6 +248,7 @@ simple clientHeight fa id =
 type Msg
     = ToggleConfig Bool
     | Pin Bool
+    | Show
     | Calm
     | AddFilter Filter
     | DelFilter Int
@@ -282,6 +283,13 @@ update msg c =
 
         Pin pinned ->
             ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto )
+
+        Show ->
+            let
+                ( items, sCmd ) =
+                    Scroll.update Scroll.Reveal c.items
+            in
+            ( { c | items = items, recentlyTouched = True }, PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump )
 
         Calm ->
             pure { c | recentlyTouched = False }
@@ -324,56 +332,54 @@ update msg c =
             pure { c | deleteGate = input }
 
         ScanBroker { broker, maxCount, clientHeight, catchUp } ->
+            let
+                ( items_, sCmd ) =
+                    Scroll.update (Scroll.Adjust clientHeight) c.items
+
+                ppGen =
+                    PostProcess (Cmd.map ScrollMsg sCmd)
+            in
             case ItemBroker.bulkRead maxCount c.offset broker of
                 [] ->
-                    pure (adjustScroll clientHeight c)
+                    ( { c | items = items_ }, ppGen False Nothing Keep )
 
                 (( _, newOffset ) :: _) as items ->
                     let
                         ( c_, pp ) =
                             case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
                                 ( True, [] ) ->
-                                    ( c, PostProcess Cmd.none True (Just c.id) Keep )
+                                    ( c, ppGen True (Just c.id) Keep )
 
                                 ( True, newItems ) ->
                                     -- Do not bump nor flash Column during catchUp
-                                    ( { c | items = Scroll.prependList newItems c.items }, PostProcess Cmd.none True (Just c.id) Keep )
+                                    ( { c | items = Scroll.prependList newItems items_ }, ppGen True (Just c.id) Keep )
 
                                 ( False, [] ) ->
-                                    ( c, PostProcess Cmd.none True Nothing Keep )
+                                    ( c, ppGen True Nothing Keep )
 
                                 ( False, newItems ) ->
-                                    ( { c | items = Scroll.prependList newItems c.items, recentlyTouched = True }
+                                    ( { c | items = Scroll.prependList newItems items_, recentlyTouched = True }
                                     , if c.pinned then
                                         -- Do not bump Pinned Column
-                                        PostProcess Cmd.none True Nothing Keep
+                                        ppGen True Nothing Keep
 
                                       else
-                                        PostProcess Cmd.none True Nothing Bump
+                                        ppGen True Nothing Bump
                                     )
                     in
-                    ( adjustScroll clientHeight { c_ | offset = Just newOffset }, pp )
+                    ( { c_ | offset = Just newOffset }, pp )
 
         ScrollMsg sMsg ->
             let
-                ( items, cmd ) =
+                ( items, sCmd ) =
                     Scroll.update sMsg c.items
             in
-            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg cmd) False Nothing Keep )
+            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg sCmd) False Nothing Keep )
 
 
 pure : Column -> ( Column, PostProcess )
 pure c =
     ( c, PostProcess Cmd.none False Nothing Keep )
-
-
-adjustScroll : Int -> Column -> Column
-adjustScroll clientHeight c =
-    let
-        baseAmount =
-            columnBaseAmount clientHeight
-    in
-    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem

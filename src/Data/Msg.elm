@@ -233,6 +233,12 @@ scrollMsgToEntry prefix sMsg =
         Scroll.BackToTop ->
             Entry (prefix ++ ".BackToTop") []
 
+        Scroll.Reveal ->
+            Entry (prefix ++ ".Reveal") []
+
+        Scroll.Adjust clientHeight ->
+            Entry (prefix ++ ".AdjustViewport") [ String.fromInt clientHeight ]
+
 
 producerMsgToEntry : Producer.Msg -> Entry
 producerMsgToEntry pMsg =
@@ -284,6 +290,9 @@ columnMsgToEntry cId cMsg =
 
         Column.Calm ->
             Entry "Column.Calm" [ cId ]
+
+        Column.Show ->
+            Entry "Column.Show" [ cId ]
 
         Column.AddFilter filter ->
             Entry "Column.AddFilter" [ cId, Filter.toString filter ]
