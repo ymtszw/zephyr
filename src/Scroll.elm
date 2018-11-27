@@ -486,9 +486,6 @@ update msg (Scroll s) =
             in
             if vp.scene.height > clientHeightF * baseRatio then
                 let
-                    _ =
-                        Debug.log "exec" vp
-
                     approxAverageItemHeightF =
                         vp.scene.height / toFloat (amountToTake (Scroll s))
 
