@@ -412,13 +412,13 @@ update msg (Scroll s) =
         ScrollStart ->
             case s.viewportStatus of
                 OffTheTop vp ->
-                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewport s.id )
+                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewportWithDelay s.id )
 
                 AtTop vp ->
-                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewport s.id )
+                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewportWithDelay s.id )
 
                 Initial ->
-                    ( Scroll s, queryViewport s.id )
+                    ( Scroll s, queryViewportWithDelay s.id )
 
                 Scrolling _ ->
                     ( Scroll s, Cmd.none )
@@ -434,7 +434,7 @@ update msg (Scroll s) =
                             ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
                         else
-                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewport s.id )
+                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewportWithDelay s.id )
 
                     _ ->
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
@@ -454,13 +454,13 @@ update msg (Scroll s) =
             )
 
 
-queryViewport : String -> Cmd Msg
-queryViewport id =
-    doAfter queryInterval (Result.map Tuple.second >> ViewportResult) (Browser.Dom.getViewportOf id)
+queryViewportWithDelay : String -> Cmd Msg
+queryViewportWithDelay id =
+    doAfter queryDelay (Result.map Tuple.second >> ViewportResult) (Browser.Dom.getViewportOf id)
 
 
-queryInterval : Float
-queryInterval =
+queryDelay : Float
+queryDelay =
     300
 
 
