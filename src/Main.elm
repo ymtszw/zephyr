@@ -61,22 +61,7 @@ log : (Msg -> Model -> ( Model, Cmd Msg, ChangeSet )) -> Msg -> Model -> ( Model
 log u msg m =
     u msg <|
         if m.env.isLocalDevelopment then
-            let
-                entries =
-                    case msg of
-                        Tick _ ->
-                            -- Do not commit new worque; we are just logging here
-                            case Worque.pop m.worque of
-                                ( Just w, _ ) ->
-                                    [ Data.Msg.logEntry msg, Worque.logEntry w ]
-
-                                ( Nothing, _ ) ->
-                                    [ Data.Msg.logEntry msg ]
-
-                        _ ->
-                            [ Data.Msg.logEntry msg ]
-            in
-            Logger.pushAll m.idGen entries m.log
+            Logger.push m.idGen (Data.Msg.logEntry msg) m.log
                 |> (\( newLog, idGen ) -> { m | log = newLog, idGen = idGen })
 
         else
