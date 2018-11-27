@@ -408,13 +408,6 @@ pure c =
     ( c, PostProcess Cmd.none False Nothing Keep )
 
 
-prependItems : Scroll.AutoAdjustOptions -> List ColumnItem -> Scroll ColumnItem -> ( Scroll ColumnItem, Cmd Scroll.Msg )
-prependItems opts newItems items =
-    items
-        |> Scroll.prependList newItems
-        |> Scroll.update (Scroll.AdjustReq opts)
-
-
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
 applyFilters filters ( item, offset ) =
     if Array.isEmpty filters then
@@ -426,3 +419,10 @@ applyFilters filters ( item, offset ) =
 
     else
         Nothing
+
+
+prependItems : Scroll.AutoAdjustOptions -> List ColumnItem -> Scroll ColumnItem -> ( Scroll ColumnItem, Cmd Scroll.Msg )
+prependItems opts newItems items =
+    items
+        |> Scroll.prependList newItems
+        |> Scroll.update (Scroll.AdjustReq opts)
