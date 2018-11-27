@@ -61,22 +61,7 @@ log : (Msg -> Model -> ( Model, Cmd Msg, ChangeSet )) -> Msg -> Model -> ( Model
 log u msg m =
     u msg <|
         if m.env.isLocalDevelopment then
-            let
-                entries =
-                    case msg of
-                        Tick _ ->
-                            -- Do not commit new worque; we are just logging here
-                            case Worque.pop m.worque of
-                                ( Just w, _ ) ->
-                                    [ Data.Msg.logEntry msg, Worque.logEntry w ]
-
-                                ( Nothing, _ ) ->
-                                    [ Data.Msg.logEntry msg ]
-
-                        _ ->
-                            [ Data.Msg.logEntry msg ]
-            in
-            Logger.pushAll m.idGen entries m.log
+            Logger.push m.idGen (Data.Msg.logEntry msg) m.log
                 |> (\( newLog, idGen ) -> { m | log = newLog, idGen = idGen })
 
         else
@@ -191,7 +176,7 @@ update msg ({ viewState, env, pref } as m) =
             ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
 
         ShowColumn cId ->
-            ( { m | columnStore = ColumnStore.show (columnLimit m.pref) cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
+            applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId Column.Show m.columnStore
 
         DragStart { index, pinned, id } ->
             pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
@@ -203,9 +188,9 @@ update msg ({ viewState, env, pref } as m) =
             -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
             ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
-        LoadColumnStore ( cs, idGen ) ->
+        LoadColumnStore ( cs, idGen, initCmd ) ->
             ( { m | columnStore = cs, idGen = idGen }
-            , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref ]
+            , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref, initCmd ]
             , saveColumnStore changeSet
             )
 
@@ -307,7 +292,7 @@ onTick posix m_ =
     case workMaybe of
         Just (BrokerScan 0) ->
             let
-                ( cs, pp ) =
+                ( columnStore, ppMaybe ) =
                     ColumnStore.consumeBroker (columnLimit m.pref)
                         { broker = m.itemBroker
                         , maxCount = maxScanCount // ColumnStore.size m.columnStore
@@ -315,15 +300,22 @@ onTick posix m_ =
                         , catchUp = False
                         }
                         m.columnStore
-            in
-            ( { m | columnStore = cs, worque = Worque.push (initScan cs) m.worque }
-            , Cmd.none
-            , if pp.persist then
-                saveColumnStore changeSet
 
-              else
-                changeSet
-            )
+                ( cmd, changeSet_ ) =
+                    case ppMaybe of
+                        Just ( cId, pp ) ->
+                            ( Cmd.map (ColumnCtrl cId) pp.cmd
+                            , if pp.persist then
+                                saveColumnStore changeSet
+
+                              else
+                                changeSet
+                            )
+
+                        Nothing ->
+                            ( Cmd.none, changeSet )
+            in
+            ( { m | columnStore = columnStore, worque = Worque.push (initScan columnStore) m.worque }, cmd, changeSet_ )
 
         Just (BrokerScan n) ->
             pure { m | worque = Worque.push (BrokerScan (n - 1)) m.worque }

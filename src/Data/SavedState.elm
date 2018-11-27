@@ -32,7 +32,7 @@ decoder clientHeight =
 v3StateDecoder : Int -> Decoder SavedState
 v3StateDecoder clientHeight =
     D.map4 SavedState
-        (D.field "columnStore" (ColumnStore.decoder clientHeight))
+        (D.field "columnStore" (ColumnStore.decoder clientHeight |> D.map Tuple.first))
         (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
         (D.field "producerRegistry" Producer.registryDecoder)
         (D.field "idGen" UniqueIdGen.decoder)

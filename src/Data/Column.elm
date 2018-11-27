@@ -89,12 +89,18 @@ encodeMedia media =
             E.tagged "Movie" (E.string (Url.toString url))
 
 
-decoder : Int -> Decoder Column
+decoder : Int -> Decoder ( Column, Cmd Msg )
 decoder clientHeight =
+    let
+        scrollDecoder id =
+            Scroll.decoder (autoAdjustOptions clientHeight)
+                (scrollInitOptions id clientHeight)
+                columnItemDecoder
+    in
     D.do (D.field "id" D.string) <|
         \id ->
-            D.do (D.field "items" (Scroll.decoder (scrollOptions id clientHeight) columnItemDecoder)) <|
-                \items ->
+            D.do (D.field "items" (scrollDecoder id)) <|
+                \( items, sCmd ) ->
                     D.do (D.field "filters" (D.array Filter.decoder)) <|
                         \filters ->
                             D.do (D.maybeField "offset" offsetDecoder) <|
@@ -102,7 +108,7 @@ decoder clientHeight =
                                     -- Migration; use field instead of maybeField later
                                     D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
                                         \pinned ->
-                                            D.succeed (Column id items filters offset pinned False False filters "")
+                                            D.succeed ( Column id items filters offset pinned False False filters "", Cmd.map ScrollMsg sCmd )
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -152,7 +158,7 @@ welcome clientHeight idGen id =
                 ]
     in
     ( { id = id
-      , items = Scroll.initWith (scrollOptions id clientHeight) items
+      , items = Scroll.initWith (scrollInitOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
       , pinned = False
@@ -165,16 +171,20 @@ welcome clientHeight idGen id =
     )
 
 
-scrollOptions : String -> Int -> Scroll.Options
-scrollOptions id clientHeight =
+scrollInitOptions : String -> Int -> Scroll.InitOptions
+scrollInitOptions id clientHeight =
     let
         base =
             Scroll.defaultOptions ("scroll-" ++ id)
 
-        baseAmount =
-            columnBaseAmount clientHeight
+        fillAmount =
+            clientHeight // itemMinimumHeight
     in
-    { base | limit = columnItemLimit, baseAmount = baseAmount, tierAmount = baseAmount }
+    { base
+        | limit = columnItemLimit
+        , baseAmount = round (toFloat fillAmount * baseRatio)
+        , tierAmount = round (toFloat fillAmount * tierRatio)
+    }
 
 
 columnItemLimit : Int
@@ -182,9 +192,22 @@ columnItemLimit =
     2000
 
 
-columnBaseAmount : Int -> Int
-columnBaseAmount clientHeight =
-    (clientHeight * 3) // (itemMinimumHeight * 5)
+baseRatio : Float
+baseRatio =
+    1.3
+
+
+tierRatio : Float
+tierRatio =
+    2.5
+
+
+autoAdjustOptions : Int -> Scroll.AutoAdjustOptions
+autoAdjustOptions clientHeight =
+    { clientHeight = clientHeight
+    , baseRatio = baseRatio
+    , tierRatio = tierRatio
+    }
 
 
 textOnlyItem : String -> String -> ColumnItem
@@ -218,7 +241,7 @@ new clientHeight idGen id =
                 textOnlyItem "New column created! Let's configure filters above!"
     in
     ( { id = id
-      , items = Scroll.initWith (scrollOptions id clientHeight) [ item ]
+      , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
       , pinned = False
@@ -234,7 +257,7 @@ new clientHeight idGen id =
 simple : Int -> FilterAtom -> String -> Column
 simple clientHeight fa id =
     { id = id
-    , items = Scroll.init (scrollOptions id clientHeight)
+    , items = Scroll.init (scrollInitOptions id clientHeight)
     , filters = Array.fromList [ Filter.Singular fa ]
     , offset = Nothing
     , pinned = False
@@ -248,6 +271,7 @@ simple clientHeight fa id =
 type Msg
     = ToggleConfig Bool
     | Pin Bool
+    | Show
     | Calm
     | AddFilter Filter
     | DelFilter Int
@@ -282,6 +306,13 @@ update msg c =
 
         Pin pinned ->
             ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto )
+
+        Show ->
+            let
+                ( items, sCmd ) =
+                    Scroll.update Scroll.Reveal c.items
+            in
+            ( { c | items = items, recentlyTouched = True }, PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump )
 
         Calm ->
             pure { c | recentlyTouched = False }
@@ -326,7 +357,7 @@ update msg c =
         ScanBroker { broker, maxCount, clientHeight, catchUp } ->
             case ItemBroker.bulkRead maxCount c.offset broker of
                 [] ->
-                    pure (adjustScroll clientHeight c)
+                    pure c
 
                 (( _, newOffset ) :: _) as items ->
                     let
@@ -336,44 +367,45 @@ update msg c =
                                     ( c, PostProcess Cmd.none True (Just c.id) Keep )
 
                                 ( True, newItems ) ->
-                                    -- Do not bump nor flash Column during catchUp
-                                    ( { c | items = Scroll.prependList newItems c.items }, PostProcess Cmd.none True (Just c.id) Keep )
+                                    let
+                                        ( items_, sCmd ) =
+                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
+                                    in
+                                    -- Do not bump, nor flash Column during catchUp
+                                    ( { c | items = items_ }
+                                    , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep
+                                    )
 
                                 ( False, [] ) ->
                                     ( c, PostProcess Cmd.none True Nothing Keep )
 
                                 ( False, newItems ) ->
-                                    ( { c | items = Scroll.prependList newItems c.items, recentlyTouched = True }
+                                    let
+                                        ( items_, sCmd ) =
+                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
+                                    in
+                                    ( { c | items = items_, recentlyTouched = True }
                                     , if c.pinned then
                                         -- Do not bump Pinned Column
-                                        PostProcess Cmd.none True Nothing Keep
+                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep
 
                                       else
-                                        PostProcess Cmd.none True Nothing Bump
+                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump
                                     )
                     in
-                    ( adjustScroll clientHeight { c_ | offset = Just newOffset }, pp )
+                    ( { c_ | offset = Just newOffset }, pp )
 
         ScrollMsg sMsg ->
             let
-                ( items, cmd ) =
+                ( items, sCmd ) =
                     Scroll.update sMsg c.items
             in
-            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg cmd) False Nothing Keep )
+            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg sCmd) False Nothing Keep )
 
 
 pure : Column -> ( Column, PostProcess )
 pure c =
     ( c, PostProcess Cmd.none False Nothing Keep )
-
-
-adjustScroll : Int -> Column -> Column
-adjustScroll clientHeight c =
-    let
-        baseAmount =
-            columnBaseAmount clientHeight
-    in
-    { c | items = c.items |> Scroll.setBaseAmount baseAmount |> Scroll.setTierAmount baseAmount }
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
@@ -387,3 +419,10 @@ applyFilters filters ( item, offset ) =
 
     else
         Nothing
+
+
+prependItems : Scroll.AutoAdjustOptions -> List ColumnItem -> Scroll ColumnItem -> ( Scroll ColumnItem, Cmd Scroll.Msg )
+prependItems opts newItems items =
+    items
+        |> Scroll.prependList newItems
+        |> Scroll.update (Scroll.AdjustReq opts)

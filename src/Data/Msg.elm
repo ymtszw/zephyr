@@ -43,7 +43,7 @@ type Msg
     | DragStart { index : Int, id : String, pinned : Bool }
     | DragEnter (Array String)
     | DragEnd
-    | LoadColumnStore ( ColumnStore, UniqueIdGen )
+    | LoadColumnStore ( ColumnStore, UniqueIdGen, Cmd Msg )
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry
     | LoadPref Pref
@@ -233,6 +233,24 @@ scrollMsgToEntry prefix sMsg =
         Scroll.BackToTop ->
             Entry (prefix ++ ".BackToTop") []
 
+        Scroll.Reveal ->
+            Entry (prefix ++ ".Reveal") []
+
+        Scroll.AdjustReq { clientHeight, baseRatio, tierRatio } ->
+            Entry (prefix ++ ".AdjustReq")
+                [ String.fromInt clientHeight
+                , String.fromFloat baseRatio
+                , String.fromFloat tierRatio
+                ]
+
+        Scroll.AdjustExec { clientHeight, baseRatio, tierRatio } vp ->
+            Entry (prefix ++ ".AdjustExec")
+                [ String.fromInt clientHeight
+                , String.fromFloat baseRatio
+                , String.fromFloat tierRatio
+                , viewportToString vp
+                ]
+
 
 producerMsgToEntry : Producer.Msg -> Entry
 producerMsgToEntry pMsg =
@@ -284,6 +302,9 @@ columnMsgToEntry cId cMsg =
 
         Column.Calm ->
             Entry "Column.Calm" [ cId ]
+
+        Column.Show ->
+            Entry "Column.Show" [ cId ]
 
         Column.AddFilter filter ->
             Entry "Column.AddFilter" [ cId, Filter.toString filter ]

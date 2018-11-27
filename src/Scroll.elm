@@ -1,7 +1,7 @@
 module Scroll exposing
-    ( Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
+    ( Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
     , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-    , push, pushAll, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
+    , push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
 
@@ -21,9 +21,9 @@ but changes its behavior based on runtime status, and achieves side-effect via c
 Its ever-changing runtime statuses are ephemeral, and not persisted.
 Its internal data structure may be persisted.
 
-@docs Scroll, Options, encode, decoder, init, initWith, defaultOptions, clear
+@docs Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
 @docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
-@docs push, pushAll, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
+@docs push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
 -}
@@ -35,6 +35,7 @@ import Html
 import Html.Attributes exposing (id)
 import Html.Events
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import Task
 
@@ -59,7 +60,8 @@ type alias ScrollRecord a =
 type ViewportStatus
     = Scrolling Browser.Dom.Viewport
     | OffTheTop Browser.Dom.Viewport
-    | AtTop
+    | AtTop Browser.Dom.Viewport
+    | Initial
 
 
 type Tier
@@ -71,42 +73,48 @@ encode encodeItem (Scroll s) =
     E.list encodeItem (BoundedDeque.toList s.buffer)
 
 
-decoder : Options -> Decoder a -> Decoder (Scroll a)
-decoder { id, limit, baseAmount, tierAmount, ascendThreshold } itemDecoder =
-    D.list itemDecoder
-        |> D.map
-            (\list ->
-                Scroll
-                    { id = id
-                    , buffer = BoundedDeque.fromList limit list
-                    , pending = []
-                    , pendingSize = 0
-                    , viewportStatus = AtTop
-                    , tier = Tier 0
-                    , baseAmount = baseAmount
-                    , tierAmount = tierAmount
-                    , ascendThreshold = ascendThreshold
-                    }
-            )
+decoder : AutoAdjustOptions -> InitOptions -> Decoder a -> Decoder ( Scroll a, Cmd Msg )
+decoder adjustOpts { id, limit, baseAmount, tierAmount, ascendThreshold } itemDecoder =
+    D.do (D.list itemDecoder) <|
+        \list ->
+            let
+                s =
+                    Scroll
+                        { id = id
+                        , buffer = BoundedDeque.fromList limit list
+                        , pending = []
+                        , pendingSize = 0
+                        , viewportStatus = Initial
+                        , tier = Tier 0
+                        , baseAmount = baseAmount
+                        , tierAmount = tierAmount
+                        , ascendThreshold = ascendThreshold
+                        }
+            in
+            D.succeed ( s, requestAdjust id adjustOpts )
 
 
-type alias Options =
+type alias InitOptions =
     { id : String, limit : Int, baseAmount : Int, tierAmount : Int, ascendThreshold : Float }
 
 
-{-| Initialize a Scroll with set of Options.
+type alias AutoAdjustOptions =
+    { clientHeight : Int, baseRatio : Float, tierRatio : Float }
+
+
+{-| Initialize a Scroll with set of InitOptions.
 
 To change options after initialized, use set\*\*\* functions.
 
 -}
-init : Options -> Scroll a
+init : InitOptions -> Scroll a
 init { id, limit, baseAmount, tierAmount, ascendThreshold } =
     Scroll
         { id = id
         , buffer = BoundedDeque.empty limit
         , pending = []
         , pendingSize = 0
-        , viewportStatus = AtTop
+        , viewportStatus = Initial
         , tier = Tier 0
         , baseAmount = baseAmount
         , tierAmount = tierAmount
@@ -114,7 +122,7 @@ init { id, limit, baseAmount, tierAmount, ascendThreshold } =
         }
 
 
-defaultOptions : String -> Options
+defaultOptions : String -> InitOptions
 defaultOptions id =
     { id = id
     , limit = defaultLimit
@@ -164,19 +172,19 @@ setAscendThreshold ascendThreshold (Scroll s) =
     Scroll { s | ascendThreshold = ascendThreshold }
 
 
-{-| Initialize a Scroll with Options and initial items.
+{-| Initialize a Scroll with InitOptions and initial items.
 
 Order of initial items are kept as is: head at the front.
 
 -}
-initWith : Options -> List a -> Scroll a
+initWith : InitOptions -> List a -> Scroll a
 initWith { id, limit, baseAmount, tierAmount, ascendThreshold } list =
     Scroll
         { id = id
         , buffer = BoundedDeque.fromList limit list
         , pending = []
         , pendingSize = 0
-        , viewportStatus = AtTop
+        , viewportStatus = Initial
         , tier = Tier 0
         , baseAmount = baseAmount
         , tierAmount = tierAmount
@@ -189,6 +197,22 @@ initWith { id, limit, baseAmount, tierAmount, ascendThreshold } list =
 clear : Scroll a -> Scroll a
 clear (Scroll s) =
     Scroll { s | pending = [], buffer = BoundedDeque.empty (BoundedDeque.getMaxSize s.buffer) }
+
+
+sceneHeight : Scroll a -> Int
+sceneHeight (Scroll s) =
+    case s.viewportStatus of
+        Scrolling vp ->
+            round vp.scene.height
+
+        OffTheTop vp ->
+            round vp.scene.height
+
+        AtTop vp ->
+            round vp.scene.height
+
+        Initial ->
+            0
 
 
 
@@ -208,7 +232,10 @@ If pushed to `buffer`, `toList` and `toListWithFilter` caches are invalidated.
 push : a -> Scroll a -> Scroll a
 push a (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            Scroll s |> pendingToBuffer |> pushToBuffer a
+
+        AtTop _ ->
             Scroll s |> pendingToBuffer |> pushToBuffer a
 
         _ ->
@@ -235,22 +262,23 @@ pushToPending a (Scroll s) =
     Scroll { s | pending = a :: s.pending, pendingSize = s.pendingSize + 1 }
 
 
-{-| Push all items in a List to a Scroll. Head-first.
--}
-pushAll : List a -> Scroll a -> Scroll a
-pushAll list s =
-    case list of
-        [] ->
-            s
-
-        x :: xs ->
-            pushAll xs (push x s)
-
-
-{-| Prepend List of items to a Scroll. Consider as tail-first pushAll.
+{-| Prepend List of items to a Scroll. Consider as tail-first push.
 -}
 prependList : List a -> Scroll a -> Scroll a
 prependList list (Scroll s) =
+    case s.viewportStatus of
+        Initial ->
+            Scroll s |> pendingToBuffer |> prependToBuffer list
+
+        AtTop _ ->
+            Scroll s |> pendingToBuffer |> prependToBuffer list
+
+        _ ->
+            Scroll { s | pending = list ++ s.pending, pendingSize = s.pendingSize + List.length list }
+
+
+prependToBuffer : List a -> Scroll a -> Scroll a
+prependToBuffer list (Scroll s) =
     let
         limit =
             BoundedDeque.getMaxSize s.buffer
@@ -267,7 +295,10 @@ depending on `viewportStatus`.
 pop : Scroll a -> ( Maybe a, Scroll a )
 pop (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            Scroll s |> pendingToBuffer |> popFromBuffer
+
+        AtTop _ ->
             Scroll s |> pendingToBuffer |> popFromBuffer
 
         _ ->
@@ -311,7 +342,7 @@ amountToTake (Scroll s) =
         (Tier t) =
             s.tier
     in
-    s.baseAmount + s.tierAmount * (t + 1)
+    s.baseAmount + s.tierAmount * t
 
 
 {-| `toList` with filtering.
@@ -360,7 +391,10 @@ isEmpty (Scroll s) =
 scrolled : Scroll a -> Bool
 scrolled (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            False
+
+        AtTop _ ->
             False
 
         OffTheTop _ ->
@@ -378,6 +412,9 @@ type Msg
     = ScrollStart
     | ViewportResult (Result Browser.Dom.Error Browser.Dom.Viewport)
     | BackToTop
+    | Reveal
+    | AdjustReq AutoAdjustOptions
+    | AdjustExec AutoAdjustOptions Browser.Dom.Viewport
 
 
 update : Msg -> Scroll a -> ( Scroll a, Cmd Msg )
@@ -386,17 +423,20 @@ update msg (Scroll s) =
         ScrollStart ->
             case s.viewportStatus of
                 OffTheTop vp ->
-                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewport s.id )
+                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewportWithDelay s.id )
 
-                AtTop ->
-                    ( Scroll s, queryViewport s.id )
+                AtTop vp ->
+                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewportWithDelay s.id )
+
+                Initial ->
+                    ( Scroll s, queryViewportWithDelay s.id )
 
                 Scrolling _ ->
                     ( Scroll s, Cmd.none )
 
         ViewportResult (Ok newVp) ->
             if newVp.viewport.y == 0 then
-                ( Scroll { s | viewportStatus = AtTop } |> pendingToBuffer |> calculateTier, Cmd.none )
+                ( Scroll { s | viewportStatus = AtTop newVp } |> pendingToBuffer |> calculateTier, Cmd.none )
 
             else
                 case s.viewportStatus of
@@ -405,13 +445,14 @@ update msg (Scroll s) =
                             ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
                         else
-                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewport s.id )
+                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewportWithDelay s.id )
 
                     _ ->
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
-        ViewportResult (Err _) ->
-            ( Scroll { s | viewportStatus = AtTop } |> pendingToBuffer |> calculateTier, Cmd.none )
+        ViewportResult (Err (Browser.Dom.NotFound _)) ->
+            -- Column is dismissed? Keep current state
+            ( Scroll s, Cmd.none )
 
         BackToTop ->
             -- Lazily resolves viewportStatus, not touching Scroll.
@@ -423,21 +464,78 @@ update msg (Scroll s) =
                 |> Task.attempt ViewportResult
             )
 
+        Reveal ->
+            ( Scroll { s | viewportStatus = Initial } |> pendingToBuffer |> calculateTier
+            , queryViewportWithDelay s.id
+            )
 
-queryViewport : String -> Cmd Msg
-queryViewport id =
-    doAfter queryInterval (Result.map Tuple.second >> ViewportResult) (Browser.Dom.getViewportOf id)
+        AdjustReq opts ->
+            case s.viewportStatus of
+                AtTop vp ->
+                    ( Scroll s, requestAdjust s.id opts )
+
+                _ ->
+                    -- Not change options when scrolled
+                    ( Scroll s, Cmd.none )
+
+        AdjustExec { clientHeight, baseRatio, tierRatio } vp ->
+            -- Adjust options dynamically (in somewhat crude way), compared to current clientHeight.
+            let
+                clientHeightF =
+                    toFloat clientHeight
+            in
+            if vp.scene.height > clientHeightF * baseRatio then
+                let
+                    approxAverageItemHeightF =
+                        vp.scene.height / toFloat (amountToTake (Scroll s))
+
+                    approxFillAmountF =
+                        clientHeightF / approxAverageItemHeightF
+                in
+                ( Scroll
+                    { s
+                        | viewportStatus = AtTop vp
+                        , baseAmount = round (approxFillAmountF * baseRatio)
+                        , tierAmount = round (approxFillAmountF * tierRatio)
+                    }
+                , queryViewportWithDelay s.id
+                )
+
+            else
+                ( Scroll { s | viewportStatus = AtTop vp }, Cmd.none )
 
 
-queryInterval : Float
-queryInterval =
-    300
+queryViewportWithDelay : String -> Cmd Msg
+queryViewportWithDelay id =
+    doAfter queryDelay (Result.map Tuple.second >> ViewportResult) (Browser.Dom.getViewportOf id)
+
+
+queryDelay : Float
+queryDelay =
+    250
+
+
+requestAdjust : String -> AutoAdjustOptions -> Cmd Msg
+requestAdjust id opts =
+    Task.attempt
+        (\res ->
+            case res of
+                Ok vp ->
+                    AdjustExec opts vp
+
+                Err e ->
+                    ViewportResult (Err e)
+        )
+        (Browser.Dom.getViewportOf id)
 
 
 calculateTier : Scroll a -> Scroll a
 calculateTier (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            Scroll { s | tier = Tier 0 }
+
+        AtTop _ ->
             Scroll { s | tier = Tier 0 }
 
         OffTheTop vp ->
@@ -463,7 +561,10 @@ calculateTierImpl vp (Scroll s) =
 scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
 scrollAttrs tagger (Scroll s) =
     case s.viewportStatus of
-        AtTop ->
+        Initial ->
+            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+
+        AtTop _ ->
             [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
 
         OffTheTop _ ->

@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, init, encode, decoder, storeId, size, sizePinned
-    , add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
+    , add, get, remove, touchAt, dismissAt, map, mapForView, listShadow
     , updateById, applyOrder, consumeBroker, updateFAM
     )
 
@@ -18,7 +18,7 @@ when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, init, encode, decoder, storeId, size, sizePinned
-@docs add, get, show, remove, touchAt, dismissAt, map, mapForView, listShadow
+@docs add, get, remove, touchAt, dismissAt, map, mapForView, listShadow
 @docs updateById, applyOrder, consumeBroker, updateFAM
 
 -}
@@ -46,19 +46,35 @@ type alias ColumnStore =
     }
 
 
-decoder : Int -> Decoder ColumnStore
+decoder : Int -> Decoder ( ColumnStore, List ( String, Cmd Column.Msg ) )
 decoder clientHeight =
-    D.do (D.field "dict" (D.dict (Column.decoder clientHeight))) <|
-        \dict ->
-            D.do (D.field "order" (D.array D.string)) <|
-                \order ->
+    D.do (D.field "order" (D.array D.string)) <|
+        \order ->
+            D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order)) <|
+                \( dict, idAndCmds ) ->
                     D.do (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init)) <|
                         \fam ->
                             let
                                 scanQueue =
                                     Deque.fromList (Dict.keys dict)
                             in
-                            D.succeed (ColumnStore dict order fam scanQueue)
+                            D.succeed ( ColumnStore dict order fam scanQueue, idAndCmds )
+
+
+dictAndInitCmdDecoder : Int -> Array String -> Decoder ( Dict String Column, List ( String, Cmd Column.Msg ) )
+dictAndInitCmdDecoder clientHeight order =
+    D.do (D.dict (Column.decoder clientHeight)) <|
+        \dictWithCmds ->
+            let
+                reducer cId ( c, initCmd ) ( accDict, accCmds ) =
+                    Tuple.pair (Dict.insert cId c accDict) <|
+                        if Array.member cId order then
+                            ( cId, initCmd ) :: accCmds
+
+                        else
+                            accCmds
+            in
+            D.succeed (Dict.foldl reducer ( Dict.empty, [] ) dictWithCmds)
 
 
 encode : ColumnStore -> Storable
@@ -123,18 +139,6 @@ get index columnStore =
     columnStore.order
         |> Array.get index
         |> Maybe.andThen (\id -> Dict.get id columnStore.dict)
-
-
-show : Maybe Int -> String -> ColumnStore -> ColumnStore
-show limitMaybe cId columnStore =
-    let
-        newDict =
-            Dict.update cId (Maybe.map (\c -> { c | recentlyTouched = True })) columnStore.dict
-
-        newOrder =
-            columnStore.order |> Array.squeeze 0 cId |> autoArrange limitMaybe newDict
-    in
-    { columnStore | dict = newDict, order = newOrder }
 
 
 remove : String -> ColumnStore -> ColumnStore
@@ -313,14 +317,15 @@ consumeBroker :
     Maybe Int
     -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     -> ColumnStore
-    -> ( ColumnStore, Column.PostProcess )
+    -> ( ColumnStore, Maybe ( String, Column.PostProcess ) )
 consumeBroker limitMaybe opts columnStore =
     case Deque.popBack columnStore.scanQueue of
         ( Just cId, newScanQueue ) ->
             updateById limitMaybe cId (Column.ScanBroker opts) { columnStore | scanQueue = Deque.pushFront cId newScanQueue }
+                |> Tuple.mapSecond (Just << Tuple.pair cId)
 
         ( Nothing, _ ) ->
-            pure columnStore
+            ( columnStore, Nothing )
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )
