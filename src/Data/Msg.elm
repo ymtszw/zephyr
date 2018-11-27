@@ -236,8 +236,20 @@ scrollMsgToEntry prefix sMsg =
         Scroll.Reveal ->
             Entry (prefix ++ ".Reveal") []
 
-        Scroll.Adjust clientHeight ->
-            Entry (prefix ++ ".AdjustViewport") [ String.fromInt clientHeight ]
+        Scroll.AdjustReq { clientHeight, baseRatio, tierRatio } ->
+            Entry (prefix ++ ".AdjustReq")
+                [ String.fromInt clientHeight
+                , String.fromFloat baseRatio
+                , String.fromFloat tierRatio
+                ]
+
+        Scroll.AdjustExec { clientHeight, baseRatio, tierRatio } vp ->
+            Entry (prefix ++ ".AdjustExec")
+                [ String.fromInt clientHeight
+                , String.fromFloat baseRatio
+                , String.fromFloat tierRatio
+                , viewportToString vp
+                ]
 
 
 producerMsgToEntry : Producer.Msg -> Entry

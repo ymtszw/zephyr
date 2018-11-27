@@ -91,9 +91,15 @@ encodeMedia media =
 
 decoder : Int -> Decoder ( Column, Cmd Msg )
 decoder clientHeight =
+    let
+        scrollDecoder id =
+            Scroll.decoder (autoAdjustOptions clientHeight)
+                (scrollInitOptions id clientHeight)
+                columnItemDecoder
+    in
     D.do (D.field "id" D.string) <|
         \id ->
-            D.do (D.field "items" (Scroll.decoder (scrollOptions id clientHeight) columnItemDecoder)) <|
+            D.do (D.field "items" (scrollDecoder id)) <|
                 \( items, sCmd ) ->
                     D.do (D.field "filters" (D.array Filter.decoder)) <|
                         \filters ->
@@ -152,7 +158,7 @@ welcome clientHeight idGen id =
                 ]
     in
     ( { id = id
-      , items = Scroll.initWith (scrollOptions id clientHeight) items
+      , items = Scroll.initWith (scrollInitOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
       , pinned = False
@@ -165,16 +171,20 @@ welcome clientHeight idGen id =
     )
 
 
-scrollOptions : String -> Int -> Scroll.Options
-scrollOptions id clientHeight =
+scrollInitOptions : String -> Int -> Scroll.InitOptions
+scrollInitOptions id clientHeight =
     let
         base =
             Scroll.defaultOptions ("scroll-" ++ id)
 
-        baseAmount =
-            columnBaseAmount clientHeight
+        fillAmount =
+            clientHeight // itemMinimumHeight
     in
-    { base | limit = columnItemLimit, baseAmount = baseAmount, tierAmount = baseAmount }
+    { base
+        | limit = columnItemLimit
+        , baseAmount = round (toFloat fillAmount * baseRatio)
+        , tierAmount = round (toFloat fillAmount * tierRatio)
+    }
 
 
 columnItemLimit : Int
@@ -182,9 +192,22 @@ columnItemLimit =
     2000
 
 
-columnBaseAmount : Int -> Int
-columnBaseAmount clientHeight =
-    (clientHeight * 3) // (itemMinimumHeight * 5)
+baseRatio : Float
+baseRatio =
+    1.3
+
+
+tierRatio : Float
+tierRatio =
+    2.5
+
+
+autoAdjustOptions : Int -> Scroll.AutoAdjustOptions
+autoAdjustOptions clientHeight =
+    { clientHeight = clientHeight
+    , baseRatio = baseRatio
+    , tierRatio = tierRatio
+    }
 
 
 textOnlyItem : String -> String -> ColumnItem
@@ -218,7 +241,7 @@ new clientHeight idGen id =
                 textOnlyItem "New column created! Let's configure filters above!"
     in
     ( { id = id
-      , items = Scroll.initWith (scrollOptions id clientHeight) [ item ]
+      , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
       , pinned = False
@@ -234,7 +257,7 @@ new clientHeight idGen id =
 simple : Int -> FilterAtom -> String -> Column
 simple clientHeight fa id =
     { id = id
-    , items = Scroll.init (scrollOptions id clientHeight)
+    , items = Scroll.init (scrollInitOptions id clientHeight)
     , filters = Array.fromList [ Filter.Singular fa ]
     , offset = Nothing
     , pinned = False
@@ -332,39 +355,42 @@ update msg c =
             pure { c | deleteGate = input }
 
         ScanBroker { broker, maxCount, clientHeight, catchUp } ->
-            let
-                ( items_, sCmd ) =
-                    Scroll.update (Scroll.Adjust clientHeight) c.items
-
-                ppGen =
-                    PostProcess (Cmd.map ScrollMsg sCmd)
-            in
             case ItemBroker.bulkRead maxCount c.offset broker of
                 [] ->
-                    ( { c | items = items_ }, ppGen False Nothing Keep )
+                    pure c
 
                 (( _, newOffset ) :: _) as items ->
                     let
                         ( c_, pp ) =
                             case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
                                 ( True, [] ) ->
-                                    ( c, ppGen True (Just c.id) Keep )
+                                    ( c, PostProcess Cmd.none True (Just c.id) Keep )
 
                                 ( True, newItems ) ->
-                                    -- Do not bump nor flash Column during catchUp
-                                    ( { c | items = Scroll.prependList newItems items_ }, ppGen True (Just c.id) Keep )
+                                    let
+                                        ( items_, sCmd ) =
+                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
+                                    in
+                                    -- Do not bump, nor flash Column during catchUp
+                                    ( { c | items = items_ }
+                                    , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep
+                                    )
 
                                 ( False, [] ) ->
-                                    ( c, ppGen True Nothing Keep )
+                                    ( c, PostProcess Cmd.none True Nothing Keep )
 
                                 ( False, newItems ) ->
-                                    ( { c | items = Scroll.prependList newItems items_, recentlyTouched = True }
+                                    let
+                                        ( items_, sCmd ) =
+                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
+                                    in
+                                    ( { c | items = items_, recentlyTouched = True }
                                     , if c.pinned then
                                         -- Do not bump Pinned Column
-                                        ppGen True Nothing Keep
+                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep
 
                                       else
-                                        ppGen True Nothing Bump
+                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump
                                     )
                     in
                     ( { c_ | offset = Just newOffset }, pp )
@@ -380,6 +406,13 @@ update msg c =
 pure : Column -> ( Column, PostProcess )
 pure c =
     ( c, PostProcess Cmd.none False Nothing Keep )
+
+
+prependItems : Scroll.AutoAdjustOptions -> List ColumnItem -> Scroll ColumnItem -> ( Scroll ColumnItem, Cmd Scroll.Msg )
+prependItems opts newItems items =
+    items
+        |> Scroll.prependList newItems
+        |> Scroll.update (Scroll.AdjustReq opts)
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
