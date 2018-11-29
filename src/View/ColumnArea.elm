@@ -28,6 +28,7 @@ import Time
 import TimeExtra exposing (ms)
 import View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
 import View.ColumnItem exposing (columnItemKeyEl)
+import View.NewMessageEditor exposing (newMessageEditorEl)
 import View.Parts exposing (..)
 
 
@@ -41,15 +42,15 @@ columnAreaEl m =
         , htmlAttribute (Html.Attributes.id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
         ]
-        (ColumnStore.mapForView (columnKeyEl m.env m.viewState) m.columnStore)
+        (ColumnStore.mapForView (columnKeyEl m) m.columnStore)
 
 
-columnKeyEl : Env -> ViewState -> FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
-columnKeyEl env vs fam index c =
+columnKeyEl : Model -> FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
+columnKeyEl m fam index c =
     let
         baseAttrs =
             [ width (px fixedColumnWidth)
-            , height (fill |> maximum env.clientHeight)
+            , height (fill |> maximum m.env.clientHeight)
             , clipY
             , BG.color oneDark.main
             , BD.width columnBorder
@@ -61,10 +62,11 @@ columnKeyEl env vs fam index c =
             ]
     in
     Tuple.pair c.id <|
-        column (baseAttrs ++ dragAttributes env.clientHeight vs.columnSwapMaybe index c)
+        column (baseAttrs ++ dragAttributes m.env.clientHeight m.viewState.columnSwapMaybe index c)
             [ lazy3 columnHeaderEl fam index c
-            , lazy4 columnConfigFlyoutEl vs.selectState fam index c
-            , lazy4 itemsEl env.clientHeight vs.timezone c.id c.items
+            , lazy4 columnConfigFlyoutEl m.viewState.selectState fam index c
+            , newMessageEditorEl m.producerRegistry c
+            , lazy4 itemsEl m.env.clientHeight m.viewState.timezone c.id c.items
             ]
 
 
