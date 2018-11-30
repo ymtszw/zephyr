@@ -161,9 +161,6 @@ grabberWidth =
 columnHeaderTextEl : FilterAtomMaterial -> String -> Bool -> Array Filter -> Element Msg
 columnHeaderTextEl fam cId scrolled filters =
     let
-        arrayReducer f acc =
-            List.sortWith Filter.compareFilterAtom (Filter.toList f) :: acc
-
         backToTopAttrs =
             if scrolled then
                 [ pointer, onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)) ]
