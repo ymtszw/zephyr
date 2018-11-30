@@ -18,6 +18,7 @@ Also, number of Items shown depends on runtime clientHeight.
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
+import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor)
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
@@ -27,6 +28,7 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import Scroll exposing (Scroll)
+import SelectArray exposing (SelectArray)
 import Url
 import View.Parts exposing (itemMinimumHeight)
 
@@ -40,6 +42,7 @@ type alias Column =
     , recentlyTouched : Bool -- This property may become stale, though it should have no harm
     , configOpen : Bool
     , pendingFilters : Array Filter
+    , editors : SelectArray ColumnEditor
     , deleteGate : String
     }
 
@@ -108,7 +111,21 @@ decoder clientHeight =
                                     -- Migration; use field instead of maybeField later
                                     D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
                                         \pinned ->
-                                            D.succeed ( Column id items filters offset pinned False False filters "", Cmd.map ScrollMsg sCmd )
+                                            let
+                                                c =
+                                                    { id = id
+                                                    , items = items
+                                                    , filters = filters
+                                                    , offset = offset
+                                                    , pinned = pinned
+                                                    , recentlyTouched = False
+                                                    , configOpen = False
+                                                    , pendingFilters = filters
+                                                    , editors = ColumnEditor.filtersToEditors filters
+                                                    , deleteGate = ""
+                                                    }
+                                            in
+                                            D.succeed ( c, Cmd.map ScrollMsg sCmd )
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -165,6 +182,7 @@ welcome clientHeight idGen id =
       , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
+      , editors = ColumnEditor.defaultEditors
       , deleteGate = ""
       }
     , newGen
@@ -248,6 +266,7 @@ new clientHeight idGen id =
       , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
+      , editors = ColumnEditor.defaultEditors
       , deleteGate = ""
       }
     , newGen
@@ -256,14 +275,19 @@ new clientHeight idGen id =
 
 simple : Int -> FilterAtom -> String -> Column
 simple clientHeight fa id =
+    let
+        filters =
+            Array.fromList [ Filter.Singular fa ]
+    in
     { id = id
     , items = Scroll.init (scrollInitOptions id clientHeight)
-    , filters = Array.fromList [ Filter.Singular fa ]
+    , filters = filters
     , offset = Nothing
     , pinned = False
     , recentlyTouched = True
     , configOpen = False
-    , pendingFilters = Array.fromList [ Filter.Singular fa ]
+    , pendingFilters = filters
+    , editors = ColumnEditor.filtersToEditors filters
     , deleteGate = ""
     }
 

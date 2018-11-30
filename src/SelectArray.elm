@@ -1,4 +1,4 @@
-module SelectArray exposing (SelectArray, fromLists, indexedMap, selectAt, selected)
+module SelectArray exposing (SelectArray, fromLists, indexedMap, selectAt, selected, singleton)
 
 {-| A Zipper backed by Array.
 
@@ -19,6 +19,11 @@ type SelectArray a
         , selected : a
         , rear : Array a
         }
+
+
+singleton : a -> SelectArray a
+singleton a =
+    SelectArray { front = empty, selected = a, rear = empty }
 
 
 fromLists : List a -> a -> List a -> SelectArray a
