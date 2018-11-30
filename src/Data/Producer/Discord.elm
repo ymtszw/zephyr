@@ -48,8 +48,7 @@ import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStat
 import Dict exposing (Dict)
 import Element
 import Hex
-import Http
-import HttpExtra as Http
+import HttpClient exposing (Error(..))
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -808,11 +807,11 @@ type Msg
     | Unsubscribe String
     | Fetch Posix
     | Fetched FetchResult
-    | APIError Http.Error
+    | APIError HttpClient.Error
 
 
 type FetchResult
-    = FetchErr String Http.Error
+    = FetchErr String HttpClient.Error
     | FetchOk String (List Message) Posix
 
 
@@ -1195,55 +1194,45 @@ updatePovOk tagger cId ms posix pov =
             enter (PostProcessBase True (calculateFAM pov.channels) (Just Worque.DiscordFetch)) (tagger pov)
 
 
-handleFetchErr : String -> Http.Error -> Discord -> Yield
+handleFetchErr : String -> HttpClient.Error -> Discord -> Yield
 handleFetchErr cId httpError discord =
-    case ( discord, unauthorizedOnFetch httpError ) of
-        ( Hydrated t pov, False ) ->
+    case ( discord, httpError ) of
+        ( Hydrated t pov, Unauthorized _ ) ->
+            enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
+
+        ( Hydrated t pov, _ ) ->
             updatePovErr (Hydrated t) cId httpError pov
 
-        ( Hydrated t pov, True ) ->
+        ( Rehydrating t pov, Unauthorized _ ) ->
             enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
 
-        ( Rehydrating t pov, False ) ->
+        ( Rehydrating t pov, _ ) ->
             updatePovErr (Rehydrating t) cId httpError pov
 
-        ( Rehydrating t pov, True ) ->
-            enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
+        ( Expired t pov, Unauthorized _ ) ->
+            pure discord
 
-        ( Expired t pov, False ) ->
+        ( Expired t pov, _ ) ->
             -- Late arrival?
             updatePovErr (Expired t) cId httpError pov
 
-        ( Expired t pov, True ) ->
-            pure discord
-
-        ( Switching newSession pov, False ) ->
-            -- Previous POV is still available
-            updatePovErr (Switching newSession) cId httpError pov
-
-        ( Switching newSession pov, True ) ->
+        ( Switching newSession pov, Unauthorized _ ) ->
             -- Hydrate should be going at the same time
             pure discord
 
+        ( Switching newSession pov, _ ) ->
+            -- Previous POV is still available
+            updatePovErr (Switching newSession) cId httpError pov
+
         _ ->
             pure discord
 
 
-unauthorizedOnFetch : Http.Error -> Bool
-unauthorizedOnFetch httpError =
-    case httpError of
-        Http.BadStatus { status } ->
-            status.code == 401
-
-        _ ->
-            False
-
-
-updatePovErr : (POV -> Discord) -> String -> Http.Error -> POV -> Yield
+updatePovErr : (POV -> Discord) -> String -> HttpClient.Error -> POV -> Yield
 updatePovErr tagger cId httpError pov =
     case Dict.get cId pov.channels of
         Just c ->
-            if notFoundOnFetch httpError || forbiddenOnFetch httpError then
+            if channelUnavailable httpError then
                 let
                     newChannels =
                         Dict.remove cId pov.channels
@@ -1272,28 +1261,21 @@ updatePovErr tagger cId httpError pov =
             pure (tagger pov)
 
 
-notFoundOnFetch : Http.Error -> Bool
-notFoundOnFetch httpError =
+channelUnavailable : HttpClient.Error -> Bool
+channelUnavailable httpError =
     case httpError of
-        Http.BadStatus { status } ->
-            status.code == 404
+        Forbidden _ ->
+            True
+
+        NotFound _ ->
+            True
 
         _ ->
             False
 
 
-forbiddenOnFetch : Http.Error -> Bool
-forbiddenOnFetch httpError =
-    case httpError of
-        Http.BadStatus { status } ->
-            status.code == 403
-
-        _ ->
-            False
-
-
-handleAPIError : Discord -> Http.Error -> Yield
-handleAPIError discord error =
+handleAPIError : Discord -> HttpClient.Error -> Yield
+handleAPIError discord _ =
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
@@ -1346,15 +1328,15 @@ apiPath path queryMaybe =
 
 identify : String -> Cmd Msg
 identify token =
-    Http.getWithAuth (apiPath "/users/@me" Nothing) (Http.auth token) userDecoder
-        |> Http.try Identify APIError
+    HttpClient.getWithAuth (apiPath "/users/@me" Nothing) (HttpClient.auth token) userDecoder
+        |> HttpClient.try Identify APIError
 
 
 hydrate : String -> Cmd Msg
 hydrate token =
-    Http.getWithAuth (apiPath "/users/@me/guilds" Nothing) (Http.auth token) decodeGuildArrayIntoDict
+    HttpClient.getWithAuth (apiPath "/users/@me/guilds" Nothing) (HttpClient.auth token) decodeGuildArrayIntoDict
         |> Task.andThen (hydrateChannels token)
-        |> Http.try identity APIError
+        |> HttpClient.try identity APIError
 
 
 decodeGuildArrayIntoDict : Decoder (Dict String Guild)
@@ -1368,12 +1350,12 @@ decodeGuildArrayIntoDict =
     D.map listToDict (D.list guildDecoder)
 
 
-hydrateChannels : String -> Dict String Guild -> Task Http.Error Msg
+hydrateChannels : String -> Dict String Guild -> Task HttpClient.Error Msg
 hydrateChannels token guilds =
     let
         getGuildChannels guildId =
-            Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
-                (Http.auth token)
+            HttpClient.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
+                (HttpClient.auth token)
                 (D.leakyList (channelDecoder guilds))
 
         intoDict listOfChannelList =
@@ -1402,8 +1384,8 @@ fetchChannelMessages token channel =
 
         fetchTask =
             -- Note that /messages API returns messages from latest to oldest
-            Http.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
-                (Http.auth token)
+            HttpClient.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
+                (HttpClient.auth token)
                 (D.leakyList messageDecoder)
     in
     fetchTask

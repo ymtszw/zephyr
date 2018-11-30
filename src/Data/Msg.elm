@@ -13,7 +13,7 @@ import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
-import HttpExtra
+import HttpClient
 import Iso8601
 import Json.Decode as D
 import Json.Encode as E
@@ -285,10 +285,10 @@ producerMsgToEntry pMsg =
                     Entry "Discord.FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
 
                 Discord.Fetched (Discord.FetchErr cId e) ->
-                    Entry "Discord.FetchErr" [ cId, HttpExtra.errorToString e ]
+                    Entry "Discord.FetchErr" [ cId, HttpClient.errorToString e ]
 
                 Discord.APIError e ->
-                    Entry "Discord.APIError" [ HttpExtra.errorToString e ]
+                    Entry "Discord.APIError" [ HttpClient.errorToString e ]
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry
