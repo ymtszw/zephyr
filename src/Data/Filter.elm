@@ -1,6 +1,6 @@
 module Data.Filter exposing
     ( Filter(..), FilterAtom(..), MediaFilter(..), encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString
-    , append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList, compareFilterAtom
+    , append, setAt, removeAt, updateAt, any, foldl, map, indexedMap, toList, compareFilterAtom
     )
 
 {-| Filter to narrow down Items flowing into a Column.
@@ -19,7 +19,7 @@ since IMO, that matches better with users' expectations in those kind of GUIs.
 For that, this module reluctantly exposes `append` API.
 
 @docs Filter, FilterAtom, MediaFilter, encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString
-@docs append, setAt, removeAt, updateAt, any, fold, map, indexedMap, toList, compareFilterAtom
+@docs append, setAt, removeAt, updateAt, any, foldl, map, indexedMap, toList, compareFilterAtom
 
 -}
 
@@ -140,20 +140,20 @@ any check filter =
                 any check otherFilter
 
 
-fold : (FilterAtom -> a -> a) -> a -> Filter -> a
-fold reducer acc filter =
+foldl : (FilterAtom -> a -> a) -> a -> Filter -> a
+foldl reducer acc filter =
     case filter of
         Singular filterAtom ->
             reducer filterAtom acc
 
         Or filterAtom otherFilter ->
-            fold reducer (reducer filterAtom acc) otherFilter
+            foldl reducer (reducer filterAtom acc) otherFilter
 
 
 map : (FilterAtom -> a) -> Filter -> List a
 map transform filter =
     filter
-        |> fold (\fa acc -> transform fa :: acc) []
+        |> foldl (\fa acc -> transform fa :: acc) []
         |> List.reverse
 
 
@@ -278,7 +278,7 @@ updateAtImpl targetIndex update index reversedFilterAtoms filter =
 
 toList : Filter -> List FilterAtom
 toList f =
-    fold (\fa acc -> fa :: acc) [] f |> List.reverse
+    foldl (\fa acc -> fa :: acc) [] f |> List.reverse
 
 
 toString : Filter -> String

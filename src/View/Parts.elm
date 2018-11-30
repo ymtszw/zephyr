@@ -728,7 +728,7 @@ filterToIconEl attrs size fam filter elMaybe =
                 ( _, _ ) ->
                     Nothing
     in
-    Filter.fold reducer elMaybe filter
+    Filter.foldl reducer elMaybe filter
 
 
 discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
