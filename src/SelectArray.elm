@@ -1,4 +1,7 @@
-module SelectArray exposing (SelectArray, fromLists, indexedMap, selectAt, selected, singleton)
+module SelectArray exposing
+    ( SelectArray, singleton, fromLists
+    , selected, selectedIndex, size, selectAt, indexedMap
+    )
 
 {-| A Zipper backed by Array.
 
@@ -7,6 +10,9 @@ Why Array? Because:
   - Indexe access and boundary (length) check are cheap and fast
   - In my use case, I want to select by global index, rather than relatively from previous selection
   - Overall performance is not measured. Could be worse. LUL
+
+@docs SelectArray, singleton, fromLists
+@docs selected, selectedIndex, size, selectAt, indexedMap
 
 -}
 
@@ -34,6 +40,16 @@ fromLists front selected_ rear =
 selected : SelectArray a -> a
 selected (SelectArray sa) =
     sa.selected
+
+
+selectedIndex : SelectArray a -> Int
+selectedIndex (SelectArray sa) =
+    length sa.front
+
+
+size : SelectArray a -> Int
+size (SelectArray sa) =
+    length sa.front + 1 + length sa.rear
 
 
 {-| For the sake of simplicity, negative indexes are not allowed.
