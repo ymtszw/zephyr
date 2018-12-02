@@ -51,6 +51,7 @@ editorSelectEl ss fam c =
     Select.select
         [ width (px editorSelectWidth)
         , height shrink
+        , padding 0
         , Font.size editorFontSize
         ]
         { state = ss
