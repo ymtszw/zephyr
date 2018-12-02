@@ -5,11 +5,13 @@ import Data.Column as Column
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Msg exposing (Msg(..))
+import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import ListExtra
 import SelectArray exposing (SelectArray)
 import View.Parts exposing (..)
 import View.Select as Select
@@ -19,7 +21,7 @@ newMessageEditorEl : Select.State -> FilterAtomMaterial -> Column.Column -> Elem
 newMessageEditorEl ss fam c =
     column
         [ width fill
-        , height (px defaultEditorHeight)
+        , height shrink
         , padding rectElementInnerPadding
         , spacing spacingUnit
         , BD.color frameColor
@@ -27,11 +29,6 @@ newMessageEditorEl ss fam c =
         ]
         [ editorSelectEl ss fam c
         ]
-
-
-defaultEditorHeight : Int
-defaultEditorHeight =
-    50
 
 
 frameColor : Color
@@ -51,7 +48,7 @@ editorSelectEl ss fam c =
     Select.select
         [ width (px editorSelectWidth)
         , height shrink
-        , padding 0
+        , paddingEach { top = 0, right = 0, bottom = 0, left = rectElementInnerPadding }
         , Font.size editorFontSize
         ]
         { state = ss
@@ -81,8 +78,12 @@ onEditorSelect cId selectedIndex ( index, _ ) =
 editorSelectOptionEl : FilterAtomMaterial -> ( Int, ColumnEditor ) -> Element Msg
 editorSelectOptionEl fam ( _, ce ) =
     case ce of
-        DiscordMessageEditor _ ->
-            text "Discord Message"
+        DiscordMessageEditor { channelId } ->
+            fam.ofDiscordChannel
+                |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
+                |> Maybe.withDefault (Discord.unavailableChannel channelId)
+                |> (\channel -> { size = editorFontSize, channel = channel })
+                |> discordChannelEl []
 
         LocalMessageEditor _ ->
             text "Personal Memo"
