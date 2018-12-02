@@ -304,6 +304,7 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
+    | SelectEditor Int
     | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
@@ -378,46 +379,11 @@ update msg c =
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
-        ScanBroker { broker, maxCount, clientHeight, catchUp } ->
-            case ItemBroker.bulkRead maxCount c.offset broker of
-                [] ->
-                    pure c
+        SelectEditor index ->
+            pure { c | editors = SelectArray.selectAt index c.editors }
 
-                (( _, newOffset ) :: _) as items ->
-                    let
-                        ( c_, pp ) =
-                            case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
-                                ( True, [] ) ->
-                                    ( c, PostProcess Cmd.none True (Just c.id) Keep )
-
-                                ( True, newItems ) ->
-                                    let
-                                        ( items_, sCmd ) =
-                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
-                                    in
-                                    -- Do not bump, nor flash Column during catchUp
-                                    ( { c | items = items_ }
-                                    , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep
-                                    )
-
-                                ( False, [] ) ->
-                                    ( c, PostProcess Cmd.none True Nothing Keep )
-
-                                ( False, newItems ) ->
-                                    let
-                                        ( items_, sCmd ) =
-                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
-                                    in
-                                    ( { c | items = items_, recentlyTouched = True }
-                                    , if c.pinned then
-                                        -- Do not bump Pinned Column
-                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep
-
-                                      else
-                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump
-                                    )
-                    in
-                    ( { c_ | offset = Just newOffset }, pp )
+        ScanBroker opts ->
+            scanBroker opts c
 
         ScrollMsg sMsg ->
             let
@@ -430,6 +396,52 @@ update msg c =
 pure : Column -> ( Column, PostProcess )
 pure c =
     ( c, PostProcess Cmd.none False Nothing Keep )
+
+
+scanBroker :
+    { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    -> Column
+    -> ( Column, PostProcess )
+scanBroker { broker, maxCount, clientHeight, catchUp } c =
+    case ItemBroker.bulkRead maxCount c.offset broker of
+        [] ->
+            pure c
+
+        (( _, newOffset ) :: _) as items ->
+            let
+                ( c_, pp ) =
+                    case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
+                        ( True, [] ) ->
+                            ( c, PostProcess Cmd.none True (Just c.id) Keep )
+
+                        ( True, newItems ) ->
+                            let
+                                ( items_, sCmd ) =
+                                    prependItems (autoAdjustOptions clientHeight) newItems c.items
+                            in
+                            -- Do not bump, nor flash Column during catchUp
+                            ( { c | items = items_ }
+                            , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep
+                            )
+
+                        ( False, [] ) ->
+                            ( c, PostProcess Cmd.none True Nothing Keep )
+
+                        ( False, newItems ) ->
+                            let
+                                ( items_, sCmd ) =
+                                    prependItems (autoAdjustOptions clientHeight) newItems c.items
+                            in
+                            ( { c | items = items_, recentlyTouched = True }
+                            , if c.pinned then
+                                -- Do not bump Pinned Column
+                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep
+
+                              else
+                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump
+                            )
+            in
+            ( { c_ | offset = Just newOffset }, pp )
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem

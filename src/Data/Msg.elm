@@ -327,6 +327,9 @@ columnMsgToEntry cId cMsg =
         Column.DeleteGateInput input ->
             Entry "Column.DeleteGateInput" [ cId, input ]
 
+        Column.SelectEditor index ->
+            Entry "Column.SelectEditor" [ cId, String.fromInt index ]
+
         Column.ScanBroker { maxCount } ->
             Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]
 
