@@ -65,7 +65,7 @@ columnKeyEl m fam index c =
         column (baseAttrs ++ dragAttributes m.env.clientHeight m.viewState.columnSwapMaybe index c)
             [ lazy3 columnHeaderEl fam index c
             , lazy4 columnConfigFlyoutEl m.viewState.selectState fam index c
-            , newMessageEditorEl m.viewState.selectState fam c
+            , newMessageEditorEl m.env.clientHeight m.viewState.selectState fam c
             , lazy4 itemsEl m.env.clientHeight m.viewState.timezone c.id c.items
             ]
 
@@ -300,9 +300,6 @@ shouldGroup newer older =
     case ( newer, older ) of
         ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
             shouldGroupDiscordMessage dNewer dOlder
-
-        ( LocalMessage _ _, LocalMessage _ _ ) ->
-            True
 
         ( _, _ ) ->
             False

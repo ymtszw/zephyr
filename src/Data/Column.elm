@@ -495,40 +495,45 @@ editorSubmit clientHeight c =
                 pure c
 
             else
-                -- TODO
-                pure c
+                -- TODO: Issue Discord message post
+                saveLocalMessage clientHeight buffer c
 
         LocalMessageEditor { buffer } ->
             if String.isEmpty buffer then
                 pure c
 
             else
-                let
-                    prevId =
-                        case Scroll.pop c.items of
-                            ( Just (Product offset _), _ ) ->
-                                Broker.offsetToString offset
+                saveLocalMessage clientHeight buffer c
 
-                            ( Just (System id _), _ ) ->
-                                id
 
-                            ( Just (LocalMessage id _), _ ) ->
-                                id
+saveLocalMessage : Int -> String -> Column -> ( Column, PostProcess )
+saveLocalMessage clientHeight buffer c =
+    let
+        prevId =
+            case Scroll.pop c.items of
+                ( Just (Product offset _), _ ) ->
+                    Broker.offsetToString offset
 
-                            ( Nothing, _ ) ->
-                                "root"
+                ( Just (System id _), _ ) ->
+                    id
 
-                    ( newItems, sMsg ) =
-                        prependItems (autoAdjustOptions clientHeight)
-                            [ localMessage prevId buffer ]
-                            c.items
-                in
-                ( { c
-                    | items = newItems
-                    , editors = SelectArray.updateSelected (ColumnEditor.updateBuffer "") c.editors
-                  }
-                , PostProcess (Cmd.map ScrollMsg sMsg) True Nothing Keep Nothing
-                )
+                ( Just (LocalMessage id _), _ ) ->
+                    id
+
+                ( Nothing, _ ) ->
+                    "root"
+
+        ( newItems, sMsg ) =
+            prependItems (autoAdjustOptions clientHeight)
+                [ localMessage prevId buffer ]
+                c.items
+    in
+    ( { c
+        | items = newItems
+        , editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+      }
+    , PostProcess (Cmd.map ScrollMsg sMsg) True Nothing Keep Nothing
+    )
 
 
 localMessage : String -> String -> ColumnItem

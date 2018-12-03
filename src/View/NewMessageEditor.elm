@@ -12,6 +12,7 @@ import Element.Border as BD
 import Element.Events exposing (onFocus, onLoseFocus)
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Html.Attributes exposing (placeholder)
 import ListExtra
 import Octicons
@@ -20,8 +21,8 @@ import View.Parts exposing (..)
 import View.Select as Select
 
 
-newMessageEditorEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
-newMessageEditorEl ss fam c =
+newMessageEditorEl : Int -> Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
+newMessageEditorEl clientHeight ss fam c =
     column
         [ width fill
         , height shrink
@@ -35,6 +36,7 @@ newMessageEditorEl ss fam c =
             , editorSelectEl ss fam c
             ]
         , textAreaInputEl c.id (SelectArray.selected c.editors)
+        , editorButtonsEl clientHeight c.id (SelectArray.selected c.editors)
         ]
 
 
@@ -110,7 +112,7 @@ localMessageInputEl : (Column.Msg -> Msg) -> CommonEditorOpts -> Element Msg
 localMessageInputEl msgTagger opts =
     let
         ( heightPx, fontColor, bgColor ) =
-            if opts.focused || not (String.isEmpty opts.buffer) then
+            if writing opts then
                 ( bufferToHeight opts.buffer, oneDark.text, oneDark.note )
 
             else
@@ -146,3 +148,50 @@ localMessageInputEl msgTagger opts =
         , label = Element.Input.labelHidden "Personal Memo"
         , spellcheck = True
         }
+        -- Workaround for https://github.com/mdgriffith/elm-ui/issues/5
+        |> Tuple.pair (String.fromInt opts.seq)
+        |> Element.Keyed.el [ width fill ]
+
+
+writing : CommonEditorOpts -> Bool
+writing opts =
+    opts.focused || not (String.isEmpty opts.buffer)
+
+
+editorButtonsEl : Int -> String -> ColumnEditor -> Element Msg
+editorButtonsEl clientHeight cId ce =
+    let
+        rowAttrs opts =
+            [ width fill
+            , spacing spacingUnit
+            , visible (writing opts)
+            , Font.size editorFontSize
+            ]
+    in
+    case ce of
+        DiscordMessageEditor _ opts ->
+            row (rowAttrs opts)
+                [ submitButtonEl clientHeight cId (not (String.isEmpty opts.buffer))
+                ]
+
+        LocalMessageEditor opts ->
+            row (rowAttrs opts)
+                [ submitButtonEl clientHeight cId (not (String.isEmpty opts.buffer))
+                ]
+
+
+submitButtonEl : Int -> String -> Bool -> Element Msg
+submitButtonEl clientHeight cId enabled =
+    thinButtonEl [ alignRight ]
+        { onPress = ColumnCtrl cId (Column.EditorSubmit clientHeight)
+        , width = px submitButtonWidth
+        , enabledColor = oneDark.succ
+        , enabledFontColor = oneDark.text
+        , enabled = enabled
+        , innerElement = text "Submit"
+        }
+
+
+submitButtonWidth : Int
+submitButtonWidth =
+    75
