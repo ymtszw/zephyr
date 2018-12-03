@@ -22,6 +22,7 @@ import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor)
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
+import Data.Producer as Producer
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -322,6 +323,7 @@ type alias PostProcess =
     , persist : Bool
     , catchUpId : Maybe String
     , position : Position
+    , producerMsg : Maybe Producer.Msg
     }
 
 
@@ -338,14 +340,16 @@ update msg c =
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
 
         Pin pinned ->
-            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto )
+            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto Nothing )
 
         Show ->
             let
                 ( items, sCmd ) =
                     Scroll.update Scroll.Reveal c.items
             in
-            ( { c | items = items, recentlyTouched = True }, PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump )
+            ( { c | items = items, recentlyTouched = True }
+            , PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump Nothing
+            )
 
         Calm ->
             pure { c | recentlyTouched = False }
@@ -381,7 +385,7 @@ update msg c =
 
         ConfirmFilter ->
             ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
-            , PostProcess Cmd.none True (Just c.id) Keep
+            , PostProcess Cmd.none True (Just c.id) Keep Nothing
             )
 
         DeleteGateInput input ->
@@ -404,12 +408,12 @@ update msg c =
                 ( items, sCmd ) =
                     Scroll.update sMsg c.items
             in
-            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg sCmd) False Nothing Keep )
+            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg sCmd) False Nothing Keep Nothing )
 
 
 pure : Column -> ( Column, PostProcess )
 pure c =
-    ( c, PostProcess Cmd.none False Nothing Keep )
+    ( c, PostProcess Cmd.none False Nothing Keep Nothing )
 
 
 scanBroker :
@@ -426,7 +430,7 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c =
                 ( c_, pp ) =
                     case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
                         ( True, [] ) ->
-                            ( c, PostProcess Cmd.none True (Just c.id) Keep )
+                            ( c, PostProcess Cmd.none True (Just c.id) Keep Nothing )
 
                         ( True, newItems ) ->
                             let
@@ -435,11 +439,11 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c =
                             in
                             -- Do not bump, nor flash Column during catchUp
                             ( { c | items = items_ }
-                            , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep
+                            , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep Nothing
                             )
 
                         ( False, [] ) ->
-                            ( c, PostProcess Cmd.none True Nothing Keep )
+                            ( c, PostProcess Cmd.none True Nothing Keep Nothing )
 
                         ( False, newItems ) ->
                             let
@@ -449,10 +453,10 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c =
                             ( { c | items = items_, recentlyTouched = True }
                             , if c.pinned then
                                 -- Do not bump Pinned Column
-                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep
+                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep Nothing
 
                               else
-                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump
+                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump Nothing
                             )
             in
             ( { c_ | offset = Just newOffset }, pp )
