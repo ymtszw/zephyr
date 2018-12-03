@@ -12,8 +12,9 @@ import Element.Border as BD
 import Element.Events exposing (onFocus, onLoseFocus)
 import Element.Font as Font
 import Element.Input
-import Html.Attributes exposing (rows)
+import Html.Attributes exposing (placeholder)
 import ListExtra
+import Octicons
 import SelectArray exposing (SelectArray)
 import View.Parts exposing (..)
 import View.Select as Select
@@ -29,7 +30,10 @@ newMessageEditorEl ss fam c =
         , BD.color oneDark.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
         ]
-        [ editorSelectEl ss fam c
+        [ row [ spacing spacingUnit, centerY ]
+            [ octiconEl [] { size = editorFontSize, color = defaultOcticonColor, shape = Octicons.pencil }
+            , editorSelectEl ss fam c
+            ]
         , textAreaInputEl c.id (SelectArray.selected c.editors)
         ]
 
@@ -105,15 +109,26 @@ textAreaInputEl cId ce =
 localMessageInputEl : (Column.Msg -> Msg) -> CommonEditorOpts -> Element Msg
 localMessageInputEl msgTagger opts =
     let
-        ( fontColor, bgColor ) =
+        ( heightPx, fontColor, bgColor ) =
             if opts.focused || not (String.isEmpty opts.buffer) then
-                ( oneDark.text, oneDark.note )
+                ( bufferToHeight opts.buffer, oneDark.text, oneDark.note )
 
             else
-                ( oneDark.note, oneDark.sub )
+                ( editorFontSize * 2, oneDark.note, oneDark.sub )
+
+        bufferToHeight b =
+            let
+                lines =
+                    List.length (String.split "\n" b)
+            in
+            if lines < 6 then
+                editorFontSize * 8
+
+            else
+                editorFontSize * 16
     in
     Element.Input.multiline
-        [ height shrink
+        [ height (px heightPx)
         , padding rectElementInnerPadding
         , Font.size editorFontSize
         , Font.color fontColor
@@ -121,7 +136,9 @@ localMessageInputEl msgTagger opts =
         , onFocus (msgTagger (Column.EditorFocus True))
         , onLoseFocus (msgTagger (Column.EditorFocus False))
         , BD.width 0
-        , style "transition" "background-color 0.3s,color 0.3s"
+        , style "resize" "none"
+        , style "transition" "height 0.2s 0.1s,background-color 0.3s,color 0.3s"
+        , htmlAttribute (placeholder "Memo")
         ]
         { onChange = msgTagger << Column.EditorInput
         , text = opts.buffer
