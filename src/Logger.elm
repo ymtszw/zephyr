@@ -51,11 +51,11 @@ defaultFilters : List MsgFilter
 defaultFilters =
     -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
-    , MsgFilter False "[Work]"
     , MsgFilter False "NoOp"
     , MsgFilter False "Logger.FilterInput"
     , MsgFilter False "Discord.TokenInput"
     , MsgFilter False "Column.DeleteGateInput"
+    , MsgFilter False "Column.EditorInput"
     ]
 
 

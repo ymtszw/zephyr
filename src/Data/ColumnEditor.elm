@@ -1,4 +1,4 @@
-module Data.ColumnEditor exposing (ColumnEditor(..), defaultEditors, filtersToEditors)
+module Data.ColumnEditor exposing (ColumnEditor(..), defaultEditors, filtersToEditors, updateBuffer)
 
 import Array exposing (Array)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..))
@@ -42,3 +42,13 @@ filtersToEditors filters =
 defaultEditors : SelectArray ColumnEditor
 defaultEditors =
     SelectArray.singleton localMessageEditor
+
+
+updateBuffer : String -> ColumnEditor -> ColumnEditor
+updateBuffer input ce =
+    case ce of
+        DiscordMessageEditor opts ->
+            DiscordMessageEditor { opts | buffer = input }
+
+        LocalMessageEditor opts ->
+            LocalMessageEditor { opts | buffer = input }

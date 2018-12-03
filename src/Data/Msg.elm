@@ -330,6 +330,9 @@ columnMsgToEntry cId cMsg =
         Column.SelectEditor index ->
             Entry "Column.SelectEditor" [ cId, String.fromInt index ]
 
+        Column.EditorInput input ->
+            Entry "Column.EditorInput" [ cId, input ]
+
         Column.ScanBroker { maxCount } ->
             Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]
 

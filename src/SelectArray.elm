@@ -1,6 +1,6 @@
 module SelectArray exposing
     ( SelectArray, singleton, fromLists
-    , selected, selectedIndex, size, selectAt, indexedMap
+    , selected, selectedIndex, size, selectAt, updateSelected, indexedMap
     )
 
 {-| A Zipper backed by Array.
@@ -12,7 +12,7 @@ Why Array? Because:
   - Overall performance is not measured. Could be worse. LUL
 
 @docs SelectArray, singleton, fromLists
-@docs selected, selectedIndex, size, selectAt, indexedMap
+@docs selected, selectedIndex, size, selectAt, updateSelected, indexedMap
 
 -}
 
@@ -97,6 +97,11 @@ selectAt index (SelectArray sa) =
 
             Nothing ->
                 SelectArray sa
+
+
+updateSelected : (a -> a) -> SelectArray a -> SelectArray a
+updateSelected updater (SelectArray sa) =
+    SelectArray { sa | selected = updater sa.selected }
 
 
 indexedMap : ({ selected : Bool, index : Int, e : a } -> b) -> SelectArray a -> List b
