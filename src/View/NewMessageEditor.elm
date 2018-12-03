@@ -2,15 +2,17 @@ module View.NewMessageEditor exposing (newMessageEditorEl)
 
 import Data.ColorTheme exposing (oneDark)
 import Data.Column as Column
-import Data.ColumnEditor exposing (ColumnEditor(..))
+import Data.ColumnEditor exposing (ColumnEditor(..), CommonEditorOpts)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
+import Element.Events exposing (onFocus, onLoseFocus)
 import Element.Font as Font
 import Element.Input
+import Html.Attributes exposing (rows)
 import ListExtra
 import SelectArray exposing (SelectArray)
 import View.Parts exposing (..)
@@ -24,16 +26,12 @@ newMessageEditorEl ss fam c =
         , height shrink
         , padding rectElementInnerPadding
         , spacing spacingUnit
-        , BD.color frameColor
+        , BD.color oneDark.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
         ]
         [ editorSelectEl ss fam c
+        , textAreaInputEl c.id (SelectArray.selected c.editors)
         ]
-
-
-frameColor : Color
-frameColor =
-    oneDark.bd
 
 
 editorSelectEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -78,7 +76,7 @@ onEditorSelect cId selectedIndex ( index, _ ) =
 editorSelectOptionEl : FilterAtomMaterial -> ( Int, ColumnEditor ) -> Element Msg
 editorSelectOptionEl fam ( _, ce ) =
     case ce of
-        DiscordMessageEditor { channelId } ->
+        DiscordMessageEditor channelId _ ->
             fam.ofDiscordChannel
                 |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
                 |> Maybe.withDefault (Discord.unavailableChannel channelId)
@@ -92,3 +90,47 @@ editorSelectOptionEl fam ( _, ce ) =
 editorFontSize : Int
 editorFontSize =
     scale12 1
+
+
+textAreaInputEl : String -> ColumnEditor -> Element Msg
+textAreaInputEl cId ce =
+    case ce of
+        DiscordMessageEditor _ opts ->
+            localMessageInputEl (ColumnCtrl cId) opts
+
+        LocalMessageEditor opts ->
+            localMessageInputEl (ColumnCtrl cId) opts
+
+
+localMessageInputEl : (Column.Msg -> Msg) -> CommonEditorOpts -> Element Msg
+localMessageInputEl msgTagger opts =
+    let
+        heightPx =
+            if opts.focused then
+                editorFontSize * 10
+
+            else
+                editorFontSize * 2
+    in
+    Element.Input.multiline
+        [ height (px heightPx)
+        , padding rectElementInnerPadding
+        , Font.size editorFontSize
+        , Font.color oneDark.note
+        , BG.color oneDark.sub
+        , focused
+            [ Font.color oneDark.text
+            , BG.color oneDark.note
+            ]
+        , onFocus (msgTagger (Column.EditorFocus True))
+        , onLoseFocus (msgTagger (Column.EditorFocus False))
+        , BD.width 0
+        , style "resize" "vertical"
+        , style "transition" "all 0.4s 0.1s"
+        ]
+        { onChange = msgTagger << Column.EditorInput
+        , text = opts.buffer
+        , placeholder = Nothing
+        , label = Element.Input.labelHidden "Personal Memo"
+        , spellcheck = True
+        }
