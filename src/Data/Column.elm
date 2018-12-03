@@ -306,6 +306,7 @@ type Msg
     | DeleteGateInput String
     | SelectEditor Int
     | EditorInput String
+    | EditorFocus Bool
     | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
@@ -385,6 +386,9 @@ update msg c =
 
         EditorInput input ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
+
+        EditorFocus bool ->
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.focus bool) c.editors }
 
         ScanBroker opts ->
             scanBroker opts c
