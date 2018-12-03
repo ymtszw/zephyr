@@ -298,14 +298,14 @@ waitingForFirstItemEl =
 shouldGroup : ColumnItem -> ColumnItem -> Bool
 shouldGroup newer older =
     case ( newer, older ) of
-        ( System _ _, _ ) ->
-            False
-
-        ( _, System _ _ ) ->
-            False
-
         ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
             shouldGroupDiscordMessage dNewer dOlder
+
+        ( LocalMessage _ _, LocalMessage _ _ ) ->
+            True
+
+        ( _, _ ) ->
+            False
 
 
 shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool

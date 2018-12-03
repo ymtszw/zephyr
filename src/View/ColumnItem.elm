@@ -60,6 +60,9 @@ columnItemKey closeItems =
 
                     System id _ ->
                         id
+
+                    LocalMessage id _ ->
+                        id
             )
         |> String.join "-"
 
@@ -86,23 +89,48 @@ itemAvatarEl item =
                         }
 
         System _ _ ->
-            iconWithBadgeEl [] { badge = Nothing, fallback = "Zephyr", url = Nothing, size = itemAvatarSize }
+            octiconAvatarEl Octicons.info
+
+        LocalMessage _ _ ->
+            octiconAvatarEl Octicons.note
 
 
 botIconEl : Int -> Element Msg
 botIconEl badgeSize =
     octiconEl [ BG.color botIconBackground, htmlAttribute (title "BOT") ]
-        { size = badgeSize, color = botIconColor, shape = Octicons.zap }
+        { size = badgeSize, color = avatarIconFillColor, shape = Octicons.zap }
 
 
-botIconColor : Color
-botIconColor =
+avatarIconFillColor : Color
+avatarIconFillColor =
     oneDark.text
 
 
 botIconBackground : Color
 botIconBackground =
     oneDark.succ
+
+
+octiconAvatarEl : (Octicons.Options -> Html.Html msg) -> Element msg
+octiconAvatarEl shape =
+    let
+        octiconAvatarPadding =
+            7
+
+        octiconSize =
+            itemAvatarSize - octiconAvatarPadding * 2
+    in
+    octiconEl
+        [ width (px itemAvatarSize)
+        , height (px itemAvatarSize)
+        , padding octiconAvatarPadding
+        , BG.color oneDark.prim
+        , BD.rounded rectElementRound
+        ]
+        { size = octiconSize
+        , color = avatarIconFillColor
+        , shape = shape
+        }
 
 
 itemContentsEl : Time.Zone -> ColumnItem -> List ColumnItem -> Element Msg
@@ -124,6 +152,9 @@ itemContentsEl tz item closeItems =
 
         System _ { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
+
+        LocalMessage _ { message } ->
+            defaultItemEl message Nothing
 
 
 discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg

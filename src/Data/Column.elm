@@ -50,6 +50,7 @@ type alias Column =
 type ColumnItem
     = Product Offset Item
     | System String { message : String, mediaMaybe : Maybe Media }
+    | LocalMessage String { message : String }
 
 
 type Media
@@ -79,6 +80,12 @@ encodeColumnItem cItem =
                 E.object
                     [ ( "message", E.string message )
                     , ( "media", E.maybe encodeMedia mediaMaybe )
+                    ]
+
+        LocalMessage id { message } ->
+            E.tagged2 "LocalMessage" (E.string id) <|
+                E.object
+                    [ ( "message", E.string message )
                     ]
 
 
@@ -132,7 +139,13 @@ columnItemDecoder : Decoder ColumnItem
 columnItemDecoder =
     D.oneOf
         [ D.tagged2 "Product" Product offsetDecoder Item.decoder
-        , D.tagged2 "System" System D.string systemMessageDecoder
+        , D.tagged2 "System" System D.string <|
+            D.map2 (\a b -> { message = a, mediaMaybe = b })
+                (D.field "message" D.string)
+                (D.field "media" (D.maybe mediaDecoder))
+        , D.tagged2 "LocalMessage" LocalMessage D.string <|
+            D.map (\a -> { message = a })
+                (D.field "message" D.string)
         ]
 
 
@@ -148,13 +161,6 @@ offsetDecoder =
                     Nothing ->
                         D.fail ("Invalid Broker.Offset: " ++ s)
             )
-
-
-systemMessageDecoder : Decoder { message : String, mediaMaybe : Maybe Media }
-systemMessageDecoder =
-    D.map2 (\a b -> { message = a, mediaMaybe = b })
-        (D.field "message" D.string)
-        (D.field "media" (D.maybe mediaDecoder))
 
 
 mediaDecoder : Decoder Media
