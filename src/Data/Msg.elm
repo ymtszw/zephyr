@@ -336,6 +336,9 @@ columnMsgToEntry cId cMsg =
         Column.EditorFocus focused ->
             Entry "Column.EditorFocus" [ cId, boolStr focused ]
 
+        Column.EditorSubmit clientHeight ->
+            Entry "Column.EditorSubmit" [ cId, String.fromInt clientHeight ]
+
         Column.ScanBroker { maxCount } ->
             Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]
 

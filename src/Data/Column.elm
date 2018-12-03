@@ -18,12 +18,13 @@ Also, number of Items shown depends on runtime clientHeight.
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
-import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor)
+import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Producer as Producer
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import Hex
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -178,7 +179,7 @@ welcome clientHeight idGen id =
         ( items, newGen ) =
             UniqueIdGen.sequence UniqueIdGen.systemMessagePrefix idGen <|
                 [ welcomeItem
-                , textOnlyItem "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
+                , systemMessage "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
                 ]
     in
     ( { id = id
@@ -235,8 +236,8 @@ autoAdjustOptions clientHeight =
     }
 
 
-textOnlyItem : String -> String -> ColumnItem
-textOnlyItem message id =
+systemMessage : String -> String -> ColumnItem
+systemMessage message id =
     System id { message = message, mediaMaybe = Nothing }
 
 
@@ -263,7 +264,7 @@ new clientHeight idGen id =
     let
         ( item, newGen ) =
             UniqueIdGen.genAndMap UniqueIdGen.systemMessagePrefix idGen <|
-                textOnlyItem "New column created! Let's configure filters above!"
+                systemMessage "New column created! Let's configure filters above!"
     in
     ( { id = id
       , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
@@ -314,6 +315,7 @@ type Msg
     | SelectEditor Int
     | EditorInput String
     | EditorFocus Bool
+    | EditorSubmit Int
     | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
@@ -400,6 +402,9 @@ update msg c =
         EditorFocus bool ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.focus bool) c.editors }
 
+        EditorSubmit clientHeight ->
+            editorSubmit clientHeight c
+
         ScanBroker opts ->
             scanBroker opts c
 
@@ -480,3 +485,93 @@ prependItems opts newItems items =
     items
         |> Scroll.prependList newItems
         |> Scroll.update (Scroll.AdjustReq opts)
+
+
+editorSubmit : Int -> Column -> ( Column, PostProcess )
+editorSubmit clientHeight c =
+    case SelectArray.selected c.editors of
+        DiscordMessageEditor channelId { buffer } ->
+            if String.isEmpty buffer then
+                pure c
+
+            else
+                -- TODO
+                pure c
+
+        LocalMessageEditor { buffer } ->
+            if String.isEmpty buffer then
+                pure c
+
+            else
+                let
+                    prevId =
+                        case Scroll.pop c.items of
+                            ( Just (Product offset _), _ ) ->
+                                Broker.offsetToString offset
+
+                            ( Just (System id _), _ ) ->
+                                id
+
+                            ( Just (LocalMessage id _), _ ) ->
+                                id
+
+                            ( Nothing, _ ) ->
+                                "root"
+
+                    ( newItems, sMsg ) =
+                        prependItems (autoAdjustOptions clientHeight)
+                            [ localMessage prevId buffer ]
+                            c.items
+                in
+                ( { c
+                    | items = newItems
+                    , editors = SelectArray.updateSelected (ColumnEditor.updateBuffer "") c.editors
+                  }
+                , PostProcess (Cmd.map ScrollMsg sMsg) True Nothing Keep Nothing
+                )
+
+
+localMessage : String -> String -> ColumnItem
+localMessage prevId message =
+    LocalMessage (localMessageId prevId) { message = message }
+
+
+localMessageId : String -> String
+localMessageId prevId =
+    let
+        initialSeqHex =
+            String.repeat localMessageHexLen "0"
+    in
+    if String.startsWith localMessagePrefix prevId then
+        let
+            attachedTo =
+                String.dropLeft (localMessagePrefixLen + localMessageHexLen) prevId
+        in
+        String.join ""
+            [ localMessagePrefix
+            , case prevId |> String.dropLeft localMessagePrefixLen |> String.left localMessageHexLen |> Hex.fromString of
+                Ok prevSeq ->
+                    String.padLeft localMessageHexLen '0' (Hex.toString (prevSeq + 1))
+
+                Err _ ->
+                    initialSeqHex
+            , attachedTo
+            ]
+
+    else
+        localMessagePrefix ++ initialSeqHex ++ prevId
+
+
+localMessagePrefix : String
+localMessagePrefix =
+    "lm"
+
+
+localMessagePrefixLen : Int
+localMessagePrefixLen =
+    String.length localMessagePrefix
+
+
+localMessageHexLen : Int
+localMessageHexLen =
+    4

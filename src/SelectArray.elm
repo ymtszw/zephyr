@@ -7,7 +7,7 @@ module SelectArray exposing
 
 Why Array? Because:
 
-  - Indexe access and boundary (length) check are cheap and fast
+  - Indexed access and boundary (length) check are cheap and fast
   - In my use case, I want to select by global index, rather than relatively from previous selection
   - Overall performance is not measured. Could be worse. LUL
 
