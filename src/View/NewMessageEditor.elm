@@ -105,28 +105,23 @@ textAreaInputEl cId ce =
 localMessageInputEl : (Column.Msg -> Msg) -> CommonEditorOpts -> Element Msg
 localMessageInputEl msgTagger opts =
     let
-        heightPx =
-            if opts.focused then
-                editorFontSize * 10
+        ( fontColor, bgColor ) =
+            if opts.focused || not (String.isEmpty opts.buffer) then
+                ( oneDark.text, oneDark.note )
 
             else
-                editorFontSize * 2
+                ( oneDark.note, oneDark.sub )
     in
     Element.Input.multiline
-        [ height (px heightPx)
+        [ height shrink
         , padding rectElementInnerPadding
         , Font.size editorFontSize
-        , Font.color oneDark.note
-        , BG.color oneDark.sub
-        , focused
-            [ Font.color oneDark.text
-            , BG.color oneDark.note
-            ]
+        , Font.color fontColor
+        , BG.color bgColor
         , onFocus (msgTagger (Column.EditorFocus True))
         , onLoseFocus (msgTagger (Column.EditorFocus False))
         , BD.width 0
-        , style "resize" "vertical"
-        , style "transition" "all 0.4s 0.1s"
+        , style "transition" "background-color 0.3s,color 0.3s"
         ]
         { onChange = msgTagger << Column.EditorInput
         , text = opts.buffer
