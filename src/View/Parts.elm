@@ -2,7 +2,7 @@ module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+    , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , filtersToIconEl, filtersToTextEl
@@ -27,7 +27,7 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+@docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
@@ -63,6 +63,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Element.Lazy exposing (..)
 import Html
 import Html.Attributes
@@ -293,6 +294,44 @@ customPlaceholder theme phMaybe text =
 
         Nothing ->
             noneAttr
+
+
+multilineInputEl :
+    List (Attribute msg)
+    ->
+        { onChange : String -> msg
+        , text : String
+        , key : String
+        , placeholder : Maybe String
+        , label : Element.Input.Label msg
+        , spellcheck : Bool
+        , width : Length
+        }
+    -> Element msg
+multilineInputEl userAttrs opts =
+    let
+        baseAttrs =
+            [ padding rectElementInnerPadding
+            , BD.width 0
+            , style "transition" "height 0.2s 0.1s,background-color 0.3s,color 0.3s"
+            , case opts.placeholder of
+                Just ph ->
+                    htmlAttribute (Html.Attributes.placeholder ph)
+
+                Nothing ->
+                    noneAttr
+            ]
+    in
+    Element.Input.multiline (baseAttrs ++ userAttrs)
+        { onChange = opts.onChange
+        , text = opts.text
+        , placeholder = Nothing
+        , label = opts.label
+        , spellcheck = opts.spellcheck
+        }
+        -- Workaround for https://github.com/mdgriffith/elm-ui/issues/5
+        |> Tuple.pair opts.key
+        |> Element.Keyed.el [ width opts.width ]
 
 
 toggleInputEl :
