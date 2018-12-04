@@ -291,8 +291,8 @@ producerMsgToEntry pMsg =
                 Discord.ChannelAPIError cId e ->
                     Entry "Discord.ChannelAPIError" [ cId, HttpClient.errorToString e ]
 
-                Discord.APIError e ->
-                    Entry "Discord.APIError" [ HttpClient.errorToString e ]
+                Discord.GenericAPIError e ->
+                    Entry "Discord.GenericAPIError" [ HttpClient.errorToString e ]
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry

@@ -810,7 +810,7 @@ type Msg
       -- | Post PostOpts
       -- | Posted PostSuccess
     | ChannelAPIError String HttpClient.Error
-    | APIError HttpClient.Error
+    | GenericAPIError HttpClient.Error
 
 
 type alias FetchSuccess =
@@ -866,8 +866,8 @@ update msg discordMaybe =
         ( ChannelAPIError cId e, Just discord ) ->
             handleChannelAPIError cId e discord
 
-        ( APIError e, Just discord ) ->
-            handleAPIError discord e
+        ( GenericAPIError e, Just discord ) ->
+            handleGenericAPIError discord e
 
         ( _, Nothing ) ->
             -- Timer tick or API response arrived after Discord token is deregistered.
@@ -1282,8 +1282,8 @@ channelUnavailable httpError =
             False
 
 
-handleAPIError : Discord -> HttpClient.Error -> Yield
-handleAPIError discord _ =
+handleGenericAPIError : Discord -> HttpClient.Error -> Yield
+handleGenericAPIError discord _ =
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
@@ -1337,14 +1337,14 @@ apiPath path queryMaybe =
 identify : String -> Cmd Msg
 identify token =
     HttpClient.getWithAuth (apiPath "/users/@me" Nothing) (HttpClient.auth token) userDecoder
-        |> HttpClient.try Identify APIError
+        |> HttpClient.try Identify GenericAPIError
 
 
 hydrate : String -> Cmd Msg
 hydrate token =
     HttpClient.getWithAuth (apiPath "/users/@me/guilds" Nothing) (HttpClient.auth token) decodeGuildArrayIntoDict
         |> Task.andThen (hydrateChannels token)
-        |> HttpClient.try identity APIError
+        |> HttpClient.try identity GenericAPIError
 
 
 decodeGuildArrayIntoDict : Decoder (Dict String Guild)
