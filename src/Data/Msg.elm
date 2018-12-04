@@ -288,11 +288,26 @@ producerMsgToEntry pMsg =
                         , Iso8601.fromTime succ.posix
                         ]
 
-                Discord.ChannelAPIError cId e ->
-                    Entry "Discord.ChannelAPIError" [ cId, HttpClient.errorToString e ]
+                Discord.Post opts ->
+                    Entry "Discord.Post" [ opts.channelId ]
 
-                Discord.GenericAPIError e ->
-                    Entry "Discord.GenericAPIError" [ HttpClient.errorToString e ]
+                Discord.Posted succ ->
+                    Entry "Discord.Posted" [ succ.channelId, Iso8601.fromTime succ.posix ]
+
+                Discord.ChannelAPIError cId ( e, req ) ->
+                    Entry "Discord.ChannelAPIError"
+                        [ cId
+                        , HttpClient.errorToString e
+                        , req.method
+                        , Url.toString req.url
+                        ]
+
+                Discord.GenericAPIError ( e, req ) ->
+                    Entry "Discord.GenericAPIError"
+                        [ HttpClient.errorToString e
+                        , req.method
+                        , Url.toString req.url
+                        ]
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry
