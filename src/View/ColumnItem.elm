@@ -124,7 +124,9 @@ octiconAvatarEl shape =
         [ width (px itemAvatarSize)
         , height (px itemAvatarSize)
         , padding octiconAvatarPadding
-        , BG.color oneDark.prim
+        , BD.color oneDark.note
+        , BD.dashed
+        , BD.width 1
         , BD.rounded rectElementRound
         ]
         { size = octiconSize
