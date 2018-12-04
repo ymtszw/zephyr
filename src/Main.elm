@@ -49,23 +49,12 @@ main : Program Env Model Msg
 main =
     Browser.application
         { init = init
-        , update = \msg m -> log update msg m |> IndexedDb.postUpdate
+        , update = \msg m -> update msg m |> IndexedDb.postUpdate
         , subscriptions = sub
         , view = view
         , onUrlRequest = LinkClicked
         , onUrlChange = \_ -> NoOp
         }
-
-
-log : (Msg -> Model -> ( Model, Cmd Msg, ChangeSet )) -> Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
-log u msg m =
-    u msg <|
-        if m.env.isLocalDevelopment then
-            Logger.push m.idGen (Data.Msg.logEntry msg) m.log
-                |> (\( newLog, idGen ) -> { m | log = newLog, idGen = idGen })
-
-        else
-            m
 
 
 
@@ -105,7 +94,16 @@ getTimeZone =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
-update msg ({ viewState, env, pref } as m) =
+update msg m_ =
+    let
+        ({ viewState, env, pref } as m) =
+            if m_.env.isLocalDevelopment then
+                Logger.push m_.idGen (Data.Msg.logEntry msg) m_.log
+                    |> (\( newLog, idGen ) -> { m_ | log = newLog, idGen = idGen })
+
+            else
+                m_
+    in
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -397,22 +395,34 @@ scrollToColumn index parentVp =
 applyColumnUpdate : Model -> String -> ( ColumnStore, Column.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
 applyColumnUpdate m cId ( columnStore, pp ) =
     let
-        worque =
+        m_ =
             case pp.catchUpId of
                 Just id ->
-                    Worque.push (BrokerCatchUp id) m.worque
+                    { m
+                        | columnStore = columnStore
+                        , worque = Worque.push (BrokerCatchUp id) m.worque
+                    }
 
                 Nothing ->
-                    m.worque
+                    { m | columnStore = columnStore }
 
-        changeSet_ =
-            if pp.persist then
-                saveColumnStore changeSet
+        finalize ( n, cmd, changeSet_ ) =
+            ( n
+            , Cmd.batch [ Cmd.map (ColumnCtrl cId) pp.cmd, cmd ]
+            , if pp.persist then
+                saveColumnStore changeSet_
 
-            else
-                changeSet
+              else
+                changeSet_
+            )
     in
-    ( { m | columnStore = columnStore, worque = worque }, Cmd.map (ColumnCtrl cId) pp.cmd, changeSet_ )
+    finalize <|
+        case pp.producerMsg of
+            Just pMsg ->
+                applyProducerYield m_ <| Producer.update pMsg m_.producerRegistry
+
+            Nothing ->
+                ( m_, Cmd.none, changeSet )
 
 
 {-| Restart producers on savedState reload.

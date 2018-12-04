@@ -23,6 +23,7 @@ import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Producer as Producer
+import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Hex
 import Json.Decode as D exposing (Decoder)
@@ -491,12 +492,23 @@ editorSubmit : Int -> Column -> ( Column, PostProcess )
 editorSubmit clientHeight c =
     case SelectArray.selected c.editors of
         DiscordMessageEditor channelId { buffer } ->
+            -- TODO: add capability to upload files
             if String.isEmpty buffer then
                 pure c
 
             else
-                -- TODO: Issue Discord message post
-                saveLocalMessage clientHeight buffer c
+                let
+                    postMsg =
+                        Producer.DiscordMsg <|
+                            Discord.Post
+                                { channelId = channelId
+                                , message = Just buffer
+                                , file = Nothing
+                                }
+                in
+                ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }
+                , PostProcess Cmd.none False Nothing Keep (Just postMsg)
+                )
 
         LocalMessageEditor { buffer } ->
             if String.isEmpty buffer then
