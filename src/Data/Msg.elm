@@ -281,11 +281,15 @@ producerMsgToEntry pMsg =
                 Discord.Fetch posix ->
                     Entry "Discord.Fetch" [ Iso8601.fromTime posix ]
 
-                Discord.Fetched (Discord.FetchOk cId ms posix) ->
-                    Entry "Discord.FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
+                Discord.Fetched succ ->
+                    Entry "Discord.Fetched"
+                        [ succ.channelId
+                        , E.encode 2 (E.list Discord.encodeMessage succ.messages)
+                        , Iso8601.fromTime succ.posix
+                        ]
 
-                Discord.Fetched (Discord.FetchErr cId e) ->
-                    Entry "Discord.FetchErr" [ cId, HttpClient.errorToString e ]
+                Discord.ChannelAPIError cId e ->
+                    Entry "Discord.ChannelAPIError" [ cId, HttpClient.errorToString e ]
 
                 Discord.APIError e ->
                     Entry "Discord.APIError" [ HttpClient.errorToString e ]

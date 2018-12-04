@@ -3,7 +3,7 @@ module Data.Producer.Discord exposing
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
-    , Msg(..), FetchResult(..), reload, update
+    , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, unavailableChannel, compareByNames
     )
@@ -32,7 +32,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Component APIs
 
-@docs Msg, FetchResult, reload, update
+@docs Msg, reload, update
 
 
 ## Runtime APIs
@@ -806,13 +806,23 @@ type Msg
     | Subscribe String
     | Unsubscribe String
     | Fetch Posix
-    | Fetched FetchResult
+    | Fetched FetchSuccess
+      -- | Post PostOpts
+      -- | Posted PostSuccess
+    | ChannelAPIError String HttpClient.Error
     | APIError HttpClient.Error
 
 
-type FetchResult
-    = FetchErr String HttpClient.Error
-    | FetchOk String (List Message) Posix
+type alias FetchSuccess =
+    { channelId : String, messages : List Message, posix : Posix }
+
+
+type alias PostOpts =
+    { channelId : String, message : Maybe String, file : Maybe File }
+
+
+type alias PostSuccess =
+    { channelId : String, posix : Posix }
 
 
 update : Msg -> Maybe Discord -> Yield
@@ -845,8 +855,16 @@ update msg discordMaybe =
         ( Fetch posix, Just discord ) ->
             handleFetch discord posix
 
-        ( Fetched result, Just discord ) ->
-            handleFetched discord result
+        ( Fetched fetchSucc, Just discord ) ->
+            handleFetched discord fetchSucc
+
+        -- ( Post postOpts, Just discord ) ->
+        --     handlePost discord postOpts
+        --
+        -- ( Posted postSucc, Just discord ) ->
+        --     handlePosted discord postSucc
+        ( ChannelAPIError cId e, Just discord ) ->
+            handleChannelAPIError cId e discord
 
         ( APIError e, Just discord ) ->
             handleAPIError discord e
@@ -1124,38 +1142,28 @@ fetchOrSkip stateTagger pov posix =
             enterAndFire noop (stateTagger newPov) (fetchChannelMessages pov.token c)
 
 
-handleFetched : Discord -> FetchResult -> Yield
-handleFetched discord fetchResult =
-    case fetchResult of
-        FetchOk cId ms posix ->
-            handleFetchOk cId ms posix discord
-
-        FetchErr cId httpError ->
-            handleFetchErr cId httpError discord
-
-
-handleFetchOk : String -> List Message -> Posix -> Discord -> Yield
-handleFetchOk cId ms posix discord =
+handleFetched : Discord -> FetchSuccess -> Yield
+handleFetched discord { channelId, messages, posix } =
     case discord of
         Hydrated t pov ->
-            updatePovOk (Hydrated t) cId ms posix pov
+            updatePovOnFetchSuccess (Hydrated t) channelId messages posix pov
 
         Rehydrating t pov ->
-            updatePovOk (Rehydrating t) cId ms posix pov
+            updatePovOnFetchSuccess (Rehydrating t) channelId messages posix pov
 
         Expired t pov ->
-            updatePovOk (Expired t) cId ms posix pov
+            updatePovOnFetchSuccess (Expired t) channelId messages posix pov
 
         Switching newSession pov ->
-            updatePovOk (Switching newSession) cId ms posix pov
+            updatePovOnFetchSuccess (Switching newSession) channelId messages posix pov
 
         _ ->
             -- Should not happen
             pure discord
 
 
-updatePovOk : (POV -> Discord) -> String -> List Message -> Posix -> POV -> Yield
-updatePovOk tagger cId ms posix pov =
+updatePovOnFetchSuccess : (POV -> Discord) -> String -> List Message -> Posix -> POV -> Yield
+updatePovOnFetchSuccess tagger cId ms posix pov =
     case Dict.get cId pov.channels of
         Just c ->
             case ms of
@@ -1194,27 +1202,27 @@ updatePovOk tagger cId ms posix pov =
             enter (PostProcessBase True (calculateFAM pov.channels) (Just Worque.DiscordFetch)) (tagger pov)
 
 
-handleFetchErr : String -> HttpClient.Error -> Discord -> Yield
-handleFetchErr cId httpError discord =
+handleChannelAPIError : String -> HttpClient.Error -> Discord -> Yield
+handleChannelAPIError cId httpError discord =
     case ( discord, httpError ) of
         ( Hydrated t pov, Unauthorized _ ) ->
             enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
 
         ( Hydrated t pov, _ ) ->
-            updatePovErr (Hydrated t) cId httpError pov
+            updatePovOnChannelAPIError (Hydrated t) cId httpError pov
 
         ( Rehydrating t pov, Unauthorized _ ) ->
             enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
 
         ( Rehydrating t pov, _ ) ->
-            updatePovErr (Rehydrating t) cId httpError pov
+            updatePovOnChannelAPIError (Rehydrating t) cId httpError pov
 
         ( Expired t pov, Unauthorized _ ) ->
             pure discord
 
         ( Expired t pov, _ ) ->
             -- Late arrival?
-            updatePovErr (Expired t) cId httpError pov
+            updatePovOnChannelAPIError (Expired t) cId httpError pov
 
         ( Switching newSession pov, Unauthorized _ ) ->
             -- Hydrate should be going at the same time
@@ -1222,14 +1230,14 @@ handleFetchErr cId httpError discord =
 
         ( Switching newSession pov, _ ) ->
             -- Previous POV is still available
-            updatePovErr (Switching newSession) cId httpError pov
+            updatePovOnChannelAPIError (Switching newSession) cId httpError pov
 
         _ ->
             pure discord
 
 
-updatePovErr : (POV -> Discord) -> String -> HttpClient.Error -> POV -> Yield
-updatePovErr tagger cId httpError pov =
+updatePovOnChannelAPIError : (POV -> Discord) -> String -> HttpClient.Error -> POV -> Yield
+updatePovOnChannelAPIError tagger cId httpError pov =
     case Dict.get cId pov.channels of
         Just c ->
             if channelUnavailable httpError then
@@ -1387,18 +1395,19 @@ fetchChannelMessages token channel =
             HttpClient.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
                 (HttpClient.auth token)
                 (D.leakyList messageDecoder)
+
+        combiner messages posix =
+            { channelId = channel.id, messages = messages, posix = posix }
     in
-    fetchTask
-        |> Task.andThen (\ms -> Task.map (FetchOk channel.id ms) Time.now)
-        |> Task.mapError (FetchErr channel.id)
+    Task.map2 combiner fetchTask Time.now
         |> Task.attempt
             (\res ->
                 case res of
-                    Ok ok ->
-                        Fetched ok
+                    Ok succ ->
+                        Fetched succ
 
                     Err err ->
-                        Fetched err
+                        ChannelAPIError channel.id err
             )
 
 
