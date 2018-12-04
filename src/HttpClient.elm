@@ -1,14 +1,24 @@
-module HttpClient exposing (Error(..), auth, errorToString, getWithAuth, try)
+module HttpClient exposing
+    ( Error(..), Req, Failure, auth, errorToString
+    , try, getWithAuth, postFormWithAuth, postJsonWithAuth
+    )
+
+{-| Thin wrapper around Http.
+
+@docs Error, Req, Failure, auth, errorToString
+@docs try, getWithAuth, postFormWithAuth, postJsonWithAuth
+
+-}
 
 import Dict
 import Http
-import Json.Decode exposing (Decoder)
+import Json.Decode exposing (Decoder, Value)
 import Task exposing (Task)
 import Url exposing (Url)
 
 
 type Auth
-    = Auth String
+    = Auth String -- Bare API token carried in "authorization" header
 
 
 auth : String -> Auth
@@ -35,13 +45,41 @@ type Error
     | BadBody String
 
 
-getWithAuth : Url -> Auth -> Decoder a -> Task Error a
+type alias Req =
+    { method : String
+    , url : Url
+    }
+
+
+type alias Failure =
+    ( Error, Req )
+
+
+getWithAuth : Url -> Auth -> Decoder a -> Task Failure a
 getWithAuth url auth_ decoder =
-    taskWithAuth "GET" url auth_ decoder
+    taskWithAuth "GET" url Http.emptyBody auth_ decoder
 
 
-taskWithAuth : String -> Url -> Auth -> Decoder a -> Task Error a
-taskWithAuth method url (Auth auth_) decoder =
+{-| Send POST request with multipart/form-data.
+
+Not using application/x-www-form-urlencoded, so:
+
+  - it can send files/byte sequences
+  - contents are (probably) not logged
+
+-}
+postFormWithAuth : Url -> List Http.Part -> Auth -> Decoder a -> Task Failure a
+postFormWithAuth url parts auth_ decoder =
+    taskWithAuth "POST" url (Http.multipartBody parts) auth_ decoder
+
+
+postJsonWithAuth : Url -> Value -> Auth -> Decoder a -> Task Failure a
+postJsonWithAuth url json auth_ decoder =
+    taskWithAuth "POST" url (Http.jsonBody json) auth_ decoder
+
+
+taskWithAuth : String -> Url -> Http.Body -> Auth -> Decoder a -> Task Failure a
+taskWithAuth method url body (Auth auth_) decoder =
     Http.task
         { method = method
         , headers =
@@ -49,62 +87,62 @@ taskWithAuth method url (Auth auth_) decoder =
             , Http.header "accept" "applicaiton/json"
             ]
         , url = Url.toString url
-        , body = Http.emptyBody
-        , resolver = Http.stringResolver (resolveStringResponse decoder)
+        , body = body
+        , resolver = Http.stringResolver (resolveStringResponse (Req method url) decoder)
         , timeout = Just 60000
         }
 
 
-resolveStringResponse : Decoder a -> Http.Response String -> Result Error a
-resolveStringResponse decoder res =
+resolveStringResponse : Req -> Decoder a -> Http.Response String -> Result Failure a
+resolveStringResponse req decoder res =
     case res of
         Http.BadUrl_ url ->
-            Err (BadUrl url)
+            Err ( BadUrl url, req )
 
         Http.Timeout_ ->
-            Err Timeout
+            Err ( Timeout, req )
 
         Http.NetworkError_ ->
-            Err NetworkError
+            Err ( NetworkError, req )
 
         Http.BadStatus_ { statusCode } body ->
             case statusCode of
                 400 ->
-                    Err (BadRequest body)
+                    Err ( BadRequest body, req )
 
                 401 ->
-                    Err (Unauthorized body)
+                    Err ( Unauthorized body, req )
 
                 403 ->
-                    Err (Forbidden body)
+                    Err ( Forbidden body, req )
 
                 404 ->
-                    Err (NotFound body)
+                    Err ( NotFound body, req )
 
                 408 ->
-                    Err (RequestTimeout body)
+                    Err ( RequestTimeout body, req )
 
                 409 ->
-                    Err (Conflict body)
+                    Err ( Conflict body, req )
 
                 429 ->
-                    Err (TooManyRequests body)
+                    Err ( TooManyRequests body, req )
 
                 500 ->
-                    Err (InternalServerError body)
+                    Err ( InternalServerError body, req )
 
                 502 ->
-                    Err (BadGateway body)
+                    Err ( BadGateway body, req )
 
                 503 ->
-                    Err (ServiceUnavailable body)
+                    Err ( ServiceUnavailable body, req )
 
                 other ->
                     if other < 500 then
-                        Err (OtherClientError other body)
+                        Err ( OtherClientError other body, req )
 
                     else
-                        Err (OtherServerError other body)
+                        Err ( OtherServerError other body, req )
 
         Http.GoodStatus_ _ body ->
             case Json.Decode.decodeString decoder body of
@@ -112,10 +150,10 @@ resolveStringResponse decoder res =
                     Ok a
 
                 Err e ->
-                    Err (BadBody (Json.Decode.errorToString e))
+                    Err ( BadBody (Json.Decode.errorToString e), req )
 
 
-try : (a -> msg) -> (Error -> msg) -> Task Error a -> Cmd msg
+try : (a -> msg) -> (Failure -> msg) -> Task Failure a -> Cmd msg
 try fromOk fromErr task =
     let
         fromRes res =
