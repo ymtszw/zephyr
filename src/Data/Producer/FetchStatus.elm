@@ -197,6 +197,7 @@ type Msg
     | Hit Posix
     | Miss Posix
     | Fail
+    | Spur Posix
 
 
 update : Msg -> FetchStatus -> { fs : FetchStatus, persist : Bool, updateFAM : Bool }
@@ -257,13 +258,26 @@ update msg fs =
 
         Fail ->
             case fs of
-                Fetching posix _ ->
-                    { fs = backoff BO30 posix, persist = True, updateFAM = False }
+                Fetching posix bo ->
+                    { fs = backoff bo posix, persist = True, updateFAM = False }
 
                 InitialFetching _ ->
                     -- This is very rare, but can happen.
                     -- If it stacks at InitialFetching <-> Waiting, should be cancelled by Unsub
                     pure Waiting
+
+                _ ->
+                    -- This includes other ChannelAPIError such as BadRequest on Create Message
+                    pure fs
+
+        Spur posix ->
+            case fs of
+                Waiting ->
+                    -- Already at front of the queue
+                    pure fs
+
+                NextFetchAt _ _ ->
+                    { fs = NextFetchAt posix BO2, persist = True, updateFAM = False }
 
                 _ ->
                     pure fs
