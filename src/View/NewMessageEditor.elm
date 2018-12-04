@@ -102,18 +102,39 @@ textAreaInputEl : String -> ColumnEditor -> Element Msg
 textAreaInputEl cId ce =
     case ce of
         DiscordMessageEditor _ opts ->
-            localMessageInputEl (ColumnCtrl cId) opts
+            messageInputBaseEl []
+                { columnId = cId
+                , placeholder = "Message"
+                , labelText = "Discord Message"
+                }
+                opts
 
         LocalMessageEditor opts ->
-            localMessageInputEl (ColumnCtrl cId) opts
+            messageInputBaseEl []
+                { columnId = cId
+                , placeholder = "Memo"
+                , labelText = "Personal Memo"
+                }
+                opts
 
 
-localMessageInputEl : (Column.Msg -> Msg) -> CommonEditorOpts -> Element Msg
-localMessageInputEl msgTagger opts =
+messageInputBaseEl :
+    List (Attribute Msg)
+    ->
+        { columnId : String
+        , placeholder : String
+        , labelText : String
+        }
+    -> CommonEditorOpts
+    -> Element Msg
+messageInputBaseEl attrs iOpts eOpts =
     let
+        msgTagger =
+            ColumnCtrl iOpts.columnId
+
         ( heightPx, fontColor, bgColor ) =
-            if writing opts then
-                ( bufferToHeight opts.buffer, oneDark.text, oneDark.note )
+            if writing eOpts then
+                ( bufferToHeight eOpts.buffer, oneDark.text, oneDark.note )
 
             else
                 ( editorFontSize * 2, oneDark.note, oneDark.sub )
@@ -128,29 +149,26 @@ localMessageInputEl msgTagger opts =
 
             else
                 editorFontSize * 16
+
+        baseAttrs =
+            [ height (px heightPx)
+            , Font.size editorFontSize
+            , Font.color fontColor
+            , BG.color bgColor
+            , onFocus (msgTagger (Column.EditorFocus True))
+            , onLoseFocus (msgTagger (Column.EditorFocus False))
+            , style "resize" "none"
+            ]
     in
-    Element.Input.multiline
-        [ height (px heightPx)
-        , padding rectElementInnerPadding
-        , Font.size editorFontSize
-        , Font.color fontColor
-        , BG.color bgColor
-        , onFocus (msgTagger (Column.EditorFocus True))
-        , onLoseFocus (msgTagger (Column.EditorFocus False))
-        , BD.width 0
-        , style "resize" "none"
-        , style "transition" "height 0.2s 0.1s,background-color 0.3s,color 0.3s"
-        , htmlAttribute (placeholder "Memo")
-        ]
+    multilineInputEl (baseAttrs ++ attrs)
         { onChange = msgTagger << Column.EditorInput
-        , text = opts.buffer
-        , placeholder = Nothing
-        , label = Element.Input.labelHidden "Personal Memo"
+        , text = eOpts.buffer
+        , key = String.fromInt eOpts.seq
+        , placeholder = Just iOpts.placeholder
+        , label = Element.Input.labelHidden iOpts.labelText
         , spellcheck = True
+        , width = fill
         }
-        -- Workaround for https://github.com/mdgriffith/elm-ui/issues/5
-        |> Tuple.pair (String.fromInt opts.seq)
-        |> Element.Keyed.el [ width fill ]
 
 
 writing : CommonEditorOpts -> Bool
@@ -194,4 +212,4 @@ submitButtonEl clientHeight cId enabled =
 
 submitButtonWidth : Int
 submitButtonWidth =
-    75
+    60
