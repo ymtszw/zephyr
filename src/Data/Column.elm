@@ -567,7 +567,7 @@ editorSubmit clientHeight c =
                     , editorSeq = c.editorSeq + 1
                     , editorActive = False
                   }
-                , { postProcess | producerMsg = Just postMsg }
+                , { postProcess | catchUpId = Just c.id, producerMsg = Just postMsg }
                 )
 
         LocalMessageEditor { buffer } ->
