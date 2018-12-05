@@ -183,7 +183,6 @@ messageInputBaseEl attrs iOpts eOpts =
             , Font.color fontColor
             , BG.color bgColor
             , onFocus (msgTagger (Column.EditorFocus True))
-            , onLoseFocus (msgTagger (Column.EditorFocus False))
             , style "resize" "none"
             ]
     in
@@ -205,7 +204,11 @@ selectedFilesEl cId ce =
             case file of
                 Just ( f, dataUrl ) ->
                     if String.startsWith "image/" (File.mime f) then
-                        image [ width fill, padding rectElementInnerPadding ]
+                        image
+                            [ centerX
+                            , width (shrink |> maximum filePreviewMaxWidth)
+                            , height (shrink |> maximum filePreviewMaxHeight)
+                            ]
                             { src = dataUrl, description = "Selected image" }
 
                     else
@@ -216,6 +219,16 @@ selectedFilesEl cId ce =
 
         LocalMessageEditor _ ->
             none
+
+
+filePreviewMaxHeight : Int
+filePreviewMaxHeight =
+    400
+
+
+filePreviewMaxWidth : Int
+filePreviewMaxWidth =
+    columnWidth - ((columnBorderWidth + rectElementInnerPadding) * 2)
 
 
 editorButtonsEl : Int -> Bool -> String -> ColumnEditor -> Element Msg
@@ -252,8 +265,6 @@ selectFileButtonEl cId =
         , BD.width 1
         , BD.color oneDark.bd
         , mouseOver [ BG.color oneDark.note ]
-
-        -- , onFocus (ColumnCtrl cId (Column.EditorFocus True)) -- HACK: must not lose focus; otherwise cannot yield files
         ]
         { onPress = ColumnCtrl cId (Column.EditorFileRequest [ "*/*" ])
         , width = px editorButtonWidth
