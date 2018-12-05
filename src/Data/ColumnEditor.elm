@@ -1,12 +1,12 @@
 module Data.ColumnEditor exposing
     ( ColumnEditor(..), CommonEditorOpts, defaultEditors
-    , filtersToEditors, updateBuffer, toggleActive, reset, updateFile
+    , filtersToEditors, updateBuffer, reset, updateFile
     )
 
 {-| Editor data for Columns.
 
 @docs ColumnEditor, CommonEditorOpts, defaultEditors
-@docs filtersToEditors, updateBuffer, toggleActive, reset, updateFile
+@docs filtersToEditors, updateBuffer, reset, updateFile
 
 -}
 
@@ -24,10 +24,7 @@ type ColumnEditor
 
 
 type alias CommonEditorOpts =
-    { buffer : String
-    , active : Bool
-    , seq : Int -- Force triggering DOM generation on new seq; workaround for https://github.com/mdgriffith/elm-ui/issues/5
-    }
+    { buffer : String }
 
 
 type alias DiscordOpts =
@@ -43,7 +40,7 @@ localMessageEditor =
 
 defaultOpts : CommonEditorOpts
 defaultOpts =
-    { buffer = "", active = False, seq = 0 }
+    { buffer = "" }
 
 
 filtersToEditors : Array Filter -> SelectArray ColumnEditor
@@ -83,26 +80,17 @@ updateBuffer input ce =
             LocalMessageEditor { opts | buffer = input }
 
 
-toggleActive : Bool -> ColumnEditor -> ColumnEditor
-toggleActive isActive ce =
-    case ce of
-        DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor dOpts { opts | active = isActive }
-
-        LocalMessageEditor opts ->
-            LocalMessageEditor { opts | active = isActive }
-
-
 reset : ColumnEditor -> ColumnEditor
 reset ce =
     case ce of
         DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor { dOpts | file = Nothing }
-                { opts | buffer = "", seq = opts.seq + 1 }
+            DiscordMessageEditor
+                { dOpts | file = Nothing }
+                { opts | buffer = "" }
 
         LocalMessageEditor opts ->
             LocalMessageEditor
-                { opts | buffer = "", seq = opts.seq + 1 }
+                { opts | buffer = "" }
 
 
 updateFile : Maybe ( File, String ) -> ColumnEditor -> ColumnEditor

@@ -28,9 +28,6 @@ newMessageEditorEl clientHeight ss fam c =
     let
         selectedEditor =
             SelectArray.selected c.editors
-
-        isActive =
-            editorIsActive selectedEditor
     in
     column
         [ width fill
@@ -40,30 +37,20 @@ newMessageEditorEl clientHeight ss fam c =
         , BD.color oneDark.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
         ]
-        [ row [ width fill, spacing spacingUnit, centerY, visible isActive ]
+        [ row [ width fill, spacing spacingUnit, centerY, visible c.editorActive ]
             [ octiconEl [] { size = editorHeaderIconSize, color = defaultOcticonColor, shape = Octicons.pencil }
             , editorSelectEl ss fam c
             , editorResetButtonEl c.id
             ]
-        , textAreaInputEl isActive c.id selectedEditor
+        , textAreaInputEl c selectedEditor
         , selectedFilesEl c.id selectedEditor
-        , editorButtonsEl clientHeight isActive c.id selectedEditor
+        , editorButtonsEl clientHeight c.editorActive c.id selectedEditor
         ]
 
 
 editorHeaderIconSize : Int
 editorHeaderIconSize =
     scale12 2
-
-
-editorIsActive : ColumnEditor -> Bool
-editorIsActive ce =
-    case ce of
-        DiscordMessageEditor { file } opts ->
-            opts.active
-
-        LocalMessageEditor opts ->
-            opts.active
 
 
 editorSelectEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -146,24 +133,26 @@ editorResetButtonEl cId =
         }
 
 
-textAreaInputEl : Bool -> String -> ColumnEditor -> Element Msg
-textAreaInputEl isActive cId ce =
+textAreaInputEl : Column.Column -> ColumnEditor -> Element Msg
+textAreaInputEl c ce =
     case ce of
         DiscordMessageEditor _ opts ->
             messageInputBaseEl []
-                { columnId = cId
+                { columnId = c.id
+                , seq = c.editorSeq
                 , placeholder = "Message"
                 , labelText = "Discord Message"
-                , isActive = isActive
+                , isActive = c.editorActive
                 }
                 opts
 
         LocalMessageEditor opts ->
             messageInputBaseEl []
-                { columnId = cId
+                { columnId = c.id
+                , seq = c.editorSeq
                 , placeholder = "Memo"
                 , labelText = "Personal Memo"
-                , isActive = isActive
+                , isActive = c.editorActive
                 }
                 opts
 
@@ -172,20 +161,21 @@ messageInputBaseEl :
     List (Attribute Msg)
     ->
         { columnId : String
+        , seq : Int
         , placeholder : String
         , labelText : String
         , isActive : Bool
         }
     -> CommonEditorOpts
     -> Element Msg
-messageInputBaseEl attrs iOpts eOpts =
+messageInputBaseEl attrs opts { buffer } =
     let
         msgTagger =
-            ColumnCtrl iOpts.columnId
+            ColumnCtrl opts.columnId
 
         ( heightPx, fontColor, bgColor ) =
-            if iOpts.isActive then
-                ( bufferToHeight eOpts.buffer, oneDark.text, oneDark.note )
+            if opts.isActive then
+                ( bufferToHeight buffer, oneDark.text, oneDark.note )
 
             else
                 ( editorFontSize * 2, oneDark.note, oneDark.sub )
@@ -212,10 +202,10 @@ messageInputBaseEl attrs iOpts eOpts =
     in
     multilineInputEl (baseAttrs ++ attrs)
         { onChange = msgTagger << Column.EditorInput
-        , text = eOpts.buffer
-        , key = String.fromInt eOpts.seq
-        , placeholder = Just iOpts.placeholder
-        , label = Element.Input.labelHidden iOpts.labelText
+        , text = buffer
+        , key = String.fromInt opts.seq
+        , placeholder = Just opts.placeholder
+        , label = Element.Input.labelHidden opts.labelText
         , spellcheck = True
         , width = fill
         }

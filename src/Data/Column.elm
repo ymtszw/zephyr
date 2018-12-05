@@ -49,6 +49,8 @@ type alias Column =
     , configOpen : Bool
     , pendingFilters : Array Filter
     , editors : SelectArray ColumnEditor
+    , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/mdgriffith/elm-ui/issues/5
+    , editorActive : Bool
     , deleteGate : String
     }
 
@@ -135,6 +137,8 @@ decoder clientHeight =
                                                     , configOpen = False
                                                     , pendingFilters = filters
                                                     , editors = ColumnEditor.filtersToEditors filters
+                                                    , editorSeq = 0
+                                                    , editorActive = False
                                                     , deleteGate = ""
                                                     }
                                             in
@@ -195,6 +199,8 @@ welcome clientHeight idGen id =
       , configOpen = True
       , pendingFilters = Array.empty
       , editors = ColumnEditor.defaultEditors
+      , editorSeq = 0
+      , editorActive = False
       , deleteGate = ""
       }
     , newGen
@@ -279,6 +285,8 @@ new clientHeight idGen id =
       , configOpen = True
       , pendingFilters = Array.empty
       , editors = ColumnEditor.defaultEditors
+      , editorSeq = 0
+      , editorActive = False
       , deleteGate = ""
       }
     , newGen
@@ -300,6 +308,8 @@ simple clientHeight fa id =
     , configOpen = False
     , pendingFilters = filters
     , editors = ColumnEditor.filtersToEditors filters
+    , editorSeq = 0
+    , editorActive = False
     , deleteGate = ""
     }
 
@@ -415,16 +425,19 @@ update msg c =
             pure { c | deleteGate = input }
 
         SelectEditor index ->
-            pure { c | editors = SelectArray.selectAt index c.editors }
+            pure { c | editors = SelectArray.selectAt index c.editors, editorSeq = c.editorSeq + 1 }
 
         EditorToggle isActive ->
-            pure { c | editors = SelectArray.updateSelected (ColumnEditor.toggleActive isActive) c.editors }
+            pure { c | editorActive = isActive }
 
         EditorInput input ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
 
         EditorReset ->
-            ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }
+            ( { c
+                | editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+                , editorSeq = c.editorSeq + 1
+              }
             , { postProcess | heartstopper = False }
             )
 
@@ -547,7 +560,11 @@ editorSubmit clientHeight c =
                                 , file = Maybe.map Tuple.first file
                                 }
                 in
-                ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }
+                ( { c
+                    | editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+                    , editorSeq = c.editorSeq + 1
+                    , editorActive = False
+                  }
                 , { postProcess | producerMsg = Just postMsg }
                 )
 
@@ -584,6 +601,8 @@ saveLocalMessage clientHeight buffer c =
     ( { c
         | items = newItems
         , editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+        , editorActive = False
+        , editorSeq = c.editorSeq + 1
       }
     , { postProcess | cmd = Cmd.map ScrollMsg sMsg, persist = True }
     )
