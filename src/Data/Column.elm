@@ -428,7 +428,7 @@ update msg c =
             pure { c | editors = SelectArray.selectAt index c.editors, editorSeq = c.editorSeq + 1 }
 
         EditorToggle isActive ->
-            pure { c | editorActive = isActive }
+            ( { c | editorActive = isActive }, { postProcess | heartstopper = False } )
 
         EditorInput input ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
@@ -459,7 +459,9 @@ update msg c =
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile (Just fileTuple)) c.editors }
 
         EditorFileDiscard ->
-            pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile Nothing) c.editors }
+            ( { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile Nothing) c.editors }
+            , { postProcess | heartstopper = False }
+            )
 
         ScanBroker opts ->
             scanBroker opts c

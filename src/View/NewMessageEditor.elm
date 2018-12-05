@@ -196,7 +196,11 @@ messageInputBaseEl attrs opts { buffer } =
             , Font.size editorFontSize
             , Font.color fontColor
             , BG.color bgColor
-            , onFocus (msgTagger (Column.EditorToggle True))
+            , if opts.isActive then
+                noneAttr
+
+              else
+                onFocus (msgTagger (Column.EditorToggle True))
             , style "resize" "none"
             ]
     in
