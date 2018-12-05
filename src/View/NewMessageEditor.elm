@@ -227,7 +227,7 @@ selectedFilesEl cId ce =
         DiscordMessageEditor { file } _ ->
             case file of
                 Just ( f, dataUrl ) ->
-                    previewWrapperEl f <|
+                    previewWrapperEl cId f <|
                         if String.startsWith "image/" (File.mime f) then
                             image
                                 [ centerX
@@ -265,35 +265,52 @@ otherFileIconSize =
     scale12 3
 
 
-previewWrapperEl : File -> Element Msg -> Element Msg
-previewWrapperEl f =
+previewWrapperEl : String -> File -> Element Msg -> Element Msg
+previewWrapperEl cId f =
     el
         [ width fill
         , clip
         , BD.rounded rectElementRound
         , BG.color oneDark.sub
         , Font.size editorFontSize
-        , inFront (previewOverlayStatsEl f)
+        , inFront (previewOverlayEl cId f)
         ]
 
 
-previewOverlayStatsEl : File -> Element Msg
-previewOverlayStatsEl f =
-    [ breakT (File.name f ++ " (" ++ StringExtra.punctuateNumber (File.size f) ++ " bytes)")
-    ]
-        |> breakP
-            [ width shrink
-            , padding rectElementInnerPadding
-            , BD.rounded rectElementRound
-            , BG.color (setAlpha 0.5 oneDark.bg)
-            ]
-        |> el
-            [ width (fill |> maximum (filePreviewMaxWidth // 2))
-            , height fill
-            , alignLeft
-            , padding rectElementInnerPadding
-            , spacing spacingUnit
-            ]
+previewOverlayEl : String -> File -> Element Msg
+previewOverlayEl cId f =
+    row
+        [ width fill
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
+        ]
+        [ el [ width fill, alignTop ] <|
+            breakP
+                [ width shrink
+                , padding rectElementInnerPadding
+                , BD.rounded rectElementRound
+                , BG.color (setAlpha 0.5 oneDark.bg)
+                ]
+                [ breakT <|
+                    File.name f
+                        ++ (" (" ++ StringExtra.punctuateNumber (File.size f) ++ " bytes)")
+                ]
+        , el [ width fill, alignTop ] <|
+            roundButtonEl
+                [ alignRight
+                , BG.color (setAlpha 0.5 oneDark.bg)
+                ]
+                { onPress = ColumnCtrl cId Column.EditorFileDiscard
+                , enabled = True
+                , innerElement =
+                    octiconEl [ padding rectElementInnerPadding ]
+                        { size = editorHeaderIconSize
+                        , color = oneDark.text
+                        , shape = Octicons.x
+                        }
+                , innerElementSize = editorHeaderIconSize + rectElementInnerPadding * 2
+                }
+        ]
 
 
 editorButtonsEl : Int -> Bool -> String -> ColumnEditor -> Element Msg
