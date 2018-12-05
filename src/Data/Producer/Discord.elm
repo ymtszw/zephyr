@@ -741,10 +741,10 @@ reload discord =
             pure discord
 
         TokenReady token ->
-            enterAndFire noop discord (identify token)
+            enterAndFire ppBase discord (identify token)
 
         Revisit pov ->
-            enterAndFire (PostProcessBase False (calculateFAM pov.channels) Nothing) discord (identify pov.token)
+            enterAndFire { ppBase | updateFAM = calculateFAM pov.channels } discord (identify pov.token)
 
         _ ->
             -- Other state; possibly newly introduced one? Do check its possibility of persistence
@@ -901,19 +901,19 @@ commitToken discord =
             destroy
 
         TokenGiven token ->
-            enterAndFire noop (TokenReady token) (identify token)
+            enterAndFire ppBase (TokenReady token) (identify token)
 
         Hydrated "" _ ->
             destroy
 
         Hydrated newToken _ ->
-            enterAndFire noop discord (identify newToken)
+            enterAndFire ppBase discord (identify newToken)
 
         Expired "" _ ->
             destroy
 
         Expired newToken _ ->
-            enterAndFire noop discord (identify newToken)
+            enterAndFire ppBase discord (identify newToken)
 
         _ ->
             -- Otherwise token input is locked; this should not happen
@@ -924,7 +924,7 @@ handleIdentify : Discord -> User -> Yield
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            enterAndFire (PostProcessBase True KeepFAM Nothing) (Identified (NewSession token user)) (hydrate token)
+            enterAndFire { ppBase | persist = True } (Identified (NewSession token user)) (hydrate token)
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -935,7 +935,7 @@ handleIdentify discord user =
         Revisit pov ->
             -- Successful reload; FAM is already calculated on reload
             -- Currntly we do not auto-Rehydrate on reload since Rehydrate is costly.
-            enterAndFire (PostProcessBase True KeepFAM (Just Worque.DiscordFetch)) (Hydrated pov.token { pov | user = user }) Cmd.none
+            enterAndFire { ppBase | persist = True, work = Just Worque.DiscordFetch } (Hydrated pov.token { pov | user = user }) Cmd.none
 
         Switching _ pov ->
             -- Retried Identify with previous token after error on Switching phase
@@ -950,10 +950,10 @@ detectUserSwitch : String -> POV -> User -> Yield
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
         -- Go Rehydrate => ChannelScanning => Hydrated route for clean restart
-        enterAndFire (PostProcessBase True KeepFAM Nothing) (Rehydrating token { pov | token = token, user = user }) (hydrate token)
+        enterAndFire { ppBase | persist = True } (Rehydrating token { pov | token = token, user = user }) (hydrate token)
 
     else
-        enterAndFire (PostProcessBase True KeepFAM Nothing) (Switching (NewSession token user) pov) (hydrate token)
+        enterAndFire { ppBase | persist = True } (Switching (NewSession token user) pov) (hydrate token)
 
 
 handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Yield
@@ -961,12 +961,12 @@ handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
             -- Successful register
-            enter (PostProcessBase True (calculateFAM channels) (Just Worque.DiscordFetch)) <|
+            enter { persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch } <|
                 Hydrated token (POV token user guilds channels)
 
         Switching { token, user } _ ->
             -- Successful user switch
-            enter (PostProcessBase True (calculateFAM channels) (Just Worque.DiscordFetch)) <|
+            enter { persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch } <|
                 Hydrated token (POV token user guilds channels)
 
         Rehydrating token pov ->
@@ -975,12 +975,12 @@ handleHydrate discord guilds channels =
                 newChannels =
                     mergeChannels pov.channels channels
             in
-            enter (PostProcessBase True (calculateFAM newChannels) (Just Worque.DiscordFetch))
+            enter { persist = True, updateFAM = calculateFAM newChannels, work = Just Worque.DiscordFetch }
                 (Hydrated token { pov | guilds = guilds, channels = newChannels })
 
         Expired token pov ->
             -- Possibly late arrival. Not re-scan, but persist.
-            enter (PostProcessBase True KeepFAM Nothing)
+            enter { ppBase | persist = True }
                 (Expired token { pov | guilds = guilds, channels = mergeChannels pov.channels channels })
 
         _ ->
@@ -1011,7 +1011,7 @@ handleRehydrate discord =
     case discord of
         Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            enterAndFire noop (Rehydrating token pov) (hydrate pov.token)
+            enterAndFire ppBase (Rehydrating token pov) (hydrate pov.token)
 
         _ ->
             pure discord
@@ -1081,7 +1081,7 @@ unsubscribeImpl tagger cId pov =
                 newChannels =
                     Dict.insert cId { c | fetchStatus = fs } pov.channels
             in
-            enter (PostProcessBase persist (updateOrKeepFAM updateFAM newChannels) Nothing)
+            enter { ppBase | persist = persist, updateFAM = updateOrKeepFAM updateFAM newChannels }
                 (tagger { pov | channels = newChannels })
 
         Nothing ->
@@ -1131,7 +1131,7 @@ fetchOrSkip stateTagger pov posix =
     in
     case readyToFetchChannels of
         [] ->
-            enter (PostProcessBase False KeepFAM (Just Worque.DiscordFetch)) (stateTagger pov)
+            enter { ppBase | work = Just Worque.DiscordFetch } (stateTagger pov)
 
         c :: _ ->
             let
@@ -1143,7 +1143,7 @@ fetchOrSkip stateTagger pov posix =
                     { pov | channels = Dict.insert c.id { c | fetchStatus = fs } pov.channels }
             in
             -- Set next Work on Fetched
-            enterAndFire noop (stateTagger newPov) (fetchChannelMessages pov.token c)
+            enterAndFire ppBase (stateTagger newPov) (fetchChannelMessages pov.token c)
 
 
 handleFetched : Discord -> FetchSuccess -> Yield
@@ -1180,10 +1180,10 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
                             Dict.insert cId { c | fetchStatus = fs } pov.channels
                     in
                     enter
-                        (PostProcessBase persist
-                            (updateOrKeepFAM updateFAM newChannels)
-                            (Just Worque.DiscordFetch)
-                        )
+                        { persist = persist
+                        , updateFAM = updateOrKeepFAM updateFAM newChannels
+                        , work = Just Worque.DiscordFetch
+                        }
                         (tagger { pov | channels = newChannels })
 
                 m :: _ ->
@@ -1203,7 +1203,12 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
 
         Nothing ->
             -- Target Channel somehow gone; deleted?
-            enter (PostProcessBase True (calculateFAM pov.channels) (Just Worque.DiscordFetch)) (tagger pov)
+            enter
+                { persist = True
+                , updateFAM = calculateFAM pov.channels
+                , work = Just Worque.DiscordFetch
+                }
+                (tagger pov)
 
 
 handlePost : Discord -> PostOpts -> Yield
@@ -1235,7 +1240,7 @@ postOrDiscard stateTagger pov opts =
                 |> Maybe.withDefault False
     in
     if subscribed then
-        enterAndFire noop (stateTagger pov) (postChannelMessage pov.token opts)
+        enterAndFire ppBase (stateTagger pov) (postChannelMessage pov.token opts)
 
     else
         -- Discard if not subbed; Should not happen
@@ -1273,25 +1278,25 @@ updatePovOnPostSuccess tagger cId posix pov =
                 newChannels =
                     Dict.insert cId { c | fetchStatus = fs } pov.channels
             in
-            enter (PostProcessBase persist (updateOrKeepFAM updateFAM newChannels) Nothing)
+            enter { ppBase | persist = persist, updateFAM = updateOrKeepFAM updateFAM newChannels }
                 (tagger { pov | channels = newChannels })
 
         Nothing ->
             -- Target Channel somehow gone; deleted?
-            enter (PostProcessBase True (calculateFAM pov.channels) Nothing) (tagger pov)
+            enter { ppBase | persist = True, updateFAM = calculateFAM pov.channels } (tagger pov)
 
 
 handleChannelAPIError : String -> HttpClient.Failure -> Discord -> Yield
 handleChannelAPIError cId ( httpError, req ) discord =
     case ( discord, httpError ) of
         ( Hydrated t pov, Unauthorized _ ) ->
-            enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
+            enter { ppBase | persist = True } (Expired t pov)
 
         ( Hydrated t pov, _ ) ->
             updatePovOnChannelAPIError (Hydrated t) cId httpError req pov
 
         ( Rehydrating t pov, Unauthorized _ ) ->
-            enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
+            enter { ppBase | persist = True } (Expired t pov)
 
         ( Rehydrating t pov, _ ) ->
             updatePovOnChannelAPIError (Rehydrating t) cId httpError req pov
@@ -1324,8 +1329,12 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
                     newChannels =
                         Dict.remove cId pov.channels
                 in
-                enter (PostProcessBase True (calculateFAM newChannels) (Just Worque.DiscordFetch)) <|
-                    tagger { pov | channels = newChannels }
+                enter
+                    { persist = True
+                    , updateFAM = calculateFAM newChannels
+                    , work = Just Worque.DiscordFetch
+                    }
+                    (tagger { pov | channels = newChannels })
 
             else
                 -- Considered transient
@@ -1343,7 +1352,11 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
                         else
                             Nothing
                 in
-                enter (PostProcessBase persist (updateOrKeepFAM updateFAM newChannels) work)
+                enter
+                    { persist = persist
+                    , updateFAM = updateOrKeepFAM updateFAM newChannels
+                    , work = work
+                    }
                     (tagger { pov | channels = newChannels })
 
         Nothing ->
