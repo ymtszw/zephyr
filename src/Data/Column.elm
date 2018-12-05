@@ -25,6 +25,8 @@ import Data.ItemBroker as ItemBroker
 import Data.Producer as Producer
 import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import File exposing (File)
+import File.Select
 import Hex
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -32,6 +34,7 @@ import Json.Encode as E
 import Json.EncodeExtra as E
 import Scroll exposing (Scroll)
 import SelectArray exposing (SelectArray)
+import Task
 import Url
 import View.Parts exposing (itemMinimumHeight)
 
@@ -317,6 +320,9 @@ type Msg
     | EditorInput String
     | EditorFocus Bool
     | EditorSubmit Int
+    | EditorFileRequest (List String)
+    | EditorFileSelected File
+    | EditorFileLoaded ( File, String )
     | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
@@ -406,6 +412,22 @@ update msg c =
         EditorSubmit clientHeight ->
             editorSubmit clientHeight c
 
+        EditorFileRequest mimeTypes ->
+            ( -- { c | editors = SelectArray.updateSelected (ColumnEditor.focus True) c.editors }
+              c
+            , PostProcess (File.Select.file mimeTypes EditorFileSelected) False Nothing Keep Nothing
+            )
+
+        EditorFileSelected file ->
+            let
+                getDataUrl =
+                    Task.map (Tuple.pair file) (File.toUrl file) |> Task.perform EditorFileLoaded
+            in
+            ( c, PostProcess getDataUrl False Nothing Keep Nothing )
+
+        EditorFileLoaded fileTuple ->
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.loadFile fileTuple) c.editors }
+
         ScanBroker opts ->
             scanBroker opts c
 
@@ -491,9 +513,8 @@ prependItems opts newItems items =
 editorSubmit : Int -> Column -> ( Column, PostProcess )
 editorSubmit clientHeight c =
     case SelectArray.selected c.editors of
-        DiscordMessageEditor channelId { buffer } ->
-            -- TODO: add capability to upload files
-            if String.isEmpty buffer then
+        DiscordMessageEditor { channelId, file } { buffer } ->
+            if String.isEmpty buffer && file == Nothing then
                 pure c
 
             else
@@ -503,7 +524,7 @@ editorSubmit clientHeight c =
                             Discord.Post
                                 { channelId = channelId
                                 , message = Just buffer
-                                , file = Nothing
+                                , file = Maybe.map Tuple.first file
                                 }
                 in
                 ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }

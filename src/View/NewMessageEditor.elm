@@ -13,6 +13,7 @@ import Element.Events exposing (onFocus, onLoseFocus)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import File
 import Html.Attributes exposing (placeholder)
 import ListExtra
 import Octicons
@@ -23,6 +24,13 @@ import View.Select as Select
 
 newMessageEditorEl : Int -> Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
 newMessageEditorEl clientHeight ss fam c =
+    let
+        selectedEditor =
+            SelectArray.selected c.editors
+
+        isActive =
+            editorIsActive selectedEditor
+    in
     column
         [ width fill
         , height shrink
@@ -35,9 +43,20 @@ newMessageEditorEl clientHeight ss fam c =
             [ octiconEl [] { size = editorFontSize, color = defaultOcticonColor, shape = Octicons.pencil }
             , editorSelectEl ss fam c
             ]
-        , textAreaInputEl c.id (SelectArray.selected c.editors)
-        , editorButtonsEl clientHeight c.id (SelectArray.selected c.editors)
+        , textAreaInputEl isActive c.id selectedEditor
+        , selectedFilesEl c.id selectedEditor
+        , editorButtonsEl clientHeight isActive c.id selectedEditor
         ]
+
+
+editorIsActive : ColumnEditor -> Bool
+editorIsActive ce =
+    case ce of
+        DiscordMessageEditor { file } opts ->
+            opts.focused || not (String.isEmpty opts.buffer) || file /= Nothing
+
+        LocalMessageEditor opts ->
+            opts.focused || not (String.isEmpty opts.buffer)
 
 
 editorSelectEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -56,7 +75,7 @@ editorSelectEl ss fam c =
         , Font.size editorFontSize
         ]
         { state = ss
-        , id = c.id ++ "_newMessageEditorSelect"
+        , id = editorSelectId c.id
         , theme = oneDark
         , onSelect = onEditorSelect c.id selectedIndex
         , selectedOption = Just ( selectedIndex, SelectArray.selected c.editors )
@@ -68,6 +87,11 @@ editorSelectEl ss fam c =
 editorSelectWidth : Int
 editorSelectWidth =
     150
+
+
+editorSelectId : String -> String
+editorSelectId cId =
+    cId ++ "_newMessageEditorSelect"
 
 
 onEditorSelect : String -> Int -> ( Int, ColumnEditor ) -> Msg
@@ -82,7 +106,7 @@ onEditorSelect cId selectedIndex ( index, _ ) =
 editorSelectOptionEl : FilterAtomMaterial -> ( Int, ColumnEditor ) -> Element Msg
 editorSelectOptionEl fam ( _, ce ) =
     case ce of
-        DiscordMessageEditor channelId _ ->
+        DiscordMessageEditor { channelId } _ ->
             fam.ofDiscordChannel
                 |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
                 |> Maybe.withDefault (Discord.unavailableChannel channelId)
@@ -98,14 +122,15 @@ editorFontSize =
     scale12 1
 
 
-textAreaInputEl : String -> ColumnEditor -> Element Msg
-textAreaInputEl cId ce =
+textAreaInputEl : Bool -> String -> ColumnEditor -> Element Msg
+textAreaInputEl isActive cId ce =
     case ce of
         DiscordMessageEditor _ opts ->
             messageInputBaseEl []
                 { columnId = cId
                 , placeholder = "Message"
                 , labelText = "Discord Message"
+                , isActive = isActive
                 }
                 opts
 
@@ -114,6 +139,7 @@ textAreaInputEl cId ce =
                 { columnId = cId
                 , placeholder = "Memo"
                 , labelText = "Personal Memo"
+                , isActive = isActive
                 }
                 opts
 
@@ -124,6 +150,7 @@ messageInputBaseEl :
         { columnId : String
         , placeholder : String
         , labelText : String
+        , isActive : Bool
         }
     -> CommonEditorOpts
     -> Element Msg
@@ -133,7 +160,7 @@ messageInputBaseEl attrs iOpts eOpts =
             ColumnCtrl iOpts.columnId
 
         ( heightPx, fontColor, bgColor ) =
-            if writing eOpts then
+            if iOpts.isActive then
                 ( bufferToHeight eOpts.buffer, oneDark.text, oneDark.note )
 
             else
@@ -171,25 +198,45 @@ messageInputBaseEl attrs iOpts eOpts =
         }
 
 
-writing : CommonEditorOpts -> Bool
-writing opts =
-    opts.focused || not (String.isEmpty opts.buffer)
+selectedFilesEl : String -> ColumnEditor -> Element Msg
+selectedFilesEl cId ce =
+    case ce of
+        DiscordMessageEditor { file } _ ->
+            case file of
+                Just ( f, dataUrl ) ->
+                    if String.startsWith "image/" (File.mime f) then
+                        image [ width fill, padding rectElementInnerPadding ]
+                            { src = dataUrl, description = "Selected image" }
+
+                    else
+                        text (File.name f)
+
+                Nothing ->
+                    none
+
+        LocalMessageEditor _ ->
+            none
 
 
-editorButtonsEl : Int -> String -> ColumnEditor -> Element Msg
-editorButtonsEl clientHeight cId ce =
+editorButtonsEl : Int -> Bool -> String -> ColumnEditor -> Element Msg
+editorButtonsEl clientHeight isActive cId ce =
     let
         rowAttrs opts =
             [ width fill
             , spacing spacingUnit
-            , visible (writing opts)
+            , visible isActive
             , Font.size editorFontSize
             ]
     in
     case ce of
-        DiscordMessageEditor _ opts ->
+        DiscordMessageEditor { file } opts ->
+            let
+                submittable =
+                    not (String.isEmpty opts.buffer) || file /= Nothing
+            in
             row (rowAttrs opts)
-                [ submitButtonEl clientHeight cId (not (String.isEmpty opts.buffer))
+                [ selectFileButtonEl cId
+                , submitButtonEl clientHeight cId submittable
                 ]
 
         LocalMessageEditor opts ->
@@ -198,11 +245,31 @@ editorButtonsEl clientHeight cId ce =
                 ]
 
 
+selectFileButtonEl : String -> Element Msg
+selectFileButtonEl cId =
+    thinButtonEl
+        [ alignLeft
+        , BD.width 1
+        , BD.color oneDark.bd
+        , mouseOver [ BG.color oneDark.note ]
+
+        -- , onFocus (ColumnCtrl cId (Column.EditorFocus True)) -- HACK: must not lose focus; otherwise cannot yield files
+        ]
+        { onPress = ColumnCtrl cId (Column.EditorFileRequest [ "*/*" ])
+        , width = px editorButtonWidth
+        , enabledColor = oneDark.main
+        , enabledFontColor = oneDark.text
+        , enabled = True
+        , innerElement =
+            octiconEl [] { size = editorFontSize, color = oneDark.text, shape = Octicons.plus }
+        }
+
+
 submitButtonEl : Int -> String -> Bool -> Element Msg
 submitButtonEl clientHeight cId enabled =
     thinButtonEl [ alignRight ]
         { onPress = ColumnCtrl cId (Column.EditorSubmit clientHeight)
-        , width = px submitButtonWidth
+        , width = px editorButtonWidth
         , enabledColor = oneDark.succ
         , enabledFontColor = oneDark.text
         , enabled = enabled
@@ -210,6 +277,6 @@ submitButtonEl clientHeight cId enabled =
         }
 
 
-submitButtonWidth : Int
-submitButtonWidth =
-    60
+editorButtonWidth : Int
+editorButtonWidth =
+    50

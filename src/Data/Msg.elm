@@ -13,6 +13,7 @@ import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
+import File
 import HttpClient
 import Iso8601
 import Json.Decode as D
@@ -357,6 +358,15 @@ columnMsgToEntry cId cMsg =
 
         Column.EditorSubmit clientHeight ->
             Entry "Column.EditorSubmit" [ cId, String.fromInt clientHeight ]
+
+        Column.EditorFileRequest mimeTypes ->
+            Entry "Column.EditorFileRequest" [ cId, String.join "," mimeTypes ]
+
+        Column.EditorFileSelected file ->
+            Entry "Column.EditorFileSelected" [ cId, File.name file, File.mime file ]
+
+        Column.EditorFileLoaded ( file, _ ) ->
+            Entry "Column.EditorFileLoaded" [ cId, File.name file, File.mime file ]
 
         Column.ScanBroker { maxCount } ->
             Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]

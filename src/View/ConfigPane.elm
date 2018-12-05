@@ -39,7 +39,7 @@ configPaneEl m =
             ]
 
         toggleAttrs =
-            if m.viewState.configOpen then
+            if not m.viewState.configOpen then
                 [ style "visibility" "visible"
                 , style "opacity" "1"
                 , style "transform" "translateX(0px)"
