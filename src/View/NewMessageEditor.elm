@@ -13,11 +13,12 @@ import Element.Events exposing (onFocus, onLoseFocus)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import File
+import File exposing (File)
 import Html.Attributes exposing (placeholder)
 import ListExtra
 import Octicons
 import SelectArray exposing (SelectArray)
+import StringExtra
 import View.Parts exposing (..)
 import View.Select as Select
 
@@ -133,7 +134,7 @@ editorResetButtonEl cId =
     thinButtonEl [ alignRight, mouseOver [ BG.color oneDark.err ] ]
         { onPress = ColumnCtrl cId Column.EditorReset
         , enabled = True
-        , enabledColor = oneDark.sub
+        , enabledColor = oneDark.bd
         , enabledFontColor = oneDark.text
         , width = shrink
         , innerElement =
@@ -226,16 +227,21 @@ selectedFilesEl cId ce =
         DiscordMessageEditor { file } _ ->
             case file of
                 Just ( f, dataUrl ) ->
-                    if String.startsWith "image/" (File.mime f) then
-                        image
-                            [ centerX
-                            , width (shrink |> maximum filePreviewMaxWidth)
-                            , height (shrink |> maximum filePreviewMaxHeight)
-                            ]
-                            { src = dataUrl, description = "Selected image" }
+                    previewWrapperEl f <|
+                        if String.startsWith "image/" (File.mime f) then
+                            image
+                                [ centerX
+                                , width (shrink |> maximum filePreviewMaxWidth)
+                                , height (shrink |> maximum filePreviewMaxHeight)
+                                ]
+                                { src = dataUrl, description = "Selected image" }
 
-                    else
-                        text (File.name f)
+                        else
+                            octiconEl [ centerX, padding otherFileIconSize ]
+                                { size = otherFileIconSize
+                                , color = oneDark.text
+                                , shape = Octicons.file
+                                }
 
                 Nothing ->
                     none
@@ -252,6 +258,42 @@ filePreviewMaxHeight =
 filePreviewMaxWidth : Int
 filePreviewMaxWidth =
     columnWidth - ((columnBorderWidth + rectElementInnerPadding) * 2)
+
+
+otherFileIconSize : Int
+otherFileIconSize =
+    scale12 3
+
+
+previewWrapperEl : File -> Element Msg -> Element Msg
+previewWrapperEl f =
+    el
+        [ width fill
+        , clip
+        , BD.rounded rectElementRound
+        , BG.color oneDark.sub
+        , Font.size editorFontSize
+        , inFront (previewOverlayStatsEl f)
+        ]
+
+
+previewOverlayStatsEl : File -> Element Msg
+previewOverlayStatsEl f =
+    [ breakT (File.name f ++ " (" ++ StringExtra.punctuateNumber (File.size f) ++ " bytes)")
+    ]
+        |> breakP
+            [ width shrink
+            , padding rectElementInnerPadding
+            , BD.rounded rectElementRound
+            , BG.color (setAlpha 0.5 oneDark.bg)
+            ]
+        |> el
+            [ width (fill |> maximum (filePreviewMaxWidth // 2))
+            , height fill
+            , alignLeft
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
+            ]
 
 
 editorButtonsEl : Int -> Bool -> String -> ColumnEditor -> Element Msg
