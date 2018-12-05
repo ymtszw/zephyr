@@ -1,7 +1,7 @@
 module Data.Producer.Base exposing
     ( YieldBase, PostProcessBase, UpdateFAM(..)
     , pure, enter, enterAndFire, yield, yieldAndFire, destroy
-    , noop
+    , ppBase
     )
 
 {-| Defines types and helpers used by Producers.
@@ -14,7 +14,7 @@ AND stateless API requests.
 
 @docs YieldBase, Reload, PostProcessBase, UpdateFAM
 @docs pure, enter, enterAndFire, yield, yieldAndFire, destroy
-@docs noop
+@docs ppBase
 
 -}
 
@@ -59,10 +59,10 @@ type UpdateFAM mat
     | DestroyFAM
 
 
-{-| No PostProcessBase. Meaning, no persist, KeepFAM, no Work.
+{-| Default PostProcessBase. Meaning, no persist, KeepFAM, no Work.
 -}
-noop : PostProcessBase mat
-noop =
+ppBase : PostProcessBase mat
+ppBase =
     PostProcessBase False KeepFAM Nothing
 
 
@@ -71,7 +71,7 @@ Meaning, no persist, KeepFAM, no Work.
 -}
 pure : state -> YieldBase item mat state msg
 pure state =
-    YieldBase [] noop (Just state) Cmd.none
+    YieldBase [] ppBase (Just state) Cmd.none
 
 
 {-| Just entering a specific state of a Producer, with PostProcessBase.

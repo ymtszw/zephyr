@@ -272,7 +272,7 @@ updateById limitMaybe cId cMsg columnStore =
 
 pure : ColumnStore -> ( ColumnStore, Column.PostProcess )
 pure columnStore =
-    ( columnStore, Column.PostProcess Cmd.none False Nothing Keep )
+    ( columnStore, Column.postProcess )
 
 
 autoArrange : Maybe Int -> Dict String Column -> Array String -> Array String

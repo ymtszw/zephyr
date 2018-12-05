@@ -15,6 +15,7 @@ import Json.Decode exposing (decodeString, decodeValue)
 import Json.Encode exposing (encode)
 import ListExtra
 import Parser
+import SelectArray
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
@@ -25,7 +26,8 @@ import Url
 suite : Test
 suite =
     describe "test"
-        [ listSuite
+        [ selectArraySuite
+        , listSuite
         , stringSuite
         , arraySuite
         , uniqueIdSuite
@@ -34,6 +36,60 @@ suite =
         , fetchStatusSuite
         , discordSuite
         ]
+
+
+
+-- SelectArray
+
+
+selectArraySuite : Test
+selectArraySuite =
+    describe "SelectArray"
+        [ describe "selectAt"
+            [ testSelectAt ( [], 0, [ 1, 2 ] ) 0 ( [], 0, [ 1, 2 ] )
+            , testSelectAt ( [], 0, [ 1, 2 ] ) 1 ( [ 0 ], 1, [ 2 ] )
+            , testSelectAt ( [], 0, [ 1, 2 ] ) 2 ( [ 0, 1 ], 2, [] )
+            , testSelectAt ( [], 0, [ 1, 2 ] ) 3 ( [], 0, [ 1, 2 ] )
+            , testSelectAt ( [], 0, [ 1, 2 ] ) -1 ( [], 0, [ 1, 2 ] )
+            , testSelectAt ( [ 0 ], 1, [ 2 ] ) 0 ( [], 0, [ 1, 2 ] )
+            , testSelectAt ( [ 0 ], 1, [ 2 ] ) 1 ( [ 0 ], 1, [ 2 ] )
+            , testSelectAt ( [ 0 ], 1, [ 2 ] ) 2 ( [ 0, 1 ], 2, [] )
+            , testSelectAt ( [ 0 ], 1, [ 2 ] ) 3 ( [ 0 ], 1, [ 2 ] )
+            , testSelectAt ( [ 0 ], 1, [ 2 ] ) -1 ( [ 0 ], 1, [ 2 ] )
+            , testSelectAt ( [ 0, 1 ], 2, [] ) 0 ( [], 0, [ 1, 2 ] )
+            , testSelectAt ( [ 0, 1 ], 2, [] ) 1 ( [ 0 ], 1, [ 2 ] )
+            , testSelectAt ( [ 0, 1 ], 2, [] ) 2 ( [ 0, 1 ], 2, [] )
+            , testSelectAt ( [ 0, 1 ], 2, [] ) 3 ( [ 0, 1 ], 2, [] )
+            , testSelectAt ( [ 0, 1 ], 2, [] ) -1 ( [ 0, 1 ], 2, [] )
+            ]
+        , describe "indexedMap"
+            [ testIndexedMap ( [], 0, [ 1, 2 ] ) [ ( 0, True ), ( 1, False ), ( 2, False ) ]
+            , testIndexedMap ( [ 0 ], 1, [ 2 ] ) [ ( 0, False ), ( 1, True ), ( 2, False ) ]
+            , testIndexedMap ( [ 0, 1 ], 2, [] ) [ ( 0, False ), ( 1, False ), ( 2, True ) ]
+            ]
+        ]
+
+
+testSelectAt : ( List a, a, List a ) -> Int -> ( List a, a, List a ) -> Test
+testSelectAt ( initialF, initialS, initialR ) index ( expectedF, expectedS, expectedR ) =
+    let
+        initial =
+            SelectArray.fromLists initialF initialS initialR
+    in
+    test ("should work with: " ++ Debug.toString initial ++ ", index" ++ String.fromInt index) <|
+        \_ ->
+            initial |> SelectArray.selectAt index |> Expect.equal (SelectArray.fromLists expectedF expectedS expectedR)
+
+
+testIndexedMap : ( List a, a, List a ) -> List ( Int, Bool ) -> Test
+testIndexedMap ( initialF, initialS, initialR ) expected =
+    let
+        initial =
+            SelectArray.fromLists initialF initialS initialR
+    in
+    test ("should work with: " ++ Debug.toString initial) <|
+        \_ ->
+            initial |> SelectArray.indexedMap (\{ selected, index } -> ( index, selected )) |> Expect.equal expected
 
 
 

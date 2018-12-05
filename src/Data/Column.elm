@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, columnItemLimit
-    , Msg(..), PostProcess, Position(..), update
+    , Msg(..), PostProcess, Position(..), update, postProcess
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -11,22 +11,30 @@ Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, columnItemLimit
-@docs Msg, PostProcess, Position, update
+@docs Msg, PostProcess, Position, update, postProcess
 
 -}
 
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
+import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
+import Data.Producer as Producer
+import Data.Producer.Discord as Discord
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import File exposing (File)
+import File.Select
+import Hex
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import Scroll exposing (Scroll)
+import SelectArray exposing (SelectArray)
+import Task
 import Url
 import View.Parts exposing (itemMinimumHeight)
 
@@ -40,6 +48,9 @@ type alias Column =
     , recentlyTouched : Bool -- This property may become stale, though it should have no harm
     , configOpen : Bool
     , pendingFilters : Array Filter
+    , editors : SelectArray ColumnEditor
+    , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/mdgriffith/elm-ui/issues/5
+    , editorActive : Bool
     , deleteGate : String
     }
 
@@ -47,6 +58,7 @@ type alias Column =
 type ColumnItem
     = Product Offset Item
     | System String { message : String, mediaMaybe : Maybe Media }
+    | LocalMessage String { message : String }
 
 
 type Media
@@ -76,6 +88,12 @@ encodeColumnItem cItem =
                 E.object
                     [ ( "message", E.string message )
                     , ( "media", E.maybe encodeMedia mediaMaybe )
+                    ]
+
+        LocalMessage id { message } ->
+            E.tagged2 "LocalMessage" (E.string id) <|
+                E.object
+                    [ ( "message", E.string message )
                     ]
 
 
@@ -108,14 +126,36 @@ decoder clientHeight =
                                     -- Migration; use field instead of maybeField later
                                     D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
                                         \pinned ->
-                                            D.succeed ( Column id items filters offset pinned False False filters "", Cmd.map ScrollMsg sCmd )
+                                            let
+                                                c =
+                                                    { id = id
+                                                    , items = items
+                                                    , filters = filters
+                                                    , offset = offset
+                                                    , pinned = pinned
+                                                    , recentlyTouched = False
+                                                    , configOpen = False
+                                                    , pendingFilters = filters
+                                                    , editors = ColumnEditor.filtersToEditors filters
+                                                    , editorSeq = 0
+                                                    , editorActive = False
+                                                    , deleteGate = ""
+                                                    }
+                                            in
+                                            D.succeed ( c, Cmd.map ScrollMsg sCmd )
 
 
 columnItemDecoder : Decoder ColumnItem
 columnItemDecoder =
     D.oneOf
         [ D.tagged2 "Product" Product offsetDecoder Item.decoder
-        , D.tagged2 "System" System D.string systemMessageDecoder
+        , D.tagged2 "System" System D.string <|
+            D.map2 (\a b -> { message = a, mediaMaybe = b })
+                (D.field "message" D.string)
+                (D.field "media" (D.maybe mediaDecoder))
+        , D.tagged2 "LocalMessage" LocalMessage D.string <|
+            D.map (\a -> { message = a })
+                (D.field "message" D.string)
         ]
 
 
@@ -133,13 +173,6 @@ offsetDecoder =
             )
 
 
-systemMessageDecoder : Decoder { message : String, mediaMaybe : Maybe Media }
-systemMessageDecoder =
-    D.map2 (\a b -> { message = a, mediaMaybe = b })
-        (D.field "message" D.string)
-        (D.field "media" (D.maybe mediaDecoder))
-
-
 mediaDecoder : Decoder Media
 mediaDecoder =
     D.oneOf
@@ -154,7 +187,7 @@ welcome clientHeight idGen id =
         ( items, newGen ) =
             UniqueIdGen.sequence UniqueIdGen.systemMessagePrefix idGen <|
                 [ welcomeItem
-                , textOnlyItem "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
+                , systemMessage "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
                 ]
     in
     ( { id = id
@@ -165,6 +198,9 @@ welcome clientHeight idGen id =
       , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
+      , editors = ColumnEditor.defaultEditors
+      , editorSeq = 0
+      , editorActive = False
       , deleteGate = ""
       }
     , newGen
@@ -210,8 +246,8 @@ autoAdjustOptions clientHeight =
     }
 
 
-textOnlyItem : String -> String -> ColumnItem
-textOnlyItem message id =
+systemMessage : String -> String -> ColumnItem
+systemMessage message id =
     System id { message = message, mediaMaybe = Nothing }
 
 
@@ -238,7 +274,7 @@ new clientHeight idGen id =
     let
         ( item, newGen ) =
             UniqueIdGen.genAndMap UniqueIdGen.systemMessagePrefix idGen <|
-                textOnlyItem "New column created! Let's configure filters above!"
+                systemMessage "New column created! Let's configure filters above!"
     in
     ( { id = id
       , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
@@ -248,6 +284,9 @@ new clientHeight idGen id =
       , recentlyTouched = True
       , configOpen = True
       , pendingFilters = Array.empty
+      , editors = ColumnEditor.defaultEditors
+      , editorSeq = 0
+      , editorActive = False
       , deleteGate = ""
       }
     , newGen
@@ -256,14 +295,21 @@ new clientHeight idGen id =
 
 simple : Int -> FilterAtom -> String -> Column
 simple clientHeight fa id =
+    let
+        filters =
+            Array.fromList [ Filter.Singular fa ]
+    in
     { id = id
     , items = Scroll.init (scrollInitOptions id clientHeight)
-    , filters = Array.fromList [ Filter.Singular fa ]
+    , filters = filters
     , offset = Nothing
     , pinned = False
     , recentlyTouched = True
     , configOpen = False
-    , pendingFilters = Array.fromList [ Filter.Singular fa ]
+    , pendingFilters = filters
+    , editors = ColumnEditor.filtersToEditors filters
+    , editorSeq = 0
+    , editorActive = False
     , deleteGate = ""
     }
 
@@ -280,6 +326,15 @@ type Msg
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
     | DeleteGateInput String
+    | SelectEditor Int
+    | EditorToggle Bool
+    | EditorInput String
+    | EditorReset
+    | EditorSubmit Int
+    | EditorFileRequest (List String)
+    | EditorFileSelected File
+    | EditorFileLoaded ( File, String )
+    | EditorFileDiscard
     | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
@@ -289,6 +344,8 @@ type alias PostProcess =
     , persist : Bool
     , catchUpId : Maybe String
     , position : Position
+    , producerMsg : Maybe Producer.Msg
+    , heartstopper : Bool
     }
 
 
@@ -298,6 +355,17 @@ type Position
     | Keep
 
 
+postProcess : PostProcess
+postProcess =
+    { cmd = Cmd.none
+    , persist = False
+    , catchUpId = Nothing
+    , position = Keep
+    , producerMsg = Nothing
+    , heartstopper = False
+    }
+
+
 update : Msg -> Column -> ( Column, PostProcess )
 update msg c =
     case msg of
@@ -305,14 +373,16 @@ update msg c =
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
 
         Pin pinned ->
-            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto )
+            ( { c | pinned = pinned, recentlyTouched = True }, { postProcess | persist = True, position = Auto } )
 
         Show ->
             let
                 ( items, sCmd ) =
                     Scroll.update Scroll.Reveal c.items
             in
-            ( { c | items = items, recentlyTouched = True }, PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump )
+            ( { c | items = items, recentlyTouched = True }
+            , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, position = Bump }
+            )
 
         Calm ->
             pure { c | recentlyTouched = False }
@@ -348,64 +418,111 @@ update msg c =
 
         ConfirmFilter ->
             ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
-            , PostProcess Cmd.none True (Just c.id) Keep
+            , { postProcess | persist = True, catchUpId = Just c.id }
             )
 
         DeleteGateInput input ->
             pure { c | deleteGate = input }
 
-        ScanBroker { broker, maxCount, clientHeight, catchUp } ->
-            case ItemBroker.bulkRead maxCount c.offset broker of
-                [] ->
-                    pure c
+        SelectEditor index ->
+            pure { c | editors = SelectArray.selectAt index c.editors, editorSeq = c.editorSeq + 1 }
 
-                (( _, newOffset ) :: _) as items ->
-                    let
-                        ( c_, pp ) =
-                            case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
-                                ( True, [] ) ->
-                                    ( c, PostProcess Cmd.none True (Just c.id) Keep )
+        EditorToggle isActive ->
+            ( { c | editorActive = isActive }, { postProcess | heartstopper = False } )
 
-                                ( True, newItems ) ->
-                                    let
-                                        ( items_, sCmd ) =
-                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
-                                    in
-                                    -- Do not bump, nor flash Column during catchUp
-                                    ( { c | items = items_ }
-                                    , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep
-                                    )
+        EditorInput input ->
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
 
-                                ( False, [] ) ->
-                                    ( c, PostProcess Cmd.none True Nothing Keep )
+        EditorReset ->
+            ( { c
+                | editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+                , editorSeq = c.editorSeq + 1
+              }
+            , { postProcess | heartstopper = False }
+            )
 
-                                ( False, newItems ) ->
-                                    let
-                                        ( items_, sCmd ) =
-                                            prependItems (autoAdjustOptions clientHeight) newItems c.items
-                                    in
-                                    ( { c | items = items_, recentlyTouched = True }
-                                    , if c.pinned then
-                                        -- Do not bump Pinned Column
-                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep
+        EditorSubmit clientHeight ->
+            editorSubmit clientHeight c
 
-                                      else
-                                        PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump
-                                    )
-                    in
-                    ( { c_ | offset = Just newOffset }, pp )
+        EditorFileRequest mimeTypes ->
+            ( c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected, heartstopper = True } )
+
+        EditorFileSelected file ->
+            ( c
+            , { postProcess
+                | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file))
+                , heartstopper = False
+              }
+            )
+
+        EditorFileLoaded fileTuple ->
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile (Just fileTuple)) c.editors }
+
+        EditorFileDiscard ->
+            ( { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile Nothing) c.editors }
+            , { postProcess | heartstopper = False }
+            )
+
+        ScanBroker opts ->
+            scanBroker opts c
 
         ScrollMsg sMsg ->
             let
                 ( items, sCmd ) =
                     Scroll.update sMsg c.items
             in
-            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg sCmd) False Nothing Keep )
+            ( { c | items = items }, { postProcess | cmd = Cmd.map ScrollMsg sCmd } )
 
 
 pure : Column -> ( Column, PostProcess )
 pure c =
-    ( c, PostProcess Cmd.none False Nothing Keep )
+    ( c, postProcess )
+
+
+scanBroker :
+    { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    -> Column
+    -> ( Column, PostProcess )
+scanBroker { broker, maxCount, clientHeight, catchUp } c =
+    case ItemBroker.bulkRead maxCount c.offset broker of
+        [] ->
+            pure c
+
+        (( _, newOffset ) :: _) as items ->
+            let
+                ( c_, pp ) =
+                    case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
+                        ( True, [] ) ->
+                            ( c, { postProcess | persist = True, catchUpId = Just c.id } )
+
+                        ( True, newItems ) ->
+                            let
+                                ( items_, sCmd ) =
+                                    prependItems (autoAdjustOptions clientHeight) newItems c.items
+                            in
+                            -- Do not bump, nor flash Column during catchUp
+                            ( { c | items = items_ }
+                            , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, catchUpId = Just c.id }
+                            )
+
+                        ( False, [] ) ->
+                            ( c, { postProcess | persist = True } )
+
+                        ( False, newItems ) ->
+                            let
+                                ( items_, sCmd ) =
+                                    prependItems (autoAdjustOptions clientHeight) newItems c.items
+                            in
+                            ( { c | items = items_, recentlyTouched = True }
+                            , if c.pinned then
+                                -- Do not bump Pinned Column
+                                { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True }
+
+                              else
+                                { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, position = Bump }
+                            )
+            in
+            ( { c_ | offset = Just newOffset }, pp )
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
@@ -426,3 +543,114 @@ prependItems opts newItems items =
     items
         |> Scroll.prependList newItems
         |> Scroll.update (Scroll.AdjustReq opts)
+
+
+editorSubmit : Int -> Column -> ( Column, PostProcess )
+editorSubmit clientHeight c =
+    case SelectArray.selected c.editors of
+        DiscordMessageEditor { channelId, file } { buffer } ->
+            if String.isEmpty buffer && file == Nothing then
+                pure c
+
+            else
+                let
+                    postMsg =
+                        Producer.DiscordMsg <|
+                            Discord.Post
+                                { channelId = channelId
+                                , message = Just buffer
+                                , file = Maybe.map Tuple.first file
+                                }
+                in
+                ( { c
+                    | editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+                    , editorSeq = c.editorSeq + 1
+                    , editorActive = False
+                  }
+                , { postProcess | catchUpId = Just c.id, producerMsg = Just postMsg }
+                )
+
+        LocalMessageEditor { buffer } ->
+            if String.isEmpty buffer then
+                pure c
+
+            else
+                saveLocalMessage clientHeight buffer c
+
+
+saveLocalMessage : Int -> String -> Column -> ( Column, PostProcess )
+saveLocalMessage clientHeight buffer c =
+    let
+        prevId =
+            case Scroll.pop c.items of
+                ( Just (Product offset _), _ ) ->
+                    Broker.offsetToString offset
+
+                ( Just (System id _), _ ) ->
+                    id
+
+                ( Just (LocalMessage id _), _ ) ->
+                    id
+
+                ( Nothing, _ ) ->
+                    "root"
+
+        ( newItems, sMsg ) =
+            prependItems (autoAdjustOptions clientHeight)
+                [ localMessage prevId buffer ]
+                c.items
+    in
+    ( { c
+        | items = newItems
+        , editors = SelectArray.updateSelected ColumnEditor.reset c.editors
+        , editorActive = False
+        , editorSeq = c.editorSeq + 1
+      }
+    , { postProcess | cmd = Cmd.map ScrollMsg sMsg, persist = True }
+    )
+
+
+localMessage : String -> String -> ColumnItem
+localMessage prevId message =
+    LocalMessage (localMessageId prevId) { message = message }
+
+
+localMessageId : String -> String
+localMessageId prevId =
+    let
+        initialSeqHex =
+            String.repeat localMessageHexLen "0"
+    in
+    if String.startsWith localMessagePrefix prevId then
+        let
+            attachedTo =
+                String.dropLeft (localMessagePrefixLen + localMessageHexLen) prevId
+        in
+        String.join ""
+            [ localMessagePrefix
+            , case prevId |> String.dropLeft localMessagePrefixLen |> String.left localMessageHexLen |> Hex.fromString of
+                Ok prevSeq ->
+                    String.padLeft localMessageHexLen '0' (Hex.toString (prevSeq + 1))
+
+                Err _ ->
+                    initialSeqHex
+            , attachedTo
+            ]
+
+    else
+        localMessagePrefix ++ initialSeqHex ++ prevId
+
+
+localMessagePrefix : String
+localMessagePrefix =
+    "lm"
+
+
+localMessagePrefixLen : Int
+localMessagePrefixLen =
+    String.length localMessagePrefix
+
+
+localMessageHexLen : Int
+localMessageHexLen =
+    4

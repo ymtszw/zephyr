@@ -13,7 +13,8 @@ import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
-import HttpExtra
+import File
+import HttpClient
 import Iso8601
 import Json.Decode as D
 import Json.Encode as E
@@ -281,14 +282,33 @@ producerMsgToEntry pMsg =
                 Discord.Fetch posix ->
                     Entry "Discord.Fetch" [ Iso8601.fromTime posix ]
 
-                Discord.Fetched (Discord.FetchOk cId ms posix) ->
-                    Entry "Discord.FetchOk" [ cId, Iso8601.fromTime posix, E.encode 2 (E.list Discord.encodeMessage ms) ]
+                Discord.Fetched succ ->
+                    Entry "Discord.Fetched"
+                        [ succ.channelId
+                        , E.encode 2 (E.list Discord.encodeMessage succ.messages)
+                        , Iso8601.fromTime succ.posix
+                        ]
 
-                Discord.Fetched (Discord.FetchErr cId e) ->
-                    Entry "Discord.FetchErr" [ cId, HttpExtra.errorToString e ]
+                Discord.Post opts ->
+                    Entry "Discord.Post" [ opts.channelId ]
 
-                Discord.APIError e ->
-                    Entry "Discord.APIError" [ HttpExtra.errorToString e ]
+                Discord.Posted succ ->
+                    Entry "Discord.Posted" [ succ.channelId, Iso8601.fromTime succ.posix ]
+
+                Discord.ChannelAPIError cId ( e, req ) ->
+                    Entry "Discord.ChannelAPIError"
+                        [ cId
+                        , HttpClient.errorToString e
+                        , req.method
+                        , Url.toString req.url
+                        ]
+
+                Discord.GenericAPIError ( e, req ) ->
+                    Entry "Discord.GenericAPIError"
+                        [ HttpClient.errorToString e
+                        , req.method
+                        , Url.toString req.url
+                        ]
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry
@@ -326,6 +346,33 @@ columnMsgToEntry cId cMsg =
 
         Column.DeleteGateInput input ->
             Entry "Column.DeleteGateInput" [ cId, input ]
+
+        Column.SelectEditor index ->
+            Entry "Column.SelectEditor" [ cId, String.fromInt index ]
+
+        Column.EditorToggle isActive ->
+            Entry "Column.EditorToggle" [ cId, boolStr isActive ]
+
+        Column.EditorInput input ->
+            Entry "Column.EditorInput" [ cId, input ]
+
+        Column.EditorReset ->
+            Entry "Column.EditorReset" [ cId ]
+
+        Column.EditorSubmit clientHeight ->
+            Entry "Column.EditorSubmit" [ cId, String.fromInt clientHeight ]
+
+        Column.EditorFileRequest mimeTypes ->
+            Entry "Column.EditorFileRequest" [ cId, String.join "," mimeTypes ]
+
+        Column.EditorFileSelected file ->
+            Entry "Column.EditorFileSelected" [ cId, File.name file, File.mime file ]
+
+        Column.EditorFileLoaded ( file, _ ) ->
+            Entry "Column.EditorFileLoaded" [ cId, File.name file, File.mime file ]
+
+        Column.EditorFileDiscard ->
+            Entry "Column.EditorFileDiscard" [ cId ]
 
         Column.ScanBroker { maxCount } ->
             Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]

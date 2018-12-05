@@ -2,13 +2,15 @@ module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-    , textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+    , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , filtersToIconEl, filtersToTextEl
     , discordGuildIconEl, discordChannelEl
-    , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
+    , columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
+    , rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
+    , defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+    , trashcanPaddingAdjust
     )
 
 {-| View parts, complementing Element and Html.
@@ -27,7 +29,7 @@ module View.Parts exposing
 
 ## Inputs
 
-@docs textInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+@docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 
 
@@ -48,8 +50,10 @@ module View.Parts exposing
 
 ## Constants
 
-@docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
+@docs columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
+@docs rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
+@docs defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+@docs trashcanPaddingAdjust
 
 -}
 
@@ -63,6 +67,7 @@ import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Element.Lazy exposing (..)
 import Html
 import Html.Attributes
@@ -201,8 +206,7 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
                         badgeSize =
                             size // 3
                     in
-                    [ alignTop
-                    , padding innerIconPadding
+                    [ padding innerIconPadding
                     , inFront <|
                         el
                             [ alignBottom
@@ -293,6 +297,44 @@ customPlaceholder theme phMaybe text =
 
         Nothing ->
             noneAttr
+
+
+multilineInputEl :
+    List (Attribute msg)
+    ->
+        { onChange : String -> msg
+        , text : String
+        , key : String
+        , placeholder : Maybe String
+        , label : Element.Input.Label msg
+        , spellcheck : Bool
+        , width : Length
+        }
+    -> Element msg
+multilineInputEl userAttrs opts =
+    let
+        baseAttrs =
+            [ padding rectElementInnerPadding
+            , BD.width 0
+            , style "transition" "height 0.2s 0.1s,background-color 0.3s,color 0.3s"
+            , case opts.placeholder of
+                Just ph ->
+                    htmlAttribute (Html.Attributes.placeholder ph)
+
+                Nothing ->
+                    noneAttr
+            ]
+    in
+    Element.Input.multiline (baseAttrs ++ userAttrs)
+        { onChange = opts.onChange
+        , text = opts.text
+        , placeholder = Nothing
+        , label = opts.label
+        , spellcheck = opts.spellcheck
+        }
+        -- Workaround for https://github.com/mdgriffith/elm-ui/issues/5
+        |> Tuple.pair opts.key
+        |> Element.Keyed.el [ width opts.width ]
 
 
 toggleInputEl :
@@ -523,21 +565,26 @@ since it expects avatar images/octicons in its element.
 Their color or saturations must be controlled by callers.
 -}
 roundButtonEl :
-    { onPress : msg
-    , enabled : Bool
-    , innerElement : Element msg
-    , innerElementSize : Int
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , enabled : Bool
+        , innerElement : Element msg
+        , innerElementSize : Int
+        }
     -> Element msg
-roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
-    Element.Input.button
-        [ width (px innerElementSize)
-        , height (px innerElementSize)
-        , BD.rounded (innerElementSize // 2 + 1)
-        , switchCursor enabled
-        , roundInputScreen innerElementSize enabled
-        , disabled (not enabled)
-        ]
+roundButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
+    let
+        baseAttrs =
+            [ width (px innerElementSize)
+            , height (px innerElementSize)
+            , BD.rounded (innerElementSize // 2 + 1)
+            , switchCursor enabled
+            , roundInputScreen innerElementSize enabled
+            , disabled (not enabled)
+            ]
+    in
+    Element.Input.button (baseAttrs ++ userAttrs)
         { onPress =
             if enabled then
                 Just onPress
@@ -682,7 +729,7 @@ cssRgba color =
             toRgb color
     in
     String.join ""
-        [ "rgb("
+        [ "rgba("
         , String.fromFloat (255 * red)
         , ","
         , String.fromFloat (255 * green)
@@ -728,7 +775,7 @@ filterToIconEl attrs size fam filter elMaybe =
                 ( _, _ ) ->
                     Nothing
     in
-    Filter.fold reducer elMaybe filter
+    Filter.foldl reducer elMaybe filter
 
 
 discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
@@ -870,8 +917,8 @@ manualStyle =
 -- CONSTANTS
 
 
-fixedColumnWidth : Int
-fixedColumnWidth =
+columnWidth : Int
+columnWidth =
     350
 
 
@@ -923,3 +970,15 @@ itemBorderBottom =
 columnPinColor : Color
 columnPinColor =
     oneDark.warn
+
+
+columnBorderWidth : Int
+columnBorderWidth =
+    2
+
+
+{-| Octicons.trashcan is slllllightly leaning right. Adjusting with this paddingEach.
+-}
+trashcanPaddingAdjust : { top : Int, right : Int, bottom : Int, left : Int }
+trashcanPaddingAdjust =
+    { top = 0, right = 2, bottom = 0, left = 0 }

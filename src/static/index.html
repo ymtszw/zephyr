@@ -17,7 +17,9 @@
     <!-- Entire body will be replaced by Elm -->
     <script type="text/javascript">
       // Prerequisites
-      const isLocalDevelopment = window.origin.startsWith("http://localhost");
+      const isLocalDevelopment = window.location.origin.startsWith(
+        "http://localhost"
+      );
       const serviceWorkerAvailable =
         "serviceWorker" in window.navigator && !isLocalDevelopment;
       const indexedDBAvailable = "indexedDB" in window;

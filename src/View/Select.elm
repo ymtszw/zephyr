@@ -75,6 +75,9 @@ select userAttrs { state, id, theme, onSelect, selectedOption, options, optionEl
         attrs =
             [ width (fill |> minimum 0)
             , height fill
+            , padding headerPadding
+            , BD.rounded rectElementRound
+            , BG.color theme.note
             , below (optionsEl onSelect theme opened optionEl selectedOption options)
             ]
                 ++ userAttrs
@@ -86,9 +89,6 @@ headerEl : Msg -> ColorTheme -> Maybe a -> (a -> Element Msg) -> Element Msg
 headerEl onPress theme selectedOption optionEl =
     Element.Input.button
         [ width fill
-        , padding headerPadding
-        , BD.rounded rectElementRound
-        , BG.color theme.note
         , Font.color theme.text
         ]
         { onPress = Just onPress
@@ -98,7 +98,17 @@ headerEl onPress theme selectedOption optionEl =
                   -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
                   el [ width (fill |> minimum 0), clipX ] <|
                     Maybe.withDefault (text "Select...") (Maybe.map optionEl selectedOption)
-                , octiconEl [ width (px headerChevronSize), alignRight, BG.color theme.sub ]
+                , octiconEl
+                    [ width (px headerChevronSize)
+                    , alignRight
+                    , BD.roundEach
+                        { topLeft = 0
+                        , topRight = rectElementRound
+                        , bottomLeft = 0
+                        , bottomRight = rectElementRound
+                        }
+                    , BG.color theme.sub
+                    ]
                     { size = headerChevronSize, color = defaultOcticonColor, shape = Octicons.chevronDown }
                 ]
         }

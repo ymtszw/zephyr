@@ -3,7 +3,7 @@ module Data.Producer.Discord exposing
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
-    , Msg(..), FetchResult(..), reload, update
+    , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, unavailableChannel, compareByNames
     )
@@ -32,7 +32,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Component APIs
 
-@docs Msg, FetchResult, reload, update
+@docs Msg, reload, update
 
 
 ## Runtime APIs
@@ -47,9 +47,10 @@ import Data.Producer.Base as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), Msg(..))
 import Dict exposing (Dict)
 import Element
+import File exposing (File)
 import Hex
 import Http
-import HttpExtra as Http
+import HttpClient exposing (Error(..))
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -740,10 +741,10 @@ reload discord =
             pure discord
 
         TokenReady token ->
-            enterAndFire noop discord (identify token)
+            enterAndFire ppBase discord (identify token)
 
         Revisit pov ->
-            enterAndFire (PostProcessBase False (calculateFAM pov.channels) Nothing) discord (identify pov.token)
+            enterAndFire { ppBase | updateFAM = calculateFAM pov.channels } discord (identify pov.token)
 
         _ ->
             -- Other state; possibly newly introduced one? Do check its possibility of persistence
@@ -807,13 +808,23 @@ type Msg
     | Subscribe String
     | Unsubscribe String
     | Fetch Posix
-    | Fetched FetchResult
-    | APIError Http.Error
+    | Fetched FetchSuccess
+    | Post PostOpts
+    | Posted PostSuccess
+    | ChannelAPIError String HttpClient.Failure
+    | GenericAPIError HttpClient.Failure
 
 
-type FetchResult
-    = FetchErr String Http.Error
-    | FetchOk String (List Message) Posix
+type alias FetchSuccess =
+    { channelId : String, messages : List Message, posix : Posix }
+
+
+type alias PostOpts =
+    { channelId : String, message : Maybe String, file : Maybe File }
+
+
+type alias PostSuccess =
+    { channelId : String, posix : Posix }
 
 
 update : Msg -> Maybe Discord -> Yield
@@ -846,11 +857,20 @@ update msg discordMaybe =
         ( Fetch posix, Just discord ) ->
             handleFetch discord posix
 
-        ( Fetched result, Just discord ) ->
-            handleFetched discord result
+        ( Fetched fetchSucc, Just discord ) ->
+            handleFetched discord fetchSucc
 
-        ( APIError e, Just discord ) ->
-            handleAPIError discord e
+        ( Post postOpts, Just discord ) ->
+            handlePost discord postOpts
+
+        ( Posted postSucc, Just discord ) ->
+            handlePosted discord postSucc
+
+        ( ChannelAPIError cId e, Just discord ) ->
+            handleChannelAPIError cId e discord
+
+        ( GenericAPIError e, Just discord ) ->
+            handleGenericAPIError discord e
 
         ( _, Nothing ) ->
             -- Timer tick or API response arrived after Discord token is deregistered.
@@ -881,19 +901,19 @@ commitToken discord =
             destroy
 
         TokenGiven token ->
-            enterAndFire noop (TokenReady token) (identify token)
+            enterAndFire ppBase (TokenReady token) (identify token)
 
         Hydrated "" _ ->
             destroy
 
         Hydrated newToken _ ->
-            enterAndFire noop discord (identify newToken)
+            enterAndFire ppBase discord (identify newToken)
 
         Expired "" _ ->
             destroy
 
         Expired newToken _ ->
-            enterAndFire noop discord (identify newToken)
+            enterAndFire ppBase discord (identify newToken)
 
         _ ->
             -- Otherwise token input is locked; this should not happen
@@ -904,7 +924,7 @@ handleIdentify : Discord -> User -> Yield
 handleIdentify discord user =
     case discord of
         TokenReady token ->
-            enterAndFire (PostProcessBase True KeepFAM Nothing) (Identified (NewSession token user)) (hydrate token)
+            enterAndFire { ppBase | persist = True } (Identified (NewSession token user)) (hydrate token)
 
         Hydrated token pov ->
             detectUserSwitch token pov user
@@ -915,7 +935,7 @@ handleIdentify discord user =
         Revisit pov ->
             -- Successful reload; FAM is already calculated on reload
             -- Currntly we do not auto-Rehydrate on reload since Rehydrate is costly.
-            enterAndFire (PostProcessBase True KeepFAM (Just Worque.DiscordFetch)) (Hydrated pov.token { pov | user = user }) Cmd.none
+            enterAndFire { ppBase | persist = True, work = Just Worque.DiscordFetch } (Hydrated pov.token { pov | user = user }) Cmd.none
 
         Switching _ pov ->
             -- Retried Identify with previous token after error on Switching phase
@@ -930,10 +950,10 @@ detectUserSwitch : String -> POV -> User -> Yield
 detectUserSwitch token pov user =
     if user.id == pov.user.id then
         -- Go Rehydrate => ChannelScanning => Hydrated route for clean restart
-        enterAndFire (PostProcessBase True KeepFAM Nothing) (Rehydrating token { pov | token = token, user = user }) (hydrate token)
+        enterAndFire { ppBase | persist = True } (Rehydrating token { pov | token = token, user = user }) (hydrate token)
 
     else
-        enterAndFire (PostProcessBase True KeepFAM Nothing) (Switching (NewSession token user) pov) (hydrate token)
+        enterAndFire { ppBase | persist = True } (Switching (NewSession token user) pov) (hydrate token)
 
 
 handleHydrate : Discord -> Dict String Guild -> Dict String Channel -> Yield
@@ -941,12 +961,12 @@ handleHydrate discord guilds channels =
     case discord of
         Identified { token, user } ->
             -- Successful register
-            enter (PostProcessBase True (calculateFAM channels) (Just Worque.DiscordFetch)) <|
+            enter { persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch } <|
                 Hydrated token (POV token user guilds channels)
 
         Switching { token, user } _ ->
             -- Successful user switch
-            enter (PostProcessBase True (calculateFAM channels) (Just Worque.DiscordFetch)) <|
+            enter { persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch } <|
                 Hydrated token (POV token user guilds channels)
 
         Rehydrating token pov ->
@@ -955,12 +975,12 @@ handleHydrate discord guilds channels =
                 newChannels =
                     mergeChannels pov.channels channels
             in
-            enter (PostProcessBase True (calculateFAM newChannels) (Just Worque.DiscordFetch))
+            enter { persist = True, updateFAM = calculateFAM newChannels, work = Just Worque.DiscordFetch }
                 (Hydrated token { pov | guilds = guilds, channels = newChannels })
 
         Expired token pov ->
             -- Possibly late arrival. Not re-scan, but persist.
-            enter (PostProcessBase True KeepFAM Nothing)
+            enter { ppBase | persist = True }
                 (Expired token { pov | guilds = guilds, channels = mergeChannels pov.channels channels })
 
         _ ->
@@ -991,7 +1011,7 @@ handleRehydrate discord =
     case discord of
         Hydrated token pov ->
             -- Rehydrate button should only be available in Hydrated state
-            enterAndFire noop (Rehydrating token pov) (hydrate pov.token)
+            enterAndFire ppBase (Rehydrating token pov) (hydrate pov.token)
 
         _ ->
             pure discord
@@ -1061,7 +1081,7 @@ unsubscribeImpl tagger cId pov =
                 newChannels =
                     Dict.insert cId { c | fetchStatus = fs } pov.channels
             in
-            enter (PostProcessBase persist (updateOrKeepFAM updateFAM newChannels) Nothing)
+            enter { ppBase | persist = persist, updateFAM = updateOrKeepFAM updateFAM newChannels }
                 (tagger { pov | channels = newChannels })
 
         Nothing ->
@@ -1090,6 +1110,7 @@ handleFetch discord posix =
 
         Expired _ _ ->
             -- Effectively unsubscribing from Tick. Needs to be restarted when new token is regisered.
+            -- TODO: Error reporting
             pure discord
 
         Switching newSession pov ->
@@ -1110,7 +1131,7 @@ fetchOrSkip stateTagger pov posix =
     in
     case readyToFetchChannels of
         [] ->
-            enter (PostProcessBase False KeepFAM (Just Worque.DiscordFetch)) (stateTagger pov)
+            enter { ppBase | work = Just Worque.DiscordFetch } (stateTagger pov)
 
         c :: _ ->
             let
@@ -1122,41 +1143,31 @@ fetchOrSkip stateTagger pov posix =
                     { pov | channels = Dict.insert c.id { c | fetchStatus = fs } pov.channels }
             in
             -- Set next Work on Fetched
-            enterAndFire noop (stateTagger newPov) (fetchChannelMessages pov.token c)
+            enterAndFire ppBase (stateTagger newPov) (fetchChannelMessages pov.token c)
 
 
-handleFetched : Discord -> FetchResult -> Yield
-handleFetched discord fetchResult =
-    case fetchResult of
-        FetchOk cId ms posix ->
-            handleFetchOk cId ms posix discord
-
-        FetchErr cId httpError ->
-            handleFetchErr cId httpError discord
-
-
-handleFetchOk : String -> List Message -> Posix -> Discord -> Yield
-handleFetchOk cId ms posix discord =
+handleFetched : Discord -> FetchSuccess -> Yield
+handleFetched discord { channelId, messages, posix } =
     case discord of
         Hydrated t pov ->
-            updatePovOk (Hydrated t) cId ms posix pov
+            updatePovOnFetchSuccess (Hydrated t) channelId messages posix pov
 
         Rehydrating t pov ->
-            updatePovOk (Rehydrating t) cId ms posix pov
+            updatePovOnFetchSuccess (Rehydrating t) channelId messages posix pov
 
         Expired t pov ->
-            updatePovOk (Expired t) cId ms posix pov
+            updatePovOnFetchSuccess (Expired t) channelId messages posix pov
 
         Switching newSession pov ->
-            updatePovOk (Switching newSession) cId ms posix pov
+            updatePovOnFetchSuccess (Switching newSession) channelId messages posix pov
 
         _ ->
             -- Should not happen
             pure discord
 
 
-updatePovOk : (POV -> Discord) -> String -> List Message -> Posix -> POV -> Yield
-updatePovOk tagger cId ms posix pov =
+updatePovOnFetchSuccess : (POV -> Discord) -> String -> List Message -> Posix -> POV -> Yield
+updatePovOnFetchSuccess tagger cId ms posix pov =
     case Dict.get cId pov.channels of
         Just c ->
             case ms of
@@ -1169,10 +1180,10 @@ updatePovOk tagger cId ms posix pov =
                             Dict.insert cId { c | fetchStatus = fs } pov.channels
                     in
                     enter
-                        (PostProcessBase persist
-                            (updateOrKeepFAM updateFAM newChannels)
-                            (Just Worque.DiscordFetch)
-                        )
+                        { persist = persist
+                        , updateFAM = updateOrKeepFAM updateFAM newChannels
+                        , work = Just Worque.DiscordFetch
+                        }
                         (tagger { pov | channels = newChannels })
 
                 m :: _ ->
@@ -1192,64 +1203,138 @@ updatePovOk tagger cId ms posix pov =
 
         Nothing ->
             -- Target Channel somehow gone; deleted?
-            enter (PostProcessBase True (calculateFAM pov.channels) (Just Worque.DiscordFetch)) (tagger pov)
+            enter
+                { persist = True
+                , updateFAM = calculateFAM pov.channels
+                , work = Just Worque.DiscordFetch
+                }
+                (tagger pov)
 
 
-handleFetchErr : String -> Http.Error -> Discord -> Yield
-handleFetchErr cId httpError discord =
-    case ( discord, unauthorizedOnFetch httpError ) of
-        ( Hydrated t pov, False ) ->
-            updatePovErr (Hydrated t) cId httpError pov
+handlePost : Discord -> PostOpts -> Yield
+handlePost discord opts =
+    case discord of
+        Hydrated t pov ->
+            postOrDiscard (Hydrated t) pov opts
 
-        ( Hydrated t pov, True ) ->
-            enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
+        Rehydrating t pov ->
+            postOrDiscard (Rehydrating t) pov opts
 
-        ( Rehydrating t pov, False ) ->
-            updatePovErr (Rehydrating t) cId httpError pov
-
-        ( Rehydrating t pov, True ) ->
-            enter (PostProcessBase True KeepFAM Nothing) (Expired t pov)
-
-        ( Expired t pov, False ) ->
-            -- Late arrival?
-            updatePovErr (Expired t) cId httpError pov
-
-        ( Expired t pov, True ) ->
+        Expired _ _ ->
+            -- TODO Error reporting
             pure discord
 
-        ( Switching newSession pov, False ) ->
-            -- Previous POV is still available
-            updatePovErr (Switching newSession) cId httpError pov
+        Switching newSession pov ->
+            postOrDiscard (Switching newSession) pov opts
 
-        ( Switching newSession pov, True ) ->
+        _ ->
+            pure discord
+
+
+postOrDiscard : (POV -> Discord) -> POV -> PostOpts -> Yield
+postOrDiscard stateTagger pov opts =
+    let
+        subscribed =
+            Dict.get opts.channelId pov.channels
+                |> Maybe.map (.fetchStatus >> FetchStatus.subscribed)
+                |> Maybe.withDefault False
+    in
+    if subscribed then
+        enterAndFire ppBase (stateTagger pov) (postChannelMessage pov.token opts)
+
+    else
+        -- Discard if not subbed; Should not happen
+        pure (stateTagger pov)
+
+
+handlePosted : Discord -> PostSuccess -> Yield
+handlePosted discord { channelId, posix } =
+    case discord of
+        Hydrated t pov ->
+            updatePovOnPostSuccess (Hydrated t) channelId posix pov
+
+        Rehydrating t pov ->
+            updatePovOnPostSuccess (Rehydrating t) channelId posix pov
+
+        Expired t pov ->
+            updatePovOnPostSuccess (Expired t) channelId posix pov
+
+        Switching newSession pov ->
+            updatePovOnPostSuccess (Switching newSession) channelId posix pov
+
+        _ ->
+            -- Should not happen
+            pure discord
+
+
+updatePovOnPostSuccess : (POV -> Discord) -> String -> Posix -> POV -> Yield
+updatePovOnPostSuccess tagger cId posix pov =
+    case Dict.get cId pov.channels of
+        Just c ->
+            let
+                { fs, persist, updateFAM } =
+                    FetchStatus.update (Spur posix) c.fetchStatus
+
+                newChannels =
+                    Dict.insert cId { c | fetchStatus = fs } pov.channels
+            in
+            enter { ppBase | persist = persist, updateFAM = updateOrKeepFAM updateFAM newChannels }
+                (tagger { pov | channels = newChannels })
+
+        Nothing ->
+            -- Target Channel somehow gone; deleted?
+            enter { ppBase | persist = True, updateFAM = calculateFAM pov.channels } (tagger pov)
+
+
+handleChannelAPIError : String -> HttpClient.Failure -> Discord -> Yield
+handleChannelAPIError cId ( httpError, req ) discord =
+    case ( discord, httpError ) of
+        ( Hydrated t pov, Unauthorized _ ) ->
+            enter { ppBase | persist = True } (Expired t pov)
+
+        ( Hydrated t pov, _ ) ->
+            updatePovOnChannelAPIError (Hydrated t) cId httpError req pov
+
+        ( Rehydrating t pov, Unauthorized _ ) ->
+            enter { ppBase | persist = True } (Expired t pov)
+
+        ( Rehydrating t pov, _ ) ->
+            updatePovOnChannelAPIError (Rehydrating t) cId httpError req pov
+
+        ( Expired t pov, Unauthorized _ ) ->
+            pure discord
+
+        ( Expired t pov, _ ) ->
+            -- Late arrival?
+            updatePovOnChannelAPIError (Expired t) cId httpError req pov
+
+        ( Switching newSession pov, Unauthorized _ ) ->
             -- Hydrate should be going at the same time
             pure discord
 
+        ( Switching newSession pov, _ ) ->
+            -- Previous POV is still available
+            updatePovOnChannelAPIError (Switching newSession) cId httpError req pov
+
         _ ->
             pure discord
 
 
-unauthorizedOnFetch : Http.Error -> Bool
-unauthorizedOnFetch httpError =
-    case httpError of
-        Http.BadStatus { status } ->
-            status.code == 401
-
-        _ ->
-            False
-
-
-updatePovErr : (POV -> Discord) -> String -> Http.Error -> POV -> Yield
-updatePovErr tagger cId httpError pov =
+updatePovOnChannelAPIError : (POV -> Discord) -> String -> HttpClient.Error -> HttpClient.Req -> POV -> Yield
+updatePovOnChannelAPIError tagger cId httpError req pov =
     case Dict.get cId pov.channels of
         Just c ->
-            if notFoundOnFetch httpError || forbiddenOnFetch httpError then
+            if channelUnavailable httpError then
                 let
                     newChannels =
                         Dict.remove cId pov.channels
                 in
-                enter (PostProcessBase True (calculateFAM newChannels) (Just Worque.DiscordFetch)) <|
-                    tagger { pov | channels = newChannels }
+                enter
+                    { persist = True
+                    , updateFAM = calculateFAM newChannels
+                    , work = Just Worque.DiscordFetch
+                    }
+                    (tagger { pov | channels = newChannels })
 
             else
                 -- Considered transient
@@ -1259,12 +1344,19 @@ updatePovErr tagger cId httpError pov =
 
                     newChannels =
                         Dict.insert cId { c | fetchStatus = fs } pov.channels
+
+                    work =
+                        if wasFetchRequest cId req then
+                            Just Worque.DiscordFetch
+
+                        else
+                            Nothing
                 in
                 enter
-                    (PostProcessBase persist
-                        (updateOrKeepFAM updateFAM newChannels)
-                        (Just Worque.DiscordFetch)
-                    )
+                    { persist = persist
+                    , updateFAM = updateOrKeepFAM updateFAM newChannels
+                    , work = work
+                    }
                     (tagger { pov | channels = newChannels })
 
         Nothing ->
@@ -1272,28 +1364,26 @@ updatePovErr tagger cId httpError pov =
             pure (tagger pov)
 
 
-notFoundOnFetch : Http.Error -> Bool
-notFoundOnFetch httpError =
+channelUnavailable : HttpClient.Error -> Bool
+channelUnavailable httpError =
     case httpError of
-        Http.BadStatus { status } ->
-            status.code == 404
+        Forbidden _ ->
+            True
+
+        NotFound _ ->
+            True
 
         _ ->
             False
 
 
-forbiddenOnFetch : Http.Error -> Bool
-forbiddenOnFetch httpError =
-    case httpError of
-        Http.BadStatus { status } ->
-            status.code == 403
-
-        _ ->
-            False
+wasFetchRequest : String -> HttpClient.Req -> Bool
+wasFetchRequest cId req =
+    req.method == "GET" && String.endsWith (channelMessagesPath cId) req.url.path
 
 
-handleAPIError : Discord -> Http.Error -> Yield
-handleAPIError discord error =
+handleGenericAPIError : Discord -> HttpClient.Failure -> Yield
+handleGenericAPIError discord _ =
     case discord of
         TokenGiven _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
@@ -1346,15 +1436,15 @@ apiPath path queryMaybe =
 
 identify : String -> Cmd Msg
 identify token =
-    Http.getWithAuth (apiPath "/users/@me" Nothing) (Http.auth token) userDecoder
-        |> Http.try Identify APIError
+    HttpClient.getWithAuth (apiPath "/users/@me" Nothing) (HttpClient.auth token) userDecoder
+        |> HttpClient.try Identify GenericAPIError
 
 
 hydrate : String -> Cmd Msg
 hydrate token =
-    Http.getWithAuth (apiPath "/users/@me/guilds" Nothing) (Http.auth token) decodeGuildArrayIntoDict
+    HttpClient.getWithAuth (apiPath "/users/@me/guilds" Nothing) (HttpClient.auth token) decodeGuildArrayIntoDict
         |> Task.andThen (hydrateChannels token)
-        |> Http.try identity APIError
+        |> HttpClient.try identity GenericAPIError
 
 
 decodeGuildArrayIntoDict : Decoder (Dict String Guild)
@@ -1368,12 +1458,12 @@ decodeGuildArrayIntoDict =
     D.map listToDict (D.list guildDecoder)
 
 
-hydrateChannels : String -> Dict String Guild -> Task Http.Error Msg
+hydrateChannels : String -> Dict String Guild -> Task HttpClient.Failure Msg
 hydrateChannels token guilds =
     let
         getGuildChannels guildId =
-            Http.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
-                (Http.auth token)
+            HttpClient.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
+                (HttpClient.auth token)
                 (D.leakyList (channelDecoder guilds))
 
         intoDict listOfChannelList =
@@ -1390,6 +1480,16 @@ hydrateChannels token guilds =
 fetchChannelMessages : String -> Channel -> Cmd Msg
 fetchChannelMessages token channel =
     let
+        combiner messages posix =
+            { channelId = channel.id, messages = messages, posix = posix }
+    in
+    Task.map2 combiner (fetchChannelMessagesTask token channel) Time.now
+        |> HttpClient.try Fetched (ChannelAPIError channel.id)
+
+
+fetchChannelMessagesTask : String -> Channel -> Task HttpClient.Failure (List Message)
+fetchChannelMessagesTask token channel =
+    let
         query =
             case channel.lastMessageId of
                 -- 100 is the maximum; <https://discordapp.com/developers/docs/resources/channel#get-channel-messages>
@@ -1399,25 +1499,38 @@ fetchChannelMessages token channel =
                 Nothing ->
                     -- Means never fetched
                     Just "limit=100"
-
-        fetchTask =
-            -- Note that /messages API returns messages from latest to oldest
-            Http.getWithAuth (apiPath ("/channels/" ++ channel.id ++ "/messages") query)
-                (Http.auth token)
-                (D.leakyList messageDecoder)
     in
-    fetchTask
-        |> Task.andThen (\ms -> Task.map (FetchOk channel.id ms) Time.now)
-        |> Task.mapError (FetchErr channel.id)
-        |> Task.attempt
-            (\res ->
-                case res of
-                    Ok ok ->
-                        Fetched ok
+    -- Note that /messages API returns messages from latest to oldest
+    HttpClient.getWithAuth (apiPath (channelMessagesPath channel.id) query)
+        (HttpClient.auth token)
+        (D.leakyList messageDecoder)
 
-                    Err err ->
-                        Fetched err
-            )
+
+channelMessagesPath : String -> String
+channelMessagesPath cId =
+    "/channels/" ++ cId ++ "/messages"
+
+
+postChannelMessage : String -> PostOpts -> Cmd Msg
+postChannelMessage token { channelId, message, file } =
+    let
+        postParts =
+            List.filterMap identity
+                [ Maybe.map (Http.stringPart "content") message
+                , Maybe.map (Http.filePart "file") file
+                ]
+
+        postTask =
+            HttpClient.postFormWithAuth (apiPath (channelMessagesPath channelId) Nothing)
+                postParts
+                (HttpClient.auth token)
+                (D.succeed ())
+
+        combiner () posix =
+            { channelId = channelId, posix = posix }
+    in
+    Task.map2 combiner postTask Time.now
+        |> HttpClient.try Posted (ChannelAPIError channelId)
 
 
 

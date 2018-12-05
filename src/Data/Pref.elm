@@ -3,7 +3,7 @@ module Data.Pref exposing (Pref, adjustEvictThreashold, decoder, encode, init, s
 import Data.Storable exposing (Storable)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
-import View.Parts exposing (fixedColumnWidth)
+import View.Parts exposing (columnWidth)
 
 
 {-| In "Zephyr mode", Columns are automatically evicted (dismissed)
@@ -28,7 +28,7 @@ init clientWidth =
 
 adjustEvictThreashold : Int -> Int
 adjustEvictThreashold clientWidth =
-    (clientWidth // fixedColumnWidth) + 1
+    (clientWidth // columnWidth) + 1
 
 
 encode : Pref -> Storable

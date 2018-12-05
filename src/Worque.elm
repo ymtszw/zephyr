@@ -1,4 +1,4 @@
-module Worque exposing (Work(..), Worque, init, logEntry, pop, push, pushAll)
+module Worque exposing (Work(..), Worque, init, pop, push, pushAll)
 
 {-| Serializer of Works (chunk of things to do that may require some time).
 
@@ -22,23 +22,6 @@ type Work
     | DiscordFetch
     | DropOldState
     | BrokerCatchUp String
-
-
-logEntry : Work -> Entry
-logEntry work =
-    Entry "[Work]" <|
-        case work of
-            BrokerScan int ->
-                [ "<BrokerScan>", String.fromInt int ]
-
-            DiscordFetch ->
-                [ "<DiscordFetch>" ]
-
-            DropOldState ->
-                [ "<DropOldState>" ]
-
-            BrokerCatchUp cId ->
-                [ "<BrokerCatchUp>", cId ]
 
 
 init : Worque

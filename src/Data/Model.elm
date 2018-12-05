@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcome
+    , init, welcome, defaultHeartrateMillis
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcome
+@docs init, welcome, defaultHeartrateMillis
 
 -}
 
@@ -28,7 +28,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Logger
 import Time exposing (Zone)
-import View.Parts exposing (fixedColumnWidth)
+import View.Parts exposing (columnWidth)
 import View.Select
 import Worque exposing (Work(..), Worque)
 
@@ -41,6 +41,7 @@ type alias Model =
     , pref : Pref
     , worque : Worque
     , log : Logger.History
+    , heartrate : Maybe Float
     , navKey : Key
     , viewState : ViewState
     , env : Env
@@ -83,6 +84,7 @@ init env navKey =
         , pref = Pref.init env.clientWidth
         , worque = Worque.init
         , log = Logger.init
+        , heartrate = defaultHeartrateMillis
         , navKey = navKey
         , viewState = defaultViewState
         , env = env
@@ -90,6 +92,12 @@ init env navKey =
 
     else
         welcome env navKey
+
+
+defaultHeartrateMillis : Maybe Float
+defaultHeartrateMillis =
+    -- 10 Hz
+    Just 100.0
 
 
 defaultViewState : ViewState
@@ -117,6 +125,7 @@ welcome env navKey =
     , idGen = finalGen
     , pref = Pref.init env.clientWidth
     , log = Logger.init
+    , heartrate = defaultHeartrateMillis
     , navKey = navKey
     , viewState = defaultViewState
     , env = env
