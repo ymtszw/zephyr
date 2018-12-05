@@ -407,7 +407,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
                     { m | columnStore = columnStore }
 
         finalize ( n, cmd, changeSet_ ) =
-            ( n
+            ( pacemaker pp.heartstopper n
             , Cmd.batch [ Cmd.map (ColumnCtrl cId) pp.cmd, cmd ]
             , if pp.persist then
                 saveColumnStore changeSet_
@@ -423,6 +423,22 @@ applyColumnUpdate m cId ( columnStore, pp ) =
 
             Nothing ->
                 ( m_, Cmd.none, changeSet )
+
+
+pacemaker : Bool -> Model -> Model
+pacemaker heartstopper m =
+    case ( heartstopper, m.heartrate ) of
+        ( True, Just _ ) ->
+            { m | heartrate = Nothing }
+
+        ( True, Nothing ) ->
+            m
+
+        ( False, Just _ ) ->
+            m
+
+        ( False, Nothing ) ->
+            { m | heartrate = Model.defaultHeartrateMillis }
 
 
 {-| Restart producers on savedState reload.

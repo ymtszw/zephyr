@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcome
+    , init, welcome, defaultHeartrateMillis
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcome
+@docs init, welcome, defaultHeartrateMillis
 
 -}
 

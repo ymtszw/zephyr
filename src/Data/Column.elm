@@ -425,10 +425,15 @@ update msg c =
             editorSubmit clientHeight c
 
         EditorFileRequest mimeTypes ->
-            ( c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected } )
+            ( c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected, heartstopper = True } )
 
         EditorFileSelected file ->
-            ( c, { postProcess | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file)) } )
+            ( c
+            , { postProcess
+                | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file))
+                , heartstopper = False
+              }
+            )
 
         EditorFileLoaded fileTuple ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.loadFile fileTuple) c.editors }
