@@ -1,12 +1,12 @@
 module Data.ColumnEditor exposing
     ( ColumnEditor(..), CommonEditorOpts, defaultEditors
-    , filtersToEditors, updateBuffer, focus, reset, loadFile
+    , filtersToEditors, updateBuffer, focus, reset, updateFile
     )
 
 {-| Editor data for Columns.
 
 @docs ColumnEditor, CommonEditorOpts, defaultEditors
-@docs filtersToEditors, updateBuffer, focus, reset, loadFile
+@docs filtersToEditors, updateBuffer, focus, reset, updateFile
 
 -}
 
@@ -105,11 +105,11 @@ reset ce =
                 { opts | buffer = "", seq = opts.seq + 1 }
 
 
-loadFile : ( File, String ) -> ColumnEditor -> ColumnEditor
-loadFile file ce =
+updateFile : Maybe ( File, String ) -> ColumnEditor -> ColumnEditor
+updateFile file ce =
     case ce of
         DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor { dOpts | file = Just file } opts
+            DiscordMessageEditor { dOpts | file = file } opts
 
         LocalMessageEditor opts ->
             LocalMessageEditor opts

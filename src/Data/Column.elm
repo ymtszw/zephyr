@@ -442,7 +442,7 @@ update msg c =
             )
 
         EditorFileLoaded fileTuple ->
-            pure { c | editors = SelectArray.updateSelected (ColumnEditor.loadFile fileTuple) c.editors }
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile (Just fileTuple)) c.editors }
 
         ScanBroker opts ->
             scanBroker opts c
