@@ -49,11 +49,11 @@ columnKeyEl : Model -> FilterAtomMaterial -> Int -> Column.Column -> ( String, E
 columnKeyEl m fam index c =
     let
         baseAttrs =
-            [ width (px fixedColumnWidth)
+            [ width (px columnWidth)
             , height (fill |> maximum m.env.clientHeight)
             , clipY
             , BG.color oneDark.main
-            , BD.width columnBorder
+            , BD.width columnBorderWidth
             , BD.color oneDark.bg
             , Font.color oneDark.text
             , borderFlash c.recentlyTouched
@@ -68,12 +68,6 @@ columnKeyEl m fam index c =
             , newMessageEditorEl m.env.clientHeight m.viewState.selectState fam c
             , lazy4 itemsEl m.env.clientHeight m.viewState.timezone c.id c.items
             ]
-
-
-columnBorder : Int
-columnBorder =
-    -- This border looks rather pointless, though we may introduce "focus" sytle later.
-    2
 
 
 dragAttributes : Int -> Maybe ColumnSwap -> Int -> Column.Column -> List (Attribute Msg)

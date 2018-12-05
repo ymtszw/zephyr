@@ -7,8 +7,9 @@ module View.Parts exposing
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , filtersToIconEl, filtersToTextEl
     , discordGuildIconEl, discordChannelEl
-    , fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
+    , columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
+    , rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
+    , defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
     )
 
 {-| View parts, complementing Element and Html.
@@ -48,8 +49,9 @@ module View.Parts exposing
 
 ## Constants
 
-@docs fixedColumnWidth, rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs columnAreaParentId, defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize, columnPinColor
+@docs columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
+@docs rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
+@docs defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
 
 -}
 
@@ -909,8 +911,8 @@ manualStyle =
 -- CONSTANTS
 
 
-fixedColumnWidth : Int
-fixedColumnWidth =
+columnWidth : Int
+columnWidth =
     350
 
 
@@ -962,3 +964,8 @@ itemBorderBottom =
 columnPinColor : Color
 columnPinColor =
     oneDark.warn
+
+
+columnBorderWidth : Int
+columnBorderWidth =
+    2

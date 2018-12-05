@@ -28,7 +28,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Logger
 import Time exposing (Zone)
-import View.Parts exposing (fixedColumnWidth)
+import View.Parts exposing (columnWidth)
 import View.Select
 import Worque exposing (Work(..), Worque)
 

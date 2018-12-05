@@ -477,7 +477,7 @@ imageEl desc url =
 
 maxMediaWidth : Int
 maxMediaWidth =
-    fixedColumnWidth - itemAvatarSize - 20
+    columnWidth - itemAvatarSize - 20
 
 
 videoEl : Maybe Url.Url -> Url.Url -> Element Msg

@@ -36,7 +36,7 @@ import Time exposing (Posix)
 import TimeZone
 import Url
 import View
-import View.Parts exposing (columnAreaParentId, fixedColumnWidth)
+import View.Parts exposing (columnAreaParentId, columnWidth)
 import View.Select
 import Worque exposing (Work(..))
 
@@ -377,7 +377,7 @@ scrollToColumn : Int -> Browser.Dom.Viewport -> Task Browser.Dom.Error ()
 scrollToColumn index parentVp =
     let
         cWidth =
-            toFloat fixedColumnWidth
+            toFloat columnWidth
 
         targetX =
             cWidth * toFloat index
