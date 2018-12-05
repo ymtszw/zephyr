@@ -565,21 +565,26 @@ since it expects avatar images/octicons in its element.
 Their color or saturations must be controlled by callers.
 -}
 roundButtonEl :
-    { onPress : msg
-    , enabled : Bool
-    , innerElement : Element msg
-    , innerElementSize : Int
-    }
+    List (Attribute msg)
+    ->
+        { onPress : msg
+        , enabled : Bool
+        , innerElement : Element msg
+        , innerElementSize : Int
+        }
     -> Element msg
-roundButtonEl { onPress, enabled, innerElement, innerElementSize } =
-    Element.Input.button
-        [ width (px innerElementSize)
-        , height (px innerElementSize)
-        , BD.rounded (innerElementSize // 2 + 1)
-        , switchCursor enabled
-        , roundInputScreen innerElementSize enabled
-        , disabled (not enabled)
-        ]
+roundButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
+    let
+        baseAttrs =
+            [ width (px innerElementSize)
+            , height (px innerElementSize)
+            , BD.rounded (innerElementSize // 2 + 1)
+            , switchCursor enabled
+            , roundInputScreen innerElementSize enabled
+            , disabled (not enabled)
+            ]
+    in
+    Element.Input.button (baseAttrs ++ userAttrs)
         { onPress =
             if enabled then
                 Just onPress

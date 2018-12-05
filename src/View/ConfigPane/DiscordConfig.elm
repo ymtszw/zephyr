@@ -260,7 +260,7 @@ guildIconSize =
 
 rehydrateButtonEl : Bool -> POV -> Element Msg
 rehydrateButtonEl rehydrating pov =
-    roundButtonEl
+    roundButtonEl []
         { onPress = Discord.Rehydrate
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
@@ -376,7 +376,7 @@ createColumnButtonEl c =
 
 unsubscribeButtonEl : Channel -> Element Msg
 unsubscribeButtonEl c =
-    roundButtonEl
+    roundButtonEl []
         { onPress = Discord.Unsubscribe c.id
         , enabled = True -- Any channels show up in table are unsubscribable
         , innerElement =
