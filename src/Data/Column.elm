@@ -317,8 +317,8 @@ type Msg
     | ConfirmFilter
     | DeleteGateInput String
     | SelectEditor Int
+    | EditorToggle Bool
     | EditorInput String
-    | EditorFocus
     | EditorReset
     | EditorSubmit Int
     | EditorFileRequest (List String)
@@ -417,11 +417,11 @@ update msg c =
         SelectEditor index ->
             pure { c | editors = SelectArray.selectAt index c.editors }
 
+        EditorToggle isActive ->
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.toggleActive isActive) c.editors }
+
         EditorInput input ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
-
-        EditorFocus ->
-            pure { c | editors = SelectArray.updateSelected ColumnEditor.focus c.editors }
 
         EditorReset ->
             ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }

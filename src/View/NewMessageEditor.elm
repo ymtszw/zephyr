@@ -60,10 +60,10 @@ editorIsActive : ColumnEditor -> Bool
 editorIsActive ce =
     case ce of
         DiscordMessageEditor { file } opts ->
-            opts.focused
+            opts.active
 
         LocalMessageEditor opts ->
-            opts.focused
+            opts.active
 
 
 editorSelectEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -206,7 +206,7 @@ messageInputBaseEl attrs iOpts eOpts =
             , Font.size editorFontSize
             , Font.color fontColor
             , BG.color bgColor
-            , onFocus (msgTagger Column.EditorFocus)
+            , onFocus (msgTagger (Column.EditorToggle True))
             , style "resize" "none"
             ]
     in
