@@ -39,7 +39,7 @@ newMessageEditorEl clientHeight ss fam c =
         , BD.color oneDark.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
         ]
-        [ row [ spacing spacingUnit, centerY ]
+        [ row [ spacing spacingUnit, centerY, visible isActive ]
             [ octiconEl [] { size = editorFontSize, color = defaultOcticonColor, shape = Octicons.pencil }
             , editorSelectEl ss fam c
             ]
@@ -53,10 +53,10 @@ editorIsActive : ColumnEditor -> Bool
 editorIsActive ce =
     case ce of
         DiscordMessageEditor { file } opts ->
-            opts.focused || not (String.isEmpty opts.buffer) || file /= Nothing
+            opts.focused
 
         LocalMessageEditor opts ->
-            opts.focused || not (String.isEmpty opts.buffer)
+            opts.focused
 
 
 editorSelectEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
@@ -182,7 +182,7 @@ messageInputBaseEl attrs iOpts eOpts =
             , Font.size editorFontSize
             , Font.color fontColor
             , BG.color bgColor
-            , onFocus (msgTagger (Column.EditorFocus True))
+            , onFocus (msgTagger Column.EditorFocus)
             , style "resize" "none"
             ]
     in

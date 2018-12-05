@@ -318,7 +318,8 @@ type Msg
     | DeleteGateInput String
     | SelectEditor Int
     | EditorInput String
-    | EditorFocus Bool
+    | EditorFocus
+    | EditorReset
     | EditorSubmit Int
     | EditorFileRequest (List String)
     | EditorFileSelected File
@@ -418,8 +419,13 @@ update msg c =
         EditorInput input ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
 
-        EditorFocus bool ->
-            pure { c | editors = SelectArray.updateSelected (ColumnEditor.focus bool) c.editors }
+        EditorFocus ->
+            pure { c | editors = SelectArray.updateSelected ColumnEditor.focus c.editors }
+
+        EditorReset ->
+            ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }
+            , { postProcess | heartstopper = False }
+            )
 
         EditorSubmit clientHeight ->
             editorSubmit clientHeight c

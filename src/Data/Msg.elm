@@ -353,8 +353,11 @@ columnMsgToEntry cId cMsg =
         Column.EditorInput input ->
             Entry "Column.EditorInput" [ cId, input ]
 
-        Column.EditorFocus focused ->
-            Entry "Column.EditorFocus" [ cId, boolStr focused ]
+        Column.EditorFocus ->
+            Entry "Column.EditorFocus" [ cId ]
+
+        Column.EditorReset ->
+            Entry "Column.EditorReset" [ cId ]
 
         Column.EditorSubmit clientHeight ->
             Entry "Column.EditorSubmit" [ cId, String.fromInt clientHeight ]

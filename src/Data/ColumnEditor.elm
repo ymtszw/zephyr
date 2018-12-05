@@ -83,14 +83,14 @@ updateBuffer input ce =
             LocalMessageEditor { opts | buffer = input }
 
 
-focus : Bool -> ColumnEditor -> ColumnEditor
-focus focused ce =
+focus : ColumnEditor -> ColumnEditor
+focus ce =
     case ce of
         DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor dOpts { opts | focused = focused }
+            DiscordMessageEditor dOpts { opts | focused = True }
 
         LocalMessageEditor opts ->
-            LocalMessageEditor { opts | focused = focused }
+            LocalMessageEditor { opts | focused = True }
 
 
 reset : ColumnEditor -> ColumnEditor
