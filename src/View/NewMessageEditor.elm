@@ -39,14 +39,20 @@ newMessageEditorEl clientHeight ss fam c =
         , BD.color oneDark.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
         ]
-        [ row [ spacing spacingUnit, centerY, visible isActive ]
-            [ octiconEl [] { size = editorFontSize, color = defaultOcticonColor, shape = Octicons.pencil }
+        [ row [ width fill, spacing spacingUnit, centerY, visible isActive ]
+            [ octiconEl [] { size = editorHeaderIconSize, color = defaultOcticonColor, shape = Octicons.pencil }
             , editorSelectEl ss fam c
+            , editorResetButtonEl c.id
             ]
         , textAreaInputEl isActive c.id selectedEditor
         , selectedFilesEl c.id selectedEditor
         , editorButtonsEl clientHeight isActive c.id selectedEditor
         ]
+
+
+editorHeaderIconSize : Int
+editorHeaderIconSize =
+    scale12 2
 
 
 editorIsActive : ColumnEditor -> Bool
@@ -120,6 +126,23 @@ editorSelectOptionEl fam ( _, ce ) =
 editorFontSize : Int
 editorFontSize =
     scale12 1
+
+
+editorResetButtonEl : String -> Element Msg
+editorResetButtonEl cId =
+    thinButtonEl [ alignRight, mouseOver [ BG.color oneDark.err ] ]
+        { onPress = ColumnCtrl cId Column.EditorReset
+        , enabled = True
+        , enabledColor = oneDark.sub
+        , enabledFontColor = oneDark.text
+        , width = shrink
+        , innerElement =
+            octiconEl [ paddingEach trashcanPaddingAdjust ]
+                { size = editorHeaderIconSize
+                , color = oneDark.text
+                , shape = Octicons.trashcan
+                }
+        }
 
 
 textAreaInputEl : Bool -> String -> ColumnEditor -> Element Msg

@@ -97,10 +97,12 @@ reset : ColumnEditor -> ColumnEditor
 reset ce =
     case ce of
         DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor { dOpts | file = Nothing } { defaultOpts | seq = opts.seq + 1 }
+            DiscordMessageEditor { dOpts | file = Nothing }
+                { opts | buffer = "", seq = opts.seq + 1 }
 
         LocalMessageEditor opts ->
-            LocalMessageEditor { defaultOpts | seq = opts.seq + 1 }
+            LocalMessageEditor
+                { opts | buffer = "", seq = opts.seq + 1 }
 
 
 loadFile : ( File, String ) -> ColumnEditor -> ColumnEditor

@@ -10,6 +10,7 @@ module View.Parts exposing
     , columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
     , rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
     , defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+    , trashcanPaddingAdjust
     )
 
 {-| View parts, complementing Element and Html.
@@ -52,6 +53,7 @@ module View.Parts exposing
 @docs columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
 @docs rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
 @docs defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
+@docs trashcanPaddingAdjust
 
 -}
 
@@ -968,3 +970,10 @@ columnPinColor =
 columnBorderWidth : Int
 columnBorderWidth =
     2
+
+
+{-| Octicons.trashcan is slllllightly leaning right. Adjusting with this paddingEach.
+-}
+trashcanPaddingAdjust : { top : Int, right : Int, bottom : Int, left : Int }
+trashcanPaddingAdjust =
+    { top = 0, right = 2, bottom = 0, left = 0 }
