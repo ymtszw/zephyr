@@ -122,7 +122,7 @@ editorResetButtonEl cId =
     thinButtonEl [ alignRight, mouseOver [ BG.color oneDark.err ] ]
         { onPress = ColumnCtrl cId Column.EditorReset
         , enabled = True
-        , enabledColor = oneDark.bd
+        , enabledColor = oneDark.main
         , enabledFontColor = oneDark.text
         , width = shrink
         , innerElement =
