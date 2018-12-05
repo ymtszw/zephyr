@@ -1467,6 +1467,16 @@ hydrateChannels token guilds =
 fetchChannelMessages : String -> Channel -> Cmd Msg
 fetchChannelMessages token channel =
     let
+        combiner messages posix =
+            { channelId = channel.id, messages = messages, posix = posix }
+    in
+    Task.map2 combiner (fetchChannelMessagesTask token channel) Time.now
+        |> HttpClient.try Fetched (ChannelAPIError channel.id)
+
+
+fetchChannelMessagesTask : String -> Channel -> Task HttpClient.Failure (List Message)
+fetchChannelMessagesTask token channel =
+    let
         query =
             case channel.lastMessageId of
                 -- 100 is the maximum; <https://discordapp.com/developers/docs/resources/channel#get-channel-messages>
@@ -1476,18 +1486,11 @@ fetchChannelMessages token channel =
                 Nothing ->
                     -- Means never fetched
                     Just "limit=100"
-
-        fetchTask =
-            -- Note that /messages API returns messages from latest to oldest
-            HttpClient.getWithAuth (apiPath (channelMessagesPath channel.id) query)
-                (HttpClient.auth token)
-                (D.leakyList messageDecoder)
-
-        combiner messages posix =
-            { channelId = channel.id, messages = messages, posix = posix }
     in
-    Task.map2 combiner fetchTask Time.now
-        |> HttpClient.try Fetched (ChannelAPIError channel.id)
+    -- Note that /messages API returns messages from latest to oldest
+    HttpClient.getWithAuth (apiPath (channelMessagesPath channel.id) query)
+        (HttpClient.auth token)
+        (D.leakyList messageDecoder)
 
 
 channelMessagesPath : String -> String
