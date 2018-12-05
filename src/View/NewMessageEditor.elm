@@ -44,7 +44,7 @@ newMessageEditorEl clientHeight ss fam c =
             , editorDismissButtonEl c.id
             ]
         , textAreaInputEl c selectedEditor
-        , selectedFilesEl c.id selectedEditor
+        , selectedFilesEl c selectedEditor
         , editorButtonsEl clientHeight c.editorActive c.id selectedEditor
         ]
 
@@ -233,13 +233,13 @@ messageInputBaseEl attrs opts { buffer } =
         }
 
 
-selectedFilesEl : String -> ColumnEditor -> Element Msg
-selectedFilesEl cId ce =
-    case ce of
-        DiscordMessageEditor { file } _ ->
+selectedFilesEl : Column.Column -> ColumnEditor -> Element Msg
+selectedFilesEl c ce =
+    case ( c.editorActive, ce ) of
+        ( True, DiscordMessageEditor { file } _ ) ->
             case file of
                 Just ( f, dataUrl ) ->
-                    previewWrapperEl cId f <|
+                    previewWrapperEl c.id f <|
                         if String.startsWith "image/" (File.mime f) then
                             image
                                 [ centerX
@@ -258,7 +258,7 @@ selectedFilesEl cId ce =
                 Nothing ->
                     none
 
-        LocalMessageEditor _ ->
+        _ ->
             none
 
 
