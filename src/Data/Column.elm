@@ -324,6 +324,7 @@ type Msg
     | EditorFileRequest (List String)
     | EditorFileSelected File
     | EditorFileLoaded ( File, String )
+    | EditorFileDiscard
     | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     | ScrollMsg Scroll.Msg
 
@@ -443,6 +444,9 @@ update msg c =
 
         EditorFileLoaded fileTuple ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile (Just fileTuple)) c.editors }
+
+        EditorFileDiscard ->
+            pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile Nothing) c.editors }
 
         ScanBroker opts ->
             scanBroker opts c

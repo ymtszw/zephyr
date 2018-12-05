@@ -371,6 +371,9 @@ columnMsgToEntry cId cMsg =
         Column.EditorFileLoaded ( file, _ ) ->
             Entry "Column.EditorFileLoaded" [ cId, File.name file, File.mime file ]
 
+        Column.EditorFileDiscard ->
+            Entry "Column.EditorFileDiscard" [ cId ]
+
         Column.ScanBroker { maxCount } ->
             Entry "Column.ScanBroker" [ cId, String.fromInt maxCount ]
 
