@@ -41,6 +41,7 @@ newMessageEditorEl clientHeight ss fam c =
             [ octiconEl [] { size = editorHeaderIconSize, color = defaultOcticonColor, shape = Octicons.pencil }
             , editorSelectEl ss fam c
             , editorResetButtonEl c.id
+            , editorDismissButtonEl c.id
             ]
         , textAreaInputEl c selectedEditor
         , selectedFilesEl c.id selectedEditor
@@ -129,6 +130,23 @@ editorResetButtonEl cId =
                 { size = editorHeaderIconSize
                 , color = oneDark.text
                 , shape = Octicons.trashcan
+                }
+        }
+
+
+editorDismissButtonEl : String -> Element Msg
+editorDismissButtonEl cId =
+    thinButtonEl [ alignRight, mouseOver [ BG.color oneDark.note ] ]
+        { onPress = ColumnCtrl cId (Column.EditorToggle False)
+        , enabled = True
+        , enabledColor = oneDark.main
+        , enabledFontColor = oneDark.text
+        , width = shrink
+        , innerElement =
+            octiconEl []
+                { size = editorHeaderIconSize
+                , color = oneDark.text
+                , shape = Octicons.x
                 }
         }
 
@@ -273,21 +291,25 @@ previewWrapperEl cId f =
 
 previewOverlayEl : String -> File -> Element Msg
 previewOverlayEl cId f =
-    row
-        [ width fill
-        , padding rectElementInnerPadding
-        , spacing spacingUnit
-        ]
-        [ el [ width fill, alignTop ] <|
+    let
+        wrapInP t =
             breakP
                 [ width shrink
                 , padding rectElementInnerPadding
                 , BD.rounded rectElementRound
                 , BG.color (setAlpha 0.5 oneDark.bg)
                 ]
-                [ breakT <|
-                    File.name f
-                        ++ (" (" ++ StringExtra.punctuateNumber (File.size f) ++ " bytes)")
+                [ t ]
+    in
+    row
+        [ width fill
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
+        ]
+        [ column [ width (fillPortion 2), alignTop ] <|
+            List.map wrapInP
+                [ el [ Font.bold ] <| breakT <| File.name f
+                , breakT <| File.mime f ++ " (" ++ StringExtra.punctuateNumber (File.size f) ++ " Bytes)"
                 ]
         , el [ width fill, alignTop ] <|
             roundButtonEl
