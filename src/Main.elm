@@ -506,7 +506,12 @@ sub m =
 
           else
             Sub.none
-        , Time.every globalTimerIntervalMillis Tick
+        , case m.heartrate of
+            Just interval ->
+                Time.every interval Tick
+
+            Nothing ->
+                Sub.none
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 VisibilityChanged <|
@@ -517,12 +522,6 @@ sub m =
                         Browser.Events.Hidden ->
                             False
         ]
-
-
-globalTimerIntervalMillis : Float
-globalTimerIntervalMillis =
-    -- 10 Hz
-    100.0
 
 
 
