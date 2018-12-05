@@ -721,7 +721,7 @@ cssRgba color =
             toRgb color
     in
     String.join ""
-        [ "rgb("
+        [ "rgba("
         , String.fromFloat (255 * red)
         , ","
         , String.fromFloat (255 * green)
