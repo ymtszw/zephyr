@@ -1,6 +1,6 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, columnItemLimit
-    , Msg(..), PostProcess, Position(..), update
+    , Msg(..), PostProcess, Position(..), update, postProcess
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -11,7 +11,7 @@ Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, columnItemLimit
-@docs Msg, PostProcess, Position, update
+@docs Msg, PostProcess, Position, update, postProcess
 
 -}
 
@@ -333,6 +333,7 @@ type alias PostProcess =
     , catchUpId : Maybe String
     , position : Position
     , producerMsg : Maybe Producer.Msg
+    , heartstopper : Bool
     }
 
 
@@ -342,6 +343,17 @@ type Position
     | Keep
 
 
+postProcess : PostProcess
+postProcess =
+    { cmd = Cmd.none
+    , persist = False
+    , catchUpId = Nothing
+    , position = Keep
+    , producerMsg = Nothing
+    , heartstopper = False
+    }
+
+
 update : Msg -> Column -> ( Column, PostProcess )
 update msg c =
     case msg of
@@ -349,7 +361,7 @@ update msg c =
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
 
         Pin pinned ->
-            ( { c | pinned = pinned, recentlyTouched = True }, PostProcess Cmd.none True Nothing Auto Nothing )
+            ( { c | pinned = pinned, recentlyTouched = True }, { postProcess | persist = True, position = Auto } )
 
         Show ->
             let
@@ -357,7 +369,7 @@ update msg c =
                     Scroll.update Scroll.Reveal c.items
             in
             ( { c | items = items, recentlyTouched = True }
-            , PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump Nothing
+            , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, position = Bump }
             )
 
         Calm ->
@@ -394,7 +406,7 @@ update msg c =
 
         ConfirmFilter ->
             ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
-            , PostProcess Cmd.none True (Just c.id) Keep Nothing
+            , { postProcess | persist = True, catchUpId = Just c.id }
             )
 
         DeleteGateInput input ->
@@ -413,17 +425,10 @@ update msg c =
             editorSubmit clientHeight c
 
         EditorFileRequest mimeTypes ->
-            ( -- { c | editors = SelectArray.updateSelected (ColumnEditor.focus True) c.editors }
-              c
-            , PostProcess (File.Select.file mimeTypes EditorFileSelected) False Nothing Keep Nothing
-            )
+            ( c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected } )
 
         EditorFileSelected file ->
-            let
-                getDataUrl =
-                    Task.map (Tuple.pair file) (File.toUrl file) |> Task.perform EditorFileLoaded
-            in
-            ( c, PostProcess getDataUrl False Nothing Keep Nothing )
+            ( c, { postProcess | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file)) } )
 
         EditorFileLoaded fileTuple ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.loadFile fileTuple) c.editors }
@@ -436,12 +441,12 @@ update msg c =
                 ( items, sCmd ) =
                     Scroll.update sMsg c.items
             in
-            ( { c | items = items }, PostProcess (Cmd.map ScrollMsg sCmd) False Nothing Keep Nothing )
+            ( { c | items = items }, { postProcess | cmd = Cmd.map ScrollMsg sCmd } )
 
 
 pure : Column -> ( Column, PostProcess )
 pure c =
-    ( c, PostProcess Cmd.none False Nothing Keep Nothing )
+    ( c, postProcess )
 
 
 scanBroker :
@@ -458,7 +463,7 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c =
                 ( c_, pp ) =
                     case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
                         ( True, [] ) ->
-                            ( c, PostProcess Cmd.none True (Just c.id) Keep Nothing )
+                            ( c, { postProcess | persist = True, catchUpId = Just c.id } )
 
                         ( True, newItems ) ->
                             let
@@ -467,11 +472,11 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c =
                             in
                             -- Do not bump, nor flash Column during catchUp
                             ( { c | items = items_ }
-                            , PostProcess (Cmd.map ScrollMsg sCmd) True (Just c.id) Keep Nothing
+                            , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, catchUpId = Just c.id }
                             )
 
                         ( False, [] ) ->
-                            ( c, PostProcess Cmd.none True Nothing Keep Nothing )
+                            ( c, { postProcess | persist = True } )
 
                         ( False, newItems ) ->
                             let
@@ -481,10 +486,10 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c =
                             ( { c | items = items_, recentlyTouched = True }
                             , if c.pinned then
                                 -- Do not bump Pinned Column
-                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Keep Nothing
+                                { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True }
 
                               else
-                                PostProcess (Cmd.map ScrollMsg sCmd) True Nothing Bump Nothing
+                                { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, position = Bump }
                             )
             in
             ( { c_ | offset = Just newOffset }, pp )
@@ -528,7 +533,7 @@ editorSubmit clientHeight c =
                                 }
                 in
                 ( { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors }
-                , PostProcess Cmd.none False Nothing Keep (Just postMsg)
+                , { postProcess | producerMsg = Just postMsg }
                 )
 
         LocalMessageEditor { buffer } ->
@@ -565,7 +570,7 @@ saveLocalMessage clientHeight buffer c =
         | items = newItems
         , editors = SelectArray.updateSelected ColumnEditor.reset c.editors
       }
-    , PostProcess (Cmd.map ScrollMsg sMsg) True Nothing Keep Nothing
+    , { postProcess | cmd = Cmd.map ScrollMsg sMsg, persist = True }
     )
 
 
