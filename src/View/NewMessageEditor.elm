@@ -262,8 +262,7 @@ selectFileButtonEl : String -> Element Msg
 selectFileButtonEl cId =
     thinButtonEl
         [ alignLeft
-        , BD.width 1
-        , BD.color oneDark.bd
+        , BG.color oneDark.bd
         , mouseOver [ BG.color oneDark.note ]
         ]
         { onPress = ColumnCtrl cId (Column.EditorFileRequest [ "*/*" ])

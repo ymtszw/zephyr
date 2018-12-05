@@ -73,7 +73,7 @@ itemAvatarEl item =
         Product _ (DiscordItem { author }) ->
             case author of
                 Discord.UserAuthor user ->
-                    iconWithBadgeEl []
+                    iconWithBadgeEl [ alignTop ]
                         { badge = Nothing
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just itemAvatarSize) user.discriminator user.avatar
@@ -81,7 +81,7 @@ itemAvatarEl item =
                         }
 
                 Discord.WebhookAuthor user ->
-                    iconWithBadgeEl []
+                    iconWithBadgeEl [ alignTop ]
                         { badge = Just botIconEl
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just itemAvatarSize) user.discriminator user.avatar
@@ -124,6 +124,7 @@ octiconAvatarEl shape =
         [ width (px itemAvatarSize)
         , height (px itemAvatarSize)
         , padding octiconAvatarPadding
+        , alignTop
         , BD.color oneDark.note
         , BD.dashed
         , BD.width 1

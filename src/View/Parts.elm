@@ -204,8 +204,7 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
                         badgeSize =
                             size // 3
                     in
-                    [ alignTop
-                    , padding innerIconPadding
+                    [ padding innerIconPadding
                     , inFront <|
                         el
                             [ alignBottom
