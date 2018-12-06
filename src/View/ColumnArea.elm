@@ -66,7 +66,7 @@ columnKeyEl m fam index c =
             [ lazy3 columnHeaderEl fam index c
             , lazy4 columnConfigFlyoutEl m.viewState.selectState fam index c
             , newMessageEditorEl m.viewState.selectState fam c
-            , lazy4 itemsEl m.env.clientHeight m.viewState.timezone c.id c.items
+            , lazy3 itemsEl m.viewState.timezone c.id c.items
             ]
 
 
@@ -258,8 +258,8 @@ columnConfigToggleButtonEl configOpen id =
         }
 
 
-itemsEl : Int -> Time.Zone -> String -> Scroll ColumnItem -> Element Msg
-itemsEl clientHeight tz cId items =
+itemsEl : Time.Zone -> String -> Scroll ColumnItem -> Element Msg
+itemsEl tz cId items =
     if Scroll.isEmpty items then
         waitingForFirstItemEl
 
