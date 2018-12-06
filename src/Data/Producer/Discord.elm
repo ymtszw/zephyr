@@ -1126,7 +1126,7 @@ fetchOrSkip stateTagger pov posix =
     let
         readyToFetchChannels =
             Dict.values pov.channels
-                |> List.filter (.fetchStatus >> FetchStatus.lessThan (NextFetchAt posix BO2))
+                |> List.filter (.fetchStatus >> FetchStatus.lessThan (NextFetchAt posix BO10))
                 |> List.sortWith (\a b -> FetchStatus.compare a.fetchStatus b.fetchStatus)
     in
     case readyToFetchChannels of

@@ -28,17 +28,16 @@ type FetchStatus
     = Waiting
     | NextFetchAt Posix Backoff
     | Fetching Posix Backoff
-    | InitialFetching Posix -- If unexpectedly failed, should go Unavailable, allow retry
+    | InitialFetching Posix -- If failed in unrecoverable way (Forbidden/NotFound), host object itself should be removed/disabled
     | Available -- Initial state; can transit to Waiting => InitialFetching => NextFetchAt (or dropped)
 
 
-type Backoff
-    = BO2
-    | BO5
-    | BO10
-    | BO30
-    | BO60
-    | BO120
+type
+    Backoff
+    -- Values of backoff must be carefully studied so that it won't cause Too Many Requests AND is responsive enough
+    = BO10
+    | BO20
+    | BO40
 
 
 encode : FetchStatus -> E.Value
@@ -63,23 +62,14 @@ encode fetchStatus =
 encodeBackoff : Backoff -> E.Value
 encodeBackoff bo =
     case bo of
-        BO2 ->
-            E.tag "BO2"
-
-        BO5 ->
-            E.tag "BO5"
-
         BO10 ->
             E.tag "BO10"
 
-        BO30 ->
-            E.tag "BO30"
+        BO20 ->
+            E.tag "BO20"
 
-        BO60 ->
-            E.tag "BO60"
-
-        BO120 ->
-            E.tag "BO120"
+        BO40 ->
+            E.tag "BO40"
 
 
 decoder : Decoder FetchStatus
@@ -98,12 +88,12 @@ decoder =
 backoffDecoder : Decoder Backoff
 backoffDecoder =
     D.oneOf
-        [ D.tag "BO2" BO2
-        , D.tag "BO5" BO5
-        , D.tag "BO10" BO10
-        , D.tag "BO30" BO30
-        , D.tag "BO60" BO60
-        , D.tag "BO120" BO120
+        [ D.tag "BO10" BO10
+        , D.tag "BO20" BO20
+        , D.tag "BO40" BO40
+
+        -- For deprecated patterns
+        , D.when (D.field "tag" D.string) (String.startsWith "BO") (D.succeed BO10)
         ]
 
 
@@ -237,10 +227,10 @@ update msg fs =
         Hit posix ->
             case fs of
                 Fetching _ _ ->
-                    { fs = NextFetchAt (TimeExtra.add 2000 posix) BO2, persist = True, updateFAM = False }
+                    { fs = NextFetchAt (TimeExtra.add 10000 posix) BO10, persist = True, updateFAM = False }
 
                 InitialFetching _ ->
-                    { fs = NextFetchAt (TimeExtra.add 2000 posix) BO2, persist = True, updateFAM = True }
+                    { fs = NextFetchAt (TimeExtra.add 10000 posix) BO10, persist = True, updateFAM = True }
 
                 _ ->
                     pure fs
@@ -251,7 +241,7 @@ update msg fs =
                     { fs = backoff bo posix, persist = True, updateFAM = False }
 
                 InitialFetching _ ->
-                    { fs = backoff BO2 posix, persist = True, updateFAM = True }
+                    { fs = backoff BO10 posix, persist = True, updateFAM = True }
 
                 _ ->
                     pure fs
@@ -277,7 +267,7 @@ update msg fs =
                     pure fs
 
                 NextFetchAt _ _ ->
-                    { fs = NextFetchAt posix BO2, persist = True, updateFAM = False }
+                    { fs = NextFetchAt posix BO10, persist = True, updateFAM = False }
 
                 _ ->
                     pure fs
@@ -286,20 +276,11 @@ update msg fs =
 backoff : Backoff -> Posix -> FetchStatus
 backoff bo posix =
     case bo of
-        BO2 ->
-            NextFetchAt (TimeExtra.add 2000 posix) BO5
-
-        BO5 ->
-            NextFetchAt (TimeExtra.add 5000 posix) BO10
-
         BO10 ->
-            NextFetchAt (TimeExtra.add 10000 posix) BO30
+            NextFetchAt (TimeExtra.add 10000 posix) BO20
 
-        BO30 ->
-            NextFetchAt (TimeExtra.add 30000 posix) BO60
+        BO20 ->
+            NextFetchAt (TimeExtra.add 20000 posix) BO40
 
-        BO60 ->
-            NextFetchAt (TimeExtra.add 60000 posix) BO120
-
-        BO120 ->
-            NextFetchAt (TimeExtra.add 120000 posix) BO120
+        BO40 ->
+            NextFetchAt (TimeExtra.add 40000 posix) BO40
