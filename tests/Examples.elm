@@ -521,42 +521,42 @@ fetchStatusSuite =
     describe "Data.Producer.FetchStatus"
         [ describe "compare"
             [ testCompare Waiting Waiting EQ
-            , testCompare Waiting (NextFetchAt (p 1) BO5) LT
-            , testCompare Waiting (Fetching (p 1) BO5) LT
+            , testCompare Waiting (NextFetchAt (p 1) BO10) LT
+            , testCompare Waiting (Fetching (p 1) BO10) LT
             , testCompare Waiting (InitialFetching (p 1)) LT
             , testCompare Waiting Available LT
-            , testCompare (NextFetchAt (p 1) BO5) Waiting GT
-            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 0) BO5) GT
-            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO5) EQ
-            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 1) BO10) EQ
-            , testCompare (NextFetchAt (p 1) BO5) (NextFetchAt (p 2) BO5) LT
-            , testCompare (NextFetchAt (p 1) BO5) (Fetching (p 1) BO5) LT
-            , testCompare (NextFetchAt (p 1) BO5) (InitialFetching (p 1)) LT
-            , testCompare (NextFetchAt (p 1) BO5) Available LT
-            , testCompare (Fetching (p 1) BO5) Waiting GT
-            , testCompare (Fetching (p 1) BO5) (NextFetchAt (p 1) BO5) GT
-            , testCompare (Fetching (p 1) BO5) (Fetching (p 0) BO5) GT
-            , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO5) EQ
-            , testCompare (Fetching (p 1) BO5) (Fetching (p 1) BO10) EQ
-            , testCompare (Fetching (p 1) BO5) (Fetching (p 2) BO5) LT
-            , testCompare (Fetching (p 1) BO5) (InitialFetching (p 1)) LT
-            , testCompare (Fetching (p 1) BO5) Available LT
+            , testCompare (NextFetchAt (p 1) BO10) Waiting GT
+            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 0) BO10) GT
+            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 1) BO10) EQ
+            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 1) BO20) EQ
+            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 2) BO10) LT
+            , testCompare (NextFetchAt (p 1) BO10) (Fetching (p 1) BO10) LT
+            , testCompare (NextFetchAt (p 1) BO10) (InitialFetching (p 1)) LT
+            , testCompare (NextFetchAt (p 1) BO10) Available LT
+            , testCompare (Fetching (p 1) BO10) Waiting GT
+            , testCompare (Fetching (p 1) BO10) (NextFetchAt (p 1) BO10) GT
+            , testCompare (Fetching (p 1) BO10) (Fetching (p 0) BO10) GT
+            , testCompare (Fetching (p 1) BO10) (Fetching (p 1) BO10) EQ
+            , testCompare (Fetching (p 1) BO10) (Fetching (p 1) BO20) EQ
+            , testCompare (Fetching (p 1) BO10) (Fetching (p 2) BO10) LT
+            , testCompare (Fetching (p 1) BO10) (InitialFetching (p 1)) LT
+            , testCompare (Fetching (p 1) BO10) Available LT
             , testCompare (InitialFetching (p 1)) Waiting GT
-            , testCompare (InitialFetching (p 1)) (NextFetchAt (p 1) BO5) GT
-            , testCompare (InitialFetching (p 1)) (Fetching (p 1) BO5) GT
+            , testCompare (InitialFetching (p 1)) (NextFetchAt (p 1) BO10) GT
+            , testCompare (InitialFetching (p 1)) (Fetching (p 1) BO10) GT
             , testCompare (InitialFetching (p 1)) (InitialFetching (p 0)) GT
             , testCompare (InitialFetching (p 1)) (InitialFetching (p 1)) EQ
             , testCompare (InitialFetching (p 1)) (InitialFetching (p 2)) LT
             , testCompare (InitialFetching (p 1)) Available LT
             , testCompare Available Waiting GT
-            , testCompare Available (NextFetchAt (p 1) BO5) GT
-            , testCompare Available (Fetching (p 1) BO5) GT
+            , testCompare Available (NextFetchAt (p 1) BO10) GT
+            , testCompare Available (Fetching (p 1) BO10) GT
             , testCompare Available (InitialFetching (p 1)) GT
             , testCompare Available Available EQ
             ]
         , describe "lessThan"
-            [ Waiting |> testLessThan (NextFetchAt (p 1) BO5)
-            , NextFetchAt (p 0) BO5 |> testLessThan (NextFetchAt (p 1) BO5)
+            [ Waiting |> testLessThan (NextFetchAt (p 1) BO10)
+            , NextFetchAt (p 0) BO10 |> testLessThan (NextFetchAt (p 1) BO10)
             ]
         ]
 
