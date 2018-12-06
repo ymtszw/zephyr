@@ -123,11 +123,6 @@ columnHeaderBackground =
     oneDark.sub
 
 
-columnHeaderIconSize : Int
-columnHeaderIconSize =
-    32
-
-
 grabberEl : Int -> Bool -> String -> Element Msg
 grabberEl index pinned cId =
     let
@@ -271,7 +266,7 @@ itemsEl clientHeight tz cId items =
     else
         let
             columnAttrs =
-                [ width fill, paddingXY rectElementInnerPadding 0, scrollbarY ]
+                [ width fill, height shrink, paddingXY rectElementInnerPadding 0, scrollbarY ]
                     ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
         in
         -- Do note that items are sorted from latest to oldest

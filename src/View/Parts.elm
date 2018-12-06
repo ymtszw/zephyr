@@ -7,10 +7,10 @@ module View.Parts exposing
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , filtersToIconEl, filtersToTextEl
     , discordGuildIconEl, discordChannelEl
-    , columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
-    , rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-    , defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
-    , trashcanPaddingAdjust
+    , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
+    , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
+    , spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
+    , defaultOcticonColor, trashcanPaddingAdjust
     )
 
 {-| View parts, complementing Element and Html.
@@ -50,10 +50,10 @@ module View.Parts exposing
 
 ## Constants
 
-@docs columnWidth, columnPinColor, columnBorderWidth, columnAreaParentId
-@docs rectElementRound, spacingUnit, rectElementOuterPadding, rectElementInnerPadding
-@docs defaultOcticonColor, itemMinimumHeight, itemBorderBottom, itemAvatarSize
-@docs trashcanPaddingAdjust
+@docs columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
+@docs columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
+@docs spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
+@docs defaultOcticonColor, trashcanPaddingAdjust
 
 -}
 
@@ -922,6 +922,16 @@ columnWidth =
     350
 
 
+columnHeaderHeight : Int
+columnHeaderHeight =
+    columnHeaderIconSize + rectElementInnerPadding
+
+
+columnHeaderIconSize : Int
+columnHeaderIconSize =
+    32
+
+
 spacingUnit : Int
 spacingUnit =
     5
@@ -952,18 +962,18 @@ defaultOcticonColor =
     oneDark.note
 
 
-itemMinimumHeight : Int
-itemMinimumHeight =
-    itemAvatarSize + rectElementInnerPadding + itemBorderBottom
+columnItemMinimumHeight : Int
+columnItemMinimumHeight =
+    columnItemAvatarSize + rectElementInnerPadding + columnItemBorderBottom
 
 
-itemAvatarSize : Int
-itemAvatarSize =
+columnItemAvatarSize : Int
+columnItemAvatarSize =
     40
 
 
-itemBorderBottom : Int
-itemBorderBottom =
+columnItemBorderBottom : Int
+columnItemBorderBottom =
     2
 
 

@@ -34,7 +34,7 @@ columnItemKeyEl tz closeItems =
                 [ width fill
                 , paddingXY 0 rectElementInnerPadding
                 , spacing spacingUnit
-                , BD.widthEach { top = 0, bottom = itemBorderBottom, left = 0, right = 0 }
+                , BD.widthEach { top = 0, bottom = columnItemBorderBottom, left = 0, right = 0 }
                 , BD.color oneDark.bd
                 , Font.size baseFontSize
                 ]
@@ -76,16 +76,16 @@ itemAvatarEl item =
                     iconWithBadgeEl [ alignTop ]
                         { badge = Nothing
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just itemAvatarSize) user.discriminator user.avatar
-                        , size = itemAvatarSize
+                        , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
+                        , size = columnItemAvatarSize
                         }
 
                 Discord.WebhookAuthor user ->
                     iconWithBadgeEl [ alignTop ]
                         { badge = Just botIconEl
                         , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just itemAvatarSize) user.discriminator user.avatar
-                        , size = itemAvatarSize
+                        , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
+                        , size = columnItemAvatarSize
                         }
 
         System _ _ ->
@@ -118,11 +118,11 @@ octiconAvatarEl shape =
             7
 
         octiconSize =
-            itemAvatarSize - octiconAvatarPadding * 2
+            columnItemAvatarSize - octiconAvatarPadding * 2
     in
     octiconEl
-        [ width (px itemAvatarSize)
-        , height (px itemAvatarSize)
+        [ width (px columnItemAvatarSize)
+        , height (px columnItemAvatarSize)
         , padding octiconAvatarPadding
         , alignTop
         , BD.color oneDark.note
@@ -246,7 +246,7 @@ discordEmbedAuthorEl author =
     row [ spacing 5, Font.bold ]
         [ wrapWithLink <|
             squareIconOrHeadEl []
-                { size = itemAvatarSize // 2
+                { size = columnItemAvatarSize // 2
                 , name = author.name
                 , url = Maybe.map Url.toString author.proxyIconUrl
                 }
@@ -478,7 +478,7 @@ imageEl desc url =
 
 maxMediaWidth : Int
 maxMediaWidth =
-    columnWidth - itemAvatarSize - 20
+    columnWidth - columnItemAvatarSize - 20
 
 
 videoEl : Maybe Url.Url -> Url.Url -> Element Msg
