@@ -23,8 +23,8 @@ import View.Parts exposing (..)
 import View.Select as Select
 
 
-newMessageEditorEl : Int -> Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
-newMessageEditorEl clientHeight ss fam c =
+newMessageEditorEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
+newMessageEditorEl ss fam c =
     let
         selectedEditor =
             SelectArray.selected c.editors
@@ -45,7 +45,7 @@ newMessageEditorEl clientHeight ss fam c =
             ]
         , textAreaInputEl c selectedEditor
         , selectedFilesEl c selectedEditor
-        , editorButtonsEl clientHeight c.editorActive c.id selectedEditor
+        , editorButtonsEl c.editorActive c.id selectedEditor
         ]
 
 
@@ -329,8 +329,8 @@ previewOverlayEl cId f =
         ]
 
 
-editorButtonsEl : Int -> Bool -> String -> ColumnEditor -> Element Msg
-editorButtonsEl clientHeight isActive cId ce =
+editorButtonsEl : Bool -> String -> ColumnEditor -> Element Msg
+editorButtonsEl isActive cId ce =
     let
         rowAttrs opts =
             [ width fill
@@ -347,12 +347,12 @@ editorButtonsEl clientHeight isActive cId ce =
             in
             row (rowAttrs opts)
                 [ selectFileButtonEl cId
-                , submitButtonEl clientHeight cId submittable
+                , submitButtonEl cId submittable
                 ]
 
         LocalMessageEditor opts ->
             row (rowAttrs opts)
-                [ submitButtonEl clientHeight cId (not (String.isEmpty opts.buffer))
+                [ submitButtonEl cId (not (String.isEmpty opts.buffer))
                 ]
 
 
@@ -373,10 +373,10 @@ selectFileButtonEl cId =
         }
 
 
-submitButtonEl : Int -> String -> Bool -> Element Msg
-submitButtonEl clientHeight cId enabled =
+submitButtonEl : String -> Bool -> Element Msg
+submitButtonEl cId enabled =
     thinButtonEl [ alignRight ]
-        { onPress = ColumnCtrl cId (Column.EditorSubmit clientHeight)
+        { onPress = ColumnCtrl cId Column.EditorSubmit
         , width = px editorButtonWidth
         , enabledColor = oneDark.succ
         , enabledFontColor = oneDark.text

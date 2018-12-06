@@ -359,8 +359,8 @@ columnMsgToEntry cId cMsg =
         Column.EditorReset ->
             Entry "Column.EditorReset" [ cId ]
 
-        Column.EditorSubmit clientHeight ->
-            Entry "Column.EditorSubmit" [ cId, String.fromInt clientHeight ]
+        Column.EditorSubmit ->
+            Entry "Column.EditorSubmit" [ cId ]
 
         Column.EditorFileRequest mimeTypes ->
             Entry "Column.EditorFileRequest" [ cId, String.join "," mimeTypes ]

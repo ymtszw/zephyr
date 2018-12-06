@@ -44,6 +44,7 @@ type alias Column =
     , items : Scroll ColumnItem
     , filters : Array Filter
     , offset : Maybe Offset
+    , lastClientHeight : Int
     , pinned : Bool
     , recentlyTouched : Bool -- This property may become stale, though it should have no harm
     , configOpen : Bool
@@ -132,6 +133,7 @@ decoder clientHeight =
                                                     , items = items
                                                     , filters = filters
                                                     , offset = offset
+                                                    , lastClientHeight = clientHeight
                                                     , pinned = pinned
                                                     , recentlyTouched = False
                                                     , configOpen = False
@@ -194,6 +196,7 @@ welcome clientHeight idGen id =
       , items = Scroll.initWith (scrollInitOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
+      , lastClientHeight = clientHeight
       , pinned = False
       , recentlyTouched = True
       , configOpen = True
@@ -280,6 +283,7 @@ new clientHeight idGen id =
       , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
+      , lastClientHeight = clientHeight
       , pinned = False
       , recentlyTouched = True
       , configOpen = True
@@ -303,6 +307,7 @@ simple clientHeight fa id =
     , items = Scroll.init (scrollInitOptions id clientHeight)
     , filters = filters
     , offset = Nothing
+    , lastClientHeight = clientHeight
     , pinned = False
     , recentlyTouched = True
     , configOpen = False
@@ -330,7 +335,7 @@ type Msg
     | EditorToggle Bool
     | EditorInput String
     | EditorReset
-    | EditorSubmit Int
+    | EditorSubmit
     | EditorFileRequest (List String)
     | EditorFileSelected File
     | EditorFileLoaded ( File, String )
@@ -441,8 +446,8 @@ update msg c =
             , { postProcess | heartstopper = False }
             )
 
-        EditorSubmit clientHeight ->
-            editorSubmit clientHeight c
+        EditorSubmit ->
+            editorSubmit c
 
         EditorFileRequest mimeTypes ->
             ( c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected, heartstopper = True } )
@@ -483,46 +488,58 @@ scanBroker :
     { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     -> Column
     -> ( Column, PostProcess )
-scanBroker { broker, maxCount, clientHeight, catchUp } c =
-    case ItemBroker.bulkRead maxCount c.offset broker of
+scanBroker { broker, maxCount, clientHeight, catchUp } c_ =
+    case ItemBroker.bulkRead maxCount c_.offset broker of
         [] ->
-            pure c
+            adjustScroll clientHeight False ( c_, postProcess )
 
         (( _, newOffset ) :: _) as items ->
             let
-                ( c_, pp ) =
-                    case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
-                        ( True, [] ) ->
-                            ( c, { postProcess | persist = True, catchUpId = Just c.id } )
+                c =
+                    { c_ | offset = Just newOffset }
 
-                        ( True, newItems ) ->
-                            let
-                                ( items_, sCmd ) =
-                                    prependItems (autoAdjustOptions clientHeight) newItems c.items
-                            in
-                            -- Do not bump, nor flash Column during catchUp
-                            ( { c | items = items_ }
-                            , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, catchUpId = Just c.id }
-                            )
-
-                        ( False, [] ) ->
-                            ( c, { postProcess | persist = True } )
-
-                        ( False, newItems ) ->
-                            let
-                                ( items_, sCmd ) =
-                                    prependItems (autoAdjustOptions clientHeight) newItems c.items
-                            in
-                            ( { c | items = items_, recentlyTouched = True }
-                            , if c.pinned then
-                                -- Do not bump Pinned Column
-                                { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True }
-
-                              else
-                                { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True, position = Bump }
-                            )
+                ppBase =
+                    { postProcess | persist = True }
             in
-            ( { c_ | offset = Just newOffset }, pp )
+            case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
+                ( True, [] ) ->
+                    adjustScroll clientHeight False ( c, { ppBase | catchUpId = Just c.id } )
+
+                ( True, newItems ) ->
+                    adjustScroll clientHeight True <|
+                        -- Do not bump, nor flash Column during catchUp
+                        ( { c | items = Scroll.prependList newItems c.items }
+                        , { ppBase | catchUpId = Just c.id }
+                        )
+
+                ( False, [] ) ->
+                    adjustScroll clientHeight False ( c, ppBase )
+
+                ( False, newItems ) ->
+                    adjustScroll clientHeight True <|
+                        ( { c | items = Scroll.prependList newItems c.items, recentlyTouched = True }
+                        , if c.pinned then
+                            -- Do not bump Pinned Column
+                            ppBase
+
+                          else
+                            { ppBase | position = Bump }
+                        )
+
+
+adjustScroll : Int -> Bool -> ( Column, PostProcess ) -> ( Column, PostProcess )
+adjustScroll clientHeight hasNewItem ( c, pp ) =
+    if clientHeight /= c.lastClientHeight || hasNewItem then
+        let
+            ( items, sCmd ) =
+                Scroll.update (Scroll.AdjustReq (autoAdjustOptions clientHeight)) c.items
+        in
+        ( { c | items = items, lastClientHeight = clientHeight }
+        , { pp | cmd = Cmd.map ScrollMsg sCmd }
+        )
+
+    else
+        ( c, pp )
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
@@ -538,15 +555,8 @@ applyFilters filters ( item, offset ) =
         Nothing
 
 
-prependItems : Scroll.AutoAdjustOptions -> List ColumnItem -> Scroll ColumnItem -> ( Scroll ColumnItem, Cmd Scroll.Msg )
-prependItems opts newItems items =
-    items
-        |> Scroll.prependList newItems
-        |> Scroll.update (Scroll.AdjustReq opts)
-
-
-editorSubmit : Int -> Column -> ( Column, PostProcess )
-editorSubmit clientHeight c =
+editorSubmit : Column -> ( Column, PostProcess )
+editorSubmit c =
     case SelectArray.selected c.editors of
         DiscordMessageEditor { channelId, file } { buffer } ->
             if String.isEmpty buffer && file == Nothing then
@@ -575,11 +585,11 @@ editorSubmit clientHeight c =
                 pure c
 
             else
-                saveLocalMessage clientHeight buffer c
+                saveLocalMessage buffer c
 
 
-saveLocalMessage : Int -> String -> Column -> ( Column, PostProcess )
-saveLocalMessage clientHeight buffer c =
+saveLocalMessage : String -> Column -> ( Column, PostProcess )
+saveLocalMessage buffer c =
     let
         prevId =
             case Scroll.pop c.items of
@@ -595,10 +605,10 @@ saveLocalMessage clientHeight buffer c =
                 ( Nothing, _ ) ->
                     "root"
 
-        ( newItems, sMsg ) =
-            prependItems (autoAdjustOptions clientHeight)
-                [ localMessage prevId buffer ]
-                c.items
+        ( newItems, sCmd ) =
+            c.items
+                |> Scroll.push (localMessage prevId buffer)
+                |> Scroll.update (Scroll.AdjustReq (autoAdjustOptions c.lastClientHeight))
     in
     ( { c
         | items = newItems
@@ -606,7 +616,7 @@ saveLocalMessage clientHeight buffer c =
         , editorActive = False
         , editorSeq = c.editorSeq + 1
       }
-    , { postProcess | cmd = Cmd.map ScrollMsg sMsg, persist = True }
+    , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True }
     )
 
 
