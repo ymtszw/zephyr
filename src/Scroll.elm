@@ -1,6 +1,6 @@
 module Scroll exposing
-    ( Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
-    , setLimit, setBaseAmount, setTierAmount, setAscendThreshold
+    ( Scroll, InitOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
+    , setLimit
     , push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
@@ -22,7 +22,7 @@ Its ever-changing runtime statuses are ephemeral, and not persisted.
 Its internal data structure may be persisted.
 
 @docs Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
-@docs setLimit, setBaseAmount, setTierAmount, setAscendThreshold
+@docs setLimit
 @docs push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
@@ -49,11 +49,12 @@ type alias ScrollRecord a =
     , buffer : BoundedDeque a
     , pending : List a
     , pendingSize : Int
+    , lastBoundingHeight : Int
     , viewportStatus : ViewportStatus
     , tier : Tier
     , baseAmount : Int
     , tierAmount : Int
-    , ascendThreshold : Float
+    , config : Config
     }
 
 
@@ -68,38 +69,55 @@ type Tier
     = Tier Int
 
 
+type alias Config =
+    { baseRatio : Float
+    , tierRatio : Float
+    , ascendThreshold : Float
+    , minimumItemHeight : Float
+    }
+
+
 encode : (a -> E.Value) -> Scroll a -> E.Value
 encode encodeItem (Scroll s) =
     E.list encodeItem (BoundedDeque.toList s.buffer)
 
 
-decoder : AutoAdjustOptions -> InitOptions -> Decoder a -> Decoder ( Scroll a, Cmd Msg )
-decoder adjustOpts { id, limit, baseAmount, tierAmount, ascendThreshold } itemDecoder =
+type alias InitOptions =
+    { id : String
+    , limit : Int
+    , boundingHeight : Int
+    , minimumItemHeight : Int
+    , baseRatio : Float
+    , tierRatio : Float
+    , ascendThreshold : Float
+    }
+
+
+decoder : InitOptions -> Decoder a -> Decoder ( Scroll a, Cmd Msg )
+decoder opts itemDecoder =
     D.do (D.list itemDecoder) <|
         \list ->
-            let
-                s =
-                    Scroll
-                        { id = id
-                        , buffer = BoundedDeque.fromList limit list
-                        , pending = []
-                        , pendingSize = 0
-                        , viewportStatus = Initial
-                        , tier = Tier 0
-                        , baseAmount = baseAmount
-                        , tierAmount = tierAmount
-                        , ascendThreshold = ascendThreshold
-                        }
-            in
-            D.succeed ( s, requestAdjust id adjustOpts )
+            -- Immediately requestAdjust, retrieving scene height from actually rendered node
+            D.succeed ( Scroll (initImpl opts list), requestAdjust opts.id opts.boundingHeight )
 
 
-type alias InitOptions =
-    { id : String, limit : Int, baseAmount : Int, tierAmount : Int, ascendThreshold : Float }
+ratioToAmount : Float -> Float -> Int
+ratioToAmount fillAmountF ratio =
+    round (fillAmountF * ratio)
 
 
-type alias AutoAdjustOptions =
-    { clientHeight : Int, baseRatio : Float, tierRatio : Float }
+requestAdjust : String -> Int -> Cmd Msg
+requestAdjust id boundingHeight =
+    Task.attempt
+        (\res ->
+            case res of
+                Ok vp ->
+                    AdjustExec boundingHeight vp
+
+                Err e ->
+                    ViewportResult (Err e)
+        )
+        (Browser.Dom.getViewportOf id)
 
 
 {-| Initialize a Scroll with set of InitOptions.
@@ -108,26 +126,45 @@ To change options after initialized, use set\*\*\* functions.
 
 -}
 init : InitOptions -> Scroll a
-init { id, limit, baseAmount, tierAmount, ascendThreshold } =
-    Scroll
-        { id = id
-        , buffer = BoundedDeque.empty limit
-        , pending = []
-        , pendingSize = 0
-        , viewportStatus = Initial
-        , tier = Tier 0
-        , baseAmount = baseAmount
-        , tierAmount = tierAmount
-        , ascendThreshold = ascendThreshold
+init opts =
+    Scroll (initImpl opts [])
+
+
+initImpl : InitOptions -> List a -> ScrollRecord a
+initImpl opts list =
+    let
+        minimumItemHeightF =
+            toFloat opts.minimumItemHeight
+
+        fillAmountF =
+            toFloat opts.boundingHeight / minimumItemHeightF
+    in
+    { id = opts.id
+    , buffer = BoundedDeque.fromList opts.limit list
+    , pending = []
+    , pendingSize = 0
+    , lastBoundingHeight = opts.boundingHeight
+    , viewportStatus = Initial
+    , tier = Tier 0
+    , baseAmount = ratioToAmount fillAmountF opts.baseRatio
+    , tierAmount = ratioToAmount fillAmountF opts.tierRatio
+    , config =
+        { baseRatio = opts.baseRatio
+        , tierRatio = opts.tierRatio
+        , ascendThreshold = opts.ascendThreshold
+        , minimumItemHeight = minimumItemHeightF
         }
+    }
 
 
-defaultOptions : String -> InitOptions
-defaultOptions id =
-    { id = id
+defaultOptions : { id : String, boundingHeight : Int, minimumItemHeight : Int } -> InitOptions
+defaultOptions opts =
+    { id = opts.id
     , limit = defaultLimit
-    , baseAmount = defaultBaseAmount
-    , tierAmount = defaultTierAmount
+    , boundingHeight = opts.boundingHeight
+    , minimumItemHeight = opts.minimumItemHeight
+    , baseRatio = defaultBaseRatio
+    , tierRatio = defaultTierRatio
     , ascendThreshold = defaultAscendThreshold
     }
 
@@ -137,14 +174,14 @@ defaultLimit =
     1000
 
 
-defaultBaseAmount : Int
-defaultBaseAmount =
-    20
+defaultBaseRatio : Float
+defaultBaseRatio =
+    1.5
 
 
-defaultTierAmount : Int
-defaultTierAmount =
-    defaultBaseAmount
+defaultTierRatio : Float
+defaultTierRatio =
+    defaultBaseRatio * 2
 
 
 defaultAscendThreshold : Float
@@ -157,39 +194,14 @@ setLimit limit (Scroll s) =
     Scroll { s | buffer = BoundedDeque.resize (\_ -> limit) s.buffer }
 
 
-setBaseAmount : Int -> Scroll a -> Scroll a
-setBaseAmount baseAmount (Scroll s) =
-    Scroll { s | baseAmount = baseAmount }
-
-
-setTierAmount : Int -> Scroll a -> Scroll a
-setTierAmount tierAmount (Scroll s) =
-    Scroll { s | tierAmount = tierAmount }
-
-
-setAscendThreshold : Float -> Scroll a -> Scroll a
-setAscendThreshold ascendThreshold (Scroll s) =
-    Scroll { s | ascendThreshold = ascendThreshold }
-
-
 {-| Initialize a Scroll with InitOptions and initial items.
 
 Order of initial items are kept as is: head at the front.
 
 -}
 initWith : InitOptions -> List a -> Scroll a
-initWith { id, limit, baseAmount, tierAmount, ascendThreshold } list =
-    Scroll
-        { id = id
-        , buffer = BoundedDeque.fromList limit list
-        , pending = []
-        , pendingSize = 0
-        , viewportStatus = Initial
-        , tier = Tier 0
-        , baseAmount = baseAmount
-        , tierAmount = tierAmount
-        , ascendThreshold = ascendThreshold
-        }
+initWith opts list =
+    Scroll (initImpl opts list)
 
 
 {-| Clear exisitng elements (in `buffer` and `pending`) from a Scroll.
@@ -413,8 +425,9 @@ type Msg
     | ViewportResult (Result Browser.Dom.Error Browser.Dom.Viewport)
     | BackToTop
     | Reveal
-    | AdjustReq AutoAdjustOptions
-    | AdjustExec AutoAdjustOptions Browser.Dom.Viewport
+    | NewItem
+    | AdjustReq Int
+    | AdjustExec Int Browser.Dom.Viewport
 
 
 update : Msg -> Scroll a -> ( Scroll a, Cmd Msg )
@@ -469,40 +482,36 @@ update msg (Scroll s) =
             , queryViewportWithDelay s.id
             )
 
-        AdjustReq opts ->
-            case s.viewportStatus of
-                AtTop vp ->
-                    ( Scroll s, requestAdjust s.id opts )
+        NewItem ->
+            ( Scroll s, requestAdjust s.id s.lastBoundingHeight )
 
-                _ ->
-                    -- Not change options when scrolled
-                    ( Scroll s, Cmd.none )
-
-        AdjustExec { clientHeight, baseRatio, tierRatio } vp ->
-            -- Adjust options dynamically (in somewhat crude way), compared to current clientHeight.
-            let
-                clientHeightF =
-                    toFloat clientHeight
-            in
-            if vp.scene.height > clientHeightF * baseRatio then
-                let
-                    approxAverageItemHeightF =
-                        vp.scene.height / toFloat (amountToTake (Scroll s))
-
-                    approxFillAmountF =
-                        clientHeightF / approxAverageItemHeightF
-                in
-                ( Scroll
-                    { s
-                        | viewportStatus = AtTop vp
-                        , baseAmount = round (approxFillAmountF * baseRatio)
-                        , tierAmount = round (approxFillAmountF * tierRatio)
-                    }
-                , queryViewportWithDelay s.id
-                )
+        AdjustReq boundingHeight ->
+            if boundingHeight /= s.lastBoundingHeight then
+                ( Scroll s, requestAdjust s.id boundingHeight )
 
             else
-                ( Scroll { s | viewportStatus = AtTop vp }, Cmd.none )
+                ( Scroll s, Cmd.none )
+
+        AdjustExec boundingHeight vp ->
+            -- Adjust parameters dynamically (in somewhat crude way),
+            -- by comparing actual node height to current boundingHeight (usually a clientHeight for full-height node).
+            let
+                approxAverageItemHeightF =
+                    -- This value is no more than approximate, due to item grouping and filtering
+                    vp.scene.height / toFloat (amountToTake (Scroll s))
+
+                approxFillAmountF =
+                    toFloat boundingHeight / approxAverageItemHeightF
+            in
+            ( Scroll
+                { s
+                    | viewportStatus = AtTop vp
+                    , lastBoundingHeight = boundingHeight
+                    , baseAmount = ratioToAmount approxFillAmountF s.config.baseRatio
+                    , tierAmount = ratioToAmount approxFillAmountF s.config.tierRatio
+                }
+            , queryViewportWithDelay s.id
+            )
 
 
 queryViewportWithDelay : String -> Cmd Msg
@@ -513,20 +522,6 @@ queryViewportWithDelay id =
 queryDelay : Float
 queryDelay =
     250
-
-
-requestAdjust : String -> AutoAdjustOptions -> Cmd Msg
-requestAdjust id opts =
-    Task.attempt
-        (\res ->
-            case res of
-                Ok vp ->
-                    AdjustExec opts vp
-
-                Err e ->
-                    ViewportResult (Err e)
-        )
-        (Browser.Dom.getViewportOf id)
 
 
 calculateTier : Scroll a -> Scroll a
@@ -547,7 +542,7 @@ calculateTier (Scroll s) =
 
 calculateTierImpl : Browser.Dom.Viewport -> Scroll s -> Scroll s
 calculateTierImpl vp (Scroll s) =
-    if (vp.viewport.y + vp.viewport.height) / vp.scene.height >= s.ascendThreshold then
+    if (vp.viewport.y + vp.viewport.height) / vp.scene.height >= s.config.ascendThreshold then
         let
             (Tier n) =
                 s.tier

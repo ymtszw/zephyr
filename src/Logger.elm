@@ -35,8 +35,19 @@ type MsgFilter
 
 init : History
 init =
+    let
+        minimumRowHeight =
+            -- line-height adjusted
+            historyFontSize + 1 + historyTableCellSpacing
+    in
     History
-        { entries = Scroll.defaultOptions historyElementId |> Scroll.init
+        { entries =
+            Scroll.init <|
+                Scroll.defaultOptions
+                    { id = historyElementId
+                    , boundingHeight = historyTableMaxHeight
+                    , minimumItemHeight = minimumRowHeight
+                    }
         , payloadFilter = ""
         , msgFilters = defaultFilters
         }

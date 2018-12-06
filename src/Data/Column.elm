@@ -36,7 +36,7 @@ import Scroll exposing (Scroll)
 import SelectArray exposing (SelectArray)
 import Task
 import Url
-import View.Parts exposing (itemMinimumHeight)
+import View.Parts exposing (columnHeaderHeight, columnItemMinimumHeight)
 
 
 type alias Column =
@@ -44,7 +44,6 @@ type alias Column =
     , items : Scroll ColumnItem
     , filters : Array Filter
     , offset : Maybe Offset
-    , lastClientHeight : Int
     , pinned : Bool
     , recentlyTouched : Bool -- This property may become stale, though it should have no harm
     , configOpen : Bool
@@ -112,9 +111,7 @@ decoder : Int -> Decoder ( Column, Cmd Msg )
 decoder clientHeight =
     let
         scrollDecoder id =
-            Scroll.decoder (autoAdjustOptions clientHeight)
-                (scrollInitOptions id clientHeight)
-                columnItemDecoder
+            Scroll.decoder (scrollInitOptions id clientHeight) columnItemDecoder
     in
     D.do (D.field "id" D.string) <|
         \id ->
@@ -133,7 +130,6 @@ decoder clientHeight =
                                                     , items = items
                                                     , filters = filters
                                                     , offset = offset
-                                                    , lastClientHeight = clientHeight
                                                     , pinned = pinned
                                                     , recentlyTouched = False
                                                     , configOpen = False
@@ -196,7 +192,6 @@ welcome clientHeight idGen id =
       , items = Scroll.initWith (scrollInitOptions id clientHeight) items
       , filters = Array.empty
       , offset = Nothing
-      , lastClientHeight = clientHeight
       , pinned = False
       , recentlyTouched = True
       , configOpen = True
@@ -213,40 +208,24 @@ welcome clientHeight idGen id =
 scrollInitOptions : String -> Int -> Scroll.InitOptions
 scrollInitOptions id clientHeight =
     let
-        base =
-            Scroll.defaultOptions ("scroll-" ++ id)
-
-        fillAmount =
-            clientHeight // itemMinimumHeight
+        opts =
+            Scroll.defaultOptions
+                { id = "scroll-" ++ id
+                , boundingHeight = boundingHeight clientHeight
+                , minimumItemHeight = columnItemMinimumHeight
+                }
     in
-    { base
-        | limit = columnItemLimit
-        , baseAmount = round (toFloat fillAmount * baseRatio)
-        , tierAmount = round (toFloat fillAmount * tierRatio)
-    }
+    { opts | limit = columnItemLimit }
+
+
+boundingHeight : Int -> Int
+boundingHeight clientHeight =
+    clientHeight - columnHeaderHeight
 
 
 columnItemLimit : Int
 columnItemLimit =
     2000
-
-
-baseRatio : Float
-baseRatio =
-    1.3
-
-
-tierRatio : Float
-tierRatio =
-    2.5
-
-
-autoAdjustOptions : Int -> Scroll.AutoAdjustOptions
-autoAdjustOptions clientHeight =
-    { clientHeight = clientHeight
-    , baseRatio = baseRatio
-    , tierRatio = tierRatio
-    }
 
 
 systemMessage : String -> String -> ColumnItem
@@ -283,7 +262,6 @@ new clientHeight idGen id =
       , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
       , filters = Array.empty
       , offset = Nothing
-      , lastClientHeight = clientHeight
       , pinned = False
       , recentlyTouched = True
       , configOpen = True
@@ -307,7 +285,6 @@ simple clientHeight fa id =
     , items = Scroll.init (scrollInitOptions id clientHeight)
     , filters = filters
     , offset = Nothing
-    , lastClientHeight = clientHeight
     , pinned = False
     , recentlyTouched = True
     , configOpen = False
@@ -529,17 +506,15 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c_ =
 
 adjustScroll : Int -> Bool -> ( Column, PostProcess ) -> ( Column, PostProcess )
 adjustScroll clientHeight hasNewItem ( c, pp ) =
-    if clientHeight /= c.lastClientHeight || hasNewItem then
-        let
-            ( items, sCmd ) =
-                Scroll.update (Scroll.AdjustReq (autoAdjustOptions clientHeight)) c.items
-        in
-        ( { c | items = items, lastClientHeight = clientHeight }
-        , { pp | cmd = Cmd.map ScrollMsg sCmd }
-        )
+    let
+        ( items, sCmd ) =
+            if hasNewItem then
+                Scroll.update Scroll.NewItem c.items
 
-    else
-        ( c, pp )
+            else
+                Scroll.update (Scroll.AdjustReq (boundingHeight clientHeight)) c.items
+    in
+    ( { c | items = items }, { pp | cmd = Cmd.map ScrollMsg sCmd } )
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
@@ -608,7 +583,7 @@ saveLocalMessage buffer c =
         ( newItems, sCmd ) =
             c.items
                 |> Scroll.push (localMessage prevId buffer)
-                |> Scroll.update (Scroll.AdjustReq (autoAdjustOptions c.lastClientHeight))
+                |> Scroll.update Scroll.NewItem
     in
     ( { c
         | items = newItems
