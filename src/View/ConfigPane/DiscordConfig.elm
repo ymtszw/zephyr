@@ -23,9 +23,9 @@ import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
 
-discordConfigEl : ViewState -> Maybe Discord -> Element Msg
-discordConfigEl vs discordMaybe =
-    discordConfigBodyEl vs (Maybe.withDefault (TokenWritable "") discordMaybe)
+discordConfigEl : ViewState -> Discord -> Element Msg
+discordConfigEl vs discord =
+    discordConfigBodyEl vs discord
 
 
 discordConfigBodyEl : ViewState -> Discord -> Element Msg
