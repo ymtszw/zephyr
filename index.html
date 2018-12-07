@@ -148,6 +148,13 @@
       function err(msg) {
         console.error(`[Zephyr] ${msg}`);
       }
+
+      // Workaround for Firefox; applied on capturing phase
+      document.addEventListener(
+        "dragstart",
+        event => event.dataTransfer.setData("text/plain", ""),
+        true
+      );
     </script>
     <noscript>
       <p>
