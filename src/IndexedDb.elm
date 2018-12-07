@@ -1,4 +1,4 @@
-port module IndexedDb exposing
+module IndexedDb exposing
     ( load, requestItemBroker, requestProducerRegistry, requestPref, dropOldState
     , ChangeSet, changeSet, saveColumnStore, saveItemBroker, saveProducerRegistry, savePref
     , postUpdate, noPersist
@@ -27,6 +27,7 @@ import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import Ports exposing (loadFromJs, sendToJs)
 
 
 
@@ -217,13 +218,3 @@ doPersist storable =
 noPersist : ( model, Cmd msg ) -> ( model, Cmd msg, ChangeSet )
 noPersist ( m, cmd ) =
     ( m, cmd, changeSet )
-
-
-
--- Ports
-
-
-port loadFromJs : (E.Value -> msg) -> Sub msg
-
-
-port sendToJs : E.Value -> Cmd msg
