@@ -1,14 +1,14 @@
 module Json.DecodeExtra exposing
     ( when, conditional, succeedIf, do
     , tag, tagged, tagged2, tagged3
-    , url, leakyList, maybeField, fromResult
+    , url, leakyList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
 @docs when, conditional, succeedIf, do
 @docs tag, tagged, tagged2, tagged3
-@docs url, leakyList, maybeField, fromResult
+@docs url, leakyList, maybeField, optionField, fromResult
 
 -}
 
@@ -91,6 +91,16 @@ maybeField fieldName decoder =
                     Nothing
     in
     map flatten (maybe (field fieldName (maybe decoder)))
+
+
+{-| Omittable field. You must supply default
+-}
+optionField : String -> Decoder a -> a -> Decoder a
+optionField fieldName decoder default =
+    oneOf
+        [ field fieldName decoder
+        , succeed default
+        ]
 
 
 {-| Decode a serialized custom type value of 0-variable.
