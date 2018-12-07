@@ -90,6 +90,7 @@ ofDiscordChannelDecoder =
 
 type UpdateInstruction
     = DiscordInstruction (UpdateFAM ( FilterAtom, List Discord.ChannelCache ))
+    | SlackInstruction (UpdateFAM ())
 
 
 update : List UpdateInstruction -> FilterAtomMaterial -> ( FilterAtomMaterial, Bool )
@@ -111,6 +112,10 @@ updateImpl instructions ( fam, persist ) =
 
         (DiscordInstruction DestroyFAM) :: xs ->
             updateImpl xs ( { fam | ofDiscordChannel = Nothing }, True )
+
+        (SlackInstruction _) :: xs ->
+            -- TODO
+            updateImpl xs ( fam, persist )
 
 
 mapDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a

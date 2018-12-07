@@ -11,6 +11,7 @@ import Data.Item exposing (Item)
 import Data.Pref exposing (Pref)
 import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import File
@@ -305,6 +306,20 @@ producerMsgToEntry pMsg =
                         [ HttpClient.errorToString e
                         , req.method
                         , Url.toString req.url
+                        ]
+
+        Producer.SlackMsg sMsg ->
+            case sMsg of
+                Slack.UTokenInput t ->
+                    Entry "Slack.UTokenInput" [ t ]
+
+                Slack.UTokenCommit ->
+                    Entry "Slack.UTokenCommit" []
+
+                Slack.Identify user team ->
+                    Entry "Slack.Identify"
+                        [ E.encode 2 (Slack.encodeUser user)
+                        , E.encode 2 (Slack.encodeTeam team)
                         ]
 
 

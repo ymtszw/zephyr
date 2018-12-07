@@ -12,6 +12,7 @@ import Url
 
 type Item
     = DiscordItem Discord.Message
+    | SlackItem ()
 
 
 encode : Item -> E.Value
@@ -20,11 +21,15 @@ encode item =
         DiscordItem discordMessage ->
             E.tagged "DiscordItem" (Discord.encodeMessage discordMessage)
 
+        SlackItem _ ->
+            E.tag "SlackItem"
+
 
 decoder : Decoder Item
 decoder =
     D.oneOf
         [ D.tagged "DiscordItem" DiscordItem Discord.messageDecoder
+        , D.tag "SlackItem" (SlackItem ())
         ]
 
 
@@ -39,6 +44,9 @@ matchAtom item filterAtom =
         ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
             cId == channelId
 
+        ( OfDiscordChannel cId, _ ) ->
+            False
+
         ( ByMessage "", _ ) ->
             -- Short-circuit for empty query; this CAN be invalidated on input, but we are slacking
             True
@@ -46,8 +54,16 @@ matchAtom item filterAtom =
         ( ByMessage text, DiscordItem { content, embeds } ) ->
             String.contains text content || List.any (discordEmbedHasText text) embeds
 
+        ( ByMessage text, SlackItem _ ) ->
+            -- TODO
+            False
+
         ( ByMedia filter, DiscordItem discordMessage ) ->
             discordMessageHasMedia filter discordMessage
+
+        ( ByMedia filter, SlackItem _ ) ->
+            -- TODO
+            False
 
         ( RemoveMe, _ ) ->
             False

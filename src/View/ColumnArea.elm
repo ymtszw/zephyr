@@ -323,6 +323,10 @@ shouldGroup newer older =
         ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
             shouldGroupDiscordMessage dNewer dOlder
 
+        ( Product _ (SlackItem sNewer), Product _ (SlackItem sOlder) ) ->
+            -- TODO
+            False
+
         ( _, _ ) ->
             False
 

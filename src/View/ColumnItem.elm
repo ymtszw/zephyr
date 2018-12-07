@@ -6,6 +6,7 @@ import Data.Column exposing (ColumnItem(..), Media(..))
 import Data.Item exposing (Item(..), isImageFile, isMovieFile)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Data.TextRenderer
 import Element exposing (..)
 import Element.Background as BG
@@ -88,6 +89,14 @@ itemAvatarEl item =
                         , size = columnItemAvatarSize
                         }
 
+        Product _ (SlackItem _) ->
+            iconWithBadgeEl [ alignTop ]
+                { badge = Nothing
+                , fallback = "Slack"
+                , url = Just <| Slack.defaultIconUrl (Just columnItemAvatarSize)
+                , size = columnItemAvatarSize
+                }
+
         System _ _ ->
             octiconAvatarEl Octicons.info
 
@@ -152,6 +161,20 @@ itemContentsEl tz item closeItems =
             closeItems
                 |> List.filterMap unwrap
                 |> discordMessageEl tz ( discordMessage, offset )
+
+        Product offset (SlackItem slackMessage) ->
+            let
+                unwrap cItem =
+                    case cItem of
+                        Product o (SlackItem sm) ->
+                            Just ( sm, o )
+
+                        _ ->
+                            Nothing
+            in
+            closeItems
+                |> List.filterMap unwrap
+                |> slackMessageEl tz ( slackMessage, offset )
 
         System _ { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
@@ -433,6 +456,14 @@ attachmentFilenameColor =
 downloadIconSize : Int
 downloadIconSize =
     20
+
+
+slackMessageEl : Time.Zone -> ( (), Offset ) -> List ( (), Offset ) -> Element Msg
+slackMessageEl tz ( discordMessage, _ ) closeMessages =
+    column [ width fill, spacing 5, alignTop ]
+        [ --TODO
+          text "Slack message"
+        ]
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg

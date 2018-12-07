@@ -2,6 +2,8 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder
+    , Msg(..), update
+    , defaultIconUrl
     )
 
 {-| Producer for Slack workspaces.
@@ -9,9 +11,13 @@ module Data.Producer.Slack exposing
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder
+@docs Msg, update
+@docs defaultIconUrl
 
 -}
 
+import Data.Filter exposing (FilterAtom)
+import Data.Producer.Base as Producer exposing (..)
 import Dict exposing (Dict)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -276,3 +282,57 @@ teamDecoder =
         (D.field "name" D.string)
         (D.field "domain" D.string)
         (D.field "icon" iconDecoder)
+
+
+
+-- Component
+
+
+type alias Yield =
+    Producer.YieldBase () () SlackRegistry Msg
+
+
+type alias UpdateFAM =
+    Producer.UpdateFAM ()
+
+
+type Msg
+    = UTokenInput String
+    | UTokenCommit
+    | Identify User Team
+
+
+update : Msg -> SlackRegistry -> Yield
+update msg sr =
+    case msg of
+        UTokenInput t ->
+            pure sr
+
+        UTokenCommit ->
+            pure sr
+
+        Identify user team ->
+            pure sr
+
+
+
+-- Logo CDN URLs
+
+
+defaultIconUrl : Maybe Int -> String
+defaultIconUrl sizeMaybe =
+    logoCdnUrl sizeMaybe "/osogig-6gybeo-d2hu58/Slack%20App%20Icon.png"
+
+
+logoCdnUrl : Maybe Int -> String -> String
+logoCdnUrl sizeMaybe path =
+    let
+        query =
+            case sizeMaybe of
+                Just size ->
+                    "?width=" ++ String.fromInt size
+
+                Nothing ->
+                    ""
+    in
+    "https://cdn.brandfolder.io/5H442O3W/as" ++ path ++ query

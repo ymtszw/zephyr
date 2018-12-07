@@ -67,6 +67,7 @@ initRegistry =
 
 type Msg
     = DiscordMsg Discord.Msg
+    | SlackMsg Slack.Msg
 
 
 type alias GrossReload =
@@ -154,6 +155,13 @@ update msg producerRegistry =
                     DiscordInstruction
                     DiscordMsg
                     (\newState -> { producerRegistry | discord = newState })
+
+        SlackMsg sMsg ->
+            Slack.update sMsg producerRegistry.slack
+                |> mapYield SlackItem
+                    SlackInstruction
+                    SlackMsg
+                    (\newState -> { producerRegistry | slack = newState })
 
 
 mapYield :
