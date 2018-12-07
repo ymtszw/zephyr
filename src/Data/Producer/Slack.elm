@@ -202,9 +202,12 @@ encodeTeam team =
 
 registryDecoder : Decoder SlackRegistry
 registryDecoder =
-    D.map2 SlackRegistry
-        (D.field "dict" (D.dict slackDecoder))
-        (D.field "unidentified" unidentifiedDecoder)
+    D.oneOf
+        [ D.map2 SlackRegistry
+            (D.field "dict" (D.dict slackDecoder))
+            (D.field "unidentified" unidentifiedDecoder)
+        , D.succeed initRegistry -- fallback
+        ]
 
 
 unidentifiedDecoder : Decoder SlackUnidentified
