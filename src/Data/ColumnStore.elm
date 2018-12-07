@@ -52,7 +52,8 @@ decoder clientHeight =
         \order ->
             D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order)) <|
                 \( dict, idAndCmds ) ->
-                    D.do (D.maybeField "fam" FAM.decoder |> D.map (Maybe.withDefault FAM.init)) <|
+                    -- Migration; use field instead of optionField later
+                    D.do (D.optionField "fam" FAM.decoder FAM.init) <|
                         \fam ->
                             let
                                 scanQueue =

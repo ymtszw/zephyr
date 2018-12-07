@@ -121,8 +121,8 @@ decoder clientHeight =
                         \filters ->
                             D.do (D.maybeField "offset" offsetDecoder) <|
                                 \offset ->
-                                    -- Migration; use field instead of maybeField later
-                                    D.do (D.maybeField "pinned" D.bool |> D.map (Maybe.withDefault False)) <|
+                                    -- Migration; use field instead of optionField later
+                                    D.do (D.optionField "pinned" D.bool False) <|
                                         \pinned ->
                                             let
                                                 c =

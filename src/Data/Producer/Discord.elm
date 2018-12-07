@@ -585,7 +585,7 @@ channelDecoder guilds =
         (D.field "type" channelTypeDecoder)
         (D.maybeField "guild_id" D.string |> D.map (populateGuild guilds))
         (D.maybeField "last_message_id" (D.tagged "MessageId" MessageId D.string))
-        (D.maybeField "fetchStatus" FetchStatus.decoder |> D.map (Maybe.withDefault Available))
+        (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
 
 populateGuild : Dict String Guild -> Maybe String -> Maybe Guild
