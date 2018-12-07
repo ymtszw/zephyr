@@ -1,6 +1,6 @@
 module Data.Producer.Base exposing
     ( YieldBase, PostProcessBase, UpdateFAM(..)
-    , pure, enter, enterAndFire, yield, yieldAndFire, destroy
+    , pure, enter, enterAndFire, yield, yieldAndFire
     , ppBase
     )
 
@@ -13,7 +13,7 @@ Also there could be Hybrid of the two, utilizing both downstream event handling
 AND stateless API requests.
 
 @docs YieldBase, Reload, PostProcessBase, UpdateFAM
-@docs pure, enter, enterAndFire, yield, yieldAndFire, destroy
+@docs pure, enter, enterAndFire, yield, yieldAndFire
 @docs ppBase
 
 -}
@@ -33,7 +33,7 @@ and `cmd` corresponds to "events".
 Generated `items` are considered side-effect of state machine transitions.
 Items must be ordered **from oldest to latest**.
 
-On reload, items are most likely empty, and newState should not be Nothing (destroy).
+On reload, items are most likely empty.
 Also, regardless of persist instruction, the newState will be persisted,
 in order to apply new encoding format (if any).
 
@@ -41,7 +41,7 @@ in order to apply new encoding format (if any).
 type alias YieldBase item mat state msg =
     { items : List item
     , postProcess : PostProcessBase mat
-    , newState : Maybe state
+    , newState : state
     , cmd : Cmd msg
     }
 
@@ -71,42 +71,32 @@ Meaning, no persist, KeepFAM, no Work.
 -}
 pure : state -> YieldBase item mat state msg
 pure state =
-    YieldBase [] ppBase (Just state) Cmd.none
+    YieldBase [] ppBase state Cmd.none
 
 
 {-| Just entering a specific state of a Producer, with PostProcessBase.
 -}
 enter : PostProcessBase mat -> state -> YieldBase item mat state msg
 enter pp state =
-    YieldBase [] pp (Just state) Cmd.none
+    YieldBase [] pp state Cmd.none
 
 
 {-| Enters a specific state, and fire an event (Cmd msg).
 -}
 enterAndFire : PostProcessBase mat -> state -> Cmd msg -> YieldBase item mat state msg
 enterAndFire pp state cmd =
-    YieldBase [] pp (Just state) cmd
+    YieldBase [] pp state cmd
 
 
 {-| YieldBase items and enter a state. Always persist.
 -}
 yield : List item -> UpdateFAM mat -> Maybe Work -> state -> YieldBase item mat state msg
 yield items updateFAM work state =
-    YieldBase items (PostProcessBase True updateFAM work) (Just state) Cmd.none
+    YieldBase items (PostProcessBase True updateFAM work) state Cmd.none
 
 
 {-| YieldBase items, enter a state, and fire an event. Always persist.
 -}
 yieldAndFire : List item -> UpdateFAM mat -> Maybe Work -> state -> Cmd msg -> YieldBase item mat state msg
 yieldAndFire items updateFAM work state cmd =
-    YieldBase items (PostProcessBase True updateFAM work) (Just state) cmd
-
-
-{-| Destroys the whole state machine. Discarding/deregistering a Producer.
-
-Always persist, and destroy FilterAtomMaterial.
-
--}
-destroy : YieldBase item mat state msg
-destroy =
-    YieldBase [] (PostProcessBase True DestroyFAM Nothing) Nothing Cmd.none
+    YieldBase items (PostProcessBase True updateFAM work) state cmd

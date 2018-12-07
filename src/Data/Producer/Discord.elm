@@ -1,5 +1,5 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), User, POV, Guild, Channel, decoder, encode, encodeUser
+    ( Discord(..), User, POV, Guild, Channel, init, decoder, encode, encodeUser
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
@@ -20,7 +20,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, User, POV, Guild, Channel, decoder, encode, encodeUser
+@docs Discord, User, POV, Guild, Channel, init, decoder, encode, encodeUser
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 
 
@@ -70,7 +70,7 @@ import Worque
 
 {-| A state machine for Discord that represents authentication status.
 
-  - When a user starts filling in token form for the first time, it becomes `TokenGiven` state
+  - It starts with `TokenWritable`
   - When the above submitted, changes to `TokenReady`
       - Form is locked while authentication attempted.
   - On successful response from Current User API, it becomes `Identified` with NewSession data.
@@ -84,12 +84,12 @@ import Worque
   - When token is changed to one for another user, it stops at `Switching` state,
     requesting user confirmation, then move to `Identified`, discarding old Config.
       - TODO Better have multi-account support
-  - If empty string is submitted as token, the whole state machine is discarded
+  - If empty string is submitted as token, it goes back to `TokenWritable`.
       - TODO Implement discard confirmation
 
 -}
 type Discord
-    = TokenGiven String
+    = TokenWritable String
     | TokenReady String
     | Identified NewSession
     | Hydrated String POV
@@ -97,6 +97,11 @@ type Discord
     | Revisit POV
     | Expired String POV
     | Switching NewSession POV
+
+
+init : Discord
+init =
+    TokenWritable ""
 
 
 {-| Current user's point of view.
@@ -295,8 +300,8 @@ type alias Attachment =
 encode : Discord -> E.Value
 encode discord =
     case discord of
-        TokenGiven token ->
-            E.tagged "TokenGiven" (E.string token)
+        TokenWritable token ->
+            E.tagged "TokenWritable" (E.string token)
 
         TokenReady token ->
             E.tagged "TokenReady" (E.string token)
@@ -513,7 +518,7 @@ decoder =
     D.oneOf
         [ D.tagged "Revisit" Revisit povDecoder
         , D.tagged "TokenReady" TokenReady D.string
-        , D.tagged "TokenGiven" TokenGiven D.string
+        , D.tagged "TokenWritable" TokenWritable D.string
 
         -- Old formats
         , D.tagged "ChannelScanning" Revisit povDecoder
@@ -521,8 +526,9 @@ decoder =
             D.map Revisit (D.field "pov" povDecoder)
         , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
             D.map TokenReady (D.field "token" D.string)
-        , D.when (D.field "tag" D.string) ((==) "discordTokenGiven") <|
-            D.map TokenGiven (D.field "token" D.string)
+
+        -- Fallback
+        , D.succeed init
         ]
 
 
@@ -737,7 +743,7 @@ type alias UpdateFAM =
 reload : Discord -> Yield
 reload discord =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             pure discord
 
         TokenReady token ->
@@ -827,61 +833,54 @@ type alias PostSuccess =
     { channelId : String, posix : Posix }
 
 
-update : Msg -> Maybe Discord -> Yield
-update msg discordMaybe =
-    case ( msg, discordMaybe ) of
-        ( TokenInput str, Just discord ) ->
+update : Msg -> Discord -> Yield
+update msg discord =
+    case msg of
+        TokenInput str ->
             pure (tokenInput discord str)
 
-        ( TokenInput str, Nothing ) ->
-            pure (TokenGiven str)
-
-        ( CommitToken, Just discord ) ->
+        CommitToken ->
             commitToken discord
 
-        ( Identify user, Just discord ) ->
+        Identify user ->
             handleIdentify discord user
 
-        ( Hydrate guilds channels, Just discord ) ->
+        Hydrate guilds channels ->
             handleHydrate discord guilds channels
 
-        ( Rehydrate, Just discord ) ->
+        Rehydrate ->
             handleRehydrate discord
 
-        ( Subscribe cId, Just discord ) ->
+        Subscribe cId ->
             handleSubscribe cId discord
 
-        ( Unsubscribe cId, Just discord ) ->
+        Unsubscribe cId ->
             handleUnsubscribe cId discord
 
-        ( Fetch posix, Just discord ) ->
+        Fetch posix ->
             handleFetch discord posix
 
-        ( Fetched fetchSucc, Just discord ) ->
+        Fetched fetchSucc ->
             handleFetched discord fetchSucc
 
-        ( Post postOpts, Just discord ) ->
+        Post postOpts ->
             handlePost discord postOpts
 
-        ( Posted postSucc, Just discord ) ->
+        Posted postSucc ->
             handlePosted discord postSucc
 
-        ( ChannelAPIError cId e, Just discord ) ->
+        ChannelAPIError cId e ->
             handleChannelAPIError cId e discord
 
-        ( GenericAPIError e, Just discord ) ->
+        GenericAPIError e ->
             handleGenericAPIError discord e
-
-        ( _, Nothing ) ->
-            -- Timer tick or API response arrived after Discord token is deregistered.
-            destroy
 
 
 tokenInput : Discord -> String -> Discord
 tokenInput discord newToken =
     case discord of
-        TokenGiven _ ->
-            TokenGiven newToken
+        TokenWritable _ ->
+            TokenWritable newToken
 
         Hydrated _ pov ->
             Hydrated newToken pov
@@ -897,20 +896,20 @@ tokenInput discord newToken =
 commitToken : Discord -> Yield
 commitToken discord =
     case discord of
-        TokenGiven "" ->
-            destroy
+        TokenWritable "" ->
+            pure init
 
-        TokenGiven token ->
+        TokenWritable token ->
             enterAndFire ppBase (TokenReady token) (identify token)
 
         Hydrated "" _ ->
-            destroy
+            pure init
 
         Hydrated newToken _ ->
             enterAndFire ppBase discord (identify newToken)
 
         Expired "" _ ->
-            destroy
+            pure init
 
         Expired newToken _ ->
             enterAndFire ppBase discord (identify newToken)
@@ -1385,17 +1384,17 @@ wasFetchRequest cId req =
 handleGenericAPIError : Discord -> HttpClient.Failure -> Yield
 handleGenericAPIError discord _ =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
             pure discord
 
         TokenReady _ ->
             -- Identify failure
-            destroy
+            pure init
 
         Identified _ ->
             -- If successfully Identified, basically Hydrate should not fail. Fall back to token input.
-            destroy
+            pure init
 
         Hydrated _ pov ->
             -- New token was invalid?
@@ -1613,7 +1612,7 @@ imageQuerySize size =
 getPov : Discord -> Maybe POV
 getPov discord =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             Nothing
 
         TokenReady _ ->

@@ -23,9 +23,9 @@ import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
 
-discordConfigEl : ViewState -> Maybe Discord -> Element Msg
-discordConfigEl vs discordMaybe =
-    discordConfigBodyEl vs (Maybe.withDefault (TokenGiven "") discordMaybe)
+discordConfigEl : ViewState -> Discord -> Element Msg
+discordConfigEl vs discord =
+    discordConfigBodyEl vs discord
 
 
 discordConfigBodyEl : ViewState -> Discord -> Element Msg
@@ -53,7 +53,7 @@ tokenInputEl enabled text =
 tokenInputAllowed : Discord -> Bool
 tokenInputAllowed discord =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             True
 
         Hydrated _ _ ->
@@ -86,10 +86,10 @@ tokenSubmitButtonEl enabled text_ =
 tokenSubmitAllowed : Discord -> Bool
 tokenSubmitAllowed discord =
     case discord of
-        TokenGiven "" ->
+        TokenWritable "" ->
             False
 
-        TokenGiven _ ->
+        TokenWritable _ ->
             True
 
         Hydrated currentInput pov ->
@@ -107,7 +107,7 @@ tokenSubmitAllowed discord =
 tokenText : Discord -> String
 tokenText discord =
     case discord of
-        TokenGiven string ->
+        TokenWritable string ->
             string
 
         TokenReady string ->
@@ -150,7 +150,7 @@ smallFontSize =
 tokenSubmitButtonText : Discord -> String
 tokenSubmitButtonText discord =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             "Register"
 
         TokenReady _ ->

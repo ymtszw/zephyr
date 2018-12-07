@@ -27,44 +27,19 @@ import Worque exposing (Work)
 
 
 type alias ProducerRegistry =
-    { discord : Maybe Discord
+    { discord : Discord
     }
 
 
 registryDecoder : Decoder ProducerRegistry
 registryDecoder =
-    D.oneOf
-        [ D.map ProducerRegistry (D.maybeField "discord" Discord.decoder)
-        , D.map ProducerRegistry oldRegistryDecoder -- Migration
-        ]
-
-
-oldRegistryDecoder : Decoder (Maybe Discord)
-oldRegistryDecoder =
-    D.list oldProducerDecoder
-        |> D.andThen
-            (\producers ->
-                case producers of
-                    discord :: _ ->
-                        D.succeed (Just discord)
-
-                    _ ->
-                        D.succeed Nothing
-            )
-
-
-oldProducerDecoder : Decoder Discord
-oldProducerDecoder =
-    D.oneOf
-        [ D.tagged "Discord" identity Discord.decoder
-        , Discord.decoder
-        ]
+    D.map ProducerRegistry (D.field "discord" Discord.decoder)
 
 
 encodeRegistry : ProducerRegistry -> Storable
 encodeRegistry producerRegistry =
     Data.Storable.encode registryStoreId
-        [ ( "discord", E.maybe Discord.encode producerRegistry.discord ) ]
+        [ ( "discord", Discord.encode producerRegistry.discord ) ]
 
 
 registryStoreId : String
@@ -74,7 +49,8 @@ registryStoreId =
 
 initRegistry : ProducerRegistry
 initRegistry =
-    { discord = Nothing }
+    { discord = Discord.init
+    }
 
 
 
@@ -107,23 +83,22 @@ reloadAll producerRegistry =
 
 reloadDiscord : GrossReload -> GrossReload
 reloadDiscord ({ producerRegistry } as gr) =
-    case Maybe.map Discord.reload gr.producerRegistry.discord of
-        Just y ->
-            { gr
-                | producerRegistry = { producerRegistry | discord = y.newState }
-                , cmd = Cmd.batch [ Cmd.map DiscordMsg y.cmd, gr.cmd ]
-                , famInstructions = DiscordInstruction y.postProcess.updateFAM :: gr.famInstructions
-                , works =
-                    case y.postProcess.work of
-                        Just w ->
-                            w :: gr.works
+    let
+        y =
+            Discord.reload gr.producerRegistry.discord
+    in
+    { gr
+        | producerRegistry = { producerRegistry | discord = y.newState }
+        , cmd = Cmd.batch [ Cmd.map DiscordMsg y.cmd, gr.cmd ]
+        , famInstructions = DiscordInstruction y.postProcess.updateFAM :: gr.famInstructions
+        , works =
+            case y.postProcess.work of
+                Just w ->
+                    w :: gr.works
 
-                        Nothing ->
-                            gr.works
-            }
-
-        Nothing ->
-            gr
+                Nothing ->
+                    gr.works
+    }
 
 
 
@@ -165,7 +140,7 @@ mapYield :
     (item -> Item)
     -> (UpdateFAM mat -> UpdateInstruction)
     -> (msg -> Msg)
-    -> (Maybe state -> ProducerRegistry)
+    -> (state -> ProducerRegistry)
     -> YieldBase item mat state msg
     -> Yield
 mapYield itemTagger famTagger msgTagger stateSetter y =
