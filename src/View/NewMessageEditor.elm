@@ -31,7 +31,7 @@ newMessageEditorEl ss fam c =
     in
     column
         [ width fill
-        , height shrink
+        , alignTop
         , padding rectElementInnerPadding
         , spacing spacingUnit
         , BD.color oneDark.bd
@@ -65,7 +65,6 @@ editorSelectEl ss fam c =
     in
     Select.select
         [ width (px editorSelectWidth)
-        , height shrink
         , paddingEach { top = 0, right = 0, bottom = 0, left = rectElementInnerPadding }
         , Font.size editorFontSize
         ]

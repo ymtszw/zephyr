@@ -50,7 +50,7 @@ columnKeyEl m fam index c =
     let
         baseAttrs =
             [ width (px columnWidth)
-            , height (fill |> maximum m.env.clientHeight)
+            , height fill
             , clipY
             , BG.color oneDark.main
             , BD.width columnBorderWidth
@@ -67,6 +67,7 @@ columnKeyEl m fam index c =
             , lazy4 columnConfigFlyoutEl m.viewState.selectState fam index c
             , newMessageEditorEl m.viewState.selectState fam c
             , lazy3 itemsEl m.viewState.timezone c.id c.items
+            , fillerEl
             ]
 
 
@@ -110,6 +111,11 @@ dragIndicatorEl clientHeight grabbed =
         , visible grabbed
         ]
         none
+
+
+fillerEl : Element Msg
+fillerEl =
+    el [ width fill, height (fill |> minimum 0) ] none
 
 
 columnHeaderEl : FilterAtomMaterial -> Int -> Column.Column -> Element Msg
@@ -277,7 +283,12 @@ itemsEl tz cId items =
     else
         let
             columnAttrs =
-                [ width fill, height shrink, paddingXY rectElementInnerPadding 0, scrollbarY ]
+                [ width fill
+                , height shrink
+                , paddingXY rectElementInnerPadding 0
+                , alignTop
+                , scrollbarY
+                ]
                     ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
 
             itemsVisible =
@@ -296,7 +307,7 @@ itemsEl tz cId items =
 
 waitingForFirstItemEl : Element Msg
 waitingForFirstItemEl =
-    el [ width fill, height fill ] <|
+    el [ width fill, padding rectElementOuterPadding, alignTop ] <|
         el [ centerX, centerY, Font.color oneDark.note, Font.size helpTextSize ] <|
             text "Waiting for messages..."
 
