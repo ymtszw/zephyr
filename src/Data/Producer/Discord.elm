@@ -1,5 +1,5 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), User, POV, Guild, Channel, decoder, encode, encodeUser
+    ( Discord(..), User, POV, Guild, Channel, init, decoder, encode, encodeUser
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
@@ -20,7 +20,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 ## Types
 
-@docs Discord, User, POV, Guild, Channel, decoder, encode, encodeUser
+@docs Discord, User, POV, Guild, Channel, init, decoder, encode, encodeUser
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 
 
@@ -97,6 +97,11 @@ type Discord
     | Revisit POV
     | Expired String POV
     | Switching NewSession POV
+
+
+init : Discord
+init =
+    TokenWritable ""
 
 
 {-| Current user's point of view.
@@ -523,7 +528,7 @@ decoder =
             D.map TokenReady (D.field "token" D.string)
 
         -- Fallback
-        , D.succeed (TokenWritable "")
+        , D.succeed init
         ]
 
 
@@ -828,54 +833,47 @@ type alias PostSuccess =
     { channelId : String, posix : Posix }
 
 
-update : Msg -> Maybe Discord -> Yield
-update msg discordMaybe =
-    case ( msg, discordMaybe ) of
-        ( TokenInput str, Just discord ) ->
+update : Msg -> Discord -> Yield
+update msg discord =
+    case msg of
+        TokenInput str ->
             pure (tokenInput discord str)
 
-        ( TokenInput str, Nothing ) ->
-            pure (TokenWritable str)
-
-        ( CommitToken, Just discord ) ->
+        CommitToken ->
             commitToken discord
 
-        ( Identify user, Just discord ) ->
+        Identify user ->
             handleIdentify discord user
 
-        ( Hydrate guilds channels, Just discord ) ->
+        Hydrate guilds channels ->
             handleHydrate discord guilds channels
 
-        ( Rehydrate, Just discord ) ->
+        Rehydrate ->
             handleRehydrate discord
 
-        ( Subscribe cId, Just discord ) ->
+        Subscribe cId ->
             handleSubscribe cId discord
 
-        ( Unsubscribe cId, Just discord ) ->
+        Unsubscribe cId ->
             handleUnsubscribe cId discord
 
-        ( Fetch posix, Just discord ) ->
+        Fetch posix ->
             handleFetch discord posix
 
-        ( Fetched fetchSucc, Just discord ) ->
+        Fetched fetchSucc ->
             handleFetched discord fetchSucc
 
-        ( Post postOpts, Just discord ) ->
+        Post postOpts ->
             handlePost discord postOpts
 
-        ( Posted postSucc, Just discord ) ->
+        Posted postSucc ->
             handlePosted discord postSucc
 
-        ( ChannelAPIError cId e, Just discord ) ->
+        ChannelAPIError cId e ->
             handleChannelAPIError cId e discord
 
-        ( GenericAPIError e, Just discord ) ->
+        GenericAPIError e ->
             handleGenericAPIError discord e
-
-        ( _, Nothing ) ->
-            -- Timer tick or API response arrived after Discord token is deregistered.
-            destroy
 
 
 tokenInput : Discord -> String -> Discord
@@ -899,19 +897,19 @@ commitToken : Discord -> Yield
 commitToken discord =
     case discord of
         TokenWritable "" ->
-            destroy
+            pure init
 
         TokenWritable token ->
             enterAndFire ppBase (TokenReady token) (identify token)
 
         Hydrated "" _ ->
-            destroy
+            pure init
 
         Hydrated newToken _ ->
             enterAndFire ppBase discord (identify newToken)
 
         Expired "" _ ->
-            destroy
+            pure init
 
         Expired newToken _ ->
             enterAndFire ppBase discord (identify newToken)
@@ -1392,11 +1390,11 @@ handleGenericAPIError discord _ =
 
         TokenReady _ ->
             -- Identify failure
-            destroy
+            pure init
 
         Identified _ ->
             -- If successfully Identified, basically Hydrate should not fail. Fall back to token input.
-            destroy
+            pure init
 
         Hydrated _ pov ->
             -- New token was invalid?
