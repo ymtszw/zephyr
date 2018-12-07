@@ -33,32 +33,7 @@ type alias ProducerRegistry =
 
 registryDecoder : Decoder ProducerRegistry
 registryDecoder =
-    D.oneOf
-        [ D.map ProducerRegistry (D.maybeField "discord" Discord.decoder)
-        , D.map ProducerRegistry oldRegistryDecoder -- Migration
-        ]
-
-
-oldRegistryDecoder : Decoder (Maybe Discord)
-oldRegistryDecoder =
-    D.list oldProducerDecoder
-        |> D.andThen
-            (\producers ->
-                case producers of
-                    discord :: _ ->
-                        D.succeed (Just discord)
-
-                    _ ->
-                        D.succeed Nothing
-            )
-
-
-oldProducerDecoder : Decoder Discord
-oldProducerDecoder =
-    D.oneOf
-        [ D.tagged "Discord" identity Discord.decoder
-        , Discord.decoder
-        ]
+    D.map ProducerRegistry (D.maybeField "discord" Discord.decoder)
 
 
 encodeRegistry : ProducerRegistry -> Storable
