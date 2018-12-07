@@ -240,6 +240,9 @@ scrollMsgToEntry prefix sMsg =
         Scroll.NewItem ->
             Entry (prefix ++ ".NewItem") []
 
+        Scroll.LoadMore ->
+            Entry (prefix ++ ".LoadMore") []
+
         Scroll.AdjustReq boundingHeight ->
             Entry (prefix ++ ".AdjustReq") [ String.fromInt boundingHeight ]
 

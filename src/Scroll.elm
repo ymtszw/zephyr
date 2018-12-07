@@ -363,6 +363,8 @@ toListWithFilter check (Scroll s) =
         |> (\{ list } -> List.reverse list)
 
 
+{-| Number of recorded items. It returns cached values so works in _O(1)_.
+-}
 size : Scroll a -> Int
 size (Scroll s) =
     -- BoundedDeque.length uses cached List.length (for triggering rebalance) so works in _O(1)_
@@ -410,6 +412,7 @@ type Msg
     | BackToTop
     | Reveal
     | NewItem
+    | LoadMore
     | AdjustReq Int
     | AdjustExec Int Browser.Dom.Viewport
 
@@ -469,6 +472,11 @@ update msg (Scroll s) =
         NewItem ->
             ( Scroll s, requestAdjust s.id s.lastBoundingHeight )
 
+        LoadMore ->
+            -- LoadMore is manually requested when auto adjusting is somewhat stopped/caught up
+            -- Force adjusting and incrementing Tier
+            ( incrementTier (Scroll s), requestAdjust s.id s.lastBoundingHeight )
+
         AdjustReq boundingHeight ->
             if boundingHeight /= s.lastBoundingHeight then
                 ( Scroll s, requestAdjust s.id boundingHeight )
@@ -526,15 +534,24 @@ calculateTier (Scroll s) =
 
 calculateTierImpl : Browser.Dom.Viewport -> Scroll s -> Scroll s
 calculateTierImpl vp (Scroll s) =
-    if (vp.viewport.y + vp.viewport.height) / vp.scene.height >= s.config.ascendThreshold then
-        let
-            (Tier n) =
-                s.tier
-        in
-        Scroll { s | tier = Tier (n + 1) }
+    let
+        viewportBottom =
+            vp.viewport.y + vp.viewport.height
+    in
+    if viewportBottom / vp.scene.height >= s.config.ascendThreshold then
+        incrementTier (Scroll s)
 
     else
         Scroll s
+
+
+incrementTier : Scroll s -> Scroll s
+incrementTier (Scroll s) =
+    let
+        (Tier n) =
+            s.tier
+    in
+    Scroll { s | tier = Tier (n + 1) }
 
 
 scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
