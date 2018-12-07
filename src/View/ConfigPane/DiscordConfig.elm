@@ -74,7 +74,7 @@ mapToRoot =
 tokenSubmitButtonEl : Bool -> String -> Element Msg
 tokenSubmitButtonEl enabled text_ =
     primaryButtonEl [ alignRight ]
-        { onPress = Discord.CommitToken
+        { onPress = Discord.TokenCommit
         , width = shrink
         , theme = oneDark
         , enabled = enabled

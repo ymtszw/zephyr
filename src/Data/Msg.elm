@@ -258,8 +258,8 @@ producerMsgToEntry pMsg =
                 Discord.TokenInput input ->
                     Entry "Discord.TokenInput" [ input ]
 
-                Discord.CommitToken ->
-                    Entry "Discord.CommitToken" []
+                Discord.TokenCommit ->
+                    Entry "Discord.TokenCommit" []
 
                 Discord.Identify user ->
                     Entry "Discord.Identify" [ E.encode 2 (Discord.encodeUser user) ]

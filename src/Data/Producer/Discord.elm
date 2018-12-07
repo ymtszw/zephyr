@@ -17,26 +17,11 @@ Using Discord's RESTful APIs to retrieve Items.
 Note that it involves a little "shady" work on retrieving
 full-privilege personal token for a Discord user. Discuss in private.
 
-
-## Types
-
 @docs Discord, User, POV, Guild, Channel, init, decoder, encode, encodeUser
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
-
-
-## Message
-
 @docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
 @docs encodeMessage, messageDecoder, colorDecoder, encodeColor
-
-
-## Component APIs
-
 @docs Msg, reload, update
-
-
-## Runtime APIs
-
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
 @docs getPov, compareByFetchStatus, unavailableChannel, compareByNames
 
@@ -807,7 +792,7 @@ compareByNames a b =
 
 type Msg
     = TokenInput String
-    | CommitToken
+    | TokenCommit
     | Identify User
     | Hydrate (Dict String Guild) (Dict String Channel)
     | Rehydrate
@@ -839,8 +824,8 @@ update msg discord =
         TokenInput str ->
             pure (tokenInput discord str)
 
-        CommitToken ->
-            commitToken discord
+        TokenCommit ->
+            tokenCommit discord
 
         Identify user ->
             handleIdentify discord user
@@ -893,8 +878,8 @@ tokenInput discord newToken =
             discord
 
 
-commitToken : Discord -> Yield
-commitToken discord =
+tokenCommit : Discord -> Yield
+tokenCommit discord =
     case discord of
         TokenWritable "" ->
             pure init
@@ -916,7 +901,7 @@ commitToken discord =
 
         _ ->
             -- Otherwise token input is locked; this should not happen
-            commitToken discord
+            pure discord
 
 
 handleIdentify : Discord -> User -> Yield
