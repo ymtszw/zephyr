@@ -1,5 +1,5 @@
 module Scroll exposing
-    ( Scroll, InitOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
+    ( Scroll, InitOptions, encode, decoder, init, initWith, defaultOptions, clear
     , setLimit
     , push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
@@ -21,7 +21,7 @@ but changes its behavior based on runtime status, and achieves side-effect via c
 Its ever-changing runtime statuses are ephemeral, and not persisted.
 Its internal data structure may be persisted.
 
-@docs Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear, sceneHeight
+@docs Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear
 @docs setLimit
 @docs push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
@@ -209,22 +209,6 @@ initWith opts list =
 clear : Scroll a -> Scroll a
 clear (Scroll s) =
     Scroll { s | pending = [], buffer = BoundedDeque.empty (BoundedDeque.getMaxSize s.buffer) }
-
-
-sceneHeight : Scroll a -> Int
-sceneHeight (Scroll s) =
-    case s.viewportStatus of
-        Scrolling vp ->
-            round vp.scene.height
-
-        OffTheTop vp ->
-            round vp.scene.height
-
-        AtTop vp ->
-            round vp.scene.height
-
-        Initial ->
-            0
 
 
 
