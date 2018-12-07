@@ -5,14 +5,15 @@ import ArrayExtra as Array
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
+import Data.Producer.Slack as Slack
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
-import Json.Decode exposing (decodeString, decodeValue)
-import Json.Encode exposing (encode)
+import Json.Decode as D exposing (Decoder, decodeString, decodeValue)
+import Json.Encode exposing (Value, encode)
 import ListExtra
 import Parser
 import SelectArray
@@ -35,6 +36,7 @@ suite =
         , filterSuite
         , fetchStatusSuite
         , discordSuite
+        , slackSuite
         ]
 
 
@@ -620,3 +622,116 @@ testColorSerDe colorNum expectedHex =
                     , Result.map (Data.Producer.Discord.encodeColor >> encode 0 >> toInt)
                         >> Expect.equal (Ok (Just colorNum))
                     ]
+
+
+
+-- Data.Producer.Slack
+
+
+slackSuite : Test
+slackSuite =
+    describe "Data.Producer.Slack"
+        [ testCodec "should decode/encode User"
+            slackUserInfoJson
+            (D.field "user" Slack.userDecoder)
+            Slack.encodeUser
+            Slack.userDecoder
+        , testCodec "should decode/encode Team"
+            slackTeamInfoJson
+            (D.field "team" Slack.teamDecoder)
+            Slack.encodeTeam
+            Slack.teamDecoder
+        ]
+
+
+testCodec : String -> String -> Decoder a -> (a -> Value) -> Decoder a -> Test
+testCodec desc initial decA enc decB =
+    test desc <|
+        \_ ->
+            initial
+                |> decodeString decA
+                |> Result.map (enc >> encode 0)
+                |> Result.andThen (decodeString decB)
+                |> Expect.ok
+
+
+slackUserInfoJson : String
+slackUserInfoJson =
+    """
+{
+  "user": {
+    "has_2fa": false,
+    "updated": 1530495226,
+    "is_app_user": false,
+    "tz_label": "日本標準時",
+    "tz": "Asia/Tokyo",
+    "real_name": "Yu Matsuzawa",
+    "color": "9f69e7",
+    "deleted": false,
+    "name": "yu.matsuzawa",
+    "team_id": "T0950TCP9",
+    "id": "U0950TCSK",
+    "tz_offset": 32400,
+    "profile": {
+      "is_custom_image": true,
+      "team": "T0950TCP9",
+      "status_text_canonical": "",
+      "image_1024": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_512.jpg",
+      "image_512": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_512.jpg",
+      "image_192": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_192.jpg",
+      "image_72": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_72.jpg",
+      "image_48": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_48.jpg",
+      "image_32": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_32.jpg",
+      "image_24": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_24.jpg",
+      "fields": null,
+      "display_name_normalized": "yu.matsuzawa",
+      "display_name": "yu.matsuzawa",
+      "real_name_normalized": "Yu Matsuzawa",
+      "real_name": "Yu Matsuzawa",
+      "skype": "",
+      "phone": "08051448946",
+      "title": "",
+      "status_text": "",
+      "status_emoji": "",
+      "status_expiration": 0,
+      "avatar_hash": "6125e38289b3",
+      "image_original": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_original.jpg",
+      "email": "ymtszw@gmail.com",
+      "first_name": "Yu",
+      "last_name": "Matsuzawa"
+    },
+    "is_admin": true,
+    "is_owner": true,
+    "is_primary_owner": true,
+    "is_restricted": false,
+    "is_ultra_restricted": false,
+    "is_bot": false
+  },
+  "ok": true
+}
+    """
+
+
+slackTeamInfoJson : String
+slackTeamInfoJson =
+    """
+{
+  "team": {
+    "icon": {
+      "image_default": true,
+      "image_230": "https://a.slack-edge.com/bfaba/img/avatars-teams/ava_0020-230.png",
+      "image_132": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-132.png",
+      "image_102": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-102.png",
+      "image_88": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-88.png",
+      "image_68": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-68.png",
+      "image_44": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-44.png",
+      "image_34": "https://a.slack-edge.com/0180/img/avatars-teams/ava_0020-34.png"
+    },
+    "email_domain": "",
+    "domain": "norafarm",
+    "name": "norafarm",
+    "id": "T0950TCP9"
+  },
+  "ok": true
+}
+    """
