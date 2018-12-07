@@ -101,6 +101,17 @@ dragAttributes clientHeight columnSwapMaybe index c =
             [ inFront (lazy2 dragIndicatorEl clientHeight False) ]
 
 
+dragIndicatorEl : Int -> Bool -> Element Msg
+dragIndicatorEl clientHeight grabbed =
+    el
+        [ width fill
+        , height (px clientHeight)
+        , BD.innerGlow oneDark.prim 10
+        , visible grabbed
+        ]
+        none
+
+
 columnHeaderEl : FilterAtomMaterial -> Int -> Column.Column -> Element Msg
 columnHeaderEl fam index c =
     row
@@ -268,20 +279,31 @@ itemsEl tz cId items =
             columnAttrs =
                 [ width fill, height shrink, paddingXY rectElementInnerPadding 0, scrollbarY ]
                     ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
+
+            itemsVisible =
+                Scroll.toList items
+
+            hasMore =
+                List.length itemsVisible < Scroll.size items
         in
         -- Do note that items are sorted from latest to oldest
-        items
-            |> Scroll.toList
+        itemsVisible
             |> ListExtra.groupWhile shouldGroup
             |> List.map (columnItemKeyEl tz)
+            |> (\itemEls -> itemEls ++ [ loadMoreKeyEl cId hasMore ])
             |> Element.Keyed.column columnAttrs
 
 
 waitingForFirstItemEl : Element Msg
 waitingForFirstItemEl =
-    el [ width fill, height fill, paddingXY 5 0 ] <|
-        el [ centerX, centerY, Font.color oneDark.note, Font.size (scale12 2) ] <|
+    el [ width fill, height fill ] <|
+        el [ centerX, centerY, Font.color oneDark.note, Font.size helpTextSize ] <|
             text "Waiting for messages..."
+
+
+helpTextSize : Int
+helpTextSize =
+    scale12 2
 
 
 shouldGroup : ColumnItem -> ColumnItem -> Bool
@@ -306,12 +328,27 @@ groupingIntervalMillis =
     60000
 
 
-dragIndicatorEl : Int -> Bool -> Element Msg
-dragIndicatorEl clientHeight grabbed =
-    el
-        [ width fill
-        , height (px clientHeight)
-        , BD.innerGlow oneDark.prim 10
-        , visible grabbed
-        ]
-        none
+loadMoreKeyEl : String -> Bool -> ( String, Element Msg )
+loadMoreKeyEl cId hasMore =
+    -- This button is rarely visible due to auto adjusting.
+    -- But sometimes appears around window resizing, rapid scrolling, or reaching bottom
+    Tuple.pair "loadMoreOrBottomToken" <|
+        el [ width fill, height (shrink |> minimum columnItemMinimumHeight), padding rectElementOuterPadding ] <|
+            if hasMore then
+                octiconEl
+                    [ centerX
+                    , centerY
+                    , pointer
+                    , onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.LoadMore))
+                    ]
+                    { size = helpTextSize + rectElementOuterPadding * 2
+                    , color = oneDark.note
+                    , shape = Octicons.commentDiscussion
+                    }
+
+            else
+                octiconEl [ centerX, centerY ]
+                    { size = helpTextSize + rectElementOuterPadding * 2
+                    , color = oneDark.note
+                    , shape = Octicons.thumbsup
+                    }
