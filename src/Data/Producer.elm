@@ -14,6 +14,7 @@ import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
 import Data.Item exposing (Item(..))
 import Data.Producer.Base exposing (PostProcessBase, UpdateFAM(..), YieldBase)
 import Data.Producer.Discord as Discord exposing (Discord)
+import Data.Producer.Slack as Slack exposing (SlackRegistry)
 import Data.Storable exposing (Storable)
 import Json.Decode as D exposing (Decoder, Value)
 import Json.DecodeExtra as D
@@ -28,18 +29,16 @@ import Worque exposing (Work)
 
 type alias ProducerRegistry =
     { discord : Discord
+    , slack : SlackRegistry
     }
-
-
-registryDecoder : Decoder ProducerRegistry
-registryDecoder =
-    D.map ProducerRegistry (D.field "discord" Discord.decoder)
 
 
 encodeRegistry : ProducerRegistry -> Storable
 encodeRegistry producerRegistry =
     Data.Storable.encode registryStoreId
-        [ ( "discord", Discord.encode producerRegistry.discord ) ]
+        [ ( "discord", Discord.encode producerRegistry.discord )
+        , ( "slack", Slack.encodeRegistry producerRegistry.slack )
+        ]
 
 
 registryStoreId : String
@@ -47,9 +46,18 @@ registryStoreId =
     "producerRegistry"
 
 
+registryDecoder : Decoder ProducerRegistry
+registryDecoder =
+    D.map2 ProducerRegistry
+        (D.field "discord" Discord.decoder)
+        -- Migration; this is not optional
+        (D.optionField "slack" Slack.registryDecoder Slack.initRegistry)
+
+
 initRegistry : ProducerRegistry
 initRegistry =
     { discord = Discord.init
+    , slack = Slack.initRegistry
     }
 
 
@@ -77,27 +85,39 @@ On reload, items are ignored and states are always persisted.
 -}
 reloadAll : ProducerRegistry -> GrossReload
 reloadAll producerRegistry =
-    GrossReload producerRegistry Cmd.none [] []
-        |> reloadDiscord
+    { producerRegistry = producerRegistry
+    , cmd = Cmd.none
+    , famInstructions = []
+    , works = []
+    }
+        |> reloadImpl DiscordInstruction
+            DiscordMsg
+            (\d pr -> { pr | discord = d })
+            (.discord >> Discord.reload)
 
 
-reloadDiscord : GrossReload -> GrossReload
-reloadDiscord ({ producerRegistry } as gr) =
+reloadImpl :
+    (UpdateFAM mat -> UpdateInstruction)
+    -> (msg -> Msg)
+    -> (state -> ProducerRegistry -> ProducerRegistry)
+    -> (ProducerRegistry -> YieldBase item mat state msg)
+    -> GrossReload
+    -> GrossReload
+reloadImpl famTagger msgTagger registryUpdater reloader gr =
     let
         y =
-            Discord.reload gr.producerRegistry.discord
+            reloader gr.producerRegistry
     in
-    { gr
-        | producerRegistry = { producerRegistry | discord = y.newState }
-        , cmd = Cmd.batch [ Cmd.map DiscordMsg y.cmd, gr.cmd ]
-        , famInstructions = DiscordInstruction y.postProcess.updateFAM :: gr.famInstructions
-        , works =
-            case y.postProcess.work of
-                Just w ->
-                    w :: gr.works
+    { producerRegistry = registryUpdater y.newState gr.producerRegistry
+    , cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
+    , famInstructions = famTagger y.postProcess.updateFAM :: gr.famInstructions
+    , works =
+        case y.postProcess.work of
+            Just w ->
+                w :: gr.works
 
-                Nothing ->
-                    gr.works
+            Nothing ->
+                gr.works
     }
 
 
