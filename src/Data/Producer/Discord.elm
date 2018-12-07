@@ -70,7 +70,7 @@ import Worque
 
 {-| A state machine for Discord that represents authentication status.
 
-  - When a user starts filling in token form for the first time, it becomes `TokenGiven` state
+  - It starts with `TokenWritable`
   - When the above submitted, changes to `TokenReady`
       - Form is locked while authentication attempted.
   - On successful response from Current User API, it becomes `Identified` with NewSession data.
@@ -84,12 +84,12 @@ import Worque
   - When token is changed to one for another user, it stops at `Switching` state,
     requesting user confirmation, then move to `Identified`, discarding old Config.
       - TODO Better have multi-account support
-  - If empty string is submitted as token, the whole state machine is discarded
+  - If empty string is submitted as token, it goes back to `TokenWritable`.
       - TODO Implement discard confirmation
 
 -}
 type Discord
-    = TokenGiven String
+    = TokenWritable String
     | TokenReady String
     | Identified NewSession
     | Hydrated String POV
@@ -295,8 +295,8 @@ type alias Attachment =
 encode : Discord -> E.Value
 encode discord =
     case discord of
-        TokenGiven token ->
-            E.tagged "TokenGiven" (E.string token)
+        TokenWritable token ->
+            E.tagged "TokenWritable" (E.string token)
 
         TokenReady token ->
             E.tagged "TokenReady" (E.string token)
@@ -513,7 +513,7 @@ decoder =
     D.oneOf
         [ D.tagged "Revisit" Revisit povDecoder
         , D.tagged "TokenReady" TokenReady D.string
-        , D.tagged "TokenGiven" TokenGiven D.string
+        , D.tagged "TokenWritable" TokenWritable D.string
 
         -- Old formats
         , D.tagged "ChannelScanning" Revisit povDecoder
@@ -521,8 +521,9 @@ decoder =
             D.map Revisit (D.field "pov" povDecoder)
         , D.when (D.field "tag" D.string) ((==) "discordTokenReady") <|
             D.map TokenReady (D.field "token" D.string)
-        , D.when (D.field "tag" D.string) ((==) "discordTokenGiven") <|
-            D.map TokenGiven (D.field "token" D.string)
+
+        -- Fallback
+        , D.succeed (TokenWritable "")
         ]
 
 
@@ -737,7 +738,7 @@ type alias UpdateFAM =
 reload : Discord -> Yield
 reload discord =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             pure discord
 
         TokenReady token ->
@@ -834,7 +835,7 @@ update msg discordMaybe =
             pure (tokenInput discord str)
 
         ( TokenInput str, Nothing ) ->
-            pure (TokenGiven str)
+            pure (TokenWritable str)
 
         ( CommitToken, Just discord ) ->
             commitToken discord
@@ -880,8 +881,8 @@ update msg discordMaybe =
 tokenInput : Discord -> String -> Discord
 tokenInput discord newToken =
     case discord of
-        TokenGiven _ ->
-            TokenGiven newToken
+        TokenWritable _ ->
+            TokenWritable newToken
 
         Hydrated _ pov ->
             Hydrated newToken pov
@@ -897,10 +898,10 @@ tokenInput discord newToken =
 commitToken : Discord -> Yield
 commitToken discord =
     case discord of
-        TokenGiven "" ->
+        TokenWritable "" ->
             destroy
 
-        TokenGiven token ->
+        TokenWritable token ->
             enterAndFire ppBase (TokenReady token) (identify token)
 
         Hydrated "" _ ->
@@ -1385,7 +1386,7 @@ wasFetchRequest cId req =
 handleGenericAPIError : Discord -> HttpClient.Failure -> Yield
 handleGenericAPIError discord _ =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             -- Late arrival of API response started in already discarded Discord state? Ignore.
             pure discord
 
@@ -1613,7 +1614,7 @@ imageQuerySize size =
 getPov : Discord -> Maybe POV
 getPov discord =
     case discord of
-        TokenGiven _ ->
+        TokenWritable _ ->
             Nothing
 
         TokenReady _ ->
