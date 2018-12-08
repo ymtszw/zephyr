@@ -26,8 +26,8 @@ import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen
 import IndexedDb exposing (..)
 import Logger
@@ -240,7 +240,7 @@ update msg m_ =
             applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId cMsg m.columnStore
 
         ProducerCtrl pctrl ->
-            applyProducerYield m <| Producer.update pctrl m.producerRegistry
+            applyProducerYield m <| ProducerRegistry.update pctrl m.producerRegistry
 
         Tick posix ->
             onTick posix m
@@ -319,7 +319,7 @@ onTick posix m_ =
             pure { m | worque = Worque.push (BrokerScan (n - 1)) m.worque }
 
         Just DiscordFetch ->
-            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
+            ProducerRegistry.update (ProducerRegistry.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
                 |> applyProducerYield m
 
         Just DropOldState ->
@@ -419,7 +419,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
     finalize <|
         case pp.producerMsg of
             Just pMsg ->
-                applyProducerYield m_ <| Producer.update pMsg m_.producerRegistry
+                applyProducerYield m_ <| ProducerRegistry.update pMsg m_.producerRegistry
 
             Nothing ->
                 ( m_, Cmd.none, changeSet )
@@ -450,7 +450,7 @@ reloadProducers : Model -> ( Model, Cmd Msg, ChangeSet )
 reloadProducers m =
     let
         ( producerRegistry, gr ) =
-            Producer.reloadAll m.producerRegistry
+            ProducerRegistry.reloadAll m.producerRegistry
 
         ( columnStore, _ ) =
             ColumnStore.updateFAM gr.famInstructions m.columnStore
@@ -465,7 +465,7 @@ reloadProducers m =
     )
 
 
-applyProducerYield : Model -> ( ProducerRegistry, Producer.Yield ) -> ( Model, Cmd Msg, ChangeSet )
+applyProducerYield : Model -> ( ProducerRegistry, ProducerRegistry.Yield ) -> ( Model, Cmd Msg, ChangeSet )
 applyProducerYield m_ ( producerRegistry, y ) =
     let
         ( columnStore, persistColumnStore ) =

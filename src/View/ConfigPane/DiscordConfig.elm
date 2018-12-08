@@ -4,9 +4,9 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
-import Data.Producer as Producer
 import Data.Producer.Discord as Discord exposing (Channel, Discord(..), POV, User)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
+import Data.ProducerRegistry as ProducerRegistry
 import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as BG
@@ -68,7 +68,7 @@ tokenInputAllowed discord =
 
 mapToRoot : Element Discord.Msg -> Element Msg
 mapToRoot =
-    map (Producer.DiscordMsg >> ProducerCtrl)
+    map (ProducerRegistry.DiscordMsg >> ProducerCtrl)
 
 
 tokenSubmitButtonEl : Bool -> String -> Element Msg
@@ -276,7 +276,7 @@ rehydrateButtonEl rehydrating pov =
                 , shape = Octicons.sync
                 }
         }
-        |> map (Producer.DiscordMsg >> ProducerCtrl)
+        |> map (ProducerRegistry.DiscordMsg >> ProducerCtrl)
 
 
 rehydrateButtonSize : Int
@@ -396,7 +396,7 @@ subscribeRowKeyEl selectState notSubbed =
         { state = selectState
         , id = channelSelectId
         , theme = oneDark
-        , onSelect = ProducerCtrl << Producer.DiscordMsg << Discord.Subscribe << .id
+        , onSelect = ProducerCtrl << ProducerRegistry.DiscordMsg << Discord.Subscribe << .id
         , selectedOption = Nothing
         , options = List.map (\c -> ( c.id, c )) notSubbed
         , optionEl = \c -> discordChannelEl [] { size = channelTableFontSize, channel = c }

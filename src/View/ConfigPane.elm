@@ -9,8 +9,8 @@ import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.ProducerRegistry exposing (ProducerRegistry)
 import Deque
 import Element exposing (..)
 import Element.Background as BG

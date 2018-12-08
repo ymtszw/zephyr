@@ -9,9 +9,9 @@ import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
+import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import File
@@ -53,7 +53,7 @@ type Msg
     | LoadErr D.Error
     | ToggleConfig Bool
     | ColumnCtrl String Column.Msg
-    | ProducerCtrl Producer.Msg
+    | ProducerCtrl ProducerRegistry.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
     | ZephyrMode Bool
@@ -251,10 +251,10 @@ scrollMsgToEntry prefix sMsg =
             Entry (prefix ++ ".AdjustExec") [ String.fromInt boundingHeight, viewportToString vp ]
 
 
-producerMsgToEntry : Producer.Msg -> Entry
+producerMsgToEntry : ProducerRegistry.Msg -> Entry
 producerMsgToEntry pMsg =
     case pMsg of
-        Producer.DiscordMsg msgDiscord ->
+        ProducerRegistry.DiscordMsg msgDiscord ->
             case msgDiscord of
                 Discord.TokenInput input ->
                     Entry "Discord.TokenInput" [ input ]
@@ -308,7 +308,7 @@ producerMsgToEntry pMsg =
                         , Url.toString req.url
                         ]
 
-        Producer.SlackMsg sMsg ->
+        ProducerRegistry.SlackMsg sMsg ->
             case sMsg of
                 Slack.UTokenInput t ->
                     Entry "Slack.UTokenInput" [ t ]

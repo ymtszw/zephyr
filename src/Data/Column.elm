@@ -22,8 +22,8 @@ import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
-import Data.Producer as Producer
 import Data.Producer.Discord as Discord
+import Data.ProducerRegistry as ProducerRegistry
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import File exposing (File)
 import File.Select
@@ -326,7 +326,7 @@ type alias PostProcess =
     , persist : Bool
     , catchUpId : Maybe String
     , position : Position
-    , producerMsg : Maybe Producer.Msg
+    , producerMsg : Maybe ProducerRegistry.Msg
     , heartstopper : Bool
     }
 
@@ -540,7 +540,7 @@ editorSubmit c =
             else
                 let
                     postMsg =
-                        Producer.DiscordMsg <|
+                        ProducerRegistry.DiscordMsg <|
                             Discord.Post
                                 { channelId = channelId
                                 , message = Just buffer

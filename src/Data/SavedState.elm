@@ -7,7 +7,7 @@ import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
-import Data.Producer as Producer exposing (ProducerRegistry)
+import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -34,5 +34,5 @@ v3StateDecoder clientHeight =
     D.map4 SavedState
         (D.field "columnStore" (ColumnStore.decoder clientHeight |> D.map Tuple.first))
         (D.maybeField "itemBroker" (Broker.decoder Item.decoder) |> D.map (Maybe.withDefault ItemBroker.init))
-        (D.field "producerRegistry" Producer.registryDecoder)
+        (D.field "producerRegistry" ProducerRegistry.decoder)
         (D.field "idGen" UniqueIdGen.decoder)
