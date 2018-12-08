@@ -65,6 +65,7 @@ defaultFilters =
     , MsgFilter False "NoOp"
     , MsgFilter False "Logger.FilterInput"
     , MsgFilter False "Discord.TokenInput"
+    , MsgFilter False "Slack.UTokenInput"
     , MsgFilter False "Column.DeleteGateInput"
     , MsgFilter False "Column.EditorInput"
     ]
