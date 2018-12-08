@@ -2,7 +2,7 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder
-    , Msg(..), update
+    , Msg(..), RpcFailure(..), update
     , defaultIconUrl
     )
 
@@ -11,7 +11,8 @@ module Data.Producer.Slack exposing
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder
-@docs Msg, update
+@docs Msg, RpcFailure, update
+
 @docs defaultIconUrl
 
 -}
@@ -19,10 +20,12 @@ module Data.Producer.Slack exposing
 import Data.Filter exposing (FilterAtom)
 import Data.Producer.Base as Producer exposing (..)
 import Dict exposing (Dict)
+import HttpClient exposing (bearer)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import Task exposing (Task)
 import Url exposing (Url)
 
 
@@ -297,8 +300,10 @@ type alias UpdateFAM =
 
 
 type Msg
-    = UTokenInput String
+    = -- Prefix "U" means Msg for Unidentified token
+      UTokenInput String
     | UTokenCommit
+    | UAPIFailure RpcFailure
     | Identify User Team
 
 
@@ -306,13 +311,151 @@ update : Msg -> SlackRegistry -> Yield
 update msg sr =
     case msg of
         UTokenInput t ->
-            pure sr
+            pure { sr | unidentified = uTokenInput t sr.unidentified }
 
         UTokenCommit ->
-            pure sr
+            uTokenCommit sr
+
+        UAPIFailure f ->
+            uAPIFailure f sr
 
         Identify user team ->
+            -- TODO
             pure sr
+
+
+uTokenInput : String -> SlackUnidentified -> SlackUnidentified
+uTokenInput t su =
+    case su of
+        TokenWritable _ ->
+            TokenWritable t
+
+        TokenIdentifying _ ->
+            -- Cannot overwritten
+            su
+
+
+uTokenCommit : SlackRegistry -> Yield
+uTokenCommit sr =
+    case sr.unidentified of
+        TokenWritable "" ->
+            pure sr
+
+        TokenWritable token ->
+            enterAndFire ppBase
+                { sr | unidentified = TokenIdentifying token }
+                (identify token)
+
+        TokenIdentifying _ ->
+            pure sr
+
+
+uAPIFailure : RpcFailure -> SlackRegistry -> Yield
+uAPIFailure f sr =
+    case sr.unidentified of
+        TokenWritable _ ->
+            pure sr
+
+        TokenIdentifying t ->
+            -- Identify failure; back to input
+            pure { sr | unidentified = TokenWritable t }
+
+
+
+-- REST API CLIENTS
+
+
+apiPath : String -> Maybe String -> Url
+apiPath path queryMaybe =
+    { protocol = Url.Https
+    , host = "slack.com"
+    , port_ = Nothing
+    , path = "/api" ++ path
+    , fragment = Nothing
+    , query = queryMaybe
+    }
+
+
+type RpcFailure
+    = HttpFailure HttpClient.Failure
+    | RpcError String
+
+
+rpcGetTask : Url -> HttpClient.Auth -> Decoder a -> Task RpcFailure a
+rpcGetTask url auth_ dec =
+    HttpClient.getWithAuth url auth_ (rpcDecoder dec)
+        |> Task.mapError HttpFailure
+        |> Task.andThen extractRpcError
+
+
+rpcDecoder : Decoder a -> Decoder (Result RpcFailure a)
+rpcDecoder dec =
+    D.do (D.field "ok" D.bool) <|
+        \isOk ->
+            if isOk then
+                D.map Ok dec
+
+            else
+                D.map (Err << RpcError) (D.field "error" D.string)
+
+
+extractRpcError : Result RpcFailure a -> Task RpcFailure a
+extractRpcError res =
+    case res of
+        Ok a ->
+            Task.succeed a
+
+        Err rpcError ->
+            Task.fail rpcError
+
+
+rpcTry : (a -> Msg) -> (RpcFailure -> Msg) -> Task RpcFailure a -> Cmd Msg
+rpcTry succ fail task =
+    let
+        toMsg res =
+            case res of
+                Ok a ->
+                    succ a
+
+                Err e ->
+                    fail e
+    in
+    Task.attempt toMsg task
+
+
+identify : String -> Cmd Msg
+identify token =
+    let
+        identifyTask userId =
+            Task.map2 Identify
+                (userInfoTask token userId)
+                (teamInfoTask token)
+    in
+    authTestTask token
+        |> Task.andThen identifyTask
+        |> rpcTry identity UAPIFailure
+
+
+authTestTask : String -> Task RpcFailure UserId
+authTestTask token =
+    rpcGetTask (apiPath "/auth.test" Nothing) (bearer token) <|
+        D.field "user_id" userIdDecoder
+
+
+userInfoTask : String -> UserId -> Task RpcFailure User
+userInfoTask token (UserId user) =
+    let
+        query =
+            Just <| "user=" ++ user
+    in
+    rpcGetTask (apiPath "/users.info" query) (bearer token) <|
+        D.field "user" userDecoder
+
+
+teamInfoTask : String -> Task RpcFailure Team
+teamInfoTask token =
+    rpcGetTask (apiPath "/team.info" Nothing) (bearer token) <|
+        D.field "team" teamDecoder
 
 
 

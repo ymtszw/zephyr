@@ -316,6 +316,18 @@ producerMsgToEntry pMsg =
                 Slack.UTokenCommit ->
                     Entry "Slack.UTokenCommit" []
 
+                Slack.UAPIFailure f ->
+                    Entry "Slack.UAPIFailure" <|
+                        case f of
+                            Slack.HttpFailure ( e, req ) ->
+                                [ HttpClient.errorToString e
+                                , req.method
+                                , Url.toString req.url
+                                ]
+
+                            Slack.RpcError e ->
+                                [ e ]
+
                 Slack.Identify user team ->
                     Entry "Slack.Identify"
                         [ E.encode 2 (Slack.encodeUser user)
