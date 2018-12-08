@@ -1,168 +1,58 @@
-module Data.Producer exposing
-    ( ProducerRegistry, initRegistry, encodeRegistry, registryDecoder, registryStoreId
-    , GrossReload, reloadAll, Msg(..), Yield, update
-    )
+module Data.Producer exposing (Yield, UpdateFAM(..), yield, pure)
 
-{-| Types and functions representing data produecr in Zephyr.
+{-| Defines types and helpers used by Producers.
 
-@docs ProducerRegistry, initRegistry, encodeRegistry, registryDecoder, registryStoreId
-@docs GrossReload, reloadAll, Msg, Yield, update
+Currently Producers work by polling their API endpoints.
+
+Realtime Producers could be implemented based on Websocket event handling.
+Also there could be Hybrid of the two, utilizing both downstream event handling
+AND stateless API requests.
+
+@docs Yield, UpdateFAM, yield, pure
 
 -}
 
-import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
-import Data.Item exposing (Item(..))
-import Data.Producer.Base as Base exposing (UpdateFAM(..))
-import Data.Producer.Discord as Discord exposing (Discord)
-import Data.Producer.Slack as Slack exposing (SlackRegistry)
-import Data.Storable exposing (Storable)
-import Json.Decode as D exposing (Decoder, Value)
-import Json.DecodeExtra as D
-import Json.Encode as E
-import Json.EncodeExtra as E
 import Worque exposing (Work)
 
 
+{-| Return type of side-effects from Producer's update/reload function.
 
--- MODEL
+Returned in pair with new Producer states.
 
+In state machine terminology, `cmd` corresponds to "events".
 
-type alias ProducerRegistry =
-    { discord : Discord
-    , slack : SlackRegistry
-    }
+Generated `items` are considered side-effect of state machine transitions.
+Items must be ordered **from oldest to latest**.
 
-
-encodeRegistry : ProducerRegistry -> Storable
-encodeRegistry producerRegistry =
-    Data.Storable.encode registryStoreId
-        [ ( "discord", Discord.encode producerRegistry.discord )
-        , ( "slack", Slack.encodeRegistry producerRegistry.slack )
-        ]
-
-
-registryStoreId : String
-registryStoreId =
-    "producerRegistry"
-
-
-registryDecoder : Decoder ProducerRegistry
-registryDecoder =
-    D.map2 ProducerRegistry
-        (D.field "discord" Discord.decoder)
-        -- Migration; this is not optional
-        (D.optionField "slack" Slack.registryDecoder Slack.initRegistry)
-
-
-initRegistry : ProducerRegistry
-initRegistry =
-    { discord = Discord.init
-    , slack = Slack.initRegistry
-    }
-
-
-
--- RELOAD
-
-
-type Msg
-    = DiscordMsg Discord.Msg
-    | SlackMsg Slack.Msg
-
-
-type alias GrossReload =
-    { cmd : Cmd Msg
-    , famInstructions : List UpdateInstruction
-    , works : List Work
-    }
-
-
-{-| Reload all registered Producers on application startup.
-
-Reload function uses same Yield type as return type, but it is just for convenience.
-On reload, items are ignored and states are always persisted.
+On reload, items are most likely empty.
+Also, regardless of persist instruction, the newState will be persisted,
+in order to apply new encoding format (if any).
 
 -}
-reloadAll : ProducerRegistry -> ( ProducerRegistry, GrossReload )
-reloadAll producerRegistry =
-    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], works = [] } )
-        |> reloadImpl DiscordInstruction
-            DiscordMsg
-            (\d pr -> { pr | discord = d })
-            (Discord.reload producerRegistry.discord)
-
-
-reloadImpl :
-    (UpdateFAM mat -> UpdateInstruction)
-    -> (msg -> Msg)
-    -> (state -> ProducerRegistry -> ProducerRegistry)
-    -> ( state, Base.Yield item mat msg )
-    -> ( ProducerRegistry, GrossReload )
-    -> ( ProducerRegistry, GrossReload )
-reloadImpl famTagger msgTagger stateUpdater ( nesState, y ) ( producerRegistry, gr ) =
-    ( stateUpdater nesState producerRegistry
-    , { cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
-      , famInstructions = famTagger y.updateFAM :: gr.famInstructions
-      , works =
-            case y.work of
-                Just w ->
-                    w :: gr.works
-
-                Nothing ->
-                    gr.works
-      }
-    )
-
-
-
--- UPDATE
-
-
-type alias Yield =
-    { cmd : Cmd Msg
+type alias Yield item mat msg =
+    { cmd : Cmd msg
     , persist : Bool
-    , items : List Item
-    , famInstruction : UpdateInstruction
+    , items : List item
+    , updateFAM : UpdateFAM mat
     , work : Maybe Work
     }
 
 
-{-| Update ProducerRegistry in a manner of component pattern.
+type UpdateFAM mat
+    = SetFAM mat
+    | KeepFAM
+    | DestroyFAM
 
-Returns same data structure as `receive`.
 
+{-| Default Yield. No side-effect at all.
 -}
-update : Msg -> ProducerRegistry -> ( ProducerRegistry, Yield )
-update msg producerRegistry =
-    case msg of
-        DiscordMsg dMsg ->
-            Discord.update dMsg producerRegistry.discord
-                |> mapYield DiscordItem
-                    DiscordInstruction
-                    DiscordMsg
-                    (\newState -> { producerRegistry | discord = newState })
-
-        SlackMsg sMsg ->
-            Slack.update sMsg producerRegistry.slack
-                |> mapYield SlackItem
-                    SlackInstruction
-                    SlackMsg
-                    (\newState -> { producerRegistry | slack = newState })
+yield : Yield item mat msg
+yield =
+    { cmd = Cmd.none, persist = False, items = [], updateFAM = KeepFAM, work = Nothing }
 
 
-mapYield :
-    (item -> Item)
-    -> (UpdateFAM mat -> UpdateInstruction)
-    -> (msg -> Msg)
-    -> (state -> ProducerRegistry)
-    -> ( state, Base.Yield item mat msg )
-    -> ( ProducerRegistry, Yield )
-mapYield itemTagger famTagger msgTagger stateSetter ( newState, y ) =
-    ( stateSetter newState
-    , { cmd = Cmd.map msgTagger y.cmd
-      , persist = y.persist
-      , items = List.map itemTagger y.items
-      , famInstruction = famTagger y.updateFAM
-      , work = y.work
-      }
-    )
+{-| Just entering a specific state of a Producer, without any sort of side-effect.
+-}
+pure : state -> ( state, Yield item mat msg )
+pure state =
+    ( state, yield )
