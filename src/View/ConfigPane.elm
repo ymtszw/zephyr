@@ -2,7 +2,7 @@ module View.ConfigPane exposing (configPaneEl)
 
 import Array
 import Broker
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
@@ -68,13 +68,13 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper prefTitleEl <|
+        [ configSectionWrapper oneDark prefTitleEl <|
             prefEl m.pref m.columnStore
-        , configSectionWrapper slackConfigTitleEl <|
+        , configSectionWrapper aubergine slackConfigTitleEl <|
             slackConfigEl m.viewState m.producerRegistry.slack
-        , configSectionWrapper discordConfigTitleEl <|
+        , configSectionWrapper oneDark discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
-        , configSectionWrapper statusTitleEl <| statusEl m
+        , configSectionWrapper oneDark statusTitleEl <| statusEl m
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -90,13 +90,13 @@ sectionSpacingY =
     20
 
 
-configSectionWrapper : Element Msg -> Element Msg -> Element Msg
-configSectionWrapper titleEl element =
+configSectionWrapper : ColorTheme -> Element Msg -> Element Msg -> Element Msg
+configSectionWrapper theme titleEl element =
     column
         [ width fill
         , padding rectElementOuterPadding
         , spacing spacingUnit
-        , BG.color oneDark.main
+        , BG.color theme.main
         , BD.rounded rectElementRound
         , Font.size sectionBaseFontSize
         ]
