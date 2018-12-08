@@ -14,7 +14,7 @@ at application load, without waiting for loading ProducerRegistry.
 -}
 
 import Data.Filter as Filter exposing (FilterAtom)
-import Data.Producer.Base exposing (UpdateFAM(..))
+import Data.Producer exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
 import Json.Decode as D exposing (Decoder)

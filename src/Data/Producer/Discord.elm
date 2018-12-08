@@ -28,7 +28,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 -}
 
 import Data.Filter exposing (FilterAtom(..))
-import Data.Producer.Base as Producer exposing (..)
+import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), Msg(..))
 import Dict exposing (Dict)
 import Element

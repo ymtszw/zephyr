@@ -18,7 +18,7 @@ module Data.Producer.Slack exposing
 -}
 
 import Data.Filter exposing (FilterAtom)
-import Data.Producer.Base as Producer exposing (..)
+import Data.Producer as Producer exposing (..)
 import Dict exposing (Dict)
 import HttpClient exposing (bearer)
 import Json.Decode as D exposing (Decoder)
