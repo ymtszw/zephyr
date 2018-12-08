@@ -516,7 +516,15 @@ whcih does not cause style recalc nor layout/reflow (due to inFront == position:
 -}
 inputScreen : Bool -> Attribute msg
 inputScreen enabled =
-    inFront <| el [ width fill, height fill, visible (not enabled), BG.color (rgba255 0 0 0 0.5) ] none
+    inFront <|
+        el
+            [ width fill
+            , height fill
+            , visible (not enabled)
+            , BD.rounded rectElementRound
+            , BG.color (rgba255 0 0 0 0.5)
+            ]
+            none
 
 
 thinButtonEl :
