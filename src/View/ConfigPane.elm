@@ -10,6 +10,7 @@ import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Data.ProducerRegistry exposing (ProducerRegistry)
 import Deque
 import Element exposing (..)
@@ -21,6 +22,7 @@ import Logger
 import Octicons
 import StringExtra
 import View.ConfigPane.DiscordConfig exposing (discordConfigEl)
+import View.ConfigPane.SlackConfig exposing (slackConfigEl)
 import View.Parts exposing (..)
 
 
@@ -68,6 +70,8 @@ configInnerEl m =
         ]
         [ configSectionWrapper prefTitleEl <|
             prefEl m.pref m.columnStore
+        , configSectionWrapper slackConfigTitleEl <|
+            slackConfigEl m.viewState m.producerRegistry.slack
         , configSectionWrapper discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
         , configSectionWrapper statusTitleEl <| statusEl m
@@ -98,6 +102,7 @@ configSectionWrapper titleEl element =
         ]
         [ el
             [ width fill
+            , padding rectElementInnerPadding
             , Font.bold
             , Font.size sectionTitleFontSize
             , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
@@ -115,6 +120,78 @@ sectionTitleFontSize =
 sectionBaseFontSize : Int
 sectionBaseFontSize =
     scale12 2
+
+
+slackConfigTitleEl : Element Msg
+slackConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ squareIconOrHeadEl []
+            { size = sectionTitleFontSize
+            , name = "Slack"
+            , url = Just (Slack.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Slack"
+        ]
+
+
+discordConfigTitleEl : Element Msg
+discordConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ squareIconOrHeadEl []
+            { size = sectionTitleFontSize
+            , name = "Discord"
+            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Discord"
+        ]
+
+
+statusTitleEl : Element Msg
+statusTitleEl =
+    row [ spacing spacingUnit ]
+        [ octiconEl []
+            { size = sectionTitleFontSize
+            , color = oneDark.succ
+            , shape = Octicons.pulse
+            }
+        , text "Status"
+        ]
+
+
+statusEl : Model -> Element Msg
+statusEl m =
+    let
+        numColumns =
+            ColumnStore.size m.columnStore
+
+        numVisible =
+            Array.length m.columnStore.order
+    in
+    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
+        List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
+            [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
+            , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
+            , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
+            , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
+            , [ "* Pinned columns", StringExtra.punctuateNumber <| ColumnStore.sizePinned m.columnStore ]
+            , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
+            , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
+            , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
+            , [ "ServiceWorker"
+              , if m.env.serviceWorkerAvailable then
+                    "Registered"
+
+                else
+                    "Not available"
+              ]
+            , [ "IndexedDB"
+              , if m.env.indexedDBAvailable then
+                    "Used"
+
+                else
+                    "Not available"
+              ]
+            ]
 
 
 prefTitleEl : Element Msg
@@ -236,63 +313,3 @@ deleteColumnButtonEl cId =
         , innerElement = octiconEl [] { size = shadowColumnIconSize, color = oneDark.err, shape = Octicons.trashcan }
         , innerElementSize = shadowColumnIconSize
         }
-
-
-discordConfigTitleEl : Element Msg
-discordConfigTitleEl =
-    row [ spacing spacingUnit ]
-        [ squareIconOrHeadEl []
-            { size = sectionTitleFontSize
-            , name = "Discord"
-            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
-            }
-        , text "Discord"
-        ]
-
-
-statusTitleEl : Element Msg
-statusTitleEl =
-    row [ spacing spacingUnit ]
-        [ octiconEl []
-            { size = sectionTitleFontSize
-            , color = oneDark.succ
-            , shape = Octicons.pulse
-            }
-        , text "Status"
-        ]
-
-
-statusEl : Model -> Element Msg
-statusEl m =
-    let
-        numColumns =
-            ColumnStore.size m.columnStore
-
-        numVisible =
-            Array.length m.columnStore.order
-    in
-    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
-        List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
-            [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
-            , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
-            , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
-            , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
-            , [ "* Pinned columns", StringExtra.punctuateNumber <| ColumnStore.sizePinned m.columnStore ]
-            , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
-            , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
-            , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
-            , [ "ServiceWorker"
-              , if m.env.serviceWorkerAvailable then
-                    "Registered"
-
-                else
-                    "Not available"
-              ]
-            , [ "IndexedDB"
-              , if m.env.indexedDBAvailable then
-                    "Used"
-
-                else
-                    "Not available"
-              ]
-            ]
