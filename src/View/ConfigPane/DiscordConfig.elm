@@ -25,11 +25,6 @@ import View.Select as Select exposing (select)
 
 discordConfigEl : ViewState -> Discord -> Element Msg
 discordConfigEl vs discord =
-    discordConfigBodyEl vs discord
-
-
-discordConfigBodyEl : ViewState -> Discord -> Element Msg
-discordConfigBodyEl vs discord =
     column [ width fill, padding rectElementInnerPadding, spacing spacingUnit ] <|
         [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
         , lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
