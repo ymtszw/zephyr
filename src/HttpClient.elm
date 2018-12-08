@@ -1,11 +1,11 @@
 module HttpClient exposing
-    ( Error(..), Req, Failure, auth, errorToString
+    ( Auth, Error(..), Req, Failure, auth, bearer, errorToString
     , try, getWithAuth, postFormWithAuth, postJsonWithAuth
     )
 
 {-| Thin wrapper around Http.
 
-@docs Error, Req, Failure, auth, errorToString
+@docs Auth, Error, Req, Failure, auth, bearer, errorToString
 @docs try, getWithAuth, postFormWithAuth, postJsonWithAuth
 
 -}
@@ -19,11 +19,17 @@ import Url exposing (Url)
 
 type Auth
     = Auth String -- Bare API token carried in "authorization" header
+    | Bearer String
 
 
 auth : String -> Auth
-auth str =
-    Auth str
+auth =
+    Auth
+
+
+bearer : String -> Auth
+bearer =
+    Bearer
 
 
 type Error
@@ -79,11 +85,17 @@ postJsonWithAuth url json auth_ decoder =
 
 
 taskWithAuth : String -> Url -> Http.Body -> Auth -> Decoder a -> Task Failure a
-taskWithAuth method url body (Auth auth_) decoder =
+taskWithAuth method url body auth_ decoder =
     Http.task
         { method = method
         , headers =
-            [ Http.header "authorization" auth_
+            [ Http.header "authorization" <|
+                case auth_ of
+                    Auth token ->
+                        token
+
+                    Bearer token ->
+                        "Bearer " ++ token
             , Http.header "accept" "applicaiton/json"
             ]
         , url = Url.toString url
