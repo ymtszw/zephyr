@@ -364,8 +364,21 @@ handleIdentify user team (TeamId teamId) sr =
             pure sr
 
         TokenIdentifying token ->
-            -- TODO
-            pure sr
+            let
+                initTeam t =
+                    -- TODO retrieve channel list
+                    ( { dict = Dict.insert teamId (Identified (NewSession t user team)) sr.dict
+                      , unidentified = TokenWritable ""
+                      }
+                    , { yield | persist = True }
+                    )
+            in
+            case Dict.get teamId sr.dict of
+                Just (Identified _) ->
+                    initTeam token
+
+                Nothing ->
+                    initTeam token
 
 
 
