@@ -441,7 +441,7 @@ pacemaker heartstopper m =
             { m | heartrate = Model.defaultHeartrateMillis }
 
 
-{-| Restart producers on savedState reload.
+{-| Restart producers on application state reload.
 
 Always persist producerRegistry in order to apply new encoding format, if any.
 
@@ -449,34 +449,34 @@ Always persist producerRegistry in order to apply new encoding format, if any.
 reloadProducers : Model -> ( Model, Cmd Msg, ChangeSet )
 reloadProducers m =
     let
-        reloaded =
+        ( producerRegistry, gr ) =
             Producer.reloadAll m.producerRegistry
 
-        ( newColumnStore, _ ) =
-            ColumnStore.updateFAM reloaded.famInstructions m.columnStore
+        ( columnStore, _ ) =
+            ColumnStore.updateFAM gr.famInstructions m.columnStore
     in
     ( { m
-        | producerRegistry = reloaded.producerRegistry
-        , columnStore = newColumnStore
-        , worque = Worque.pushAll reloaded.works m.worque
+        | producerRegistry = producerRegistry
+        , columnStore = columnStore
+        , worque = Worque.pushAll gr.works m.worque
       }
-    , Cmd.map ProducerCtrl reloaded.cmd
+    , Cmd.map ProducerCtrl gr.cmd
     , changeSet |> saveProducerRegistry |> saveColumnStore
     )
 
 
-applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
-applyProducerYield m_ y =
+applyProducerYield : Model -> ( ProducerRegistry, Producer.Yield ) -> ( Model, Cmd Msg, ChangeSet )
+applyProducerYield m_ ( producerRegistry, y ) =
     let
-        ( newColumnStore, persistColumnStore ) =
-            ColumnStore.updateFAM [ y.postProcess.famInstruction ] m_.columnStore
+        ( columnStore, persistColumnStore ) =
+            ColumnStore.updateFAM [ y.famInstruction ] m_.columnStore
 
         m =
             { m_
-                | producerRegistry = y.producerRegistry
-                , columnStore = newColumnStore
+                | producerRegistry = producerRegistry
+                , columnStore = columnStore
                 , worque =
-                    case y.postProcess.work of
+                    case y.work of
                         Just w ->
                             Worque.push w m_.worque
 
@@ -485,7 +485,7 @@ applyProducerYield m_ y =
             }
 
         changeSetBase =
-            case ( y.postProcess.persist, persistColumnStore ) of
+            case ( y.persist, persistColumnStore ) of
                 ( True, True ) ->
                     changeSet |> saveProducerRegistry |> saveColumnStore
 

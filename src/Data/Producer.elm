@@ -12,7 +12,7 @@ module Data.Producer exposing
 
 import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
 import Data.Item exposing (Item(..))
-import Data.Producer.Base exposing (PostProcessBase, UpdateFAM(..), YieldBase)
+import Data.Producer.Base as Base exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord exposing (Discord)
 import Data.Producer.Slack as Slack exposing (SlackRegistry)
 import Data.Storable exposing (Storable)
@@ -71,8 +71,7 @@ type Msg
 
 
 type alias GrossReload =
-    { producerRegistry : ProducerRegistry
-    , cmd : Cmd Msg
+    { cmd : Cmd Msg
     , famInstructions : List UpdateInstruction
     , works : List Work
     }
@@ -84,42 +83,35 @@ Reload function uses same Yield type as return type, but it is just for convenie
 On reload, items are ignored and states are always persisted.
 
 -}
-reloadAll : ProducerRegistry -> GrossReload
+reloadAll : ProducerRegistry -> ( ProducerRegistry, GrossReload )
 reloadAll producerRegistry =
-    { producerRegistry = producerRegistry
-    , cmd = Cmd.none
-    , famInstructions = []
-    , works = []
-    }
+    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], works = [] } )
         |> reloadImpl DiscordInstruction
             DiscordMsg
             (\d pr -> { pr | discord = d })
-            (.discord >> Discord.reload)
+            (Discord.reload producerRegistry.discord)
 
 
 reloadImpl :
     (UpdateFAM mat -> UpdateInstruction)
     -> (msg -> Msg)
     -> (state -> ProducerRegistry -> ProducerRegistry)
-    -> (ProducerRegistry -> YieldBase item mat state msg)
-    -> GrossReload
-    -> GrossReload
-reloadImpl famTagger msgTagger registryUpdater reloader gr =
-    let
-        y =
-            reloader gr.producerRegistry
-    in
-    { producerRegistry = registryUpdater y.newState gr.producerRegistry
-    , cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
-    , famInstructions = famTagger y.postProcess.updateFAM :: gr.famInstructions
-    , works =
-        case y.postProcess.work of
-            Just w ->
-                w :: gr.works
+    -> ( state, Base.Yield item mat msg )
+    -> ( ProducerRegistry, GrossReload )
+    -> ( ProducerRegistry, GrossReload )
+reloadImpl famTagger msgTagger stateUpdater ( nesState, y ) ( producerRegistry, gr ) =
+    ( stateUpdater nesState producerRegistry
+    , { cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
+      , famInstructions = famTagger y.updateFAM :: gr.famInstructions
+      , works =
+            case y.work of
+                Just w ->
+                    w :: gr.works
 
-            Nothing ->
-                gr.works
-    }
+                Nothing ->
+                    gr.works
+      }
+    )
 
 
 
@@ -127,15 +119,9 @@ reloadImpl famTagger msgTagger registryUpdater reloader gr =
 
 
 type alias Yield =
-    { items : List Item
-    , postProcess : PostProcess
-    , producerRegistry : ProducerRegistry
-    , cmd : Cmd Msg
-    }
-
-
-type alias PostProcess =
-    { persist : Bool
+    { cmd : Cmd Msg
+    , persist : Bool
+    , items : List Item
     , famInstruction : UpdateInstruction
     , work : Maybe Work
     }
@@ -146,7 +132,7 @@ type alias PostProcess =
 Returns same data structure as `receive`.
 
 -}
-update : Msg -> ProducerRegistry -> Yield
+update : Msg -> ProducerRegistry -> ( ProducerRegistry, Yield )
 update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
@@ -169,15 +155,14 @@ mapYield :
     -> (UpdateFAM mat -> UpdateInstruction)
     -> (msg -> Msg)
     -> (state -> ProducerRegistry)
-    -> YieldBase item mat state msg
-    -> Yield
-mapYield itemTagger famTagger msgTagger stateSetter y =
-    Yield (List.map itemTagger y.items)
-        (mapPostProcess famTagger y.postProcess)
-        (stateSetter y.newState)
-        (Cmd.map msgTagger y.cmd)
-
-
-mapPostProcess : (UpdateFAM mat -> UpdateInstruction) -> PostProcessBase mat -> PostProcess
-mapPostProcess tagger ppb =
-    PostProcess ppb.persist (tagger ppb.updateFAM) ppb.work
+    -> ( state, Base.Yield item mat msg )
+    -> ( ProducerRegistry, Yield )
+mapYield itemTagger famTagger msgTagger stateSetter ( newState, y ) =
+    ( stateSetter newState
+    , { cmd = Cmd.map msgTagger y.cmd
+      , persist = y.persist
+      , items = List.map itemTagger y.items
+      , famInstruction = famTagger y.updateFAM
+      , work = y.work
+      }
+    )

@@ -1,8 +1,4 @@
-module Data.Producer.Base exposing
-    ( YieldBase, PostProcessBase, UpdateFAM(..)
-    , pure, enter, enterAndFire, yield, yieldAndFire
-    , ppBase
-    )
+module Data.Producer.Base exposing (Yield, UpdateFAM(..), yield, pure)
 
 {-| Defines types and helpers used by Producers.
 
@@ -12,23 +8,18 @@ Realtime Producers could be implemented based on Websocket event handling.
 Also there could be Hybrid of the two, utilizing both downstream event handling
 AND stateless API requests.
 
-@docs YieldBase, Reload, PostProcessBase, UpdateFAM
-@docs pure, enter, enterAndFire, yield, yieldAndFire
-@docs ppBase
+@docs Yield, UpdateFAM, yield, pure
 
 -}
 
 import Worque exposing (Work)
 
 
-{-| Return type of Producer's update/reload function.
+{-| Return type of side-effects from Producer's update/reload function.
 
-Returning `Nothing` as a new state triggers deregistering/discarding of the Producer.
+Returned in pair with new Producer states.
 
-Each `state` can be arbitrary data structure. Though usually they take forms of state machines.
-
-In state machine terminology, `state` is literally state machine "states",
-and `cmd` corresponds to "events".
+In state machine terminology, `cmd` corresponds to "events".
 
 Generated `items` are considered side-effect of state machine transitions.
 Items must be ordered **from oldest to latest**.
@@ -38,16 +29,10 @@ Also, regardless of persist instruction, the newState will be persisted,
 in order to apply new encoding format (if any).
 
 -}
-type alias YieldBase item mat state msg =
-    { items : List item
-    , postProcess : PostProcessBase mat
-    , newState : state
-    , cmd : Cmd msg
-    }
-
-
-type alias PostProcessBase mat =
-    { persist : Bool
+type alias Yield item mat msg =
+    { cmd : Cmd msg
+    , persist : Bool
+    , items : List item
     , updateFAM : UpdateFAM mat
     , work : Maybe Work
     }
@@ -59,44 +44,15 @@ type UpdateFAM mat
     | DestroyFAM
 
 
-{-| Default PostProcessBase. Meaning, no persist, KeepFAM, no Work.
+{-| Default Yield. No side-effect at all.
 -}
-ppBase : PostProcessBase mat
-ppBase =
-    PostProcessBase False KeepFAM Nothing
+yield : Yield item mat msg
+yield =
+    { cmd = Cmd.none, persist = False, items = [], updateFAM = KeepFAM, work = Nothing }
 
 
 {-| Just entering a specific state of a Producer, without any sort of side-effect.
-Meaning, no persist, KeepFAM, no Work.
 -}
-pure : state -> YieldBase item mat state msg
+pure : state -> ( state, Yield item mat msg )
 pure state =
-    YieldBase [] ppBase state Cmd.none
-
-
-{-| Just entering a specific state of a Producer, with PostProcessBase.
--}
-enter : PostProcessBase mat -> state -> YieldBase item mat state msg
-enter pp state =
-    YieldBase [] pp state Cmd.none
-
-
-{-| Enters a specific state, and fire an event (Cmd msg).
--}
-enterAndFire : PostProcessBase mat -> state -> Cmd msg -> YieldBase item mat state msg
-enterAndFire pp state cmd =
-    YieldBase [] pp state cmd
-
-
-{-| YieldBase items and enter a state. Always persist.
--}
-yield : List item -> UpdateFAM mat -> Maybe Work -> state -> YieldBase item mat state msg
-yield items updateFAM work state =
-    YieldBase items (PostProcessBase True updateFAM work) state Cmd.none
-
-
-{-| YieldBase items, enter a state, and fire an event. Always persist.
--}
-yieldAndFire : List item -> UpdateFAM mat -> Maybe Work -> state -> Cmd msg -> YieldBase item mat state msg
-yieldAndFire items updateFAM work state cmd =
-    YieldBase items (PostProcessBase True updateFAM work) state cmd
+    ( state, yield )

@@ -292,11 +292,7 @@ teamDecoder =
 
 
 type alias Yield =
-    Producer.YieldBase () () SlackRegistry Msg
-
-
-type alias UpdateFAM =
-    Producer.UpdateFAM ()
+    Producer.Yield () () Msg
 
 
 type Msg
@@ -307,7 +303,7 @@ type Msg
     | Identify User Team
 
 
-update : Msg -> SlackRegistry -> Yield
+update : Msg -> SlackRegistry -> ( SlackRegistry, Yield )
 update msg sr =
     case msg of
         UTokenInput t ->
@@ -320,8 +316,7 @@ update msg sr =
             uAPIFailure f sr
 
         Identify user team ->
-            -- TODO
-            pure sr
+            handleIdentify user team team.id sr
 
 
 uTokenInput : String -> SlackUnidentified -> SlackUnidentified
@@ -335,22 +330,22 @@ uTokenInput t su =
             su
 
 
-uTokenCommit : SlackRegistry -> Yield
+uTokenCommit : SlackRegistry -> ( SlackRegistry, Yield )
 uTokenCommit sr =
     case sr.unidentified of
         TokenWritable "" ->
             pure sr
 
         TokenWritable token ->
-            enterAndFire ppBase
-                { sr | unidentified = TokenIdentifying token }
-                (identify token)
+            ( { sr | unidentified = TokenIdentifying token }
+            , { yield | cmd = identify token }
+            )
 
         TokenIdentifying _ ->
             pure sr
 
 
-uAPIFailure : RpcFailure -> SlackRegistry -> Yield
+uAPIFailure : RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
 uAPIFailure f sr =
     case sr.unidentified of
         TokenWritable _ ->
@@ -359,6 +354,18 @@ uAPIFailure f sr =
         TokenIdentifying t ->
             -- Identify failure; back to input
             pure { sr | unidentified = TokenWritable t }
+
+
+handleIdentify : User -> Team -> TeamId -> SlackRegistry -> ( SlackRegistry, Yield )
+handleIdentify user team (TeamId teamId) sr =
+    case sr.unidentified of
+        TokenWritable _ ->
+            -- Should not happen
+            pure sr
+
+        TokenIdentifying token ->
+            -- TODO
+            pure sr
 
 
 
