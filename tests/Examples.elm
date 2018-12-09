@@ -641,6 +641,11 @@ slackSuite =
             (D.field "team" Slack.teamDecoder)
             Slack.encodeTeam
             Slack.teamDecoder
+        , testCodec "should decode/encode Conversation list"
+            slackConvListJson
+            (D.field "channels" (D.list Slack.conversationDecoder))
+            (Json.Encode.list Slack.encodeConversation)
+            (D.list Slack.conversationDecoder)
         ]
 
 
@@ -733,5 +738,186 @@ slackTeamInfoJson =
     "id": "T0950TCP9"
   },
   "ok": true
+}
+    """
+
+
+slackConvListJson : String
+slackConvListJson =
+    """
+{
+    "ok": true,
+    "channels": [
+        {
+            "id": "CENNEBF6Y",
+            "name": "zephyr",
+            "is_channel": true,
+            "is_group": false,
+            "is_im": false,
+            "created": 1544269050,
+            "is_archived": false,
+            "is_general": false,
+            "unlinked": 0,
+            "name_normalized": "zephyr",
+            "is_shared": false,
+            "parent_conversation": null,
+            "creator": "UEPUX32MD",
+            "is_ext_shared": false,
+            "is_org_shared": false,
+            "shared_team_ids": [
+                "TEP3UKAJH"
+            ],
+            "pending_shared": [],
+            "is_pending_ext_shared": false,
+            "is_member": true,
+            "is_private": false,
+            "is_mpim": false,
+            "topic": {
+                "value": "",
+                "creator": "",
+                "last_set": 0
+            },
+            "purpose": {
+                "value": "",
+                "creator": "",
+                "last_set": 0
+            },
+            "previous_names": [],
+            "num_members": 1
+        },
+        {
+            "id": "CENQCKDGB",
+            "name": "general",
+            "is_channel": true,
+            "is_group": false,
+            "is_im": false,
+            "created": 1544269050,
+            "is_archived": false,
+            "is_general": true,
+            "unlinked": 0,
+            "name_normalized": "general",
+            "is_shared": false,
+            "parent_conversation": null,
+            "creator": "UEPUX32MD",
+            "is_ext_shared": false,
+            "is_org_shared": false,
+            "shared_team_ids": [
+                "TEP3UKAJH"
+            ],
+            "pending_shared": [],
+            "is_pending_ext_shared": false,
+            "is_member": true,
+            "is_private": false,
+            "is_mpim": false,
+            "topic": {
+                "value": "",
+                "creator": "UEPUX32MD",
+                "last_set": 1544269050
+            },
+            "purpose": {
+                "value": "",
+                "creator": "UEPUX32MD",
+                "last_set": 1544269050
+            },
+            "previous_names": [],
+            "num_members": 1
+        },
+        {
+            "id": "CEP3UKE0M",
+            "name": "random",
+            "is_channel": true,
+            "is_group": false,
+            "is_im": false,
+            "created": 1544269050,
+            "is_archived": false,
+            "is_general": false,
+            "unlinked": 0,
+            "name_normalized": "random",
+            "is_shared": false,
+            "parent_conversation": null,
+            "creator": "UEPUX32MD",
+            "is_ext_shared": false,
+            "is_org_shared": false,
+            "shared_team_ids": [
+                "TEP3UKAJH"
+            ],
+            "pending_shared": [],
+            "is_pending_ext_shared": false,
+            "is_member": true,
+            "is_private": false,
+            "is_mpim": false,
+            "topic": {
+                "value": "",
+                "creator": "UEPUX32MD",
+                "last_set": 1544269050
+            },
+            "purpose": {
+                "value": "",
+                "creator": "UEPUX32MD",
+                "last_set": 1544269050
+            },
+            "previous_names": [],
+            "num_members": 1
+        },
+        {
+            "id": "GEP35AMM2",
+            "name": "secrets",
+            "is_channel": false,
+            "is_group": true,
+            "is_im": false,
+            "created": 1544368956,
+            "is_archived": false,
+            "is_general": false,
+            "unlinked": 0,
+            "name_normalized": "secrets",
+            "is_shared": false,
+            "parent_conversation": null,
+            "creator": "UEPUX32MD",
+            "is_ext_shared": false,
+            "is_org_shared": false,
+            "shared_team_ids": [
+                "TEP3UKAJH"
+            ],
+            "pending_shared": [],
+            "is_pending_ext_shared": false,
+            "is_member": true,
+            "is_private": true,
+            "is_mpim": false,
+            "last_read": "1544368965.000400",
+            "is_open": true,
+            "topic": {
+                "value": "",
+                "creator": "",
+                "last_set": 0
+            },
+            "purpose": {
+                "value": "",
+                "creator": "",
+                "last_set": 0
+            },
+            "priority": 0
+        },
+        {
+            "id": "DENTDAAN6",
+            "created": 1544269049,
+            "is_im": true,
+            "is_org_shared": false,
+            "user": "UEPUX32MD",
+            "is_user_deleted": false,
+            "priority": 0
+        },
+        {
+            "id": "DEN5PTNKS",
+            "created": 1544269049,
+            "is_im": true,
+            "is_org_shared": false,
+            "user": "USLACKBOT",
+            "is_user_deleted": false,
+            "priority": 0
+        }
+    ],
+    "response_metadata": {
+        "next_cursor": ""
+    }
 }
     """

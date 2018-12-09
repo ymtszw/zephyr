@@ -1,7 +1,7 @@
 module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team
     , initRegistry, encodeRegistry, registryDecoder
-    , encodeUser, userDecoder, encodeTeam, teamDecoder
+    , encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
     , Msg(..), RpcFailure(..), update
     , defaultIconUrl, teamUrl
     )
@@ -13,7 +13,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team
 @docs initRegistry, encodeRegistry, registryDecoder
-@docs encodeUser, userDecoder, encodeTeam, teamDecoder
+@docs encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
 @docs Msg, RpcFailure, update
 @docs defaultIconUrl, teamUrl
 
@@ -109,6 +109,32 @@ type alias TeamIdStr =
     String
 
 
+{-| Channel-like objects. Includes public/private channels and IM/MPIMs.
+
+<https://api.slack.com/types/conversation>
+<https://api.slack.com/methods/conversations.list>
+
+For IMs, we need the other member's User object for its name.
+
+For MPIMs, we should consider how `name`s are shown,
+since `name` values of MPIMs are auto-generated strings.
+
+Members of private conversations must be retrieved from conversations.members API.
+<https://api.slack.com/methods/conversations.members>
+TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
+
+-}
+type Conversation
+    = PublicChannel { id : ConversationId, name : String }
+    | PrivateChannel { id : ConversationId, name : String }
+    | IM { id : ConversationId, user : UserId } -- Instant Messages, presumably
+    | MPIM { id : ConversationId, name : String } -- Multi-person IM
+
+
+type ConversationId
+    = ConversationId String
+
+
 {-| Runtime registry of multiple Slack state machines.
 -}
 type alias SlackRegistry =
@@ -132,6 +158,10 @@ initRegistry =
 initUnidentified : SlackUnidentified
 initUnidentified =
     TokenWritable ""
+
+
+
+-- Encode
 
 
 encodeRegistry : SlackRegistry -> E.Value
@@ -212,6 +242,35 @@ encodeTeam team =
         ]
 
 
+encodeConversation : Conversation -> E.Value
+encodeConversation conv =
+    case conv of
+        PublicChannel { id, name } ->
+            E.tagged "PublicChannel" <|
+                E.object [ ( "id", encodeConversationId id ), ( "name", E.string name ) ]
+
+        PrivateChannel { id, name } ->
+            E.tagged "PrivateChannel" <|
+                E.object [ ( "id", encodeConversationId id ), ( "name", E.string name ) ]
+
+        IM { id, user } ->
+            E.tagged "IM" <|
+                E.object [ ( "id", encodeConversationId id ), ( "user", encodeUserId user ) ]
+
+        MPIM { id, name } ->
+            E.tagged "MPIM" <|
+                E.object [ ( "id", encodeConversationId id ), ( "name", E.string name ) ]
+
+
+encodeConversationId : ConversationId -> E.Value
+encodeConversationId (ConversationId convId) =
+    E.tagged "ConversationId" (E.string convId)
+
+
+
+-- Decoder
+
+
 registryDecoder : Decoder SlackRegistry
 registryDecoder =
     D.oneOf
@@ -288,6 +347,36 @@ teamDecoder =
         (D.field "name" D.string)
         (D.field "domain" D.string)
         (D.field "icon" iconDecoder)
+
+
+conversationDecoder : Decoder Conversation
+conversationDecoder =
+    -- XXX We are including archived channels and IM with deleted users.
+    let
+        idAndNameDecoder =
+            D.map2 (\a b -> { id = a, name = b }) (D.field "id" conversationIdDecoder) (D.field "name" D.string)
+
+        imDecoder =
+            D.map2 (\a b -> { id = a, user = b }) (D.field "id" conversationIdDecoder) (D.field "user" userIdDecoder)
+    in
+    D.oneOf
+        [ -- From IndexedDB
+          D.tagged "PublicChannel" PublicChannel idAndNameDecoder
+        , D.tagged "PrivateChannel" PrivateChannel idAndNameDecoder
+        , D.tagged "IM" IM imDecoder
+        , D.tagged "MPIM" MPIM idAndNameDecoder
+
+        -- From Slack API
+        , D.when (D.field "is_channel" D.bool) identity (D.map PublicChannel idAndNameDecoder)
+        , D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel idAndNameDecoder)
+        , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
+        , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM idAndNameDecoder)
+        ]
+
+
+conversationIdDecoder : Decoder ConversationId
+conversationIdDecoder =
+    D.oneOf [ D.tagged "ConversationId" ConversationId D.string, D.map ConversationId D.string ]
 
 
 
