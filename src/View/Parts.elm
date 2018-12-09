@@ -159,23 +159,31 @@ octiconEl attrs { size, color, shape } =
 squareIconOrHeadEl : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Element msg
 squareIconOrHeadEl userAttrs { size, name, url } =
     let
-        attrs =
+        baseAttrs =
             [ width (px size)
             , height (px size)
             , alignTop
+            , clip
             , BG.color iconBackground
             , BD.rounded (iconRounding size)
-            , clip
+            , Font.size (size // 2)
+            , Font.bold
+            , Font.family
+                [ Font.typeface "Tahoma"
+                , Font.typeface "Verdana"
+                , Font.typeface "Arial"
+                , Font.typeface "Helvetica"
+                , Font.sansSerif
+                ]
             ]
-                ++ userAttrs
     in
-    el attrs <|
+    el (baseAttrs ++ userAttrs) <|
         case url of
             Just url_ ->
                 image [ width (px size), height (px size) ] { src = url_, description = name }
 
             Nothing ->
-                el [ centerX, centerY, Font.size (size // 2) ] (text (String.left 1 name))
+                el [ centerX, centerY ] (text (String.left 1 name))
 
 
 iconBackground : Color
