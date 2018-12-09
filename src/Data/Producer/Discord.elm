@@ -145,6 +145,7 @@ type alias Guild =
 
 {-| Channel object.
 
+TODO: should includes `recipients` for DMs
 <https://discordapp.com/developers/docs/resources/channel#channel-object>
 
 -}
@@ -1459,6 +1460,8 @@ decodeGuildArrayIntoDict =
 hydrateChannels : String -> Dict String Guild -> Task HttpClient.Failure Msg
 hydrateChannels token guilds =
     let
+        -- TODO: we should also retrieve DMs, which are not tied to Guilds
+        -- https://discordapp.com/developers/docs/resources/user#get-user-dms
         getGuildChannels guildId =
             HttpClient.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
                 (HttpClient.auth token)
