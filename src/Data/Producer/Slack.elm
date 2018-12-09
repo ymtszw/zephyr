@@ -3,7 +3,7 @@ module Data.Producer.Slack exposing
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder
     , Msg(..), RpcFailure(..), update
-    , defaultIconUrl
+    , defaultIconUrl, teamUrl
     )
 
 {-| Producer for Slack workspaces.
@@ -12,8 +12,7 @@ module Data.Producer.Slack exposing
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs Msg, RpcFailure, update
-
-@docs defaultIconUrl
+@docs defaultIconUrl, teamUrl
 
 -}
 
@@ -499,3 +498,14 @@ logoCdnUrl sizeMaybe path =
                     ""
     in
     "https://cdn.brandfolder.io/5H442O3W/as" ++ path ++ query
+
+
+teamUrl : Team -> Url
+teamUrl team =
+    { protocol = Url.Https
+    , host = team.domain ++ ".slack.com"
+    , port_ = Nothing
+    , path = ""
+    , query = Nothing
+    , fragment = Nothing
+    }
