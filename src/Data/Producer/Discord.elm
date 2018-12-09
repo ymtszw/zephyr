@@ -126,7 +126,6 @@ type alias User =
     { id : String
     , username : String
     , discriminator : String
-    , email : Maybe String
     , avatar : Maybe Image
     }
 
@@ -329,7 +328,6 @@ encodeUser user =
         [ ( "id", E.string user.id )
         , ( "username", E.string user.username )
         , ( "discriminator", E.string user.discriminator )
-        , ( "email", E.maybe E.string user.email )
         , ( "avatar", E.maybe encodeImage user.avatar )
         ]
 
@@ -535,10 +533,9 @@ userDecoder : Decoder User
 userDecoder =
     let
         decodeWithId id =
-            D.map4 (User id)
+            D.map3 (User id)
                 (D.field "username" D.string)
                 (D.field "discriminator" D.string)
-                (D.maybeField "email" D.string)
                 (D.field "avatar" (D.maybe (D.map (toUserAvatar id) D.string)))
 
         toUserAvatar id hash =

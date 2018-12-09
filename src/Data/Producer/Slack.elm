@@ -70,8 +70,7 @@ type UserId
 
 
 type alias UserProfile =
-    { email : String
-    , displayName : String
+    { displayName : String
     , realName : String
     , statusText : String
     , statusEmoji : String
@@ -205,8 +204,7 @@ encodeUser user =
         , ( "team_id", encodeTeamId user.teamId )
         , Tuple.pair "profile" <|
             E.object
-                [ ( "email", E.string user.profile.email )
-                , ( "display_name", E.string user.profile.displayName )
+                [ ( "display_name", E.string user.profile.displayName )
                 , ( "real_name", E.string user.profile.realName )
                 , ( "status_text", E.string user.profile.statusText )
                 , ( "status_emoji", E.string user.profile.statusEmoji )
@@ -307,8 +305,7 @@ userDecoder : Decoder User
 userDecoder =
     let
         profileDecoder =
-            D.map7 UserProfile
-                (D.field "email" D.string)
+            D.map6 UserProfile
                 (D.field "display_name" D.string)
                 (D.field "real_name" D.string)
                 (D.field "status_text" D.string)
