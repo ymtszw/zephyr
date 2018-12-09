@@ -144,6 +144,11 @@ tokenLabelEl =
             [ el [] (text "Token")
             , paragraph [ Font.color oneDark.note, Font.size smallFontSize ]
                 [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
+            , paragraph [ Font.color oneDark.note, Font.size smallFontSize ]
+                [ text "Tokens are stored in IndexedDB of your web browser, and only sent to 'discordapp.com'. Otherwise it "
+                , el [ Font.bold ] (text "never")
+                , text " get out of your web browser."
+                ]
             ]
 
 

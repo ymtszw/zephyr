@@ -81,6 +81,11 @@ newLegacyTokenLabel =
                 , newTabLink [ Font.color aubergine.link ] { url = legacyTokenUrl, label = text "Legacy Token" }
                 , text " since a Slack App require approval by admins and consume integration counts."
                 ]
+            , paragraph [ Font.color aubergine.note, Font.size smallFontSize ]
+                [ text "Tokens are stored in IndexedDB of your web browser, and only sent to 'slack.com'. Otherwise it "
+                , el [ Font.bold ] (text "never")
+                , text " get out of your web browser."
+                ]
             ]
 
 
