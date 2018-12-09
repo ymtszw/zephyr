@@ -8,6 +8,9 @@ module Data.Producer.Slack exposing
 
 {-| Producer for Slack workspaces.
 
+Slack API uses HTTP RPC style. See here for available methods:
+<https://api.slack.com/methods>
+
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder
