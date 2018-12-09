@@ -25,11 +25,21 @@ import View.Select as Select exposing (select)
 
 discordConfigEl : ViewState -> Discord -> Element Msg
 discordConfigEl vs discord =
-    column [ width fill, padding rectElementInnerPadding, spacing spacingUnit ] <|
-        [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
-        , lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
+    let
+        currentStates =
+            currentStateEl vs discord
+
+        tokenForm =
+            [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
+            , lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
+            ]
+    in
+    column
+        [ width fill
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
         ]
-            ++ currentStateEl vs discord
+        (currentStates ++ tokenForm)
 
 
 tokenInputEl : Bool -> String -> Element Msg
