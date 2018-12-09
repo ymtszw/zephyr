@@ -1,11 +1,11 @@
 module HttpClient exposing
-    ( Auth, Error(..), Req, Failure, auth, bearer, errorToString
+    ( Auth, Error(..), Req, Failure, auth, bearer, noAuth, errorToString
     , try, getWithAuth, postFormWithAuth, postJsonWithAuth
     )
 
 {-| Thin wrapper around Http.
 
-@docs Auth, Error, Req, Failure, auth, bearer, errorToString
+@docs Auth, Error, Req, Failure, auth, bearer, noAuth, errorToString
 @docs try, getWithAuth, postFormWithAuth, postJsonWithAuth
 
 -}
@@ -20,6 +20,7 @@ import Url exposing (Url)
 type Auth
     = Auth String -- Bare API token carried in "authorization" header
     | Bearer String
+    | NoAuth
 
 
 auth : String -> Auth
@@ -30,6 +31,11 @@ auth =
 bearer : String -> Auth
 bearer =
     Bearer
+
+
+noAuth : Auth
+noAuth =
+    NoAuth
 
 
 type Error
@@ -89,15 +95,18 @@ taskWithAuth method url body auth_ decoder =
     Http.task
         { method = method
         , headers =
-            [ Http.header "authorization" <|
-                case auth_ of
+            List.filterMap identity
+                [ case auth_ of
                     Auth token ->
-                        token
+                        Just (Http.header "authorization" token)
 
                     Bearer token ->
-                        "Bearer " ++ token
-            , Http.header "accept" "applicaiton/json"
-            ]
+                        Just (Http.header "authorization" ("Bearer " ++ token))
+
+                    NoAuth ->
+                        Nothing
+                , Just (Http.header "accept" "applicaiton/json")
+                ]
         , url = Url.toString url
         , body = body
         , resolver = Http.stringResolver (resolveStringResponse (Req method url) decoder)

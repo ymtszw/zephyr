@@ -19,7 +19,8 @@ module Data.Producer.Slack exposing
 import Data.Filter exposing (FilterAtom)
 import Data.Producer as Producer exposing (..)
 import Dict exposing (Dict)
-import HttpClient exposing (bearer)
+import Http
+import HttpClient exposing (noAuth)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -400,9 +401,21 @@ type RpcFailure
     | RpcError String
 
 
-rpcGetTask : Url -> HttpClient.Auth -> Decoder a -> Task RpcFailure a
-rpcGetTask url auth_ dec =
-    HttpClient.getWithAuth url auth_ (rpcDecoder dec)
+{-| Slack API does not allow CORS with custom headers, so:
+
+  - Must use "token in body"
+  - Use (almost always) POST
+
+Some APIs allow `application/json`; use `rpcPostJsonTask`.
+
+-}
+rpcPostFormTask : Url -> String -> List ( String, String ) -> Decoder a -> Task RpcFailure a
+rpcPostFormTask url token kvPairs dec =
+    let
+        parts =
+            List.map (\( k, v ) -> Http.stringPart k v) (( "token", token ) :: kvPairs)
+    in
+    HttpClient.postFormWithAuth url parts noAuth (rpcDecoder dec)
         |> Task.mapError HttpFailure
         |> Task.andThen extractRpcError
 
@@ -457,23 +470,19 @@ identify token =
 
 authTestTask : String -> Task RpcFailure UserId
 authTestTask token =
-    rpcGetTask (apiPath "/auth.test" Nothing) (bearer token) <|
+    rpcPostFormTask (apiPath "/auth.test" Nothing) token [] <|
         D.field "user_id" userIdDecoder
 
 
 userInfoTask : String -> UserId -> Task RpcFailure User
-userInfoTask token (UserId user) =
-    let
-        query =
-            Just <| "user=" ++ user
-    in
-    rpcGetTask (apiPath "/users.info" query) (bearer token) <|
+userInfoTask token (UserId userId) =
+    rpcPostFormTask (apiPath "/users.info" Nothing) token [ ( "user", userId ) ] <|
         D.field "user" userDecoder
 
 
 teamInfoTask : String -> Task RpcFailure Team
 teamInfoTask token =
-    rpcGetTask (apiPath "/team.info" Nothing) (bearer token) <|
+    rpcPostFormTask (apiPath "/team.info" Nothing) token [] <|
         D.field "team" teamDecoder
 
 
