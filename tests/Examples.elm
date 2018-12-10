@@ -17,6 +17,7 @@ import Json.Encode exposing (Value, encode)
 import ListExtra
 import Parser
 import SelectArray
+import SlackTestData
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
@@ -632,17 +633,17 @@ slackSuite : Test
 slackSuite =
     describe "Data.Producer.Slack"
         [ testCodec "should decode/encode User"
-            slackUserInfoJson
+            SlackTestData.userInfoJson
             (D.field "user" Slack.userDecoder)
             Slack.encodeUser
             Slack.userDecoder
         , testCodec "should decode/encode Team"
-            slackTeamInfoJson
+            SlackTestData.teamInfoJson
             (D.field "team" Slack.teamDecoder)
             Slack.encodeTeam
             Slack.teamDecoder
         , testCodec "should decode/encode Conversation list"
-            slackConvListJson
+            SlackTestData.convListJson
             (D.field "channels" (D.list Slack.conversationDecoder))
             (Json.Encode.list Slack.encodeConversation)
             (D.list Slack.conversationDecoder)
@@ -658,266 +659,3 @@ testCodec desc initial decA enc decB =
                 |> Result.map (enc >> encode 0)
                 |> Result.andThen (decodeString decB)
                 |> Expect.ok
-
-
-slackUserInfoJson : String
-slackUserInfoJson =
-    """
-{
-  "user": {
-    "has_2fa": false,
-    "updated": 1530495226,
-    "is_app_user": false,
-    "tz_label": "日本標準時",
-    "tz": "Asia/Tokyo",
-    "real_name": "Yu Matsuzawa",
-    "color": "9f69e7",
-    "deleted": false,
-    "name": "yu.matsuzawa",
-    "team_id": "T0950TCP9",
-    "id": "U0950TCSK",
-    "tz_offset": 32400,
-    "profile": {
-      "is_custom_image": true,
-      "team": "T0950TCP9",
-      "status_text_canonical": "",
-      "image_1024": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_512.jpg",
-      "image_512": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_512.jpg",
-      "image_192": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_192.jpg",
-      "image_72": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_72.jpg",
-      "image_48": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_48.jpg",
-      "image_32": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_32.jpg",
-      "image_24": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_24.jpg",
-      "fields": null,
-      "display_name_normalized": "yu.matsuzawa",
-      "display_name": "yu.matsuzawa",
-      "real_name_normalized": "Yu Matsuzawa",
-      "real_name": "Yu Matsuzawa",
-      "skype": "",
-      "phone": "08051448946",
-      "title": "",
-      "status_text": "",
-      "status_emoji": "",
-      "status_expiration": 0,
-      "avatar_hash": "6125e38289b3",
-      "image_original": "https://avatars.slack-edge.com/2015-08-15/9170844512_6125e38289b3e8b41a94_original.jpg",
-      "email": "ymtszw@gmail.com",
-      "first_name": "Yu",
-      "last_name": "Matsuzawa"
-    },
-    "is_admin": true,
-    "is_owner": true,
-    "is_primary_owner": true,
-    "is_restricted": false,
-    "is_ultra_restricted": false,
-    "is_bot": false
-  },
-  "ok": true
-}
-    """
-
-
-slackTeamInfoJson : String
-slackTeamInfoJson =
-    """
-{
-  "team": {
-    "icon": {
-      "image_default": true,
-      "image_230": "https://a.slack-edge.com/bfaba/img/avatars-teams/ava_0020-230.png",
-      "image_132": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-132.png",
-      "image_102": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-102.png",
-      "image_88": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-88.png",
-      "image_68": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-68.png",
-      "image_44": "https://a.slack-edge.com/66f9/img/avatars-teams/ava_0020-44.png",
-      "image_34": "https://a.slack-edge.com/0180/img/avatars-teams/ava_0020-34.png"
-    },
-    "email_domain": "",
-    "domain": "norafarm",
-    "name": "norafarm",
-    "id": "T0950TCP9"
-  },
-  "ok": true
-}
-    """
-
-
-slackConvListJson : String
-slackConvListJson =
-    """
-{
-    "ok": true,
-    "channels": [
-        {
-            "id": "CENNEBF6Y",
-            "name": "zephyr",
-            "is_channel": true,
-            "is_group": false,
-            "is_im": false,
-            "created": 1544269050,
-            "is_archived": false,
-            "is_general": false,
-            "unlinked": 0,
-            "name_normalized": "zephyr",
-            "is_shared": false,
-            "parent_conversation": null,
-            "creator": "UEPUX32MD",
-            "is_ext_shared": false,
-            "is_org_shared": false,
-            "shared_team_ids": [
-                "TEP3UKAJH"
-            ],
-            "pending_shared": [],
-            "is_pending_ext_shared": false,
-            "is_member": true,
-            "is_private": false,
-            "is_mpim": false,
-            "topic": {
-                "value": "",
-                "creator": "",
-                "last_set": 0
-            },
-            "purpose": {
-                "value": "",
-                "creator": "",
-                "last_set": 0
-            },
-            "previous_names": [],
-            "num_members": 1
-        },
-        {
-            "id": "CENQCKDGB",
-            "name": "general",
-            "is_channel": true,
-            "is_group": false,
-            "is_im": false,
-            "created": 1544269050,
-            "is_archived": false,
-            "is_general": true,
-            "unlinked": 0,
-            "name_normalized": "general",
-            "is_shared": false,
-            "parent_conversation": null,
-            "creator": "UEPUX32MD",
-            "is_ext_shared": false,
-            "is_org_shared": false,
-            "shared_team_ids": [
-                "TEP3UKAJH"
-            ],
-            "pending_shared": [],
-            "is_pending_ext_shared": false,
-            "is_member": true,
-            "is_private": false,
-            "is_mpim": false,
-            "topic": {
-                "value": "",
-                "creator": "UEPUX32MD",
-                "last_set": 1544269050
-            },
-            "purpose": {
-                "value": "",
-                "creator": "UEPUX32MD",
-                "last_set": 1544269050
-            },
-            "previous_names": [],
-            "num_members": 1
-        },
-        {
-            "id": "CEP3UKE0M",
-            "name": "random",
-            "is_channel": true,
-            "is_group": false,
-            "is_im": false,
-            "created": 1544269050,
-            "is_archived": false,
-            "is_general": false,
-            "unlinked": 0,
-            "name_normalized": "random",
-            "is_shared": false,
-            "parent_conversation": null,
-            "creator": "UEPUX32MD",
-            "is_ext_shared": false,
-            "is_org_shared": false,
-            "shared_team_ids": [
-                "TEP3UKAJH"
-            ],
-            "pending_shared": [],
-            "is_pending_ext_shared": false,
-            "is_member": true,
-            "is_private": false,
-            "is_mpim": false,
-            "topic": {
-                "value": "",
-                "creator": "UEPUX32MD",
-                "last_set": 1544269050
-            },
-            "purpose": {
-                "value": "",
-                "creator": "UEPUX32MD",
-                "last_set": 1544269050
-            },
-            "previous_names": [],
-            "num_members": 1
-        },
-        {
-            "id": "GEP35AMM2",
-            "name": "secrets",
-            "is_channel": false,
-            "is_group": true,
-            "is_im": false,
-            "created": 1544368956,
-            "is_archived": false,
-            "is_general": false,
-            "unlinked": 0,
-            "name_normalized": "secrets",
-            "is_shared": false,
-            "parent_conversation": null,
-            "creator": "UEPUX32MD",
-            "is_ext_shared": false,
-            "is_org_shared": false,
-            "shared_team_ids": [
-                "TEP3UKAJH"
-            ],
-            "pending_shared": [],
-            "is_pending_ext_shared": false,
-            "is_member": true,
-            "is_private": true,
-            "is_mpim": false,
-            "last_read": "1544368965.000400",
-            "is_open": true,
-            "topic": {
-                "value": "",
-                "creator": "",
-                "last_set": 0
-            },
-            "purpose": {
-                "value": "",
-                "creator": "",
-                "last_set": 0
-            },
-            "priority": 0
-        },
-        {
-            "id": "DENTDAAN6",
-            "created": 1544269049,
-            "is_im": true,
-            "is_org_shared": false,
-            "user": "UEPUX32MD",
-            "is_user_deleted": false,
-            "priority": 0
-        },
-        {
-            "id": "DEN5PTNKS",
-            "created": 1544269049,
-            "is_im": true,
-            "is_org_shared": false,
-            "user": "USLACKBOT",
-            "is_user_deleted": false,
-            "priority": 0
-        }
-    ],
-    "response_metadata": {
-        "next_cursor": ""
-    }
-}
-    """
