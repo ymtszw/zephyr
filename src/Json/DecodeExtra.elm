@@ -1,17 +1,18 @@
 module Json.DecodeExtra exposing
     ( when, conditional, succeedIf, do
     , tag, tagged, tagged2, tagged3
-    , url, leakyList, maybeField, optionField, fromResult
+    , url, leakyList, dictFromList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
 @docs when, conditional, succeedIf, do
 @docs tag, tagged, tagged2, tagged3
-@docs url, leakyList, maybeField, optionField, fromResult
+@docs url, leakyList, dictFromList, maybeField, optionField, fromResult
 
 -}
 
+import Dict exposing (Dict)
 import Json.Decode exposing (..)
 import Url
 
@@ -185,3 +186,17 @@ Discussed here: <https://discourse.elm-lang.org/t/experimental-json-decoding-api
 do : Decoder a -> (a -> Decoder b) -> Decoder b
 do dec cont =
     andThen cont dec
+
+
+{-| Construct Dict from Json Array.
+
+Useful for making ID-based dictionary of items.
+
+-}
+dictFromList : (a -> comparable) -> Decoder a -> Decoder (Dict comparable a)
+dictFromList toKey valueDec =
+    let
+        listToDict =
+            List.map (\a -> ( toKey a, a )) >> Dict.fromList
+    in
+    map listToDict (list valueDec)

@@ -1438,20 +1438,9 @@ identify token =
 
 hydrate : String -> Cmd Msg
 hydrate token =
-    HttpClient.getWithAuth (apiPath "/users/@me/guilds" Nothing) (HttpClient.auth token) decodeGuildArrayIntoDict
+    HttpClient.getWithAuth (apiPath "/users/@me/guilds" Nothing) (HttpClient.auth token) (D.dictFromList .id guildDecoder)
         |> Task.andThen (hydrateChannels token)
         |> HttpClient.try identity GenericAPIError
-
-
-decodeGuildArrayIntoDict : Decoder (Dict String Guild)
-decodeGuildArrayIntoDict =
-    let
-        listToDict guildList =
-            guildList
-                |> List.map (\guild -> ( guild.id, guild ))
-                |> Dict.fromList
-    in
-    D.map listToDict (D.list guildDecoder)
 
 
 hydrateChannels : String -> Dict String Guild -> Task HttpClient.Failure Msg
