@@ -1,9 +1,9 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..)
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
     , Msg(..), RpcFailure(..), update
-    , defaultIconUrl, teamUrl
+    , getUser, isChannel, defaultIconUrl, teamUrl
     )
 
 {-| Producer for Slack workspaces.
@@ -11,11 +11,11 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, Team
+@docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
 @docs Msg, RpcFailure, update
-@docs defaultIconUrl, teamUrl
+@docs getUser, isChannel, defaultIconUrl, teamUrl
 
 -}
 
@@ -40,15 +40,29 @@ First we get user ID and team ID from `auth.test` API,
 <https://api.slack.com/methods/auth.test>
 then fetch User and Team using `users.info` and `team.info`, populating `NewSession`.
 
+Since Slack APIs mostly return "not joined" data,
+we have to maintain User dictionary in order to show their info.
+We should occasionally (lazily) update it.
+
 -}
 type Slack
     = Identified NewSession
+    | Hydrated POV
 
 
 type alias NewSession =
     { token : String
     , user : User
     , team : Team
+    }
+
+
+type alias POV =
+    { token : String
+    , user : User
+    , team : Team
+    , conversations : Dict ConevrsationIdStr Conversation
+    , users : Dict UserIdStr User
     }
 
 
@@ -66,7 +80,11 @@ type alias User =
 
 
 type UserId
-    = UserId String
+    = UserId UserIdStr
+
+
+type alias UserIdStr =
+    String
 
 
 type alias UserProfile =
@@ -131,7 +149,11 @@ type Conversation
 
 
 type ConversationId
-    = ConversationId String
+    = ConversationId ConevrsationIdStr
+
+
+type alias ConevrsationIdStr =
+    String
 
 
 {-| Runtime registry of multiple Slack state machines.
@@ -187,6 +209,9 @@ encodeSlack slack =
         Identified session ->
             E.tagged "Identified" (encodeSession session)
 
+        Hydrated pov ->
+            E.tagged "Hydrated" (encodePov pov)
+
 
 encodeSession : NewSession -> E.Value
 encodeSession session =
@@ -194,6 +219,17 @@ encodeSession session =
         [ ( "token", E.string session.token )
         , ( "user", encodeUser session.user )
         , ( "team", encodeTeam session.team )
+        ]
+
+
+encodePov : POV -> E.Value
+encodePov pov =
+    E.object
+        [ ( "token", E.string pov.token )
+        , ( "user", encodeUser pov.user )
+        , ( "team", encodeTeam pov.team )
+        , ( "conversations", E.dict identity encodeConversation pov.conversations )
+        , ( "users", E.dict identity encodeUser pov.users )
         ]
 
 
@@ -290,7 +326,9 @@ unidentifiedDecoder =
 slackDecoder : Decoder Slack
 slackDecoder =
     D.oneOf
-        [ D.tagged "Identified" Identified sessionDecoder ]
+        [ D.tagged "Identified" Identified sessionDecoder
+        , D.tagged "Hydrated" Hydrated povDecoder
+        ]
 
 
 sessionDecoder : Decoder NewSession
@@ -299,6 +337,16 @@ sessionDecoder =
         (D.field "token" D.string)
         (D.field "user" userDecoder)
         (D.field "team" teamDecoder)
+
+
+povDecoder : Decoder POV
+povDecoder =
+    D.map5 POV
+        (D.field "token" D.string)
+        (D.field "user" userDecoder)
+        (D.field "team" teamDecoder)
+        (D.field "conversations" (D.dict conversationDecoder))
+        (D.field "users" (D.dict userDecoder))
 
 
 userDecoder : Decoder User
@@ -467,6 +515,12 @@ handleIdentify user team (TeamId teamId) sr =
                 Just (Identified _) ->
                     initTeam token
 
+                Just (Hydrated pov) ->
+                    -- Most likely Revisit
+                    ( { sr | dict = Dict.insert teamId (Hydrated { pov | user = user, team = team }) sr.dict }
+                    , { yield | persist = True }
+                    )
+
                 Nothing ->
                     initTeam token
 
@@ -576,8 +630,42 @@ teamInfoTask token =
         D.field "team" teamDecoder
 
 
+conversationListTask : String -> Task RpcFailure (List Conversation)
+conversationListTask token =
+    rpcPostFormTask (apiPath "/conversations.list" Nothing)
+        token
+        [ ( "types", "public_channel,private_channel,im,mpim" ) ]
+        (D.field "channels" (D.list conversationDecoder))
 
--- Logo CDN URLs
+
+
+-- Runtime APIs
+
+
+getUser : Dict UserIdStr User -> UserId -> Result UserIdStr User
+getUser users (UserId userIdStr) =
+    case Dict.get userIdStr users of
+        Just u ->
+            Ok u
+
+        Nothing ->
+            Err userIdStr
+
+
+isChannel : Conversation -> Bool
+isChannel conv =
+    case conv of
+        PublicChannel _ ->
+            True
+
+        PrivateChannel _ ->
+            True
+
+        IM _ ->
+            False
+
+        MPIM _ ->
+            False
 
 
 defaultIconUrl : Maybe Int -> String
