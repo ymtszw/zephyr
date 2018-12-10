@@ -333,11 +333,12 @@ teamDecoder : Decoder Team
 teamDecoder =
     let
         iconDecoder =
+            -- image_default is actually absent when false
             D.map4 TeamIcon
                 (D.field "image_34" D.url)
                 (D.field "image_44" D.url)
                 (D.field "image_68" D.url)
-                (D.field "image_default" D.bool)
+                (D.optionField "image_default" D.bool False)
     in
     D.map4 Team
         (D.field "id" teamIdDecoder)
