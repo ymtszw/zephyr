@@ -47,7 +47,7 @@ We should occasionally (lazily) update it.
 -}
 type Slack
     = Identified NewSession
-    | Hydrated POV
+    | Hydrated String POV
 
 
 type alias NewSession =
@@ -61,7 +61,7 @@ type alias POV =
     { token : String
     , user : User
     , team : Team
-    , conversations : Dict ConevrsationIdStr Conversation
+    , conversations : Dict ConversationIdStr Conversation
     , users : Dict UserIdStr User
     }
 
@@ -149,10 +149,10 @@ type Conversation
 
 
 type ConversationId
-    = ConversationId ConevrsationIdStr
+    = ConversationId ConversationIdStr
 
 
-type alias ConevrsationIdStr =
+type alias ConversationIdStr =
     String
 
 
@@ -209,8 +209,9 @@ encodeSlack slack =
         Identified session ->
             E.tagged "Identified" (encodeSession session)
 
-        Hydrated pov ->
-            E.tagged "Hydrated" (encodePov pov)
+        Hydrated _ pov ->
+            -- TODO: add Revisit
+            E.tagged2 "Hydrated" (E.string pov.token) (encodePov pov)
 
 
 encodeSession : NewSession -> E.Value
@@ -327,7 +328,7 @@ slackDecoder : Decoder Slack
 slackDecoder =
     D.oneOf
         [ D.tagged "Identified" Identified sessionDecoder
-        , D.tagged "Hydrated" Hydrated povDecoder
+        , D.tagged2 "Hydrated" Hydrated D.string povDecoder
         ]
 
 
@@ -413,8 +414,17 @@ conversationDecoder =
         , D.tagged "MPIM" MPIM idAndNameDecoder
 
         -- From Slack API
-        , D.when (D.field "is_channel" D.bool) identity (D.map PublicChannel idAndNameDecoder)
-        , D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel idAndNameDecoder)
+        , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
+            ((==) ( True, False ))
+            (D.map PublicChannel idAndNameDecoder)
+        , D.oneOf
+            [ D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel idAndNameDecoder)
+
+            -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
+            , D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
+                identity
+                (D.map PrivateChannel idAndNameDecoder)
+            ]
         , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
         , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM idAndNameDecoder)
         ]
@@ -439,6 +449,9 @@ type Msg
     | UTokenCommit
     | UAPIFailure RpcFailure
     | Identify User Team
+      -- Prefix "I" means Msg for identified token/team
+    | IHydrate TeamIdStr (Dict ConversationIdStr Conversation) (Dict UserIdStr User)
+    | IAPIFailure TeamIdStr RpcFailure
 
 
 update : Msg -> SlackRegistry -> ( SlackRegistry, Yield )
@@ -448,13 +461,19 @@ update msg sr =
             pure { sr | unidentified = uTokenInput t sr.unidentified }
 
         UTokenCommit ->
-            uTokenCommit sr
+            handleUTokenCommit sr
 
         UAPIFailure f ->
-            uAPIFailure f sr
+            handleUAPIFailure f sr
 
         Identify user team ->
             handleIdentify user team team.id sr
+
+        IHydrate teamIdStr conversations users ->
+            handleIHydrate teamIdStr conversations users sr
+
+        IAPIFailure teamIdStr f ->
+            handleIAPIFailure teamIdStr f sr
 
 
 uTokenInput : String -> SlackUnidentified -> SlackUnidentified
@@ -468,8 +487,8 @@ uTokenInput t su =
             su
 
 
-uTokenCommit : SlackRegistry -> ( SlackRegistry, Yield )
-uTokenCommit sr =
+handleUTokenCommit : SlackRegistry -> ( SlackRegistry, Yield )
+handleUTokenCommit sr =
     case sr.unidentified of
         TokenWritable "" ->
             pure sr
@@ -483,8 +502,8 @@ uTokenCommit sr =
             pure sr
 
 
-uAPIFailure : RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
-uAPIFailure f sr =
+handleUAPIFailure : RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
+handleUAPIFailure f sr =
     case sr.unidentified of
         TokenWritable _ ->
             pure sr
@@ -495,7 +514,7 @@ uAPIFailure f sr =
 
 
 handleIdentify : User -> Team -> TeamId -> SlackRegistry -> ( SlackRegistry, Yield )
-handleIdentify user team (TeamId teamId) sr =
+handleIdentify user team (TeamId teamIdStr) sr =
     case sr.unidentified of
         TokenWritable _ ->
             -- Should not happen
@@ -504,25 +523,62 @@ handleIdentify user team (TeamId teamId) sr =
         TokenIdentifying token ->
             let
                 initTeam t =
-                    -- TODO retrieve channel list
-                    ( { dict = Dict.insert teamId (Identified (NewSession t user team)) sr.dict
+                    ( { dict = Dict.insert teamIdStr (Identified (NewSession t user team)) sr.dict
                       , unidentified = TokenWritable ""
                       }
-                    , { yield | persist = True }
+                    , { yield | cmd = hydrate token (TeamId teamIdStr) }
                     )
             in
-            case Dict.get teamId sr.dict of
+            case Dict.get teamIdStr sr.dict of
                 Just (Identified _) ->
                     initTeam token
 
-                Just (Hydrated pov) ->
-                    -- Most likely Revisit
-                    ( { sr | dict = Dict.insert teamId (Hydrated { pov | user = user, team = team }) sr.dict }
-                    , { yield | persist = True }
-                    )
+                Just _ ->
+                    -- Should not happen; TODO Revisit => re-Identify
+                    pure sr
 
                 Nothing ->
                     initTeam token
+
+
+handleIHydrate :
+    TeamIdStr
+    -> Dict ConversationIdStr Conversation
+    -> Dict UserIdStr User
+    -> SlackRegistry
+    -> ( SlackRegistry, Yield )
+handleIHydrate teamIdStr convs users sr =
+    case Dict.get teamIdStr sr.dict of
+        Just (Identified { token, user, team }) ->
+            let
+                h =
+                    Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
+            in
+            ( { sr | dict = Dict.insert teamIdStr h sr.dict }, { yield | persist = True } )
+
+        Just _ ->
+            -- Should not happen; TODO Rehydrate
+            pure sr
+
+        Nothing ->
+            -- Rehydrate initiated but the Team is discarded? Should not happen.
+            pure sr
+
+
+handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
+handleIAPIFailure teamIdStr rpcFailure sr =
+    case Dict.get teamIdStr sr.dict of
+        Just (Identified _) ->
+            -- If successfully Identified, basically Hydrate should not fail. Discard the Team.
+            ( { sr | dict = Dict.remove teamIdStr sr.dict }, { yield | persist = True } )
+
+        Just (Hydrated _ pov) ->
+            -- New token invalid? Just restore token input.
+            pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+
+        Nothing ->
+            -- Late arrival?
+            pure sr
 
 
 
@@ -630,12 +686,48 @@ teamInfoTask token =
         D.field "team" teamDecoder
 
 
-conversationListTask : String -> Task RpcFailure (List Conversation)
+hydrate : String -> TeamId -> Cmd Msg
+hydrate token (TeamId teamIdStr) =
+    Task.map2 (IHydrate teamIdStr) (conversationListTask token) (userListTask token)
+        |> rpcTry identity (IAPIFailure teamIdStr)
+
+
+conversationListTask : String -> Task RpcFailure (Dict ConversationIdStr Conversation)
 conversationListTask token =
     rpcPostFormTask (apiPath "/conversations.list" Nothing)
         token
         [ ( "types", "public_channel,private_channel,im,mpim" ) ]
-        (D.field "channels" (D.list conversationDecoder))
+        (D.field "channels" (D.dictFromList getConvIdStr conversationDecoder))
+
+
+getConvIdStr : Conversation -> ConversationIdStr
+getConvIdStr conv =
+    let
+        toStr (ConversationId convIdStr) =
+            convIdStr
+    in
+    case conv of
+        PublicChannel { id } ->
+            toStr id
+
+        PrivateChannel { id } ->
+            toStr id
+
+        IM { id } ->
+            toStr id
+
+        MPIM { id } ->
+            toStr id
+
+
+userListTask : String -> Task RpcFailure (Dict UserIdStr User)
+userListTask token =
+    let
+        toStr (UserId userIdStr) =
+            userIdStr
+    in
+    rpcPostFormTask (apiPath "/users.list" Nothing) token [] <|
+        D.field "members" (D.dictFromList (.id >> toStr) userDecoder)
 
 
 

@@ -309,6 +309,18 @@ producerMsgToEntry pMsg =
                         ]
 
         ProducerRegistry.SlackMsg sMsg ->
+            let
+                rpcFailureToStr f =
+                    case f of
+                        Slack.HttpFailure ( e, req ) ->
+                            [ HttpClient.errorToString e
+                            , req.method
+                            , Url.toString req.url
+                            ]
+
+                        Slack.RpcError e ->
+                            [ e ]
+            in
             case sMsg of
                 Slack.UTokenInput t ->
                     Entry "Slack.UTokenInput" [ t ]
@@ -317,22 +329,19 @@ producerMsgToEntry pMsg =
                     Entry "Slack.UTokenCommit" []
 
                 Slack.UAPIFailure f ->
-                    Entry "Slack.UAPIFailure" <|
-                        case f of
-                            Slack.HttpFailure ( e, req ) ->
-                                [ HttpClient.errorToString e
-                                , req.method
-                                , Url.toString req.url
-                                ]
-
-                            Slack.RpcError e ->
-                                [ e ]
+                    Entry "Slack.UAPIFailure" <| rpcFailureToStr f
 
                 Slack.Identify user team ->
                     Entry "Slack.Identify"
                         [ E.encode 2 (Slack.encodeUser user)
                         , E.encode 2 (Slack.encodeTeam team)
                         ]
+
+                Slack.IHydrate teamIdStr convs users ->
+                    Entry "Slack.IHydrate" [ teamIdStr, "<IHydrate>" ]
+
+                Slack.IAPIFailure teamIdStr f ->
+                    Entry "Slack.IAPIFailure" <| teamIdStr :: rpcFailureToStr f
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry
