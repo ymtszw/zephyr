@@ -256,7 +256,7 @@ textInputEl { onChange, theme, enabled, text, label, placeholder } =
         , Font.color theme.text
         , switchCursor enabled
         , customPlaceholder theme placeholder text
-        , inputScreen enabled
+        , inputScreen rectElementRound enabled
         , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
         , disabled (not enabled)
         ]
@@ -490,7 +490,7 @@ rectButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled
             , BG.color enabledColor
             , Font.color enabledFontColor
             , clip
-            , inputScreen enabled
+            , inputScreen rectElementRound enabled
             , switchCursor enabled
             ]
                 ++ userAttrs
@@ -522,14 +522,14 @@ over the target input element. And when the input is enabled, its turned off via
 whcih does not cause style recalc nor layout/reflow (due to inFront == position: absolute;)
 
 -}
-inputScreen : Bool -> Attribute msg
-inputScreen enabled =
+inputScreen : Int -> Bool -> Attribute msg
+inputScreen round enabled =
     inFront <|
         el
             [ width fill
             , height fill
             , visible (not enabled)
-            , BD.rounded rectElementRound
+            , BD.rounded round
             , BG.color (rgba255 0 0 0 0.5)
             ]
             none
@@ -555,7 +555,7 @@ thinButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled
             , BG.color enabledColor
             , Font.color enabledFontColor
             , clip
-            , inputScreen enabled
+            , inputScreen thinButtonPadding enabled
             , switchCursor enabled
             ]
                 ++ userAttrs
@@ -629,18 +629,20 @@ squareButtonEl :
     ->
         { onPress : msg
         , enabled : Bool
+        , round : Int
         , innerElement : Element msg
         , innerElementSize : Int
         }
     -> Element msg
-squareButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
+squareButtonEl userAttrs { onPress, enabled, round, innerElement, innerElementSize } =
     let
         attrs =
             [ width (px innerElementSize)
             , height (px innerElementSize)
             , clip
+            , BD.rounded round
             , switchCursor enabled
-            , inputScreen enabled
+            , inputScreen round enabled
             , disabled (not enabled)
             ]
                 ++ userAttrs

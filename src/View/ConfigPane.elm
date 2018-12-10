@@ -310,6 +310,7 @@ deleteColumnButtonEl cId =
     squareButtonEl [ alignRight ]
         { onPress = DelColumn cId
         , enabled = True
+        , round = 0
         , innerElement = octiconEl [] { size = shadowColumnIconSize, color = oneDark.err, shape = Octicons.trashcan }
         , innerElementSize = shadowColumnIconSize
         }
