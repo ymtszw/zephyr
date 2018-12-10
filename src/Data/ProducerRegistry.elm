@@ -91,6 +91,10 @@ reloadAll producerRegistry =
             DiscordMsg
             (\d pr -> { pr | discord = d })
             (Discord.reload producerRegistry.discord)
+        |> reloadImpl SlackInstruction
+            SlackMsg
+            (\s pr -> { pr | slack = s })
+            (Slack.reload producerRegistry.slack)
 
 
 reloadImpl :

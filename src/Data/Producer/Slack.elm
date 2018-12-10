@@ -2,7 +2,7 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..)
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
-    , Msg(..), RpcFailure(..), update
+    , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, defaultIconUrl, teamUrl
     )
 
@@ -14,7 +14,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
-@docs Msg, RpcFailure, update
+@docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, defaultIconUrl, teamUrl
 
 -}
@@ -441,6 +441,40 @@ conversationIdDecoder =
 
 type alias Yield =
     Producer.Yield () () Msg
+
+
+reload : SlackRegistry -> ( SlackRegistry, Yield )
+reload sr =
+    ( sr, yield )
+        |> reloadUnidentified
+        |> reloadAllTeam
+
+
+reloadUnidentified : ( SlackRegistry, Yield ) -> ( SlackRegistry, Yield )
+reloadUnidentified ( sr, y ) =
+    case sr.unidentified of
+        TokenWritable _ ->
+            ( sr, y )
+
+        TokenIdentifying token ->
+            ( sr, { y | cmd = Cmd.batch [ y.cmd, identify token ] } )
+
+
+reloadAllTeam : ( SlackRegistry, Yield ) -> ( SlackRegistry, Yield )
+reloadAllTeam ( sr, y ) =
+    ( sr, Dict.foldl reloadTeam y sr.dict )
+
+
+reloadTeam : TeamIdStr -> Slack -> Yield -> Yield
+reloadTeam _ slack y =
+    case slack of
+        Identified { token, team } ->
+            -- Saved during hydrate? Retry
+            { y | cmd = Cmd.batch [ y.cmd, hydrate token team.id ] }
+
+        Hydrated _ pov ->
+            -- TODO: Add Revisit => re-Identify
+            y
 
 
 type Msg
