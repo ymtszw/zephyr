@@ -414,9 +414,8 @@ conversationDecoder =
         , D.tagged "MPIM" MPIM idAndNameDecoder
 
         -- From Slack API
-        , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
-            ((==) ( True, False ))
-            (D.map PublicChannel idAndNameDecoder)
+        , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM idAndNameDecoder)
+        , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
         , D.oneOf
             [ D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel idAndNameDecoder)
 
@@ -425,8 +424,9 @@ conversationDecoder =
                 identity
                 (D.map PrivateChannel idAndNameDecoder)
             ]
-        , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
-        , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM idAndNameDecoder)
+        , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
+            ((==) ( True, False ))
+            (D.map PublicChannel idAndNameDecoder)
         ]
 
 
