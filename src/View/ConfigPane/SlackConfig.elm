@@ -3,9 +3,9 @@ module View.ConfigPane.SlackConfig exposing (slackConfigEl)
 import Data.ColorTheme exposing (aubergine)
 import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
-import Data.Producer.Slack as Slack exposing (Slack(..), SlackRegistry, SlackUnidentified(..))
+import Data.Producer.Slack as Slack exposing (Conversation(..), Slack(..), SlackRegistry, SlackUnidentified(..), Team, User)
 import Data.ProducerRegistry as ProducerRegistry
-import Dict
+import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -13,8 +13,10 @@ import Element.Font as Font
 import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (..)
+import Octicons
 import Url
 import View.Parts exposing (..)
+import View.Select exposing (select)
 
 
 slackConfigEl : ViewState -> SlackRegistry -> Element Msg
@@ -29,7 +31,7 @@ slackConfigEl vs sr =
                     ( token, False )
 
         teamStates =
-            Dict.foldr (\k v acc -> teamStateKeyEl k v :: acc) [] sr.dict
+            Dict.foldr (\k v acc -> teamStateKeyEl vs k v :: acc) [] sr.dict
 
         newLegacyTokenForm =
             [ newLegacyTokenInputKeyEl enabled text
@@ -117,12 +119,13 @@ newLegacyTokenSubmitButtonKeyEl submittable =
         |> Tuple.pair "newLegacyTokenSubmitButton"
 
 
-teamStateKeyEl : String -> Slack -> ( String, Element Msg )
-teamStateKeyEl teamIdStr slack =
+teamStateKeyEl : ViewState -> String -> Slack -> ( String, Element Msg )
+teamStateKeyEl vs teamIdStr slack =
     let
         teamStateAttrs =
             [ width fill
             , padding rectElementInnerPadding
+            , spacing spacingUnit
             , BD.rounded rectElementRound
             , BD.width 1
             , BD.color aubergine.bd
@@ -132,12 +135,20 @@ teamStateKeyEl teamIdStr slack =
         column teamStateAttrs <|
             case slack of
                 Identified newSession ->
-                    [ row [ width fill, spacing spacingUnit ]
-                        [ teamInfoEl newSession.team, userInfoEl newSession.user ]
+                    [ stateHeaderEl newSession.team newSession.user ]
+
+                Hydrated _ pov ->
+                    [ stateHeaderEl pov.team pov.user
+                    , conversationsEl vs teamIdStr pov.users pov.conversations
                     ]
 
 
-teamInfoEl : Slack.Team -> Element Msg
+stateHeaderEl : Team -> User -> Element Msg
+stateHeaderEl team user =
+    row [ width fill, spacing spacingUnit ] [ teamInfoEl team, userInfoEl user ]
+
+
+teamInfoEl : Team -> Element Msg
 teamInfoEl team =
     row [ width fill, spacing spacingUnit ]
         [ squareIconOrHeadEl [ BG.color aubergine.prim ]
@@ -167,7 +178,7 @@ identityIconSize =
     40
 
 
-userInfoEl : Slack.User -> Element Msg
+userInfoEl : User -> Element Msg
 userInfoEl user =
     row [ width fill, spacing spacingUnit ]
         [ squareIconOrHeadEl []
@@ -180,3 +191,67 @@ userInfoEl user =
             , el [ Font.size smallFontSize, Font.color aubergine.note ] (breakT user.profile.realName)
             ]
         ]
+
+
+conversationsEl : ViewState -> String -> Dict String User -> Dict String Conversation -> Element Msg
+conversationsEl vs teamIdStr users conversations =
+    let
+        channels =
+            conversations
+                |> Dict.toList
+                |> List.filter (Tuple.second >> Slack.isChannel)
+    in
+    select []
+        { state = vs.selectState
+        , id = conversationSelectId teamIdStr
+        , theme = aubergine
+        , onSelect = always NoOp
+        , selectedOption = Nothing
+        , options = channels
+        , optionEl = \c -> conversationEl [] { size = smallFontSize, conversation = c, users = users }
+        }
+
+
+conversationSelectId : String -> String
+conversationSelectId teamIdStr =
+    "slackConversationSelect_" ++ teamIdStr
+
+
+conversationEl :
+    List (Attribute msg)
+    ->
+        { size : Int
+        , users : Dict String User
+        , conversation : Conversation
+        }
+    -> Element msg
+conversationEl attrs opts =
+    row ([ spacing spacingUnit ] ++ attrs) <|
+        case opts.conversation of
+            PublicChannel { name } ->
+                [ text "#", text name ]
+
+            PrivateChannel { name } ->
+                [ octiconEl [] { size = smallFontSize, color = conversationIconColor, shape = Octicons.lock }
+                , text name
+                ]
+
+            IM { user } ->
+                [ octiconEl [] { size = smallFontSize, color = conversationIconColor, shape = Octicons.person }
+                , case Slack.getUser opts.users user of
+                    Ok u ->
+                        text u.profile.displayName
+
+                    Err userIdStr ->
+                        text userIdStr
+                ]
+
+            MPIM { name } ->
+                [ octiconEl [] { size = smallFontSize, color = conversationIconColor, shape = Octicons.organization }
+                , text name
+                ]
+
+
+conversationIconColor : Color
+conversationIconColor =
+    aubergine.text
