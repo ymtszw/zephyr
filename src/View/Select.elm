@@ -1,4 +1,4 @@
-module View.Select exposing (State, close, init, isOpen, open, select)
+module View.Select exposing (State, close, filterInput, init, isOpen, open, select)
 
 import Data.ColorTheme exposing (ColorTheme)
 import Data.Msg exposing (Msg(..))
@@ -20,7 +20,7 @@ Therefore you should only have one instance of this type in your application's m
 
 -}
 type State
-    = Open String
+    = Open { id : String, filter : String }
     | AllClosed
 
 
@@ -31,7 +31,17 @@ init =
 
 open : String -> State -> State
 open id state =
-    Open id
+    Open { id = id, filter = "" }
+
+
+filterInput : String -> State -> State
+filterInput filter state =
+    case state of
+        Open record ->
+            Open { record | filter = filter }
+
+        AllClosed ->
+            AllClosed
 
 
 close : State
@@ -42,8 +52,8 @@ close =
 isOpen : String -> State -> Bool
 isOpen id state =
     case state of
-        Open openId ->
-            openId == id
+        Open record ->
+            record.id == id
 
         AllClosed ->
             False

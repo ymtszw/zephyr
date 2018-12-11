@@ -142,6 +142,9 @@ update msg m_ =
         SelectToggle _ False ->
             pure { m | viewState = { viewState | selectState = View.Select.close } }
 
+        SelectFilterInput input ->
+            pure { m | viewState = { viewState | selectState = View.Select.filterInput input viewState.selectState } }
+
         SelectPick actualMsg ->
             update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
 

@@ -37,6 +37,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | SelectToggle String Bool
     | SelectPick Msg
+    | SelectFilterInput String
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn String
@@ -96,6 +97,9 @@ logEntry msg =
 
         SelectPick sMsg ->
             logEntry sMsg
+
+        SelectFilterInput input ->
+            Entry "SelectFilterInput" [ input ]
 
         AddEmptyColumn ->
             Entry "AddEmptyColumn" []
