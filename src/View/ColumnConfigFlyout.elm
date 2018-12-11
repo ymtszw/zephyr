@@ -357,13 +357,16 @@ filterAtomCtorOptionEl : FilterAtom -> Element msg
 filterAtomCtorOptionEl filterAtom =
     case filterAtom of
         OfDiscordChannel _ ->
-            text "Discord message in channel..."
+            text "Discord message in ..."
+
+        OfSlackConversation _ ->
+            text "Slack message in ..."
 
         ByMessage _ ->
-            text "Message contains..."
+            text "Message contains ..."
 
         ByMedia _ ->
-            text "Attached media..."
+            text "Attached media ..."
 
         RemoveMe ->
             text "Remove this filter"
@@ -378,13 +381,16 @@ availableFilterAtomsWithDefaultArguments fam faInputType =
                     let
                         replaceIfSameType option =
                             case ( selected, option ) of
+                                ( OfDiscordChannel _, OfDiscordChannel _ ) ->
+                                    selected
+
+                                ( OfSlackConversation _, OfSlackConversation _ ) ->
+                                    selected
+
                                 ( ByMessage _, ByMessage _ ) ->
                                     selected
 
                                 ( ByMedia _, ByMedia _ ) ->
-                                    selected
-
-                                ( OfDiscordChannel _, OfDiscordChannel _ ) ->
                                     selected
 
                                 _ ->
@@ -394,9 +400,15 @@ availableFilterAtomsWithDefaultArguments fam faInputType =
 
                 _ ->
                     options
+
+        serviceFilterAtoms =
+            List.filterMap identity
+                [ Maybe.map Tuple.first fam.ofDiscordChannel
+
+                -- TODO add slack
+                ]
     in
-    List.filterMap identity [ Maybe.map Tuple.first fam.ofDiscordChannel ]
-        |> List.append [ ByMessage "text", ByMedia HasImage ]
+    (serviceFilterAtoms ++ [ ByMessage "text", ByMedia HasImage ])
         |> editByInputType
         |> List.map (\fa -> ( ctorKey fa, fa ))
 
@@ -406,6 +418,9 @@ ctorKey fa =
     case fa of
         OfDiscordChannel _ ->
             "OfDiscordChannel"
+
+        OfSlackConversation _ ->
+            "OfSlackConversation"
 
         ByMessage _ ->
             "ByMessage"
@@ -440,6 +455,10 @@ filterAtomVariableInputEl ss fam cId fi ai fa =
 
                 Nothing ->
                     channelSelectEl fallbackChannel [] (always none)
+
+        OfSlackConversation convIdStr ->
+            -- TODO
+            none
 
         ByMessage query ->
             filterAtomVariableTextInputEl ByMessage cId fi ai query

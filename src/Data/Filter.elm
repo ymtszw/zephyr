@@ -36,6 +36,7 @@ type Filter
 
 type FilterAtom
     = OfDiscordChannel String
+    | OfSlackConversation String
     | ByMessage String
     | ByMedia MediaFilter
     | RemoveMe -- This is only for deletion from UI, not actually used as filter
@@ -62,6 +63,9 @@ encodeFilterAtom filterAtom =
     case filterAtom of
         OfDiscordChannel channelId ->
             E.tagged "OfDiscordChannel" (E.string channelId)
+
+        OfSlackConversation convIdStr ->
+            E.tagged "OfSlackConversation" (E.string convIdStr)
 
         ByMessage query ->
             E.tagged "ByMessage" (E.string query)
@@ -99,6 +103,7 @@ filterAtomDecoder : Decoder FilterAtom
 filterAtomDecoder =
     D.oneOf
         [ D.tagged "OfDiscordChannel" OfDiscordChannel D.string
+        , D.tagged "OfSlackConversation" OfSlackConversation D.string
         , D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
 
@@ -302,6 +307,9 @@ atomToString fa =
         OfDiscordChannel cId ->
             "Discord Ch: " ++ cId
 
+        OfSlackConversation cId ->
+            "Slack Ch: " ++ cId
+
         ByMessage query ->
             "Contains: " ++ query
 
@@ -324,32 +332,32 @@ compareFilterAtom fa1 fa2 =
         ( OfDiscordChannel cId1, OfDiscordChannel cId2 ) ->
             compare cId1 cId2
 
-        ( OfDiscordChannel _, ByMessage _ ) ->
+        ( OfDiscordChannel _, _ ) ->
             LT
 
-        ( OfDiscordChannel _, ByMedia _ ) ->
-            LT
+        ( OfSlackConversation _, OfDiscordChannel _ ) ->
+            GT
 
-        ( OfDiscordChannel _, RemoveMe ) ->
+        ( OfSlackConversation cId1, OfSlackConversation cId2 ) ->
+            compare cId1 cId2
+
+        ( OfSlackConversation _, _ ) ->
             LT
 
         ( ByMessage _, OfDiscordChannel _ ) ->
             GT
 
+        ( ByMessage _, OfSlackConversation _ ) ->
+            GT
+
         ( ByMessage q1, ByMessage q2 ) ->
             compare q1 q2
 
-        ( ByMessage _, ByMedia _ ) ->
+        ( ByMessage _, _ ) ->
             LT
 
-        ( ByMessage _, RemoveMe ) ->
+        ( ByMedia _, RemoveMe ) ->
             LT
-
-        ( ByMedia _, OfDiscordChannel _ ) ->
-            GT
-
-        ( ByMedia _, ByMessage _ ) ->
-            GT
 
         ( ByMedia HasNone, ByMedia HasImage ) ->
             GT
@@ -378,17 +386,11 @@ compareFilterAtom fa1 fa2 =
         ( ByMedia HasMovie, ByMedia HasNone ) ->
             LT
 
-        ( ByMedia _, RemoveMe ) ->
-            LT
-
-        ( RemoveMe, OfDiscordChannel _ ) ->
-            LT
-
-        ( RemoveMe, ByMessage _ ) ->
-            LT
-
-        ( RemoveMe, ByMedia _ ) ->
-            LT
+        ( ByMedia _, _ ) ->
+            GT
 
         ( RemoveMe, RemoveMe ) ->
             EQ
+
+        ( RemoveMe, _ ) ->
+            GT

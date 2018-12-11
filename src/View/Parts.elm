@@ -893,6 +893,10 @@ filterAtomTextEl fontSize color fam fa =
                     FAM.mapDiscordChannel cId fam <|
                         \c -> breakT ("#" ++ c.name)
 
+        OfSlackConversation cId ->
+            -- TODO
+            breakT cId
+
         ByMessage query ->
             breakT ("\"" ++ query ++ "\"")
 

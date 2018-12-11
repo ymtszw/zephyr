@@ -47,6 +47,13 @@ matchAtom item filterAtom =
         ( OfDiscordChannel cId, _ ) ->
             False
 
+        ( OfSlackConversation cId, SlackItem _ ) ->
+            -- TODO
+            False
+
+        ( OfSlackConversation _, _ ) ->
+            False
+
         ( ByMessage "", _ ) ->
             -- Short-circuit for empty query; this CAN be invalidated on input, but we are slacking
             True

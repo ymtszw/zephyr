@@ -479,16 +479,26 @@ filterSuite =
             [ testcompareFilterAtom (OfDiscordChannel "b") (OfDiscordChannel "a") GT
             , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
             , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "b") LT
+            , testcompareFilterAtom (OfDiscordChannel "a") (OfSlackConversation "a") LT
             , testcompareFilterAtom (OfDiscordChannel "a") (ByMessage "a") LT
             , testcompareFilterAtom (OfDiscordChannel "a") (ByMedia HasImage) LT
             , testcompareFilterAtom (OfDiscordChannel "a") RemoveMe LT
+            , testcompareFilterAtom (OfSlackConversation "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (OfSlackConversation "b") (OfSlackConversation "a") GT
+            , testcompareFilterAtom (OfSlackConversation "a") (OfSlackConversation "a") EQ
+            , testcompareFilterAtom (OfSlackConversation "a") (OfSlackConversation "b") LT
+            , testcompareFilterAtom (OfSlackConversation "a") (ByMessage "a") LT
+            , testcompareFilterAtom (OfSlackConversation "a") (ByMedia HasImage) LT
+            , testcompareFilterAtom (OfSlackConversation "a") RemoveMe LT
             , testcompareFilterAtom (ByMessage "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMessage "a") (OfSlackConversation "a") GT
             , testcompareFilterAtom (ByMessage "b") (ByMessage "a") GT
             , testcompareFilterAtom (ByMessage "a") (ByMessage "a") EQ
             , testcompareFilterAtom (ByMessage "a") (ByMessage "b") LT
             , testcompareFilterAtom (ByMessage "a") (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMessage "a") RemoveMe LT
             , testcompareFilterAtom (ByMedia HasImage) (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMedia HasImage) (OfSlackConversation "a") GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMessage "a") GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasImage) GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasMovie) GT
@@ -500,9 +510,10 @@ filterSuite =
             , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasImage) RemoveMe LT
-            , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") LT
-            , testcompareFilterAtom RemoveMe (ByMessage "a") LT
-            , testcompareFilterAtom RemoveMe (ByMedia HasImage) LT
+            , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") GT
+            , testcompareFilterAtom RemoveMe (OfSlackConversation "a") GT
+            , testcompareFilterAtom RemoveMe (ByMessage "a") GT
+            , testcompareFilterAtom RemoveMe (ByMedia HasImage) GT
             , testcompareFilterAtom RemoveMe RemoveMe EQ
             ]
         ]
