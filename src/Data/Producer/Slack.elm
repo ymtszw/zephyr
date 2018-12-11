@@ -3,7 +3,7 @@ module Data.Producer.Slack exposing
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, defaultIconUrl, teamUrl
+    , getUser, isChannel, compareByMembersipThenName, defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
     )
 
 {-| Producer for Slack workspaces.
@@ -15,7 +15,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, defaultIconUrl, teamUrl
+@docs getUser, isChannel, compareByMembersipThenName, defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
 
 -}
 
@@ -889,6 +889,75 @@ isChannel conv =
             False
 
 
+compareByMembersipThenName : Conversation -> Conversation -> Order
+compareByMembersipThenName convA convB =
+    if convA == convB then
+        EQ
+
+    else
+        let
+            compareToPub isMember =
+                if isMember then
+                    GT
+
+                else
+                    LT
+        in
+        case ( convA, convB ) of
+            ( PublicChannel pub1, PublicChannel pub2 ) ->
+                case ( pub1.isMember, pub2.isMember ) of
+                    ( True, False ) ->
+                        LT
+
+                    ( False, True ) ->
+                        GT
+
+                    _ ->
+                        compare pub1.name pub2.name
+
+            ( PublicChannel pub1, _ ) ->
+                if pub1.isMember then
+                    LT
+
+                else
+                    GT
+
+            ( PrivateChannel _, PublicChannel pub2 ) ->
+                compareToPub pub2.isMember
+
+            ( PrivateChannel priv1, PrivateChannel priv2 ) ->
+                compare priv1.name priv2.name
+
+            ( PrivateChannel _, _ ) ->
+                LT
+
+            ( IM _, PublicChannel pub2 ) ->
+                compareToPub pub2.isMember
+
+            ( IM im1, IM im2 ) ->
+                let
+                    ( UserId u1, UserId u2 ) =
+                        ( im1.user, im2.user )
+                in
+                -- Compare by UserId, not by User's names
+                compare u1 u2
+
+            ( IM _, MPIM _ ) ->
+                LT
+
+            ( IM _, _ ) ->
+                GT
+
+            ( MPIM _, PublicChannel pub2 ) ->
+                compareToPub pub2.isMember
+
+            ( MPIM mpim1, MPIM mpim2 ) ->
+                compare mpim1.name mpim2.name
+
+            ( MPIM _, _ ) ->
+                GT
+
+
 defaultIconUrl : Maybe Int -> String
 defaultIconUrl sizeMaybe =
     logoCdnUrl sizeMaybe "/osogig-6gybeo-d2hu58/Slack%20App%20Icon.png"
@@ -917,3 +986,17 @@ teamUrl team =
     , query = Nothing
     , fragment = Nothing
     }
+
+
+{-| Only for testing.
+-}
+dummyConversationId : ConversationId
+dummyConversationId =
+    ConversationId "CDUMMYID"
+
+
+{-| Only for testing.
+-}
+dummyUserId : String -> UserId
+dummyUserId userIdStr =
+    UserId userIdStr

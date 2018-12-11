@@ -631,6 +631,19 @@ testColorSerDe colorNum expectedHex =
 
 slackSuite : Test
 slackSuite =
+    let
+        pub name isMember =
+            Slack.PublicChannel { id = Slack.dummyConversationId, name = name, isMember = isMember }
+
+        priv name =
+            Slack.PrivateChannel { id = Slack.dummyConversationId, name = name }
+
+        im id =
+            Slack.IM { id = Slack.dummyConversationId, user = Slack.dummyUserId id }
+
+        mpim name =
+            Slack.MPIM { id = Slack.dummyConversationId, name = name }
+    in
     describe "Data.Producer.Slack"
         [ testCodec "should decode/encode User"
             SlackTestData.userInfoJson
@@ -647,6 +660,47 @@ slackSuite =
             (D.field "channels" (D.list Slack.conversationDecoder))
             (Json.Encode.list Slack.encodeConversation)
             (D.list Slack.conversationDecoder)
+        , describe "compareByMembersipThenName"
+            [ testCompareConversation (pub "Name" True) (pub "Aaaa" True) GT
+            , testCompareConversation (pub "Name" True) (pub "Name" True) EQ
+            , testCompareConversation (pub "Name" True) (pub "Zzzz" True) LT
+            , testCompareConversation (pub "Name" True) (priv "Name") LT
+            , testCompareConversation (pub "Name" True) (im "USER") LT
+            , testCompareConversation (pub "Name" True) (mpim "Users") LT
+            , testCompareConversation (pub "Name" True) (pub "Aaaa" False) LT
+            , testCompareConversation (pub "Name" True) (pub "Name" False) LT
+            , testCompareConversation (pub "Name" True) (pub "Zzzz" False) LT
+            , testCompareConversation (priv "Name") (pub "Name" True) GT
+            , testCompareConversation (priv "Name") (priv "Aaaa") GT
+            , testCompareConversation (priv "Name") (priv "Name") EQ
+            , testCompareConversation (priv "Name") (priv "Zzzz") LT
+            , testCompareConversation (priv "Name") (im "USER") LT
+            , testCompareConversation (priv "Name") (mpim "Users") LT
+            , testCompareConversation (priv "Name") (pub "Name" False) LT
+            , testCompareConversation (im "USER") (pub "Name" True) GT
+            , testCompareConversation (im "USER") (priv "Name") GT
+            , testCompareConversation (im "USER") (im "AAAA") GT
+            , testCompareConversation (im "USER") (im "USER") EQ
+            , testCompareConversation (im "USER") (im "ZZZZ") LT
+            , testCompareConversation (im "USER") (mpim "Users") LT
+            , testCompareConversation (im "USER") (pub "Name" False) LT
+            , testCompareConversation (mpim "Users") (pub "Name" True) GT
+            , testCompareConversation (mpim "Users") (priv "Name") GT
+            , testCompareConversation (mpim "Users") (im "USER") GT
+            , testCompareConversation (mpim "Users") (mpim "Aaaaa") GT
+            , testCompareConversation (mpim "Users") (mpim "Users") EQ
+            , testCompareConversation (mpim "Users") (mpim "Zzzzz") LT
+            , testCompareConversation (mpim "Users") (pub "Name" False) LT
+            , testCompareConversation (pub "Name" False) (pub "Aaaa" True) GT
+            , testCompareConversation (pub "Name" False) (pub "Name" True) GT
+            , testCompareConversation (pub "Name" False) (pub "Zzzz" True) GT
+            , testCompareConversation (pub "Name" False) (priv "Name") GT
+            , testCompareConversation (pub "Name" False) (im "USER") GT
+            , testCompareConversation (pub "Name" False) (mpim "Users") GT
+            , testCompareConversation (pub "Name" False) (pub "Aaaa" False) GT
+            , testCompareConversation (pub "Name" False) (pub "Name" False) EQ
+            , testCompareConversation (pub "Name" False) (pub "Zzzz" False) LT
+            ]
         ]
 
 
@@ -659,3 +713,10 @@ testCodec desc initial decA enc decB =
                 |> Result.map (enc >> encode 0)
                 |> Result.andThen (decodeString decB)
                 |> Expect.ok
+
+
+testCompareConversation : Slack.Conversation -> Slack.Conversation -> Order -> Test
+testCompareConversation a b order =
+    test ("'" ++ Debug.toString a ++ "' " ++ Debug.toString order ++ " '" ++ Debug.toString b ++ "'") <|
+        \_ ->
+            Slack.compareByMembersipThenName a b |> Expect.equal order
