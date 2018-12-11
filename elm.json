@@ -17,6 +17,7 @@
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
             "folkertdev/elm-deque": "3.0.0",
+            "jinjor/elm-debounce": "3.0.0",
             "justinmimbs/timezone-data": "2.0.2",
             "mdgriffith/elm-ui": "1.1.0",
             "rtfeldman/elm-hex": "1.0.0",
