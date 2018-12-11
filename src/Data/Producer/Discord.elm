@@ -948,19 +948,18 @@ handleHydrate discord guilds channels =
             )
 
         Switching { token, user } _ ->
-            -- Successful user switch
+            -- Successful user switch; XXX we may not need to put Worque.DiscordFetch
             ( Hydrated token (POV token user guilds channels)
             , { yield | persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch }
             )
 
         Rehydrating token pov ->
-            -- Re-scan for new channels; existing channels are not fetched here
             let
                 newChannels =
                     mergeChannels pov.channels channels
             in
             ( Hydrated token { pov | guilds = guilds, channels = newChannels }
-            , { yield | persist = True, updateFAM = calculateFAM newChannels, work = Just Worque.DiscordFetch }
+            , { yield | persist = True, updateFAM = calculateFAM newChannels }
             )
 
         Expired token pov ->
@@ -979,7 +978,6 @@ mergeChannels oldChannels newChannels =
     let
         foundOnlyInOld _ _ acc =
             -- Deleting now unreachable (deleted/banned) Channel
-            -- TODO do equivalent if got 404 with FetchErr
             acc
 
         foundInBoth cId old new acc =
