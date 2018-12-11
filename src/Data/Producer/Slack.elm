@@ -1,7 +1,7 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..)
-    , initRegistry, encodeRegistry, registryDecoder
-    , encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache
+    , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
+    , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -12,9 +12,9 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation
-@docs initRegistry, encodeRegistry, registryDecoder
-@docs encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
+@docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache
+@docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
+@docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -186,6 +186,20 @@ type alias ConversationIdStr =
 
 type LastRead
     = LastRead String
+
+
+type alias ConversationCache =
+    { id : ConversationId
+    , name : String -- User name for IM must be resolved before caching
+    , type_ : ConversationCacheType
+    }
+
+
+type ConversationCacheType
+    = PublicChannelCache
+    | PrivateChannelCache
+    | IMCache
+    | MPIMCache
 
 
 {-| Runtime registry of multiple Slack state machines.
@@ -364,6 +378,31 @@ encodeLastRead (LastRead lastRead) =
     E.tagged "LastRead" (E.string lastRead)
 
 
+encodeConversationCache : ConversationCache -> E.Value
+encodeConversationCache cache =
+    E.object
+        [ ( "id", encodeConversationId cache.id )
+        , ( "name", E.string cache.name )
+        , ( "type_", encodeConversationCacheType cache.type_ )
+        ]
+
+
+encodeConversationCacheType : ConversationCacheType -> E.Value
+encodeConversationCacheType type_ =
+    case type_ of
+        PublicChannelCache ->
+            E.tag "PublicChannelCache"
+
+        PrivateChannelCache ->
+            E.tag "PrivateChannelCache"
+
+        IMCache ->
+            E.tag "IMCache"
+
+        MPIMCache ->
+            E.tag "MPIMCache"
+
+
 
 -- Decoder
 
@@ -524,6 +563,24 @@ lastReadDecoder : Decoder LastRead
 lastReadDecoder =
     -- As in Discord's lastMessageId, we deliberately ignore "last_read" from Slack API.
     D.tagged "LastRead" LastRead D.string
+
+
+conversationCacheDecoder : Decoder ConversationCache
+conversationCacheDecoder =
+    D.map3 ConversationCache
+        (D.field "id" conversationIdDecoder)
+        (D.field "name" D.string)
+        (D.field "type_" conversationCacheTypeDecoder)
+
+
+conversationCacheTypeDecoder : Decoder ConversationCacheType
+conversationCacheTypeDecoder =
+    D.oneOf
+        [ D.tag "PublicChannelCache" PublicChannelCache
+        , D.tag "PrivateChannelCache" PrivateChannelCache
+        , D.tag "IMCache" IMCache
+        , D.tag "MPIMCache" MPIMCache
+        ]
 
 
 
