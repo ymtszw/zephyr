@@ -48,6 +48,7 @@ We should occasionally (lazily) update it.
 type Slack
     = Identified NewSession
     | Hydrated String POV
+    | Rehydrating String POV
 
 
 type alias NewSession =
@@ -229,6 +230,10 @@ encodeSlack slack =
             E.tagged "Identified" (encodeSession session)
 
         Hydrated _ pov ->
+            -- TODO: add Revisit
+            E.tagged2 "Hydrated" (E.string pov.token) (encodePov pov)
+
+        Rehydrating _ pov ->
             -- TODO: add Revisit
             E.tagged2 "Hydrated" (E.string pov.token) (encodePov pov)
 
@@ -505,6 +510,10 @@ reloadTeam _ slack y =
             -- TODO: Add Revisit => re-Identify
             y
 
+        _ ->
+            -- Other states should not come from IndexedDB
+            y
+
 
 type Msg
     = -- Prefix "U" means Msg for Unidentified token
@@ -637,6 +646,10 @@ handleIAPIFailure teamIdStr rpcFailure sr =
 
         Just (Hydrated _ pov) ->
             -- New token invalid? Just restore token input.
+            pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+
+        Just (Rehydrating _ pov) ->
+            -- Somehow Rehydrate failed. Just fall back to previous Hydrated state.
             pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
 
         Nothing ->

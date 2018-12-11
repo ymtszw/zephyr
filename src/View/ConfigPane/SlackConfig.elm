@@ -142,6 +142,11 @@ teamStateKeyEl vs teamIdStr slack =
                     , conversationsEl vs teamIdStr pov.users pov.conversations
                     ]
 
+                Rehydrating _ pov ->
+                    [ stateHeaderEl pov.team pov.user
+                    , conversationsEl vs teamIdStr pov.users pov.conversations
+                    ]
+
 
 stateHeaderEl : Team -> User -> Element Msg
 stateHeaderEl team user =
