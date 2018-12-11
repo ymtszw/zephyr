@@ -138,14 +138,33 @@ since `name` values of MPIMs are auto-generated strings.
 
 Members of private conversations must be retrieved from conversations.members API.
 <https://api.slack.com/methods/conversations.members>
+(Although conversation doc says there is `members` field, it is retired.
+<https://api.slack.com/changelog/2017-10-members-array-truncating>)
+
 TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
 
 -}
 type Conversation
-    = PublicChannel { id : ConversationId, name : String }
-    | PrivateChannel { id : ConversationId, name : String }
-    | IM { id : ConversationId, user : UserId } -- Instant Messages, presumably
-    | MPIM { id : ConversationId, name : String } -- Multi-person IM
+    = PublicChannel PublicChannelRecord
+    | PrivateChannel PrivateChannelRecord
+    | IM IMRecord -- Instant Messages, presumably
+    | MPIM MPIMRecord -- Multi-person IM
+
+
+type alias PublicChannelRecord =
+    { id : ConversationId, name : String, isMember : Bool }
+
+
+type alias PrivateChannelRecord =
+    { id : ConversationId, name : String }
+
+
+type alias IMRecord =
+    { id : ConversationId, user : UserId }
+
+
+type alias MPIMRecord =
+    { id : ConversationId, name : String }
 
 
 type ConversationId
@@ -280,9 +299,13 @@ encodeTeam team =
 encodeConversation : Conversation -> E.Value
 encodeConversation conv =
     case conv of
-        PublicChannel { id, name } ->
+        PublicChannel { id, name, isMember } ->
             E.tagged "PublicChannel" <|
-                E.object [ ( "id", encodeConversationId id ), ( "name", E.string name ) ]
+                E.object
+                    [ ( "id", encodeConversationId id )
+                    , ( "name", E.string name )
+                    , ( "is_member", E.bool isMember )
+                    ]
 
         PrivateChannel { id, name } ->
             E.tagged "PrivateChannel" <|
@@ -400,33 +423,39 @@ conversationDecoder : Decoder Conversation
 conversationDecoder =
     -- XXX We are including archived channels and IM with deleted users.
     let
-        idAndNameDecoder =
-            D.map2 (\a b -> { id = a, name = b }) (D.field "id" conversationIdDecoder) (D.field "name" D.string)
+        pubDecoder =
+            D.map3 PublicChannelRecord (D.field "id" conversationIdDecoder) (D.field "name" D.string) (D.optionField "is_member" D.bool False)
+
+        privDecoder =
+            D.map2 PrivateChannelRecord (D.field "id" conversationIdDecoder) (D.field "name" D.string)
 
         imDecoder =
-            D.map2 (\a b -> { id = a, user = b }) (D.field "id" conversationIdDecoder) (D.field "user" userIdDecoder)
+            D.map2 IMRecord (D.field "id" conversationIdDecoder) (D.field "user" userIdDecoder)
+
+        mpimDecoder =
+            D.map2 MPIMRecord (D.field "id" conversationIdDecoder) (D.field "name" D.string)
     in
     D.oneOf
         [ -- From IndexedDB
-          D.tagged "PublicChannel" PublicChannel idAndNameDecoder
-        , D.tagged "PrivateChannel" PrivateChannel idAndNameDecoder
+          D.tagged "PublicChannel" PublicChannel pubDecoder
+        , D.tagged "PrivateChannel" PrivateChannel privDecoder
         , D.tagged "IM" IM imDecoder
-        , D.tagged "MPIM" MPIM idAndNameDecoder
+        , D.tagged "MPIM" MPIM mpimDecoder
 
         -- From Slack API
-        , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM idAndNameDecoder)
+        , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM mpimDecoder)
         , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
         , D.oneOf
-            [ D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel idAndNameDecoder)
+            [ D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel privDecoder)
 
             -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
             , D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
                 identity
-                (D.map PrivateChannel idAndNameDecoder)
+                (D.map PrivateChannel privDecoder)
             ]
         , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
             ((==) ( True, False ))
-            (D.map PublicChannel idAndNameDecoder)
+            (D.map PublicChannel pubDecoder)
         ]
 
 
