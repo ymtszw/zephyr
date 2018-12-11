@@ -314,6 +314,7 @@ filterAtomCtorSelectEl selectState fam cId faInputType =
         { state = selectState
         , id = selectId
         , theme = oneDark
+        , thin = False
         , onSelect = filterAtomOnSelect cId faInputType
         , selectedOption = selectedOption
         , options = availableFilterAtomsWithDefaultArguments fam faInputType
@@ -478,10 +479,11 @@ filterAtomVariableSelectEl :
     -> ( List ( String, a ), a -> Element Msg )
     -> Element Msg
 filterAtomVariableSelectEl tagger selectState cId fi ai selected ( options, optionEl ) =
-    select []
+    select [ width fill ]
         { state = selectState
         , id = cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_variable"
         , theme = oneDark
+        , thin = False
         , onSelect = \option -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger option })
         , selectedOption = Just selected
         , options = options

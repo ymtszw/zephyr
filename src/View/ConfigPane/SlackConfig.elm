@@ -205,6 +205,7 @@ conversationsEl vs teamIdStr users conversations =
         { state = vs.selectState
         , id = conversationSelectId teamIdStr
         , theme = aubergine
+        , thin = False
         , onSelect = always NoOp
         , selectedOption = Nothing
         , options = channels

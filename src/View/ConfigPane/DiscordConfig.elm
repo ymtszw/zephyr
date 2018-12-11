@@ -402,15 +402,19 @@ unsubscribeButtonEl c =
 
 subscribeRowKeyEl : Select.State -> List Channel -> ( String, Element Msg )
 subscribeRowKeyEl selectState notSubbed =
-    select [ width (px channelSelectWidth), alignLeft ]
+    [ select [ width (fillPortion 1), alignLeft ]
         { state = selectState
         , id = channelSelectId
         , theme = oneDark
+        , thin = True
         , onSelect = ProducerCtrl << ProducerRegistry.DiscordMsg << Discord.Subscribe << .id
         , selectedOption = Nothing
         , options = List.map (\c -> ( c.id, c )) notSubbed
         , optionEl = \c -> discordChannelEl [] { size = channelTableFontSize, channel = c }
         }
+    , el [ width (fillPortion 2) ] none
+    ]
+        |> row [ width fill ]
         |> Tuple.pair channelSelectId
 
 

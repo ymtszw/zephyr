@@ -49,55 +49,55 @@ isOpen id state =
             False
 
 
+type alias Options a =
+    { state : State
+    , id : String
+    , theme : ColorTheme
+    , thin : Bool
+    , onSelect : a -> Msg
+    , selectedOption : Maybe a
+    , options : List ( String, a )
+    , optionEl : a -> Element Msg
+    }
+
+
 {-| Select input element.
 
 Require `id` and `state` to control open/closed status.
 Also, it uess Keyed.column.
 
 -}
-select :
-    List (Attribute Msg)
-    ->
-        { state : State
-        , id : String
-        , theme : ColorTheme
-        , onSelect : a -> Msg
-        , selectedOption : Maybe a
-        , options : List ( String, a )
-        , optionEl : a -> Element Msg
-        }
-    -> Element Msg
-select userAttrs { state, id, theme, onSelect, selectedOption, options, optionEl } =
+select : List (Attribute Msg) -> Options a -> Element Msg
+select userAttrs opts =
     let
         opened =
-            isOpen id state
+            isOpen opts.id opts.state
 
         attrs =
-            [ width (fill |> minimum 0)
-            , height fill
-            , padding headerPadding
-            , BD.rounded rectElementRound
-            , BG.color theme.note
-            , below (optionsEl onSelect theme opened optionEl selectedOption options)
-            ]
-                ++ userAttrs
+            [ below (optionsEl opened opts) ] ++ userAttrs
     in
-    el attrs (headerEl (SelectToggle id (not opened)) theme selectedOption optionEl)
+    el attrs (headerEl (SelectToggle opts.id (not opened)) opts)
 
 
-headerEl : Msg -> ColorTheme -> Maybe a -> (a -> Element Msg) -> Element Msg
-headerEl onPress theme selectedOption optionEl =
+headerEl : Msg -> Options a -> Element Msg
+headerEl onPress opts =
     Element.Input.button
         [ width fill
-        , Font.color theme.text
+        , Font.color opts.theme.text
         ]
         { onPress = Just onPress
         , label =
-            row [ width fill, spacingXY headerChevronSpacingX 0 ]
+            row
+                [ width fill
+                , padding (headerPadding opts.thin)
+                , spacingXY headerChevronSpacingX 0
+                , BD.rounded rectElementRound
+                , BG.color opts.theme.note
+                ]
                 [ -- `minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
                   -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
-                  el [ width (fill |> minimum 0), clipX ] <|
-                    Maybe.withDefault (text "Select...") (Maybe.map optionEl selectedOption)
+                  el [ width (fill |> minimum 0), paddingXY headerTextPaddingX 0, clipX ] <|
+                    Maybe.withDefault (text "Select...") (Maybe.map opts.optionEl opts.selectedOption)
                 , octiconEl
                     [ width (px headerChevronSize)
                     , alignRight
@@ -107,16 +107,25 @@ headerEl onPress theme selectedOption optionEl =
                         , bottomLeft = 0
                         , bottomRight = rectElementRound
                         }
-                    , BG.color theme.sub
+                    , BG.color opts.theme.sub
                     ]
                     { size = headerChevronSize, color = defaultOcticonColor, shape = Octicons.chevronDown }
                 ]
         }
 
 
-headerPadding : Int
-headerPadding =
-    5
+headerPadding : Bool -> Int
+headerPadding thin =
+    if thin then
+        0
+
+    else
+        5
+
+
+headerTextPaddingX : Int
+headerTextPaddingX =
+    3
 
 
 headerChevronSpacingX : Int
@@ -129,23 +138,23 @@ headerChevronSize =
     20
 
 
-optionsEl : (a -> Msg) -> ColorTheme -> Bool -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
-optionsEl onSelect theme opened optionEl selectedOption options =
-    options
-        |> List.map (optionRowKeyEl onSelect theme optionEl selectedOption)
+optionsEl : Bool -> Options a -> Element Msg
+optionsEl opened opts =
+    opts.options
+        |> List.map (optionRowKeyEl opts)
         |> Element.Keyed.column
             [ width (fill |> minimum optionListMinWidth)
             , paddingXY 0 optionListPaddingY
             , scrollbarY
             , BD.rounded rectElementRound
-            , BD.color theme.bd
+            , BD.color opts.theme.bd
             , BD.shadow
                 { offset = ( 5.0, 5.0 )
                 , blur = 10.0
                 , size = 0.0
-                , color = theme.bg
+                , color = opts.theme.bg
                 }
-            , BG.color theme.note
+            , BG.color opts.theme.note
             ]
         |> el [ height (fill |> maximum optionListMaxHeight), visible opened ]
 
@@ -165,20 +174,20 @@ optionListPaddingY =
     5
 
 
-optionRowKeyEl : (a -> Msg) -> ColorTheme -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( String, Element Msg )
-optionRowKeyEl onSelect theme optionEl selectedOption ( optionKey, option ) =
+optionRowKeyEl : Options a -> ( String, a ) -> ( String, Element Msg )
+optionRowKeyEl opts ( optionKey, option ) =
     Element.Input.button
         [ width fill
         , padding optionPadding
-        , mouseOver [ BG.color theme.sub ]
-        , if selectedOption == Just option then
-            BG.color theme.prim
+        , mouseOver [ BG.color opts.theme.sub ]
+        , if opts.selectedOption == Just option then
+            BG.color opts.theme.prim
 
           else
             noneAttr
         ]
-        { onPress = Just (SelectPick (onSelect option))
-        , label = optionEl option
+        { onPress = Just (SelectPick (opts.onSelect option))
+        , label = opts.optionEl option
         }
         |> Tuple.pair optionKey
 

@@ -63,14 +63,11 @@ editorSelectEl ss fam c =
         selectedIndex =
             SelectArray.selectedIndex c.editors
     in
-    Select.select
-        [ width (px editorSelectWidth)
-        , paddingEach { top = 0, right = 0, bottom = 0, left = rectElementInnerPadding }
-        , Font.size editorFontSize
-        ]
+    Select.select [ width (px editorSelectWidth), Font.size editorFontSize ]
         { state = ss
         , id = editorSelectId c.id
         , theme = oneDark
+        , thin = True
         , onSelect = onEditorSelect c.id selectedIndex
         , selectedOption = Just ( selectedIndex, SelectArray.selected c.editors )
         , options = indexedEditors
