@@ -421,8 +421,9 @@ filterAtomVariableInputEl ss fam cId fi ai fa =
     case fa of
         OfDiscordChannel channelId ->
             let
-                channelSelectEl selected options =
-                    filterAtomVariableSelectEl (OfDiscordChannel << .id) ss cId fi ai selected options
+                channelSelectEl selected options optionEl =
+                    filterAtomVariableSelectEl (OfDiscordChannel << .id) <|
+                        FAVSOptions cId fi ai ss selected (Just Discord.channelFilter) options optionEl
 
                 fallbackChannel =
                     Discord.unavailableChannel channelId
@@ -433,20 +434,22 @@ filterAtomVariableInputEl ss fam cId fi ai fa =
                         selectedChannel =
                             channels |> ListExtra.findOne (\c -> c.id == channelId) |> Maybe.withDefault fallbackChannel
                     in
-                    channelSelectEl selectedChannel <|
-                        ( List.map (\c -> ( c.id, c )) channels
-                        , \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
-                        )
+                    channelSelectEl selectedChannel (List.map (\c -> ( c.id, c )) channels) <|
+                        \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
 
                 Nothing ->
-                    channelSelectEl fallbackChannel ( [], always none )
+                    channelSelectEl fallbackChannel [] (always none)
 
         ByMessage query ->
             filterAtomVariableTextInputEl ByMessage cId fi ai query
 
         ByMedia mediaType ->
-            filterAtomVariableSelectEl ByMedia ss cId fi ai mediaType <|
-                ( [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ], mediaTypeOptionEl )
+            let
+                options =
+                    [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ]
+            in
+            filterAtomVariableSelectEl ByMedia <|
+                FAVSOptions cId fi ai ss mediaType Nothing options mediaTypeOptionEl
 
         RemoveMe ->
             -- Should not happen
@@ -459,9 +462,9 @@ discordGuildIconSize =
 
 
 filterAtomVariableTextInputEl : (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg
-filterAtomVariableTextInputEl tagger cId fi ai current =
+filterAtomVariableTextInputEl faTagger cId fi ai current =
     textInputEl []
-        { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger str })
+        { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = faTagger str })
         , theme = oneDark
         , enabled = True
         , text = current
@@ -470,27 +473,42 @@ filterAtomVariableTextInputEl tagger cId fi ai current =
         }
 
 
-filterAtomVariableSelectEl :
-    (a -> FilterAtom)
-    -> Select.State
-    -> String
-    -> Int
-    -> Int
-    -> a
-    -> ( List ( String, a ), a -> Element Msg )
-    -> Element Msg
-filterAtomVariableSelectEl tagger selectState cId fi ai selected ( options, optionEl ) =
+type alias FAVSOptions a =
+    { columnId : String
+    , filterIndex : Int
+    , atomIndex : Int
+    , state : Select.State
+    , selected : a
+    , filterMatch : Maybe (String -> a -> Bool)
+    , options : List ( String, a )
+    , optionEl : a -> Element Msg
+    }
+
+
+filterAtomVariableSelectEl : (a -> FilterAtom) -> FAVSOptions a -> Element Msg
+filterAtomVariableSelectEl faTagger opts =
     select [ width fill ]
-        { state = selectState
-        , id = cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_variable"
+        { state = opts.state
+        , id = filterAtomVariableSelectId opts
         , theme = oneDark
         , thin = False
-        , onSelect = \option -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger option })
-        , selectedOption = Just selected
-        , filterMatch = Nothing
-        , options = options
-        , optionEl = optionEl
+        , onSelect = onSelectFilterAtomVariable faTagger opts
+        , selectedOption = Just opts.selected
+        , filterMatch = opts.filterMatch
+        , options = opts.options
+        , optionEl = opts.optionEl
         }
+
+
+filterAtomVariableSelectId : FAVSOptions a -> String
+filterAtomVariableSelectId opts =
+    opts.columnId ++ "-filter_" ++ fromInt opts.filterIndex ++ "-atom_" ++ fromInt opts.atomIndex ++ "_variable"
+
+
+onSelectFilterAtomVariable : (a -> FilterAtom) -> FAVSOptions a -> a -> Msg
+onSelectFilterAtomVariable faTagger opts var =
+    ColumnCtrl opts.columnId <|
+        SetFilterAtom { filterIndex = opts.filterIndex, atomIndex = opts.atomIndex, atom = faTagger var }
 
 
 mediaTypeOptionEl : MediaFilter -> Element msg

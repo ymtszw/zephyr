@@ -5,7 +5,7 @@ module Data.Producer.Discord exposing
     , encodeMessage, messageDecoder, colorDecoder, encodeColor
     , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-    , getPov, compareByFetchStatus, unavailableChannel, compareByNames
+    , getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
     )
 
 {-| Polling Producer for Discord.
@@ -23,7 +23,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 @docs encodeMessage, messageDecoder, colorDecoder, encodeColor
 @docs Msg, reload, update
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-@docs getPov, compareByFetchStatus, unavailableChannel, compareByNames
+@docs getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
 
 -}
 
@@ -42,6 +42,7 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import String
+import StringExtra
 import Task exposing (Task)
 import Time exposing (Posix)
 import TimeExtra as Time exposing (posix)
@@ -1626,3 +1627,15 @@ getPov discord =
 compareByFetchStatus : Channel -> Channel -> Order
 compareByFetchStatus a b =
     FetchStatus.compare a.fetchStatus b.fetchStatus
+
+
+channelFilter : String -> { x | name : String, guildMaybe : Maybe Guild } -> Bool
+channelFilter filter c =
+    StringExtra.containsCaseIgnored filter c.name
+        || (case c.guildMaybe of
+                Just guild ->
+                    StringExtra.containsCaseIgnored filter guild.name
+
+                Nothing ->
+                    False
+           )

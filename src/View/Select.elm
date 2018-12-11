@@ -9,6 +9,7 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import Element.Lazy exposing (lazy)
 import Octicons
 import View.Parts exposing (..)
 
@@ -85,7 +86,7 @@ select userAttrs opts =
             isOpen opts.id opts.state
 
         attrs =
-            [ below (optionsEl opened opts) ] ++ userAttrs
+            [ below (optionsWithFilterEl opened opts) ] ++ userAttrs
     in
     el attrs (headerEl (SelectToggle opts.id (not opened)) opts)
 
@@ -149,34 +150,63 @@ headerChevronSize =
     20
 
 
-optionsEl : Bool -> Options a -> Element Msg
-optionsEl opened opts =
-    let
-        optionsToShow =
+optionsWithFilterEl : Bool -> Options a -> Element Msg
+optionsWithFilterEl opened opts =
+    column
+        [ height (fill |> maximum optionListMaxHeight)
+        , paddingXY 0 optionListPaddingY
+        , visible opened
+        , BD.rounded rectElementRound
+        , BD.shadow
+            { offset = ( 5.0, 5.0 )
+            , blur = 10.0
+            , size = 0.0
+            , color = opts.theme.bg
+            }
+        , BG.color opts.theme.note
+        ]
+        [ lazy optionFilterEl opts
+        , lazy optionsEl opts
+        ]
+
+
+optionFilterEl : Options a -> Element Msg
+optionFilterEl opts =
+    case opts.filterMatch of
+        Just _ ->
+            textInputEl
+                [ BD.rounded 0
+                , BD.widthXY 0 1
+                , BD.color opts.theme.bd
+                ]
+                { onChange = SelectFilterInput
+                , theme = opts.theme
+                , enabled = True
+                , text =
+                    case opts.state of
+                        Open { filter } ->
+                            filter
+
+                        AllClosed ->
+                            ""
+                , label = Element.Input.labelHidden "Select Filter"
+                , placeholder = Just (text "Filter")
+                }
+
+        Nothing ->
+            none
+
+
+optionsEl : Options a -> Element Msg
+optionsEl opts =
+    Element.Keyed.column [ width (fill |> minimum optionListMinWidth), scrollbarY ] <|
+        List.map (optionRowKeyEl opts) <|
             case ( opts.state, opts.filterMatch ) of
                 ( Open { filter }, Just matcher ) ->
                     List.filter (Tuple.second >> matcher filter) opts.options
 
                 _ ->
                     opts.options
-    in
-    optionsToShow
-        |> List.map (optionRowKeyEl opts)
-        |> Element.Keyed.column
-            [ width (fill |> minimum optionListMinWidth)
-            , paddingXY 0 optionListPaddingY
-            , scrollbarY
-            , BD.rounded rectElementRound
-            , BD.color opts.theme.bd
-            , BD.shadow
-                { offset = ( 5.0, 5.0 )
-                , blur = 10.0
-                , size = 0.0
-                , color = opts.theme.bg
-                }
-            , BG.color opts.theme.note
-            ]
-        |> el [ height (fill |> maximum optionListMaxHeight), visible opened ]
 
 
 optionListMinWidth : Int
