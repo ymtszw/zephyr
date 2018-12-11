@@ -151,7 +151,16 @@ headerChevronSize =
 
 optionsEl : Bool -> Options a -> Element Msg
 optionsEl opened opts =
-    opts.options
+    let
+        optionsToShow =
+            case ( opts.state, opts.filterMatch ) of
+                ( Open { filter }, Just matcher ) ->
+                    List.filter (Tuple.second >> matcher filter) opts.options
+
+                _ ->
+                    opts.options
+    in
+    optionsToShow
         |> List.map (optionRowKeyEl opts)
         |> Element.Keyed.column
             [ width (fill |> minimum optionListMinWidth)
