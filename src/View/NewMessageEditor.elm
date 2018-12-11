@@ -65,6 +65,7 @@ editorSelectEl ss fam c =
     in
     Select.select [ width (px editorSelectWidth), Font.size editorFontSize ]
         { state = ss
+        , msgTagger = SelectCtrl
         , id = editorSelectId c.id
         , theme = oneDark
         , thin = True

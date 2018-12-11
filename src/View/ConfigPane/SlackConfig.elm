@@ -244,6 +244,7 @@ conversationsEl vs teamIdStr users conversations =
     in
     select []
         { state = vs.selectState
+        , msgTagger = SelectCtrl
         , id = conversationSelectId teamIdStr
         , theme = aubergine
         , thin = False

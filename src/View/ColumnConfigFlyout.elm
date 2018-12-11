@@ -312,6 +312,7 @@ filterAtomCtorSelectEl selectState fam cId faInputType =
     in
     select [ width (px filterAtomCtorFixedWidth) ]
         { state = selectState
+        , msgTagger = SelectCtrl
         , id = selectId
         , theme = oneDark
         , thin = False
@@ -489,6 +490,7 @@ filterAtomVariableSelectEl : (a -> FilterAtom) -> FAVSOptions a -> Element Msg
 filterAtomVariableSelectEl faTagger opts =
     select [ width fill ]
         { state = opts.state
+        , msgTagger = SelectCtrl
         , id = filterAtomVariableSelectId opts
         , theme = oneDark
         , thin = False

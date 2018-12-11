@@ -402,6 +402,7 @@ subscribeRowKeyEl : Select.State -> List Channel -> ( String, Element Msg )
 subscribeRowKeyEl selectState notSubbed =
     [ select [ width (fillPortion 1), alignLeft ]
         { state = selectState
+        , msgTagger = SelectCtrl
         , id = channelSelectId
         , theme = oneDark
         , thin = True
