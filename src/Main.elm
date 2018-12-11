@@ -136,17 +136,12 @@ update msg m_ =
         LinkClicked (Browser.External url) ->
             noPersist ( m, Nav.load url )
 
-        SelectToggle sId True ->
-            pure { m | viewState = { viewState | selectState = View.Select.open sId viewState.selectState } }
-
-        SelectToggle _ False ->
-            pure { m | viewState = { viewState | selectState = View.Select.close } }
-
-        SelectFilterInput input ->
-            pure { m | viewState = { viewState | selectState = View.Select.filterInput input viewState.selectState } }
-
-        SelectPick actualMsg ->
-            update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
+        SelectCtrl sMsg ->
+            let
+                ( ss, cmd ) =
+                    View.Select.update SelectCtrl sMsg viewState.selectState
+            in
+            noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
         AddEmptyColumn ->
             UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen

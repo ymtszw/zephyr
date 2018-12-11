@@ -25,6 +25,7 @@ import Scroll
 import String exposing (fromInt)
 import Time exposing (Posix, Zone)
 import Url
+import View.Select as Select
 
 
 type Msg
@@ -35,9 +36,7 @@ type Msg
     | VisibilityChanged Bool
     | LoggerCtrl Logger.Msg
     | LinkClicked Browser.UrlRequest
-    | SelectToggle String Bool
-    | SelectPick Msg
-    | SelectFilterInput String
+    | SelectCtrl (Select.Msg Msg)
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn String
@@ -92,14 +91,8 @@ logEntry msg =
         LinkClicked (Browser.External str) ->
             Entry "LinkClicked.External" [ str ]
 
-        SelectToggle sId bool ->
-            Entry "SelectToggle" [ sId, boolStr bool ]
-
-        SelectPick sMsg ->
-            logEntry sMsg
-
-        SelectFilterInput input ->
-            Entry "SelectFilterInput" [ input ]
+        SelectCtrl sMsg ->
+            selectMsgToEntry sMsg
 
         AddEmptyColumn ->
             Entry "AddEmptyColumn" []
@@ -222,6 +215,25 @@ loggerMsgToEntry lMsg =
 
         Logger.DelMsgFilter (Logger.MsgFilter isPos ctor) ->
             Entry "Logger.DelMsgFilter" [ filterMode isPos ++ ctor ]
+
+
+selectMsgToEntry : Select.Msg msg -> Entry
+selectMsgToEntry sMsg =
+    case sMsg of
+        Select.Toggle cId bool ->
+            Entry "Select.Toggle" [ cId, boolStr bool ]
+
+        Select.Pick _ ->
+            Entry "Select.Pick" []
+
+        Select.FilterInput filter ->
+            Entry "Select.FilterInput" [ filter ]
+
+        Select.FilterSettle filter ->
+            Entry "Select.FilterSettle" [ filter ]
+
+        Select.DebounceMsg msgDebounce ->
+            Entry "Select.DebounceMsg" [ "<Debounce>" ]
 
 
 scrollMsgToEntry : String -> Scroll.Msg -> Entry

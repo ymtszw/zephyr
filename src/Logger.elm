@@ -63,7 +63,8 @@ defaultFilters =
     -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
     , MsgFilter False "NoOp"
-    , MsgFilter False "SelectFilterInput"
+    , MsgFilter False "Select.FilterInput"
+    , MsgFilter False "Select.DebounceMsg"
     , MsgFilter False "Logger.FilterInput"
     , MsgFilter False "Discord.TokenInput"
     , MsgFilter False "Slack.UTokenInput"

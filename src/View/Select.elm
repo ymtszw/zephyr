@@ -1,7 +1,7 @@
-module View.Select exposing (State, close, filterInput, init, isOpen, open, select)
+module View.Select exposing (Msg(..), State, init, isOpen, select, update)
 
 import Data.ColorTheme exposing (ColorTheme)
-import Data.Msg exposing (Msg(..))
+import Debounce exposing (Debounce)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -11,6 +11,7 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (lazy)
 import Octicons
+import Task
 import View.Parts exposing (..)
 
 
@@ -21,7 +22,7 @@ Therefore you should only have one instance of this type in your application's m
 
 -}
 type State
-    = Open { id : String, filter : String }
+    = Open { id : String, filter : String, filterSettled : String, filterDebouncer : Debounce String }
     | AllClosed
 
 
@@ -30,24 +31,77 @@ init =
     AllClosed
 
 
-open : String -> State -> State
-open id state =
-    Open { id = id, filter = "" }
+type Msg msg
+    = Toggle String Bool
+    | Pick msg
+    | FilterInput String
+    | FilterSettle String
+    | DebounceMsg Debounce.Msg
 
 
-filterInput : String -> State -> State
-filterInput filter state =
-    case state of
-        Open record ->
-            Open { record | filter = filter }
+update : (Msg msg -> msg) -> Msg msg -> State -> ( State, Cmd msg )
+update msgTagger msg state =
+    case msg of
+        Toggle id True ->
+            ( Open { id = id, filter = "", filterSettled = "", filterDebouncer = Debounce.init }, Cmd.none )
 
-        AllClosed ->
-            AllClosed
+        Toggle _ False ->
+            ( AllClosed, Cmd.none )
+
+        Pick x ->
+            ( AllClosed, send x )
+
+        FilterInput filter ->
+            case state of
+                Open record ->
+                    let
+                        ( filterDebouncer, cmd ) =
+                            Debounce.push filterDebouncerConfig filter record.filterDebouncer
+                    in
+                    ( Open { record | filter = filter, filterDebouncer = filterDebouncer }, Cmd.map msgTagger cmd )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
+
+        FilterSettle filterSettled ->
+            case state of
+                Open record ->
+                    ( Open { record | filterSettled = filterSettled }, Cmd.none )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
+
+        DebounceMsg dMsg ->
+            case state of
+                Open record ->
+                    let
+                        ( filterDebouncer, cmd ) =
+                            Debounce.update filterDebouncerConfig sendOnSettle dMsg record.filterDebouncer
+                    in
+                    ( Open { record | filterDebouncer = filterDebouncer }, Cmd.map msgTagger cmd )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
 
 
-close : State
-close =
-    AllClosed
+filterDebouncerConfig : Debounce.Config (Msg msg)
+filterDebouncerConfig =
+    Debounce.Config (Debounce.later settleMillis) DebounceMsg
+
+
+settleMillis : Float
+settleMillis =
+    500
+
+
+sendOnSettle : Debounce.Send String (Msg msg)
+sendOnSettle =
+    Debounce.takeLast (send << FilterSettle)
+
+
+send : msg -> Cmd msg
+send =
+    Task.succeed >> Task.perform identity
 
 
 isOpen : String -> State -> Bool
@@ -60,16 +114,17 @@ isOpen id state =
             False
 
 
-type alias Options a =
+type alias Options a msg =
     { state : State
+    , msgTagger : Msg msg -> msg
     , id : String
     , theme : ColorTheme
     , thin : Bool
-    , onSelect : a -> Msg
+    , onSelect : a -> msg
     , selectedOption : Maybe a
     , filterMatch : Maybe (String -> a -> Bool)
     , options : List ( String, a )
-    , optionEl : a -> Element Msg
+    , optionEl : a -> Element msg
     }
 
 
@@ -79,7 +134,7 @@ Require `id` and `state` to control open/closed status.
 Also, it uess Keyed.column.
 
 -}
-select : List (Attribute Msg) -> Options a -> Element Msg
+select : List (Attribute msg) -> Options a msg -> Element msg
 select userAttrs opts =
     let
         opened =
@@ -87,11 +142,14 @@ select userAttrs opts =
 
         attrs =
             [ below (optionsWithFilterEl opened opts) ] ++ userAttrs
+
+        onHeaderPress =
+            opts.msgTagger (Toggle opts.id (not opened))
     in
-    el attrs (headerEl (SelectToggle opts.id (not opened)) opts)
+    el attrs (headerEl onHeaderPress opts)
 
 
-headerEl : Msg -> Options a -> Element Msg
+headerEl : msg -> Options a msg -> Element msg
 headerEl onPress opts =
     Element.Input.button
         [ width fill
@@ -150,7 +208,7 @@ headerChevronSize =
     20
 
 
-optionsWithFilterEl : Bool -> Options a -> Element Msg
+optionsWithFilterEl : Bool -> Options a msg -> Element msg
 optionsWithFilterEl opened opts =
     column
         [ height (fill |> maximum optionListMaxHeight)
@@ -170,7 +228,7 @@ optionsWithFilterEl opened opts =
         ]
 
 
-optionFilterEl : Options a -> Element Msg
+optionFilterEl : Options a msg -> Element msg
 optionFilterEl opts =
     case opts.filterMatch of
         Just _ ->
@@ -179,7 +237,7 @@ optionFilterEl opts =
                 , BD.widthXY 0 1
                 , BD.color opts.theme.bd
                 ]
-                { onChange = SelectFilterInput
+                { onChange = opts.msgTagger << FilterInput
                 , theme = opts.theme
                 , enabled = True
                 , text =
@@ -197,13 +255,17 @@ optionFilterEl opts =
             none
 
 
-optionsEl : Options a -> Element Msg
+optionsEl : Options a msg -> Element msg
 optionsEl opts =
     Element.Keyed.column [ width (fill |> minimum optionListMinWidth), scrollbarY ] <|
         List.map (optionRowKeyEl opts) <|
             case ( opts.state, opts.filterMatch ) of
-                ( Open { filter }, Just matcher ) ->
-                    List.filter (Tuple.second >> matcher filter) opts.options
+                ( Open { filterSettled }, Just matcher ) ->
+                    if filterSettled /= "" then
+                        List.filter (Tuple.second >> matcher filterSettled) opts.options
+
+                    else
+                        opts.options
 
                 _ ->
                     opts.options
@@ -224,8 +286,12 @@ optionListPaddingY =
     5
 
 
-optionRowKeyEl : Options a -> ( String, a ) -> ( String, Element Msg )
+optionRowKeyEl : Options a msg -> ( String, a ) -> ( String, Element msg )
 optionRowKeyEl opts ( optionKey, option ) =
+    let
+        onPickOption =
+            opts.msgTagger (Pick (opts.onSelect option))
+    in
     Element.Input.button
         [ width fill
         , padding optionPadding
@@ -236,7 +302,7 @@ optionRowKeyEl opts ( optionKey, option ) =
           else
             noneAttr
         ]
-        { onPress = Just (SelectPick (opts.onSelect option))
+        { onPress = Just onPickOption
         , label = opts.optionEl option
         }
         |> Tuple.pair optionKey
