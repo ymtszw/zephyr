@@ -240,6 +240,7 @@ conversationsEl vs teamIdStr users conversations =
             conversations
                 |> Dict.toList
                 |> List.filter (Tuple.second >> Slack.isChannel)
+                |> List.sortWith (\( _, a ) ( _, b ) -> Slack.compareByMembersipThenName a b)
     in
     select []
         { state = vs.selectState
