@@ -508,11 +508,17 @@ reloadTeam _ slack y =
 
         Hydrated _ pov ->
             -- TODO: Add Revisit => re-Identify
-            y
+            { y | updateFAM = calculateFAM pov.conversations }
 
         _ ->
             -- Other states should not come from IndexedDB
             y
+
+
+calculateFAM : Dict ConversationIdStr Conversation -> Producer.UpdateFAM ()
+calculateFAM convs =
+    -- TODO
+    KeepFAM
 
 
 type Msg
@@ -623,18 +629,48 @@ handleIHydrate teamIdStr convs users sr =
     case Dict.get teamIdStr sr.dict of
         Just (Identified { token, user, team }) ->
             let
-                h =
+                slack =
                     Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
             in
-            ( { sr | dict = Dict.insert teamIdStr h sr.dict }, { yield | persist = True } )
+            ( { sr | dict = Dict.insert teamIdStr slack sr.dict }, { yield | persist = True } )
+
+        Just (Rehydrating token pov) ->
+            let
+                newConvs =
+                    mergeConversations pov.conversations convs
+
+                slack =
+                    Hydrated token { pov | users = users, conversations = newConvs }
+            in
+            ( { sr | dict = Dict.insert teamIdStr slack sr.dict }
+            , { yield | persist = True, updateFAM = calculateFAM newConvs }
+            )
 
         Just _ ->
-            -- Should not happen; TODO Rehydrate
+            -- Should not happen
             pure sr
 
         Nothing ->
             -- Rehydrate initiated but the Team is discarded? Should not happen.
             pure sr
+
+
+mergeConversations : Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation
+mergeConversations oldConvs newConvs =
+    let
+        foundOnlyInOld _ _ acc =
+            -- Deleting now unreachable (deleted/kicked) Conversation
+            acc
+
+        foundInBoth cId old new acc =
+            -- TODO Use old's cursor (lastRead) when introduced, let our scan naturally catch up
+            -- Note that the new conversation may change to different variant (e.g. PublicChannel => PrivateChannel)
+            Dict.insert cId new acc
+
+        foundOnlyInNew cId new acc =
+            Dict.insert cId new acc
+    in
+    Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldConvs newConvs Dict.empty
 
 
 handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
