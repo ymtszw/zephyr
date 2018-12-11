@@ -37,21 +37,20 @@ init =
 encode : FilterAtomMaterial -> E.Value
 encode fam =
     E.object
-        [ Tuple.pair "ofDiscordChannel" <|
-            case fam.ofDiscordChannel of
-                Just ( filterAtom, channelCache ) ->
-                    let
-                        ( encodedChannels, guilds ) =
-                            prepareDiscordValues channelCache
-                    in
-                    E.object
-                        [ ( "default", Filter.encodeFilterAtom filterAtom )
-                        , ( "guilds", E.dict identity Discord.encodeGuild guilds )
-                        , ( "channels", E.list identity encodedChannels )
-                        ]
+        [ ( "ofDiscordChannel", E.maybe encodeDiscordMaterial fam.ofDiscordChannel )
+        ]
 
-                Nothing ->
-                    E.null
+
+encodeDiscordMaterial : ( FilterAtom, List Discord.ChannelCache ) -> E.Value
+encodeDiscordMaterial ( filterAtom, channelsCache ) =
+    let
+        ( encodedChannels, guilds ) =
+            prepareDiscordValues channelsCache
+    in
+    E.object
+        [ ( "default", Filter.encodeFilterAtom filterAtom )
+        , ( "guilds", E.dict identity Discord.encodeGuild guilds )
+        , ( "channels", E.list identity encodedChannels )
         ]
 
 
@@ -86,6 +85,10 @@ ofDiscordChannelDecoder =
                     D.do (D.field "channels" (D.list (Discord.channelCacheDecoder guilds))) <|
                         \channelCache ->
                             D.succeed ( fa, channelCache )
+
+
+
+-- Update
 
 
 type UpdateInstruction
