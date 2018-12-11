@@ -407,6 +407,7 @@ subscribeRowKeyEl selectState notSubbed =
         , thin = True
         , onSelect = ProducerCtrl << ProducerRegistry.DiscordMsg << Discord.Subscribe << .id
         , selectedOption = Nothing
+        , filterMatch = Nothing
         , options = List.map (\c -> ( c.id, c )) notSubbed
         , optionEl = \c -> discordChannelEl [] { size = channelTableFontSize, channel = c }
         }

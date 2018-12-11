@@ -317,6 +317,7 @@ filterAtomCtorSelectEl selectState fam cId faInputType =
         , thin = False
         , onSelect = filterAtomOnSelect cId faInputType
         , selectedOption = selectedOption
+        , filterMatch = Nothing
         , options = availableFilterAtomsWithDefaultArguments fam faInputType
         , optionEl = filterAtomCtorOptionEl
         }
@@ -486,6 +487,7 @@ filterAtomVariableSelectEl tagger selectState cId fi ai selected ( options, opti
         , thin = False
         , onSelect = \option -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger option })
         , selectedOption = Just selected
+        , filterMatch = Nothing
         , options = options
         , optionEl = optionEl
         }

@@ -249,6 +249,7 @@ conversationsEl vs teamIdStr users conversations =
         , thin = False
         , onSelect = always NoOp
         , selectedOption = Nothing
+        , filterMatch = Nothing
         , options = channels
         , optionEl = \c -> conversationEl [] { size = smallFontSize, conversation = c, users = users }
         }

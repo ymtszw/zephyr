@@ -70,6 +70,7 @@ editorSelectEl ss fam c =
         , thin = True
         , onSelect = onEditorSelect c.id selectedIndex
         , selectedOption = Just ( selectedIndex, SelectArray.selected c.editors )
+        , filterMatch = Nothing
         , options = indexedEditors
         , optionEl = editorSelectOptionEl fam
         }

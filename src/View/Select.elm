@@ -66,6 +66,7 @@ type alias Options a =
     , thin : Bool
     , onSelect : a -> Msg
     , selectedOption : Maybe a
+    , filterMatch : Maybe (String -> a -> Bool)
     , options : List ( String, a )
     , optionEl : a -> Element Msg
     }
