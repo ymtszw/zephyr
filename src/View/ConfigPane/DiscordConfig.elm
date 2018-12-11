@@ -44,7 +44,7 @@ discordConfigEl vs discord =
 
 tokenInputEl : Bool -> String -> Element Msg
 tokenInputEl enabled text =
-    textInputEl
+    textInputEl []
         { onChange = Discord.TokenInput
         , theme = oneDark
         , enabled = enabled

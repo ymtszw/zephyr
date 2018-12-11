@@ -396,7 +396,7 @@ msgFilterDeleteIconColor =
 
 payloadFilterInputEl : History -> Element Msg
 payloadFilterInputEl (History h) =
-    textInputEl
+    textInputEl []
         { onChange = FilterInput
         , theme = oneDark
         , enabled = True

@@ -460,7 +460,7 @@ discordGuildIconSize =
 
 filterAtomVariableTextInputEl : (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg
 filterAtomVariableTextInputEl tagger cId fi ai current =
-    textInputEl
+    textInputEl []
         { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger str })
         , theme = oneDark
         , enabled = True
@@ -522,7 +522,7 @@ columnDeleteEl c =
 
 columnDeleteGateEl : String -> String -> Element Msg
 columnDeleteGateEl cId deleteGate =
-    textInputEl
+    textInputEl []
         { onChange = ColumnCtrl cId << DeleteGateInput
         , theme = oneDark
         , enabled = True

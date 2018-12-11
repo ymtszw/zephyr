@@ -60,7 +60,7 @@ mapToRoot =
 newLegacyTokenInputKeyEl : Bool -> String -> ( String, Element Msg )
 newLegacyTokenInputKeyEl enabled text =
     column [ width fill, spacing spacingUnit ]
-        [ textInputEl
+        [ textInputEl []
             { onChange = Slack.UTokenInput
             , theme = aubergine
             , enabled = enabled

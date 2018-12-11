@@ -251,29 +251,34 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
 
 
 textInputEl :
-    { onChange : String -> msg
-    , theme : ColorTheme
-    , enabled : Bool
-    , text : String
-    , label : Element.Input.Label msg
-    , placeholder : Maybe (Element msg)
-    }
+    List (Attribute msg)
+    ->
+        { onChange : String -> msg
+        , theme : ColorTheme
+        , enabled : Bool
+        , text : String
+        , label : Element.Input.Label msg
+        , placeholder : Maybe (Element msg)
+        }
     -> Element msg
-textInputEl { onChange, theme, enabled, text, label, placeholder } =
-    Element.Input.text
-        [ width fill
-        , height fill
-        , padding textInputPadding
-        , BG.color theme.note
-        , BD.width 0
-        , BD.rounded rectElementRound
-        , Font.color theme.text
-        , switchCursor enabled
-        , customPlaceholder theme placeholder text
-        , inputScreen rectElementRound enabled
-        , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
-        , disabled (not enabled)
-        ]
+textInputEl attrs { onChange, theme, enabled, text, label, placeholder } =
+    let
+        baseAttrs =
+            [ width fill
+            , height fill
+            , padding textInputPadding
+            , BG.color theme.note
+            , BD.width 0
+            , BD.rounded rectElementRound
+            , Font.color theme.text
+            , switchCursor enabled
+            , customPlaceholder theme placeholder text
+            , inputScreen rectElementRound enabled
+            , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
+            , disabled (not enabled)
+            ]
+    in
+    Element.Input.text (baseAttrs ++ attrs)
         { onChange = onChange
         , text = text
         , placeholder = Nothing
