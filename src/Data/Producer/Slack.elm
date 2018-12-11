@@ -156,19 +156,22 @@ type Conversation
 
 
 type alias PublicChannelRecord =
-    { id : ConversationId, name : String, isMember : Bool }
+    { id : ConversationId, name : String, isMember : Bool, lastRead : Maybe Float }
 
 
 type alias PrivateChannelRecord =
-    { id : ConversationId, name : String }
+    { id : ConversationId, name : String, lastRead : Maybe Float }
 
 
 type alias IMRecord =
-    { id : ConversationId, user : UserId }
+    -- For IM, `last_read` is not supplied from conversation object.
+    -- But it IS possible to acquire `ts` from messages in conversations.history,
+    -- then use it in `oldest` parameter for later requests
+    { id : ConversationId, user : UserId, lastRead : Maybe Float }
 
 
 type alias MPIMRecord =
-    { id : ConversationId, name : String }
+    { id : ConversationId, name : String, lastRead : Maybe Float }
 
 
 type ConversationId
@@ -307,25 +310,38 @@ encodeTeam team =
 encodeConversation : Conversation -> E.Value
 encodeConversation conv =
     case conv of
-        PublicChannel { id, name, isMember } ->
+        PublicChannel record ->
             E.tagged "PublicChannel" <|
                 E.object
-                    [ ( "id", encodeConversationId id )
-                    , ( "name", E.string name )
-                    , ( "is_member", E.bool isMember )
+                    [ ( "id", encodeConversationId record.id )
+                    , ( "name", E.string record.name )
+                    , ( "is_member", E.bool record.isMember )
+                    , ( "last_read", E.maybe E.float record.lastRead )
                     ]
 
-        PrivateChannel { id, name } ->
+        PrivateChannel record ->
             E.tagged "PrivateChannel" <|
-                E.object [ ( "id", encodeConversationId id ), ( "name", E.string name ) ]
+                E.object
+                    [ ( "id", encodeConversationId record.id )
+                    , ( "name", E.string record.name )
+                    , ( "last_read", E.maybe E.float record.lastRead )
+                    ]
 
-        IM { id, user } ->
+        IM record ->
             E.tagged "IM" <|
-                E.object [ ( "id", encodeConversationId id ), ( "user", encodeUserId user ) ]
+                E.object
+                    [ ( "id", encodeConversationId record.id )
+                    , ( "user", encodeUserId record.user )
+                    , ( "last_read", E.maybe E.float record.lastRead )
+                    ]
 
-        MPIM { id, name } ->
+        MPIM record ->
             E.tagged "MPIM" <|
-                E.object [ ( "id", encodeConversationId id ), ( "name", E.string name ) ]
+                E.object
+                    [ ( "id", encodeConversationId record.id )
+                    , ( "name", E.string record.name )
+                    , ( "last_read", E.maybe E.float record.lastRead )
+                    ]
 
 
 encodeConversationId : ConversationId -> E.Value
@@ -432,16 +448,29 @@ conversationDecoder =
     -- XXX We are including archived channels and IM with deleted users.
     let
         pubDecoder =
-            D.map3 PublicChannelRecord (D.field "id" conversationIdDecoder) (D.field "name" D.string) (D.optionField "is_member" D.bool False)
+            D.map4 PublicChannelRecord
+                (D.field "id" conversationIdDecoder)
+                (D.field "name" D.string)
+                (D.optionField "is_member" D.bool False)
+                (D.maybeField "last_read" D.float)
 
         privDecoder =
-            D.map2 PrivateChannelRecord (D.field "id" conversationIdDecoder) (D.field "name" D.string)
+            D.map3 PrivateChannelRecord
+                (D.field "id" conversationIdDecoder)
+                (D.field "name" D.string)
+                (D.maybeField "last_read" D.float)
 
         imDecoder =
-            D.map2 IMRecord (D.field "id" conversationIdDecoder) (D.field "user" userIdDecoder)
+            D.map3 IMRecord
+                (D.field "id" conversationIdDecoder)
+                (D.field "user" userIdDecoder)
+                (D.maybeField "last_read" D.float)
 
         mpimDecoder =
-            D.map2 MPIMRecord (D.field "id" conversationIdDecoder) (D.field "name" D.string)
+            D.map3 MPIMRecord
+                (D.field "id" conversationIdDecoder)
+                (D.field "name" D.string)
+                (D.maybeField "last_read" D.float)
     in
     D.oneOf
         [ -- From IndexedDB
