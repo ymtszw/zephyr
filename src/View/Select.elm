@@ -137,7 +137,6 @@ optionsEl onSelect theme opened optionEl selectedOption options =
             [ width (fill |> minimum optionListMinWidth)
             , paddingXY 0 optionListPaddingY
             , scrollbarY
-            , BD.width optionListBorderWidth
             , BD.rounded rectElementRound
             , BD.color theme.bd
             , BD.shadow
@@ -164,11 +163,6 @@ optionListMaxHeight =
 optionListPaddingY : Int
 optionListPaddingY =
     5
-
-
-optionListBorderWidth : Int
-optionListBorderWidth =
-    1
 
 
 optionRowKeyEl : (a -> Msg) -> ColorTheme -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( String, Element Msg )
