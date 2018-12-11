@@ -253,7 +253,7 @@ userAvatarSize =
 
 rehydrateButtonEl : Bool -> Element Msg
 rehydrateButtonEl rehydrating =
-    roundButtonEl [ alignRight ]
+    roundButtonEl [ alignTop, alignRight ]
         { onPress = Discord.Rehydrate
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
@@ -269,7 +269,7 @@ rehydrateButtonEl rehydrating =
                 , shape = Octicons.sync
                 }
         }
-        |> map (ProducerRegistry.DiscordMsg >> ProducerCtrl)
+        |> mapToRoot
 
 
 rehydrateButtonSize : Int

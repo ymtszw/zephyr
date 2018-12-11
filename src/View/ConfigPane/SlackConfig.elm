@@ -135,22 +135,26 @@ teamStateKeyEl vs teamIdStr slack =
         column teamStateAttrs <|
             case slack of
                 Identified newSession ->
-                    [ stateHeaderEl newSession.team newSession.user ]
+                    [ stateHeaderEl False teamIdStr newSession.team newSession.user ]
 
                 Hydrated _ pov ->
-                    [ stateHeaderEl pov.team pov.user
+                    [ stateHeaderEl False teamIdStr pov.team pov.user
                     , conversationsEl vs teamIdStr pov.users pov.conversations
                     ]
 
                 Rehydrating _ pov ->
-                    [ stateHeaderEl pov.team pov.user
+                    [ stateHeaderEl True teamIdStr pov.team pov.user
                     , conversationsEl vs teamIdStr pov.users pov.conversations
                     ]
 
 
-stateHeaderEl : Team -> User -> Element Msg
-stateHeaderEl team user =
-    row [ width fill, spacing spacingUnit ] [ teamInfoEl team, userInfoEl user ]
+stateHeaderEl : Bool -> String -> Team -> User -> Element Msg
+stateHeaderEl rehydrating teamIdStr team user =
+    row [ width fill, spacing spacingUnit ]
+        [ teamInfoEl team
+        , userInfoEl user
+        , rehydrateButtonEl rehydrating teamIdStr
+        ]
 
 
 teamInfoEl : Team -> Element Msg
@@ -196,6 +200,37 @@ userInfoEl user =
             , el [ Font.size smallFontSize, Font.color aubergine.note ] (breakT user.profile.realName)
             ]
         ]
+
+
+rehydrateButtonEl : Bool -> String -> Element Msg
+rehydrateButtonEl rehydrating teamIdStr =
+    roundButtonEl [ alignTop, alignRight ]
+        { onPress = Slack.IRehydrate teamIdStr
+        , enabled = not rehydrating
+        , innerElementSize = rehydrateButtonSize
+        , innerElement =
+            octiconEl [ rotating rehydrating ]
+                { size = rehydrateButtonSize
+                , color =
+                    if rehydrating then
+                        defaultOcticonColor
+
+                    else
+                        activeRehydrateButtonColor
+                , shape = Octicons.sync
+                }
+        }
+        |> mapToRoot
+
+
+rehydrateButtonSize : Int
+rehydrateButtonSize =
+    26
+
+
+activeRehydrateButtonColor : Color
+activeRehydrateButtonColor =
+    aubergine.prim
 
 
 conversationsEl : ViewState -> String -> Dict String User -> Dict String Conversation -> Element Msg

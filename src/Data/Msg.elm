@@ -340,6 +340,9 @@ producerMsgToEntry pMsg =
                 Slack.IHydrate teamIdStr convs users ->
                     Entry "Slack.IHydrate" [ teamIdStr, "<IHydrate>" ]
 
+                Slack.IRehydrate teamIdStr ->
+                    Entry "Slack.IRehydrate" [ teamIdStr ]
+
                 Slack.IAPIFailure teamIdStr f ->
                     Entry "Slack.IAPIFailure" <| teamIdStr :: rpcFailureToStr f
 
