@@ -23,6 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 
 import Data.Filter exposing (FilterAtom)
 import Data.Producer as Producer exposing (..)
+import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
 import Http
 import HttpClient exposing (noAuth)
@@ -145,6 +146,9 @@ Members of private conversations must be retrieved from conversations.members AP
 (Although conversation doc says there is `members` field, it is retired.
 <https://api.slack.com/changelog/2017-10-members-array-truncating>)
 
+We do not use `last_read` in conversation object directly,
+rather we locally record timestamps of actually retrieved messages.
+
 TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
 
 -}
@@ -156,22 +160,20 @@ type Conversation
 
 
 type alias PublicChannelRecord =
-    { id : ConversationId, name : String, isMember : Bool, lastRead : Maybe Float }
+    { id : ConversationId, name : String, isMember : Bool, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
 
 
 type alias PrivateChannelRecord =
-    { id : ConversationId, name : String, lastRead : Maybe Float }
+    { id : ConversationId, name : String, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
 
 
 type alias IMRecord =
-    -- For IM, `last_read` is not supplied from conversation object.
-    -- But it IS possible to acquire `ts` from messages in conversations.history,
-    -- then use it in `oldest` parameter for later requests
-    { id : ConversationId, user : UserId, lastRead : Maybe Float }
+    -- For IM, `last_read` is not supplied from conversation object. Though we do not directly use them anyway.
+    { id : ConversationId, user : UserId, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
 
 
 type alias MPIMRecord =
-    { id : ConversationId, name : String, lastRead : Maybe Float }
+    { id : ConversationId, name : String, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
 
 
 type ConversationId
@@ -180,6 +182,10 @@ type ConversationId
 
 type alias ConversationIdStr =
     String
+
+
+type LastRead
+    = LastRead String
 
 
 {-| Runtime registry of multiple Slack state machines.
@@ -316,7 +322,8 @@ encodeConversation conv =
                     [ ( "id", encodeConversationId record.id )
                     , ( "name", E.string record.name )
                     , ( "is_member", E.bool record.isMember )
-                    , ( "last_read", E.maybe E.float record.lastRead )
+                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
+                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
                     ]
 
         PrivateChannel record ->
@@ -324,7 +331,8 @@ encodeConversation conv =
                 E.object
                     [ ( "id", encodeConversationId record.id )
                     , ( "name", E.string record.name )
-                    , ( "last_read", E.maybe E.float record.lastRead )
+                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
+                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
                     ]
 
         IM record ->
@@ -332,7 +340,8 @@ encodeConversation conv =
                 E.object
                     [ ( "id", encodeConversationId record.id )
                     , ( "user", encodeUserId record.user )
-                    , ( "last_read", E.maybe E.float record.lastRead )
+                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
+                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
                     ]
 
         MPIM record ->
@@ -340,13 +349,19 @@ encodeConversation conv =
                 E.object
                     [ ( "id", encodeConversationId record.id )
                     , ( "name", E.string record.name )
-                    , ( "last_read", E.maybe E.float record.lastRead )
+                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
+                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
                     ]
 
 
 encodeConversationId : ConversationId -> E.Value
 encodeConversationId (ConversationId convId) =
     E.tagged "ConversationId" (E.string convId)
+
+
+encodeLastRead : LastRead -> E.Value
+encodeLastRead (LastRead lastRead) =
+    E.tagged "LastRead" (E.string lastRead)
 
 
 
@@ -448,29 +463,33 @@ conversationDecoder =
     -- XXX We are including archived channels and IM with deleted users.
     let
         pubDecoder =
-            D.map4 PublicChannelRecord
+            D.map5 PublicChannelRecord
                 (D.field "id" conversationIdDecoder)
                 (D.field "name" D.string)
                 (D.optionField "is_member" D.bool False)
-                (D.maybeField "last_read" D.float)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         privDecoder =
-            D.map3 PrivateChannelRecord
+            D.map4 PrivateChannelRecord
                 (D.field "id" conversationIdDecoder)
                 (D.field "name" D.string)
-                (D.maybeField "last_read" D.float)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         imDecoder =
-            D.map3 IMRecord
+            D.map4 IMRecord
                 (D.field "id" conversationIdDecoder)
                 (D.field "user" userIdDecoder)
-                (D.maybeField "last_read" D.float)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         mpimDecoder =
-            D.map3 MPIMRecord
+            D.map4 MPIMRecord
                 (D.field "id" conversationIdDecoder)
                 (D.field "name" D.string)
-                (D.maybeField "last_read" D.float)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
     in
     D.oneOf
         [ -- From IndexedDB
@@ -499,6 +518,12 @@ conversationDecoder =
 conversationIdDecoder : Decoder ConversationId
 conversationIdDecoder =
     D.oneOf [ D.tagged "ConversationId" ConversationId D.string, D.map ConversationId D.string ]
+
+
+lastReadDecoder : Decoder LastRead
+lastReadDecoder =
+    -- As in Discord's lastMessageId, we deliberately ignore "last_read" from Slack API.
+    D.tagged "LastRead" LastRead D.string
 
 
 
@@ -699,14 +724,45 @@ mergeConversations oldConvs newConvs =
             acc
 
         foundInBoth cId old new acc =
-            -- TODO Use old's cursor (lastRead) when introduced, let our scan naturally catch up
-            -- Note that the new conversation may change to different variant (e.g. PublicChannel => PrivateChannel)
-            Dict.insert cId new acc
+            Dict.insert cId (carryOverFetchStatus old new) acc
 
         foundOnlyInNew cId new acc =
             Dict.insert cId new acc
     in
     Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldConvs newConvs Dict.empty
+
+
+carryOverFetchStatus : Conversation -> Conversation -> Conversation
+carryOverFetchStatus old new =
+    -- Use old's cursor (lastRead), let our polling naturally catch up
+    -- Note that the new conversation may change to different variant (e.g. PublicChannel => PrivateChannel)
+    let
+        ( lastRead, fetchStatus ) =
+            case old of
+                PublicChannel record ->
+                    ( record.lastRead, record.fetchStatus )
+
+                PrivateChannel record ->
+                    ( record.lastRead, record.fetchStatus )
+
+                IM record ->
+                    ( record.lastRead, record.fetchStatus )
+
+                MPIM record ->
+                    ( record.lastRead, record.fetchStatus )
+    in
+    case new of
+        PublicChannel record ->
+            PublicChannel { record | lastRead = lastRead, fetchStatus = fetchStatus }
+
+        PrivateChannel record ->
+            PrivateChannel { record | lastRead = lastRead, fetchStatus = fetchStatus }
+
+        IM record ->
+            IM { record | lastRead = lastRead, fetchStatus = fetchStatus }
+
+        MPIM record ->
+            MPIM { record | lastRead = lastRead, fetchStatus = fetchStatus }
 
 
 handleIRehydrate : TeamIdStr -> SlackRegistry -> ( SlackRegistry, Yield )
