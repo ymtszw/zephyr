@@ -193,35 +193,35 @@ currentStateEl : ViewState -> Discord -> List (Element Msg)
 currentStateEl vs discord =
     case discord of
         Identified newSession ->
-            [ userNameAndAvatarEl newSession.user ]
+            [ userNameAndAvatarEl False newSession.user ]
 
         Hydrated _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Rehydrating _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl True pov
+            [ userNameAndAvatarEl True pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Revisit pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Expired _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Switching newSession pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
@@ -229,8 +229,8 @@ currentStateEl vs discord =
             []
 
 
-userNameAndAvatarEl : User -> Element Msg
-userNameAndAvatarEl user =
+userNameAndAvatarEl : Bool -> User -> Element Msg
+userNameAndAvatarEl rehydrating user =
     row [ width fill, spacing spacingUnit ]
         [ el [] (text "User: ")
         , el
@@ -242,6 +242,7 @@ userNameAndAvatarEl user =
             none
         , breakT user.username
         , el [ Font.size smallFontSize, Font.color oneDark.note ] (breakT ("#" ++ user.discriminator))
+        , rehydrateButtonEl rehydrating
         ]
 
 
@@ -250,27 +251,9 @@ userAvatarSize =
     32
 
 
-guildsEl : Bool -> POV -> Element Msg
-guildsEl rehydrating pov =
-    row [ width fill, spacing spacingUnit ]
-        [ column [ alignTop, spacing spacingUnit ]
-            [ text "Servers: "
-            , rehydrateButtonEl rehydrating pov
-            ]
-        , pov.guilds
-            |> Dict.foldl (\_ guild acc -> discordGuildIconEl [] guildIconSize guild :: acc) []
-            |> wrappedRow [ width fill, spacing spacingUnit ]
-        ]
-
-
-guildIconSize : Int
-guildIconSize =
-    50
-
-
-rehydrateButtonEl : Bool -> POV -> Element Msg
-rehydrateButtonEl rehydrating pov =
-    roundButtonEl []
+rehydrateButtonEl : Bool -> Element Msg
+rehydrateButtonEl rehydrating =
+    roundButtonEl [ alignRight ]
         { onPress = Discord.Rehydrate
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
@@ -297,6 +280,21 @@ rehydrateButtonSize =
 activeRehydrateButtonColor : Color
 activeRehydrateButtonColor =
     oneDark.prim
+
+
+guildsEl : POV -> Element Msg
+guildsEl pov =
+    row [ width fill, spacing spacingUnit ]
+        [ el [ alignTop ] <| text "Servers: "
+        , pov.guilds
+            |> Dict.foldl (\_ guild acc -> discordGuildIconEl [] guildIconSize guild :: acc) []
+            |> wrappedRow [ width fill, spacing spacingUnit ]
+        ]
+
+
+guildIconSize : Int
+guildIconSize =
+    50
 
 
 subbedChannelsEl : ViewState -> POV -> Element Msg
