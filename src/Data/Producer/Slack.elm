@@ -3,7 +3,8 @@ module Data.Producer.Slack exposing
     , initRegistry, encodeRegistry, registryDecoder
     , encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
+    , getUser, isChannel, compareByMembersipThenName, conversationFilter
+    , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
     )
 
 {-| Producer for Slack workspaces.
@@ -15,7 +16,8 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs initRegistry, encodeRegistry, registryDecoder
 @docs encodeUser, userDecoder, encodeTeam, teamDecoder, encodeConversation, conversationDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
+@docs getUser, isChannel, compareByMembersipThenName, conversationFilter
+@docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
 
 -}
 
@@ -28,6 +30,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import StringExtra
 import Task exposing (Task)
 import Url exposing (Url)
 
@@ -956,6 +959,29 @@ compareByMembersipThenName convA convB =
 
             ( MPIM _, _ ) ->
                 GT
+
+
+conversationFilter : Dict UserIdStr User -> String -> Conversation -> Bool
+conversationFilter users filter conv =
+    case conv of
+        PublicChannel { name } ->
+            StringExtra.containsCaseIgnored filter name
+
+        PrivateChannel { name } ->
+            StringExtra.containsCaseIgnored filter name
+
+        IM { user } ->
+            case getUser users user of
+                Ok u ->
+                    StringExtra.containsCaseIgnored filter u.profile.displayName
+                        || StringExtra.containsCaseIgnored filter u.profile.realName
+
+                Err userIdStr ->
+                    StringExtra.containsCaseIgnored filter userIdStr
+
+        MPIM { name } ->
+            -- XXX use users dict?
+            StringExtra.containsCaseIgnored filter name
 
 
 defaultIconUrl : Maybe Int -> String
