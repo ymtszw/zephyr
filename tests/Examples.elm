@@ -631,19 +631,6 @@ testColorSerDe colorNum expectedHex =
 
 slackSuite : Test
 slackSuite =
-    let
-        pub name isMember =
-            Slack.PublicChannel { id = Slack.dummyConversationId, name = name, isMember = isMember }
-
-        priv name =
-            Slack.PrivateChannel { id = Slack.dummyConversationId, name = name }
-
-        im id =
-            Slack.IM { id = Slack.dummyConversationId, user = Slack.dummyUserId id }
-
-        mpim name =
-            Slack.MPIM { id = Slack.dummyConversationId, name = name }
-    in
     describe "Data.Producer.Slack"
         [ testCodec "should decode/encode User"
             SlackTestData.userInfoJson
@@ -660,7 +647,24 @@ slackSuite =
             (D.field "channels" (D.list Slack.conversationDecoder))
             (Json.Encode.list Slack.encodeConversation)
             (D.list Slack.conversationDecoder)
-        , describe "compareByMembersipThenName"
+        , let
+            pub name isMember =
+                Slack.PublicChannel
+                    { id = Slack.dummyConversationId, name = name, isMember = isMember, lastRead = Nothing, fetchStatus = Available }
+
+            priv name =
+                Slack.PrivateChannel
+                    { id = Slack.dummyConversationId, name = name, lastRead = Nothing, fetchStatus = Available }
+
+            im id =
+                Slack.IM
+                    { id = Slack.dummyConversationId, user = Slack.dummyUserId id, lastRead = Nothing, fetchStatus = Available }
+
+            mpim name =
+                Slack.MPIM
+                    { id = Slack.dummyConversationId, name = name, lastRead = Nothing, fetchStatus = Available }
+          in
+          describe "compareByMembersipThenName"
             [ testCompareConversation (pub "Name" True) (pub "Aaaa" True) GT
             , testCompareConversation (pub "Name" True) (pub "Name" True) EQ
             , testCompareConversation (pub "Name" True) (pub "Zzzz" True) LT
