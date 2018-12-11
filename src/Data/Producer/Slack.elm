@@ -529,6 +529,7 @@ type Msg
     | Identify User Team
       -- Prefix "I" means Msg for identified token/team
     | IHydrate TeamIdStr (Dict ConversationIdStr Conversation) (Dict UserIdStr User)
+    | IRehydrate TeamIdStr
     | IAPIFailure TeamIdStr RpcFailure
 
 
@@ -549,6 +550,9 @@ update msg sr =
 
         IHydrate teamIdStr conversations users ->
             handleIHydrate teamIdStr conversations users sr
+
+        IRehydrate teamIdStr ->
+            handleIRehydrate teamIdStr sr
 
         IAPIFailure teamIdStr f ->
             handleIAPIFailure teamIdStr f sr
@@ -671,6 +675,19 @@ mergeConversations oldConvs newConvs =
             Dict.insert cId new acc
     in
     Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldConvs newConvs Dict.empty
+
+
+handleIRehydrate : TeamIdStr -> SlackRegistry -> ( SlackRegistry, Yield )
+handleIRehydrate teamIdStr sr =
+    case Dict.get teamIdStr sr.dict of
+        Just (Hydrated token pov) ->
+            -- Rehydrate should only be available in Hydrated state
+            ( { sr | dict = Dict.insert teamIdStr (Rehydrating token pov) sr.dict }
+            , { yield | cmd = hydrate pov.token (TeamId teamIdStr) }
+            )
+
+        _ ->
+            pure sr
 
 
 handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
