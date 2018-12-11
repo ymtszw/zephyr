@@ -1,5 +1,5 @@
 module View.Parts exposing
-    ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
+    ( noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
@@ -18,7 +18,7 @@ module View.Parts exposing
 
 ## Essenstials
 
-@docs noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
+@docs noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
 @docs breakP, breakT, breakTColumn, collapsingColumn
 
 
@@ -123,7 +123,7 @@ switchCursor enabled =
 borderFlash : Bool -> Attribute msg
 borderFlash doFlash =
     if doFlash then
-        style "animation" "2s ease-out borderFlash"
+        style "animation" <| "2s ease-out " ++ borderFlashKeyframesName
 
     else
         noneAttr
@@ -132,6 +132,20 @@ borderFlash doFlash =
 borderFlashKeyframesName : String
 borderFlashKeyframesName =
     "borderFlash"
+
+
+rotating : Bool -> Attribute msg
+rotating doRotate =
+    if doRotate then
+        style "animation" <| "1.5s linear 0s infinite " ++ rotatingKeyframesName
+
+    else
+        noneAttr
+
+
+rotatingKeyframesName : String
+rotatingKeyframesName =
+    "rotating"
 
 
 {-| Fired when a CSS animation has been concluded.
@@ -928,6 +942,7 @@ manualStyle =
         , Html.text "a:link{text-decoration:none;}" -- Disabled browser-default link-underlining
         , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
         , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
+        , Html.text <| "@keyframes " ++ rotatingKeyframesName ++ "{from{transform:rotate(0turn);}to{transform:rotate(1turn);}}"
         ]
 
 

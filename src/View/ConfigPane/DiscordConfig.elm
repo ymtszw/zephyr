@@ -275,7 +275,7 @@ rehydrateButtonEl rehydrating pov =
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
         , innerElement =
-            octiconEl []
+            octiconEl [ rotating rehydrating ]
                 { size = rehydrateButtonSize
                 , color =
                     if rehydrating then
