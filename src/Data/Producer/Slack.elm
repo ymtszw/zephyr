@@ -1430,30 +1430,65 @@ fetchConversationMessages token (TeamId teamIdStr) conv =
         combiner messages posix =
             { conversationId = convIdStr, messages = messages, posix = posix }
     in
-    Task.map2 combiner (conversationHistoryTask token convIdStr lastRead) Time.now
+    Task.map2 combiner (conversationHistoryTask token convIdStr lastRead Initial) Time.now
         |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr))
 
 
-conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> Task RpcFailure (List ())
-conversationHistoryTask token convIdStr lrMaybe =
-    let
-        params =
-            case lrMaybe of
-                -- 100 is the default; https://api.slack.com/methods/conversations.history
-                Just (LastRead lastRead) ->
-                    [ ( "channel", convIdStr ), ( "limit", "100" ), ( "oldest", lastRead ) ]
+type CursorIn
+    = Initial
+    | CursorIn String (List ())
 
-                Nothing ->
-                    -- Means never fetched. Without `latest`, it defaults to current time,
-                    -- and the first segment returned IS the latest one.
-                    -- We CAN then scroll backward, but we won't.
-                    [ ( "channel", convIdStr ), ( "limit", "100" ) ]
+
+type CursorOut
+    = CursorOut String (List ())
+    | Done (List ())
+
+
+conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn -> Task RpcFailure (List ())
+conversationHistoryTask token convIdStr lrMaybe cursorIn =
+    let
+        baseTask params =
+            -- 100 is the default for limmit; https://api.slack.com/methods/conversations.history
+            rpcPostFormTask (apiPath conversationHistoryPath Nothing) token <|
+                [ ( "channel", convIdStr ), ( "limit", "100" ) ]
+                    ++ params
+
+        forwardScrollingTask params acc =
+            baseTask params scrollableDecoder
+                |> Task.andThen
+                    (\cursorOut ->
+                        case cursorOut of
+                            CursorOut cursorStr ms ->
+                                -- Prepending new segment since we are scrolling FORWARD; newer segment is arriving.
+                                conversationHistoryTask token convIdStr lrMaybe (CursorIn cursorStr (ms ++ acc))
+
+                            Done ms ->
+                                Task.succeed ms
+                    )
+
+        baseDecoder =
+            D.field "messages" (D.leakyList (D.succeed ()))
+
+        scrollableDecoder =
+            D.map2 (|>) baseDecoder cursorOutDecoder
+
+        cursorOutDecoder =
+            D.oneOf
+                [ D.when (D.field "has_more" D.bool) identity (D.at [ "response_metadata", "next_cursor" ] D.string |> D.map CursorOut)
+                , D.succeed Done
+                ]
     in
-    -- Note that conversation.history returns messages sorted from latest to oldest
-    -- BUT if `oldest` query is supplied, the first segment returned IS an older one,
-    -- so we must scroll forward until current time TODO scroll forward when it has `oldest` query
-    rpcPostFormTask (apiPath conversationHistoryPath Nothing) token params <|
-        D.field "messages" (D.leakyList (D.succeed ()))
+    case ( lrMaybe, cursorIn ) of
+        ( Just (LastRead lastRead), Initial ) ->
+            forwardScrollingTask [ ( "oldest", lastRead ) ] []
+
+        ( Just (LastRead lastRead), CursorIn cursorStr acc ) ->
+            forwardScrollingTask [ ( "cursor", cursorStr ) ] acc
+
+        ( Nothing, _ ) ->
+            -- Means never fetched. Without `latest`, it fetches up to current time,
+            -- and the first segment returned IS the latest one. (No need to scrolling backward)
+            baseTask [] baseDecoder
 
 
 conversationHistoryPath : String
