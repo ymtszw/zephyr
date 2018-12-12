@@ -928,16 +928,8 @@ subscribeImpl tagger convIdStr pov =
 
 type alias ConvYield =
     { persist : Bool
-    , items : List () -- Must be sorted from latest to oldest
+    , items : List () -- Must be sorted from oldest to latest (Broker-ready)
     , updateFAM : Bool
-    }
-
-
-cYield : ConvYield
-cYield =
-    { persist = False
-    , items = []
-    , updateFAM = False
     }
 
 
@@ -956,18 +948,12 @@ withConversation tagger convIdStr pov work func =
                     func conv
 
                 newConvs =
-                    case cy.items of
-                        [] ->
-                            Dict.insert convIdStr newConv pov.conversations
-
-                        () :: _ ->
-                            -- TODO update lastRead of newConv
-                            Dict.insert convIdStr newConv pov.conversations
+                    Dict.insert convIdStr newConv pov.conversations
             in
             ( tagger { pov | conversations = newConvs }
             , { yield
                 | persist = cy.persist
-                , items = [] -- List.reverse cy.items -- Reverse for post-processing TODO use items after implementing Message type
+                , items = cy.items
                 , updateFAM = updateOrKeepFAM cy.updateFAM newConvs
                 , work = work
               }
@@ -1002,7 +988,7 @@ updateFetchStatus fMsg conv =
                     FetchStatus.update fMsg rec.fetchStatus
             in
             ( tagger { rec | fetchStatus = fs }
-            , { cYield | persist = persist, updateFAM = updateFAM }
+            , { persist = persist, items = [], updateFAM = updateFAM }
             )
     in
     case conv of
@@ -1140,14 +1126,16 @@ updatePovOnFetchSuccess tagger convIdStr ms posix pov =
             [] ->
                 updateFetchStatus (FetchStatus.Miss posix)
 
-            _ :: _ ->
+            () :: _ ->
                 \conv ->
                     let
                         ( newConv, cy ) =
                             updateFetchStatus (FetchStatus.Hit posix) conv
                     in
-                    -- Expects ms to be sorted from latest to oldest
-                    ( newConv, { cy | persist = True, items = ms } )
+                    -- Expects ms to be sorted from latest to oldest. Reverse it for post-processing.
+                    -- TODO update lastRead of newConv
+                    -- TODO return `List.reverse ms` when Message type is ready
+                    ( newConv, { cy | persist = True, items = [] } )
 
 
 handleITokenInput : String -> Slack -> ( Slack, Yield )
