@@ -262,50 +262,10 @@ conversationsEl vs teamIdStr users conversations =
         , selectedOption = Nothing
         , filterMatch = Just (Slack.conversationFilter users)
         , options = channels
-        , optionEl = \c -> conversationEl [] { size = smallFontSize, conversation = c, users = users }
+        , optionEl = \c -> slackConversationEl [] { size = smallFontSize, conversation = c, users = users }
         }
 
 
 conversationSelectId : String -> String
 conversationSelectId teamIdStr =
     "slackConversationSelect_" ++ teamIdStr
-
-
-conversationEl :
-    List (Attribute msg)
-    ->
-        { size : Int
-        , users : Dict String User
-        , conversation : Conversation
-        }
-    -> Element msg
-conversationEl attrs opts =
-    row ([ spacing spacingUnit ] ++ attrs) <|
-        case opts.conversation of
-            PublicChannel { name } ->
-                [ text "#", text name ]
-
-            PrivateChannel { name } ->
-                [ octiconEl [] { size = smallFontSize, color = conversationIconColor, shape = Octicons.lock }
-                , text name
-                ]
-
-            IM { user } ->
-                [ octiconEl [] { size = smallFontSize, color = conversationIconColor, shape = Octicons.person }
-                , case Slack.getUser opts.users user of
-                    Ok u ->
-                        text u.profile.displayName
-
-                    Err userIdStr ->
-                        text userIdStr
-                ]
-
-            MPIM { name } ->
-                [ octiconEl [] { size = smallFontSize, color = conversationIconColor, shape = Octicons.organization }
-                , text name
-                ]
-
-
-conversationIconColor : Color
-conversationIconColor =
-    aubergine.text
