@@ -786,6 +786,7 @@ handleIHydrate : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> S
 handleIHydrate convs users slack =
     case slack of
         Identified { token, user, team } ->
+            -- TODO pitch Worque token
             ( Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
             , { yield | persist = True }
             )
@@ -882,9 +883,11 @@ handleIRevisit pov slack =
             hydrateWithNewPov oldPov
 
         Revisit oldPov ->
+            -- TODO pitch Worque token
             hydrateWithNewPov oldPov
 
         Expired _ oldPov ->
+            -- TODO pitch Worque token
             hydrateWithNewPov oldPov
 
         _ ->
