@@ -1,11 +1,11 @@
 module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
+    , scale12, cssRgba, brightness, setAlpha, manualStyle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
-    , scale12, cssRgba, brightness, setAlpha, manualStyle
-    , filtersToIconEl, filtersToTextEl
+    , filtersToIconEl, filtersToTextEl, fetchStatusTextEl
     , discordGuildIconEl, discordChannelEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
     , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
@@ -16,35 +16,19 @@ module View.Parts exposing
 {-| View parts, complementing Element and Html.
 
 
-## Essenstials
+## Helpers
 
 @docs noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
 @docs breakP, breakT, breakTColumn, collapsingColumn
-
-
-## Icons
-
-@docs octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-
-
-## Inputs
-
-@docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
-@docs primaryButtonEl, successButtonEl, dangerButtonEl
-
-
-## Styles
-
 @docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
-## Column Filter
+## Elements
 
-@docs filtersToIconEl, filtersToTextEl
-
-
-## Discord
-
+@docs octiconEl, squareIconOrHeadEl, iconWithBadgeEl
+@docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+@docs primaryButtonEl, successButtonEl, dangerButtonEl
+@docs filtersToIconEl, filtersToTextEl, fetchStatusTextEl
 @docs discordGuildIconEl, discordChannelEl
 
 
@@ -62,6 +46,7 @@ import Data.ColorTheme exposing (ColorTheme, oneDark)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
+import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -76,6 +61,8 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode
 import ListExtra
 import Octicons
+import Time
+import TimeExtra
 
 
 noneAttr : Attribute msg
@@ -911,6 +898,26 @@ filterAtomTextEl fontSize color fam fa =
 
         RemoveMe ->
             none
+
+
+fetchStatusTextEl : Time.Zone -> FetchStatus -> Element msg
+fetchStatusTextEl tz fs =
+    breakT <|
+        case fs of
+            FetchStatus.NextFetchAt posix _ ->
+                "Next: " ++ TimeExtra.local tz posix
+
+            FetchStatus.Fetching _ _ ->
+                "Fetching..."
+
+            FetchStatus.Waiting ->
+                "Checking availability..."
+
+            FetchStatus.InitialFetching _ ->
+                "Checking availability..."
+
+            FetchStatus.Available ->
+                "Not subscribed"
 
 
 discordGuildIconEl : List (Attribute msg) -> Int -> Discord.Guild -> Element msg

@@ -350,26 +350,6 @@ channelRowKeyEl tz c =
             ]
 
 
-fetchStatusTextEl : Time.Zone -> FetchStatus -> Element Msg
-fetchStatusTextEl tz fs =
-    breakT <|
-        case fs of
-            NextFetchAt posix _ ->
-                "Next: " ++ TimeExtra.local tz posix
-
-            Fetching _ _ ->
-                "Fetching..."
-
-            Waiting ->
-                "Checking availability..."
-
-            InitialFetching _ ->
-                "Checking availability..."
-
-            Available ->
-                "Not subscribed"
-
-
 createColumnButtonEl : Channel -> Element Msg
 createColumnButtonEl c =
     thinButtonEl []
