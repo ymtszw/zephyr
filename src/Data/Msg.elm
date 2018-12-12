@@ -299,7 +299,13 @@ producerMsgToEntry pMsg =
                 Discord.Fetched succ ->
                     Entry "Discord.Fetched"
                         [ succ.channelId
-                        , E.encode 2 (E.list Discord.encodeMessage succ.messages)
+                        , case succ.messages of
+                            _ :: _ :: _ :: _ :: _ :: _ ->
+                                -- 5 or more
+                                E.encode 2 (E.list Discord.encodeMessage (List.take 5 succ.messages)) ++ "\n(truncated)"
+
+                            less ->
+                                E.encode 2 (E.list Discord.encodeMessage less)
                         , Iso8601.fromTime succ.posix
                         ]
 
