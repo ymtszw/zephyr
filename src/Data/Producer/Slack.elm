@@ -656,6 +656,8 @@ type Msg
     | IHydrate TeamIdStr (Dict ConversationIdStr Conversation) (Dict UserIdStr User)
     | IRehydrate TeamIdStr
     | IRevisit TeamIdStr POV
+    | ITokenInput TeamIdStr String
+    | ITokenCommit TeamIdStr
     | IAPIFailure TeamIdStr RpcFailure
 
 
@@ -682,6 +684,12 @@ update msg sr =
 
         IRevisit teamIdStr pov ->
             withTeam teamIdStr sr <| handleIRevisit pov
+
+        ITokenInput teamIdStr token ->
+            withTeam teamIdStr sr <| handleITokenInput token
+
+        ITokenCommit teamIdStr ->
+            withTeam teamIdStr sr handleITokenCommit
 
         IAPIFailure teamIdStr f ->
             handleIAPIFailure teamIdStr f sr
@@ -875,6 +883,33 @@ handleIRevisit pov slack =
             -- Should not happen
             pure slack
 
+
+handleITokenInput : String -> Slack -> ( Slack, Yield )
+handleITokenInput token slack =
+    case slack of
+        Hydrated _ pov ->
+            pure (Hydrated token pov)
+
+        Expired _ pov ->
+            pure (Expired token pov)
+
+        _ ->
+            -- Otherwise not allowed
+            pure slack
+
+
+handleITokenCommit : Slack -> ( Slack, Yield )
+handleITokenCommit slack =
+    case slack of
+        Hydrated newToken pov ->
+            ( slack, { yield | cmd = revisit newToken pov.user.id pov.team.id } )
+
+        Expired newToken pov ->
+            ( slack, { yield | cmd = revisit newToken pov.user.id pov.team.id } )
+
+        _ ->
+            -- Otherwise not allowed
+            pure slack
 
 
 handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )

@@ -362,6 +362,12 @@ producerMsgToEntry pMsg =
                 Slack.IRevisit teamIdStr _ ->
                     Entry "Slack.IRevisit" [ teamIdStr, "<IRevisit>" ]
 
+                Slack.ITokenInput teamIdStr str ->
+                    Entry "Slack.ITokenInput" [ teamIdStr, str ]
+
+                Slack.ITokenCommit teamIdStr ->
+                    Entry "Slack.ITokenCommit" [ teamIdStr ]
+
                 Slack.IAPIFailure teamIdStr f ->
                     Entry "Slack.IAPIFailure" <| teamIdStr :: rpcFailureToStr f
 
