@@ -77,7 +77,7 @@ newLegacyTokenLabel : Element.Input.Label msg
 newLegacyTokenLabel =
     Element.Input.labelAbove [] <|
         column [ spacing spacingUnit ]
-            [ el [] (text "Legacy Token")
+            [ el [] (text "New Token")
             , paragraph [ Font.color aubergine.note, Font.size smallFontSize ]
                 [ text "We use "
                 , newTabLink [ Font.color aubergine.link ] { url = legacyTokenUrl, label = text "Legacy Token" }

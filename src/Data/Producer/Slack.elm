@@ -668,13 +668,13 @@ update msg sr =
             handleIdentify user team team.id sr
 
         IHydrate teamIdStr conversations users ->
-            handleIHydrate teamIdStr conversations users sr
+            withTeam teamIdStr sr <| handleIHydrate conversations users
 
         IRehydrate teamIdStr ->
-            handleIRehydrate teamIdStr sr
+            withTeam teamIdStr sr handleIRehydrate
 
         IRevisit teamIdStr pov ->
-            handleIRevisit teamIdStr pov sr
+            withTeam teamIdStr sr <| handleIRevisit pov
 
         IAPIFailure teamIdStr f ->
             handleIAPIFailure teamIdStr f sr
@@ -745,40 +745,40 @@ handleIdentify user team (TeamId teamIdStr) sr =
                     initTeam token
 
 
-handleIHydrate :
-    TeamIdStr
-    -> Dict ConversationIdStr Conversation
-    -> Dict UserIdStr User
-    -> SlackRegistry
-    -> ( SlackRegistry, Yield )
-handleIHydrate teamIdStr convs users sr =
+withTeam : TeamIdStr -> SlackRegistry -> (Slack -> ( Slack, Yield )) -> ( SlackRegistry, Yield )
+withTeam teamIdStr sr func =
     case Dict.get teamIdStr sr.dict of
-        Just (Identified { token, user, team }) ->
+        Just slack ->
             let
-                slack =
-                    Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
+                ( newSlack, y ) =
+                    func slack
             in
-            ( { sr | dict = Dict.insert teamIdStr slack sr.dict }, { yield | persist = True } )
+            ( { sr | dict = Dict.insert teamIdStr newSlack sr.dict }, y )
 
-        Just (Rehydrating token pov) ->
+        Nothing ->
+            pure sr
+
+
+handleIHydrate : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Slack -> ( Slack, Yield )
+handleIHydrate convs users slack =
+    case slack of
+        Identified { token, user, team } ->
+            ( Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
+            , { yield | persist = True }
+            )
+
+        Rehydrating token pov ->
             let
                 newConvs =
                     mergeConversations pov.conversations convs
-
-                slack =
-                    Hydrated token { pov | users = users, conversations = newConvs }
             in
-            ( { sr | dict = Dict.insert teamIdStr slack sr.dict }
+            ( Hydrated token { pov | users = users, conversations = newConvs }
             , { yield | persist = True, updateFAM = calculateFAM newConvs }
             )
 
-        Just _ ->
+        _ ->
             -- Should not happen. See handleIRevisit for Revisit
-            pure sr
-
-        Nothing ->
-            -- Rehydrate initiated but the Team is discarded? Should not happen.
-            pure sr
+            pure slack
 
 
 mergeConversations : Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation
@@ -830,41 +830,41 @@ carryOverFetchStatus old new =
             MPIM { record | lastRead = lastRead, fetchStatus = fetchStatus }
 
 
-handleIRehydrate : TeamIdStr -> SlackRegistry -> ( SlackRegistry, Yield )
-handleIRehydrate teamIdStr sr =
-    case Dict.get teamIdStr sr.dict of
-        Just (Hydrated token pov) ->
+handleIRehydrate : Slack -> ( Slack, Yield )
+handleIRehydrate slack =
+    case slack of
+        Hydrated token pov ->
             -- Rehydrate should only be available in Hydrated state
-            ( { sr | dict = Dict.insert teamIdStr (Rehydrating token pov) sr.dict }
-            , { yield | cmd = hydrate pov.token (TeamId teamIdStr) }
-            )
+            ( Rehydrating token pov, { yield | cmd = hydrate pov.token pov.team.id } )
 
         _ ->
-            pure sr
+            pure slack
 
 
-handleIRevisit : TeamIdStr -> POV -> SlackRegistry -> ( SlackRegistry, Yield )
-handleIRevisit teamIdStr pov sr =
-    case Dict.get teamIdStr sr.dict of
-        Just (Revisit oldPov) ->
+handleIRevisit : POV -> Slack -> ( Slack, Yield )
+handleIRevisit pov slack =
+    let
+        hydrateWithNewPov oldPov =
             let
                 newConvs =
                     mergeConversations oldPov.conversations pov.conversations
-
-                slack =
-                    Hydrated pov.token { pov | conversations = newConvs }
             in
-            ( { sr | dict = Dict.insert teamIdStr slack sr.dict }
+            ( Hydrated pov.token { pov | conversations = newConvs }
             , { yield | persist = True, updateFAM = calculateFAM newConvs }
             )
+    in
+    case slack of
+        Hydrated _ oldPov ->
+            -- Replace token
+            hydrateWithNewPov oldPov
 
-        Just _ ->
+        Revisit oldPov ->
+            hydrateWithNewPov oldPov
+
+        _ ->
             -- Should not happen
-            pure sr
+            pure slack
 
-        Nothing ->
-            -- Deregistered just after reload!!?? Super unlikely...
-            pure sr
 
 
 handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
