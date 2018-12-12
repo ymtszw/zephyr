@@ -6,7 +6,7 @@ module View.Parts exposing
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , filtersToIconEl, filtersToTextEl, fetchStatusTextEl
-    , discordGuildIconEl, discordChannelEl
+    , discordGuildIconEl, discordChannelEl, slackConversationEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
     , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
     , spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
@@ -29,7 +29,7 @@ module View.Parts exposing
 @docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 @docs filtersToIconEl, filtersToTextEl, fetchStatusTextEl
-@docs discordGuildIconEl, discordChannelEl
+@docs discordGuildIconEl, discordChannelEl, slackConversationEl
 
 
 ## Constants
@@ -42,11 +42,13 @@ module View.Parts exposing
 -}
 
 import Array exposing (Array)
-import Data.ColorTheme exposing (ColorTheme, oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus)
+import Data.Producer.Slack as Slack
+import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -940,6 +942,39 @@ discordChannelEl attrs { size, channel } =
 discordGuildIconSpacingX : Int
 discordGuildIconSpacingX =
     2
+
+
+slackConversationEl : List (Attribute msg) -> { size : Int, users : Dict String Slack.User, conversation : Slack.Conversation } -> Element msg
+slackConversationEl attrs opts =
+    row ([ spacing spacingUnit ] ++ attrs) <|
+        case opts.conversation of
+            Slack.PublicChannel { name } ->
+                [ text "#", text name ]
+
+            Slack.PrivateChannel { name } ->
+                [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.lock }
+                , text name
+                ]
+
+            Slack.IM { user } ->
+                [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.person }
+                , case Slack.getUser opts.users user of
+                    Ok u ->
+                        text u.profile.displayName
+
+                    Err userIdStr ->
+                        text userIdStr
+                ]
+
+            Slack.MPIM { name } ->
+                [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.organization }
+                , text name
+                ]
+
+
+slackConvIconColor : Color
+slackConvIconColor =
+    aubergine.text
 
 
 
