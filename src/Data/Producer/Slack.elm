@@ -54,6 +54,7 @@ type Slack
     | Hydrated String POV
     | Rehydrating String POV
     | Revisit POV
+    | Expired String POV
 
 
 type alias NewSession =
@@ -263,6 +264,9 @@ encodeSlack slack =
             E.tagged "Revisit" (encodePov pov)
 
         Revisit pov ->
+            E.tagged "Revisit" (encodePov pov)
+
+        Expired _ pov ->
             E.tagged "Revisit" (encodePov pov)
 
 
@@ -626,7 +630,10 @@ reloadTeam _ slack y =
             { y | cmd = Cmd.batch [ y.cmd, hydrate token team.id ] }
 
         Revisit pov ->
-            { y | cmd = Cmd.batch [ y.cmd, revisit pov ], updateFAM = calculateFAM pov.conversations }
+            { y
+                | cmd = Cmd.batch [ y.cmd, revisit pov.token pov.user.id pov.team.id ]
+                , updateFAM = calculateFAM pov.conversations
+            }
 
         _ ->
             -- Other states should not come from IndexedDB
@@ -861,6 +868,9 @@ handleIRevisit pov slack =
         Revisit oldPov ->
             hydrateWithNewPov oldPov
 
+        Expired _ oldPov ->
+            hydrateWithNewPov oldPov
+
         _ ->
             -- Should not happen
             pure slack
@@ -883,10 +893,14 @@ handleIAPIFailure teamIdStr rpcFailure sr =
             pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
 
         Just (Revisit pov) ->
-            -- Somehow Revisit failed. Settle with old pov. TODO add Expired
-            ( { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+            -- Somehow Revisit failed. Settle with Expired with old pov. TODO more precise failure handling
+            ( { sr | dict = Dict.insert teamIdStr (Expired pov.token pov) sr.dict }
             , { yield | persist = True, updateFAM = calculateFAM pov.conversations }
             )
+
+        Just (Expired _ _) ->
+            -- Any API failure on Expired. Just keep the state.
+            pure sr
 
         Nothing ->
             -- Late arrival?
@@ -980,22 +994,18 @@ identify token =
         |> rpcTry identity UAPIFailure
 
 
-{-| Combines identify and hydrate, used only on Revisit. Not requesting to auth.test.
+{-| Combines identify and hydrate, used on Revisit or Expired. Not requesting to auth.test.
 
 Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload.
 
 -}
-revisit : POV -> Cmd Msg
-revisit pov =
-    let
-        (TeamId teamIdStr) =
-            pov.team.id
-    in
-    Task.map4 (POV pov.token)
-        (userInfoTask pov.token pov.user.id)
-        (teamInfoTask pov.token)
-        (conversationListTask pov.token)
-        (userListTask pov.token)
+revisit : String -> UserId -> TeamId -> Cmd Msg
+revisit token userId (TeamId teamIdStr) =
+    Task.map4 (POV token)
+        (userInfoTask token userId)
+        (teamInfoTask token)
+        (conversationListTask token)
+        (userListTask token)
         |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr)
 
 
