@@ -3,7 +3,7 @@ module Data.Producer.Slack exposing
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, conversationFilter
+    , getUser, isChannel, compareByMembersipThenName, getFetchStatus, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
     )
 
@@ -16,7 +16,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, conversationFilter
+@docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
 
 -}
@@ -710,7 +710,7 @@ uTokenInput t su =
             TokenWritable t
 
         TokenIdentifying _ ->
-            -- Cannot overwritten
+            -- Cannot overwrite
             su
 
 
@@ -1318,6 +1318,22 @@ compareByMembersipThenName convA convB =
 
             ( MPIM _, _ ) ->
                 GT
+
+
+getFetchStatus : Conversation -> FetchStatus
+getFetchStatus conv =
+    case conv of
+        PublicChannel record ->
+            record.fetchStatus
+
+        PrivateChannel record ->
+            record.fetchStatus
+
+        IM record ->
+            record.fetchStatus
+
+        MPIM record ->
+            record.fetchStatus
 
 
 conversationFilter : Dict UserIdStr User -> String -> Conversation -> Bool
