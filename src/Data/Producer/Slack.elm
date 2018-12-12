@@ -656,6 +656,8 @@ type Msg
     | IHydrate TeamIdStr (Dict ConversationIdStr Conversation) (Dict UserIdStr User)
     | IRehydrate TeamIdStr
     | IRevisit TeamIdStr POV
+    | ISubscribe TeamIdStr ConversationIdStr
+    | IUnsubscribe TeamIdStr ConversationIdStr
     | ITokenInput TeamIdStr String
     | ITokenCommit TeamIdStr
     | IAPIFailure TeamIdStr RpcFailure
@@ -684,6 +686,12 @@ update msg sr =
 
         IRevisit teamIdStr pov ->
             withTeam teamIdStr sr <| handleIRevisit pov
+
+        ISubscribe teamIdStr convIdStr ->
+            withTeam teamIdStr sr <| handleISubscribe convIdStr
+
+        IUnsubscribe teamIdStr convIdStr ->
+            withTeam teamIdStr sr <| handleIUnsubscribe convIdStr
 
         ITokenInput teamIdStr token ->
             withTeam teamIdStr sr <| handleITokenInput token
@@ -882,6 +890,110 @@ handleIRevisit pov slack =
         _ ->
             -- Should not happen
             pure slack
+
+
+handleISubscribe : ConversationIdStr -> Slack -> ( Slack, Yield )
+handleISubscribe convIdStr slack =
+    case slack of
+        Hydrated token pov ->
+            subscribeImpl (Hydrated token) convIdStr pov
+
+        Rehydrating token pov ->
+            subscribeImpl (Hydrated token) convIdStr pov
+
+        _ ->
+            -- Otherwise not allowed (invluding Revisit)
+            pure slack
+
+
+subscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
+subscribeImpl tagger convIdStr pov =
+    case Dict.get convIdStr pov.conversations of
+        Just conv ->
+            let
+                ( newConv, { persist, updateFAM } ) =
+                    updateFetchStatus FetchStatus.Sub conv
+
+                newConvs =
+                    Dict.insert convIdStr newConv pov.conversations
+            in
+            -- Not pitching another Worque token; let existing one do the work
+            ( tagger { pov | conversations = newConvs }
+            , { yield | persist = persist, updateFAM = updateOrKeepFAM updateFAM newConvs }
+            )
+
+        Nothing ->
+            -- Conversation somehow gone; should not basically happen
+            pure (tagger pov)
+
+
+updateOrKeepFAM : Bool -> Dict ConversationIdStr Conversation -> Producer.UpdateFAM ()
+updateOrKeepFAM doUpdate convs =
+    if doUpdate then
+        calculateFAM convs
+
+    else
+        KeepFAM
+
+
+updateFetchStatus : FetchStatus.Msg -> Conversation -> ( Conversation, { persist : Bool, updateFAM : Bool } )
+updateFetchStatus fMsg conv =
+    let
+        updateFs tagger rec =
+            let
+                { fs, persist, updateFAM } =
+                    FetchStatus.update fMsg rec.fetchStatus
+            in
+            ( tagger { rec | fetchStatus = fs }, { persist = persist, updateFAM = updateFAM } )
+    in
+    case conv of
+        PublicChannel record ->
+            updateFs PublicChannel record
+
+        PrivateChannel record ->
+            updateFs PrivateChannel record
+
+        IM record ->
+            updateFs IM record
+
+        MPIM record ->
+            updateFs MPIM record
+
+
+handleIUnsubscribe : ConversationIdStr -> Slack -> ( Slack, Yield )
+handleIUnsubscribe convIdStr slack =
+    case slack of
+        Hydrated token pov ->
+            unsubscribeImpl (Hydrated token) convIdStr pov
+
+        Rehydrating token pov ->
+            unsubscribeImpl (Rehydrating token) convIdStr pov
+
+        Expired token pov ->
+            unsubscribeImpl (Expired token) convIdStr pov
+
+        _ ->
+            -- Otherwise not allowed, including Revisit
+            pure slack
+
+
+unsubscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
+unsubscribeImpl tagger convIdStr pov =
+    case Dict.get convIdStr pov.conversations of
+        Just conv ->
+            let
+                ( newConv, { persist, updateFAM } ) =
+                    updateFetchStatus FetchStatus.Unsub conv
+
+                newConvs =
+                    Dict.insert convIdStr newConv pov.conversations
+            in
+            ( tagger { pov | conversations = newConvs }
+            , { yield | persist = persist, updateFAM = updateOrKeepFAM updateFAM newConvs }
+            )
+
+        Nothing ->
+            pure (tagger pov)
 
 
 handleITokenInput : String -> Slack -> ( Slack, Yield )

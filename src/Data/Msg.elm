@@ -362,6 +362,12 @@ producerMsgToEntry pMsg =
                 Slack.IRevisit teamIdStr _ ->
                     Entry "Slack.IRevisit" [ teamIdStr, "<IRevisit>" ]
 
+                Slack.ISubscribe teamIdStr convIdStr ->
+                    Entry "Slack.ISubscribe" [ teamIdStr, convIdStr ]
+
+                Slack.IUnsubscribe teamIdStr convIdStr ->
+                    Entry "Slack.IUnsubscribe" [ teamIdStr, convIdStr ]
+
                 Slack.ITokenInput teamIdStr str ->
                     Entry "Slack.ITokenInput" [ teamIdStr, str ]
 
