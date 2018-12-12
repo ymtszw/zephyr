@@ -967,7 +967,7 @@ withConversation tagger convIdStr pov work func =
             ( tagger { pov | conversations = newConvs }
             , { yield
                 | persist = cy.persist
-                , items = List.reverse cy.items -- Reverse for post-processing
+                , items = [] -- List.reverse cy.items -- Reverse for post-processing TODO use items after implementing Message type
                 , updateFAM = updateOrKeepFAM cy.updateFAM newConvs
                 , work = work
               }
