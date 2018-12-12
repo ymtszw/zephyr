@@ -3,6 +3,7 @@ module View.ConfigPane.SlackConfig exposing (slackConfigEl)
 import Data.ColorTheme exposing (aubergine)
 import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
+import Data.Producer.FetchStatus as FetchStatus
 import Data.Producer.Slack as Slack exposing (Conversation(..), Slack(..), SlackRegistry, SlackUnidentified(..), Team, User)
 import Data.ProducerRegistry as ProducerRegistry
 import Dict exposing (Dict)
@@ -14,6 +15,7 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (..)
 import Octicons
+import Time
 import Url
 import View.Parts exposing (..)
 import View.Select exposing (select)
@@ -245,25 +247,102 @@ activeRehydrateButtonColor =
 
 conversationsEl : ViewState -> String -> Dict String User -> Dict String Conversation -> Element Msg
 conversationsEl vs teamIdStr users conversations =
+    Element.Keyed.column [ width fill, spacing spacingUnit, Font.size smallFontSize ] <|
+        List.concat <|
+            [ [ headerKeyEl ]
+            , conversationRows vs teamIdStr users conversations
+            ]
+
+
+headerKeyEl : ( String, Element Msg )
+headerKeyEl =
+    Tuple.pair "ChannelHeader" <|
+        row [ width fill, spacing cellSpacing ]
+            [ el [ width fill, BG.color aubergine.note ] <| text "Name"
+            , el [ width fill, BG.color aubergine.note ] <| text "Fetch Status"
+            , el [ width fill, BG.color aubergine.note ] <| text "Action"
+            ]
+
+
+cellSpacing : Int
+cellSpacing =
+    2
+
+
+conversationRows : ViewState -> String -> Dict String User -> Dict String Conversation -> List ( String, Element Msg )
+conversationRows vs teamIdStr users conversations =
     let
-        channels =
-            conversations
-                |> Dict.toList
-                |> List.filter (Tuple.second >> Slack.isChannel)
+        ( notSubbedChannels, subbedChannels ) =
+            -- TODO support IM/MPIM
+            Dict.toList conversations
+                |> List.filter (\( _, c ) -> Slack.isChannel c)
                 |> List.sortWith (\( _, a ) ( _, b ) -> Slack.compareByMembersipThenName a b)
+                |> List.partition (\( _, c ) -> FetchStatus.dormant (Slack.getFetchStatus c))
     in
-    select []
-        { state = vs.selectState
+    subbedChannels
+        |> List.map (subbedConversationRowKeyEl vs.timezone teamIdStr users)
+        |> (::) (subscribeRowKeyEl vs.selectState teamIdStr users notSubbedChannels)
+
+
+subbedConversationRowKeyEl : Time.Zone -> String -> Dict String User -> ( String, Conversation ) -> ( String, Element Msg )
+subbedConversationRowKeyEl tz teamIdStr users ( convIdStr, conv ) =
+    Tuple.pair convIdStr <|
+        row [ width fill, spacing cellSpacing, clipX ]
+            [ slackConversationEl [ width fill ] { size = smallFontSize, users = users, conversation = conv }
+            , el [ width fill ] <| fetchStatusTextEl tz <| Slack.getFetchStatus conv
+            , row [ width fill, spacing spacingUnit ]
+                [ unsubscribeButtonEl teamIdStr conv
+                ]
+            ]
+
+
+
+-- createColumnButtonEl : Channel -> Element Msg
+-- createColumnButtonEl c =
+--     thinButtonEl []
+--         { onPress = AddSimpleColumn (OfDiscordChannel c.id)
+--         , width = fill
+--         , enabledColor = oneDark.prim
+--         , enabledFontColor = oneDark.text
+--         , enabled = FetchStatus.subscribed c.fetchStatus
+--         , innerElement = text "Create Column"
+--         }
+
+
+unsubscribeButtonEl : String -> Conversation -> Element Msg
+unsubscribeButtonEl teamIdStr conv =
+    roundButtonEl [ alignRight ]
+        { onPress = Slack.IUnsubscribe teamIdStr (Slack.getConversationIdStr conv)
+        , enabled = True -- Any channels show up in table are unsubscribable
+        , innerElement =
+            octiconEl []
+                { size = smallFontSize
+                , color = aubergine.err
+                , shape = Octicons.circleSlash
+                }
+        , innerElementSize = smallFontSize
+        }
+        |> mapToRoot
+
+
+subscribeRowKeyEl : View.Select.State -> String -> Dict String User -> List ( String, Conversation ) -> ( String, Element Msg )
+subscribeRowKeyEl ss teamIdStr users convs =
+    [ select [ width (fillPortion 1) ]
+        { state = ss
         , msgTagger = SelectCtrl
         , id = conversationSelectId teamIdStr
         , theme = aubergine
-        , thin = False
-        , onSelect = always NoOp
+        , thin = True
+        , onSelect = ProducerCtrl << ProducerRegistry.SlackMsg << Slack.ISubscribe teamIdStr << Slack.getConversationIdStr
         , selectedOption = Nothing
         , filterMatch = Just (Slack.conversationFilter users)
-        , options = channels
+        , options = convs
         , optionEl = \c -> slackConversationEl [] { size = smallFontSize, conversation = c, users = users }
         }
+    , el [ width (fillPortion 2) ] none
+    ]
+        |> row [ width fill ]
+        |> Tuple.pair (conversationSelectId teamIdStr)
 
 
 conversationSelectId : String -> String
