@@ -27,6 +27,7 @@ import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen
 import IndexedDb exposing (..)
@@ -318,6 +319,10 @@ onTick posix m_ =
 
         Just DiscordFetch ->
             ProducerRegistry.update (ProducerRegistry.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
+                |> applyProducerYield m
+
+        Just SlackFetch ->
+            ProducerRegistry.update (ProducerRegistry.SlackMsg (Slack.Fetch posix)) m.producerRegistry
                 |> applyProducerYield m
 
         Just DropOldState ->

@@ -33,7 +33,9 @@ import Json.Encode as E
 import Json.EncodeExtra as E
 import StringExtra
 import Task exposing (Task)
+import Time exposing (Posix)
 import Url exposing (Url)
+import Worque
 
 
 {-| A primary state machine of Slack team-identity combination.
@@ -658,9 +660,15 @@ type Msg
     | IRevisit TeamIdStr POV
     | ISubscribe TeamIdStr ConversationIdStr
     | IUnsubscribe TeamIdStr ConversationIdStr
+    | Fetch Posix -- Fetch is shared across Teams
+    | IFetched TeamIdStr FetchSuccess
     | ITokenInput TeamIdStr String
     | ITokenCommit TeamIdStr
     | IAPIFailure TeamIdStr RpcFailure
+
+
+type alias FetchSuccess =
+    { conversationId : ConversationIdStr, messages : List (), posix : Posix }
 
 
 update : Msg -> SlackRegistry -> ( SlackRegistry, Yield )
@@ -692,6 +700,12 @@ update msg sr =
 
         IUnsubscribe teamIdStr convIdStr ->
             withTeam teamIdStr sr <| handleIUnsubscribe convIdStr
+
+        Fetch posix ->
+            handleFetch posix sr
+
+        IFetched teamIdStr fetchSucc ->
+            withTeam teamIdStr sr <| handleIFetched fetchSucc
 
         ITokenInput teamIdStr token ->
             withTeam teamIdStr sr <| handleITokenInput token
@@ -786,9 +800,8 @@ handleIHydrate : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> S
 handleIHydrate convs users slack =
     case slack of
         Identified { token, user, team } ->
-            -- TODO pitch Worque token
             ( Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
-            , { yield | persist = True }
+            , { yield | persist = True, work = Just Worque.SlackFetch }
             )
 
         Rehydrating token pov ->
@@ -868,27 +881,25 @@ handleIRehydrate slack =
 handleIRevisit : POV -> Slack -> ( Slack, Yield )
 handleIRevisit pov slack =
     let
-        hydrateWithNewPov oldPov =
+        hydrateWithNewPov work oldPov =
             let
                 newConvs =
                     mergeConversations oldPov.conversations pov.conversations
             in
             ( Hydrated pov.token { pov | conversations = newConvs }
-            , { yield | persist = True, updateFAM = calculateFAM newConvs }
+            , { yield | persist = True, updateFAM = calculateFAM newConvs, work = work }
             )
     in
     case slack of
         Hydrated _ oldPov ->
             -- Replace token
-            hydrateWithNewPov oldPov
+            hydrateWithNewPov Nothing oldPov
 
         Revisit oldPov ->
-            -- TODO pitch Worque token
-            hydrateWithNewPov oldPov
+            hydrateWithNewPov (Just Worque.SlackFetch) oldPov
 
         Expired _ oldPov ->
-            -- TODO pitch Worque token
-            hydrateWithNewPov oldPov
+            hydrateWithNewPov (Just Worque.SlackFetch) oldPov
 
         _ ->
             -- Should not happen
@@ -911,23 +922,66 @@ handleISubscribe convIdStr slack =
 
 subscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
 subscribeImpl tagger convIdStr pov =
+    withConversation tagger convIdStr pov Nothing <|
+        updateFetchStatus FetchStatus.Sub
+
+
+type alias ConvYield =
+    { persist : Bool
+    , items : List () -- Must be sorted from latest to oldest
+    , updateFAM : Bool
+    }
+
+
+cYield : ConvYield
+cYield =
+    { persist = False
+    , items = []
+    , updateFAM = False
+    }
+
+
+withConversation :
+    (POV -> Slack)
+    -> ConversationIdStr
+    -> POV
+    -> Maybe Worque.Work
+    -> (Conversation -> ( Conversation, ConvYield ))
+    -> ( Slack, Yield )
+withConversation tagger convIdStr pov work func =
     case Dict.get convIdStr pov.conversations of
         Just conv ->
             let
-                ( newConv, { persist, updateFAM } ) =
-                    updateFetchStatus FetchStatus.Sub conv
+                ( newConv, cy ) =
+                    func conv
 
                 newConvs =
-                    Dict.insert convIdStr newConv pov.conversations
+                    case cy.items of
+                        [] ->
+                            Dict.insert convIdStr newConv pov.conversations
+
+                        () :: _ ->
+                            -- TODO update lastRead of newConv
+                            Dict.insert convIdStr newConv pov.conversations
             in
-            -- Not pitching another Worque token; let existing one do the work
             ( tagger { pov | conversations = newConvs }
-            , { yield | persist = persist, updateFAM = updateOrKeepFAM updateFAM newConvs }
+            , { yield
+                | persist = cy.persist
+                , items = List.reverse cy.items -- Reverse for post-processing
+                , updateFAM = updateOrKeepFAM cy.updateFAM newConvs
+                , work = work
+              }
             )
 
         Nothing ->
             -- Conversation somehow gone; should not basically happen
-            pure (tagger pov)
+            ( tagger pov
+            , { yield
+                | persist = True
+                , updateFAM = calculateFAM pov.conversations
+                , work = work
+              }
+            )
 
 
 updateOrKeepFAM : Bool -> Dict ConversationIdStr Conversation -> Producer.UpdateFAM ()
@@ -939,7 +993,7 @@ updateOrKeepFAM doUpdate convs =
         KeepFAM
 
 
-updateFetchStatus : FetchStatus.Msg -> Conversation -> ( Conversation, { persist : Bool, updateFAM : Bool } )
+updateFetchStatus : FetchStatus.Msg -> Conversation -> ( Conversation, ConvYield )
 updateFetchStatus fMsg conv =
     let
         updateFs tagger rec =
@@ -947,7 +1001,9 @@ updateFetchStatus fMsg conv =
                 { fs, persist, updateFAM } =
                     FetchStatus.update fMsg rec.fetchStatus
             in
-            ( tagger { rec | fetchStatus = fs }, { persist = persist, updateFAM = updateFAM } )
+            ( tagger { rec | fetchStatus = fs }
+            , { cYield | persist = persist, updateFAM = updateFAM }
+            )
     in
     case conv of
         PublicChannel record ->
@@ -982,21 +1038,120 @@ handleIUnsubscribe convIdStr slack =
 
 unsubscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
 unsubscribeImpl tagger convIdStr pov =
-    case Dict.get convIdStr pov.conversations of
-        Just conv ->
-            let
-                ( newConv, { persist, updateFAM } ) =
-                    updateFetchStatus FetchStatus.Unsub conv
+    withConversation tagger convIdStr pov Nothing <|
+        updateFetchStatus FetchStatus.Unsub
 
-                newConvs =
-                    Dict.insert convIdStr newConv pov.conversations
-            in
-            ( tagger { pov | conversations = newConvs }
-            , { yield | persist = persist, updateFAM = updateOrKeepFAM updateFAM newConvs }
-            )
+
+handleFetch : Posix -> SlackRegistry -> ( SlackRegistry, Yield )
+handleFetch posix sr =
+    case readyToFetchTeamAndConv posix sr.dict of
+        Just ( teamIdStr, conv ) ->
+            withTeam teamIdStr sr <| handleFetchImpl posix conv
 
         Nothing ->
-            pure (tagger pov)
+            ( sr, { yield | work = Just Worque.SlackFetch } )
+
+
+handleFetchImpl : Posix -> Conversation -> Slack -> ( Slack, Yield )
+handleFetchImpl posix conv slack =
+    let
+        ( newConv, _ ) =
+            -- We never persist on Start
+            updateFetchStatus (FetchStatus.Start posix) conv
+    in
+    case slack of
+        Hydrated t pov ->
+            ( Hydrated t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
+            , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
+            )
+
+        Rehydrating t pov ->
+            ( Rehydrating t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
+            , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
+            )
+
+        Expired _ _ ->
+            -- Effectively unsubscribing from Tick. Needs to be restarted when new token is regisered.
+            -- TODO: Error reporting
+            pure slack
+
+        _ ->
+            -- Otherwise we are not ready for polling
+            pure slack
+
+
+readyToFetchTeamAndConv : Posix -> Dict TeamIdStr Slack -> Maybe ( TeamIdStr, Conversation )
+readyToFetchTeamAndConv posix dict =
+    let
+        reducer teamIdStr slack acc =
+            case slack of
+                Hydrated _ pov ->
+                    recusrivelyFindConvToFetch posix teamIdStr (Dict.values pov.conversations) acc
+
+                Rehydrating _ pov ->
+                    recusrivelyFindConvToFetch posix teamIdStr (Dict.values pov.conversations) acc
+
+                _ ->
+                    acc
+    in
+    Dict.foldl reducer Nothing dict
+
+
+recusrivelyFindConvToFetch : Posix -> TeamIdStr -> List Conversation -> Maybe ( TeamIdStr, Conversation ) -> Maybe ( TeamIdStr, Conversation )
+recusrivelyFindConvToFetch posix teamIdStr conversations acc =
+    case conversations of
+        [] ->
+            acc
+
+        x :: xs ->
+            let
+                threshold =
+                    case acc of
+                        Just ( _, accConv ) ->
+                            getFetchStatus accConv
+
+                        Nothing ->
+                            NextFetchAt posix FetchStatus.BO10
+            in
+            if FetchStatus.lessThan threshold (getFetchStatus x) then
+                recusrivelyFindConvToFetch posix teamIdStr xs (Just ( teamIdStr, x ))
+
+            else
+                recusrivelyFindConvToFetch posix teamIdStr xs acc
+
+
+handleIFetched : FetchSuccess -> Slack -> ( Slack, Yield )
+handleIFetched { conversationId, messages, posix } slack =
+    case slack of
+        Hydrated t pov ->
+            updatePovOnFetchSuccess (Hydrated t) conversationId messages posix pov
+
+        Rehydrating t pov ->
+            updatePovOnFetchSuccess (Rehydrating t) conversationId messages posix pov
+
+        Expired t pov ->
+            updatePovOnFetchSuccess (Expired t) conversationId messages posix pov
+
+        _ ->
+            -- Should not happen
+            pure slack
+
+
+updatePovOnFetchSuccess : (POV -> Slack) -> ConversationIdStr -> List () -> Posix -> POV -> ( Slack, Yield )
+updatePovOnFetchSuccess tagger convIdStr ms posix pov =
+    withConversation tagger convIdStr pov (Just Worque.SlackFetch) <|
+        case ms of
+            [] ->
+                updateFetchStatus (FetchStatus.Miss posix)
+
+            _ :: _ ->
+                \conv ->
+                    let
+                        ( newConv, cy ) =
+                            updateFetchStatus (FetchStatus.Hit posix) conv
+                    in
+                    -- Expects ms to be sorted from latest to oldest
+                    ( newConv, { cy | persist = True, items = ms } )
 
 
 handleITokenInput : String -> Slack -> ( Slack, Yield )
@@ -1199,6 +1354,57 @@ userListTask token =
     in
     rpcPostFormTask (apiPath "/users.list" Nothing) token [] <|
         D.field "members" (D.dictFromList (.id >> toStr) userDecoder)
+
+
+fetchConversationMessages : String -> TeamId -> Conversation -> Cmd Msg
+fetchConversationMessages token (TeamId teamIdStr) conv =
+    let
+        ( ConversationId convIdStr, lastRead ) =
+            case conv of
+                PublicChannel record ->
+                    ( record.id, record.lastRead )
+
+                PrivateChannel record ->
+                    ( record.id, record.lastRead )
+
+                IM record ->
+                    ( record.id, record.lastRead )
+
+                MPIM record ->
+                    ( record.id, record.lastRead )
+
+        combiner messages posix =
+            { conversationId = convIdStr, messages = messages, posix = posix }
+    in
+    Task.map2 combiner (conversationHistoryTask token convIdStr lastRead) Time.now
+        |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr)
+
+
+conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> Task RpcFailure (List ())
+conversationHistoryTask token convIdStr lrMaybe =
+    let
+        params =
+            case lrMaybe of
+                -- 100 is the default; https://api.slack.com/methods/conversations.history
+                Just (LastRead lastRead) ->
+                    [ ( "limit", "100" ), ( "oldest", lastRead ) ]
+
+                Nothing ->
+                    -- Means never fetched. Without `latest`, it defaults to current time,
+                    -- and the first segment returned IS the latest one.
+                    -- We CAN then scroll backward, but we won't.
+                    [ ( "limit", "100" ) ]
+    in
+    -- Note that conversation.history returns messages sorted from latest to oldest
+    -- BUT if `oldest` query is supplied, the first segment returned IS an older one,
+    -- so we must scroll forward until current time
+    rpcPostFormTask (apiPath conversationHistoryPath Nothing) token params <|
+        D.leakyList (D.succeed ())
+
+
+conversationHistoryPath : String
+conversationHistoryPath =
+    "/conversations.history"
 
 
 

@@ -374,6 +374,24 @@ producerMsgToEntry pMsg =
                 Slack.IUnsubscribe teamIdStr convIdStr ->
                     Entry "Slack.IUnsubscribe" [ teamIdStr, convIdStr ]
 
+                Slack.Fetch posix ->
+                    Entry "Slack.Fetch" [ Iso8601.fromTime posix ]
+
+                Slack.IFetched teamIdStr succ ->
+                    Entry "Slack.IFetched"
+                        [ teamIdStr
+                        , succ.conversationId
+                        , case succ.messages of
+                            -- TODO proper encoding
+                            _ :: _ :: _ :: _ :: _ :: _ ->
+                                -- 5 or more
+                                E.encode 2 (E.list (always (E.string "TODO")) (List.take 5 succ.messages)) ++ "\n(truncated)"
+
+                            less ->
+                                E.encode 2 (E.list (always (E.string "TODO")) less)
+                        , Iso8601.fromTime succ.posix
+                        ]
+
                 Slack.ITokenInput teamIdStr str ->
                     Entry "Slack.ITokenInput" [ teamIdStr, str ]
 

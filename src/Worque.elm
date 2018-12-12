@@ -20,6 +20,7 @@ type Worque
 type Work
     = BrokerScan Int
     | DiscordFetch
+    | SlackFetch
     | DropOldState
     | BrokerCatchUp String
 
