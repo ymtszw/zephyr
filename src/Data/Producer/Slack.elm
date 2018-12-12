@@ -53,6 +53,7 @@ type Slack
     = Identified NewSession
     | Hydrated String POV
     | Rehydrating String POV
+    | Revisit POV
 
 
 type alias NewSession =
@@ -256,12 +257,13 @@ encodeSlack slack =
             E.tagged "Identified" (encodeSession session)
 
         Hydrated _ pov ->
-            -- TODO: add Revisit
-            E.tagged2 "Hydrated" (E.string pov.token) (encodePov pov)
+            E.tagged "Revisit" (encodePov pov)
 
         Rehydrating _ pov ->
-            -- TODO: add Revisit
-            E.tagged2 "Hydrated" (E.string pov.token) (encodePov pov)
+            E.tagged "Revisit" (encodePov pov)
+
+        Revisit pov ->
+            E.tagged "Revisit" (encodePov pov)
 
 
 encodeSession : NewSession -> E.Value
@@ -429,7 +431,10 @@ slackDecoder : Decoder Slack
 slackDecoder =
     D.oneOf
         [ D.tagged "Identified" Identified sessionDecoder
-        , D.tagged2 "Hydrated" Hydrated D.string povDecoder
+        , D.tagged "Revisit" Revisit povDecoder
+
+        -- Old formats
+        , D.tagged2 "Hydrated" (\_ pov -> Revisit pov) D.string povDecoder
         ]
 
 
@@ -620,9 +625,8 @@ reloadTeam _ slack y =
             -- Saved during hydrate? Retry
             { y | cmd = Cmd.batch [ y.cmd, hydrate token team.id ] }
 
-        Hydrated _ pov ->
-            -- TODO: Add Revisit => re-Identify
-            { y | updateFAM = calculateFAM pov.conversations }
+        Revisit pov ->
+            { y | cmd = Cmd.batch [ y.cmd, revisit pov ], updateFAM = calculateFAM pov.conversations }
 
         _ ->
             -- Other states should not come from IndexedDB
@@ -644,6 +648,7 @@ type Msg
       -- Prefix "I" means Msg for identified token/team
     | IHydrate TeamIdStr (Dict ConversationIdStr Conversation) (Dict UserIdStr User)
     | IRehydrate TeamIdStr
+    | IRevisit TeamIdStr POV
     | IAPIFailure TeamIdStr RpcFailure
 
 
@@ -667,6 +672,9 @@ update msg sr =
 
         IRehydrate teamIdStr ->
             handleIRehydrate teamIdStr sr
+
+        IRevisit teamIdStr pov ->
+            handleIRevisit teamIdStr pov sr
 
         IAPIFailure teamIdStr f ->
             handleIAPIFailure teamIdStr f sr
@@ -730,7 +738,7 @@ handleIdentify user team (TeamId teamIdStr) sr =
                     initTeam token
 
                 Just _ ->
-                    -- Should not happen; TODO Revisit => re-Identify
+                    -- Should not happen. See handleIRevisit for Revisit
                     pure sr
 
                 Nothing ->
@@ -765,7 +773,7 @@ handleIHydrate teamIdStr convs users sr =
             )
 
         Just _ ->
-            -- Should not happen
+            -- Should not happen. See handleIRevisit for Revisit
             pure sr
 
         Nothing ->
@@ -835,6 +843,30 @@ handleIRehydrate teamIdStr sr =
             pure sr
 
 
+handleIRevisit : TeamIdStr -> POV -> SlackRegistry -> ( SlackRegistry, Yield )
+handleIRevisit teamIdStr pov sr =
+    case Dict.get teamIdStr sr.dict of
+        Just (Revisit oldPov) ->
+            let
+                newConvs =
+                    mergeConversations oldPov.conversations pov.conversations
+
+                slack =
+                    Hydrated pov.token { pov | conversations = newConvs }
+            in
+            ( { sr | dict = Dict.insert teamIdStr slack sr.dict }
+            , { yield | persist = True, updateFAM = calculateFAM newConvs }
+            )
+
+        Just _ ->
+            -- Should not happen
+            pure sr
+
+        Nothing ->
+            -- Deregistered just after reload!!?? Super unlikely...
+            pure sr
+
+
 handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
 handleIAPIFailure teamIdStr rpcFailure sr =
     case Dict.get teamIdStr sr.dict of
@@ -843,12 +875,18 @@ handleIAPIFailure teamIdStr rpcFailure sr =
             ( { sr | dict = Dict.remove teamIdStr sr.dict }, { yield | persist = True } )
 
         Just (Hydrated _ pov) ->
-            -- New token invalid? Just restore token input.
+            -- New token tried but invalid? Just restore token input.
             pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
 
         Just (Rehydrating _ pov) ->
             -- Somehow Rehydrate failed. Just fall back to previous Hydrated state.
             pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+
+        Just (Revisit pov) ->
+            -- Somehow Revisit failed. Settle with old pov. TODO add Expired
+            ( { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+            , { yield | persist = True, updateFAM = calculateFAM pov.conversations }
+            )
 
         Nothing ->
             -- Late arrival?
@@ -940,6 +978,25 @@ identify token =
     authTestTask token
         |> Task.andThen identifyTask
         |> rpcTry identity UAPIFailure
+
+
+{-| Combines identify and hydrate, used only on Revisit. Not requesting to auth.test.
+
+Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload.
+
+-}
+revisit : POV -> Cmd Msg
+revisit pov =
+    let
+        (TeamId teamIdStr) =
+            pov.team.id
+    in
+    Task.map4 (POV pov.token)
+        (userInfoTask pov.token pov.user.id)
+        (teamInfoTask pov.token)
+        (conversationListTask pov.token)
+        (userListTask pov.token)
+        |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr)
 
 
 authTestTask : String -> Task RpcFailure UserId

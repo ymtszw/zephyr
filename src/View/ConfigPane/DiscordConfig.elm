@@ -208,7 +208,7 @@ currentStateEl vs discord =
             ]
 
         Revisit pov ->
-            [ userNameAndAvatarEl False pov.user
+            [ userNameAndAvatarEl True pov.user
             , guildsEl pov
             , subbedChannelsEl vs pov
             ]

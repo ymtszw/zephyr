@@ -359,6 +359,9 @@ producerMsgToEntry pMsg =
                 Slack.IRehydrate teamIdStr ->
                     Entry "Slack.IRehydrate" [ teamIdStr ]
 
+                Slack.IRevisit teamIdStr _ ->
+                    Entry "Slack.IRevisit" [ teamIdStr, "<IRevisit>" ]
+
                 Slack.IAPIFailure teamIdStr f ->
                     Entry "Slack.IAPIFailure" <| teamIdStr :: rpcFailureToStr f
 
