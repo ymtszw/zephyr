@@ -664,7 +664,7 @@ type Msg
     | IFetched TeamIdStr FetchSuccess
     | ITokenInput TeamIdStr String
     | ITokenCommit TeamIdStr
-    | IAPIFailure TeamIdStr RpcFailure
+    | IAPIFailure TeamIdStr (Maybe ConversationIdStr) RpcFailure
 
 
 type alias FetchSuccess =
@@ -713,8 +713,8 @@ update msg sr =
         ITokenCommit teamIdStr ->
             withTeam teamIdStr sr handleITokenCommit
 
-        IAPIFailure teamIdStr f ->
-            handleIAPIFailure teamIdStr f sr
+        IAPIFailure teamIdStr convIdMaybe f ->
+            withTeam teamIdStr sr <| handleIAPIFailure convIdMaybe f
 
 
 uTokenInput : String -> SlackUnidentified -> SlackUnidentified
@@ -1070,14 +1070,10 @@ handleFetchImpl posix conv slack =
             , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
             )
 
-        Expired _ _ ->
-            -- Effectively unsubscribing from Tick. Needs to be restarted when new token is regisered.
-            -- TODO: Error reporting
-            pure slack
-
         _ ->
-            -- Otherwise we are not ready for polling
-            pure slack
+            -- Keep next SlackFetch pushed, since it is shared across Teams.
+            -- Single Expired Team should not stop the SlackRegistry as a whole.
+            ( slack, { yield | work = Just Worque.SlackFetch } )
 
 
 readyToFetchTeamAndConv : Posix -> Dict TeamIdStr Slack -> Maybe ( TeamIdStr, Conversation )
@@ -1182,34 +1178,104 @@ handleITokenCommit slack =
             pure slack
 
 
-handleIAPIFailure : TeamIdStr -> RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
-handleIAPIFailure teamIdStr rpcFailure sr =
-    case Dict.get teamIdStr sr.dict of
-        Just (Identified _) ->
-            -- If successfully Identified, basically Hydrate should not fail. Discard the Team.
-            ( { sr | dict = Dict.remove teamIdStr sr.dict }, { yield | persist = True } )
+handleIAPIFailure : Maybe ConversationIdStr -> RpcFailure -> Slack -> ( Slack, Yield )
+handleIAPIFailure convIdMaybe f slack =
+    case slack of
+        Identified { token, team } ->
+            -- If successfully Identified, basically Hydrate should not fail. Just retry. TODO limit number of retries
+            ( slack, { yield | cmd = hydrate token team.id } )
 
-        Just (Hydrated _ pov) ->
-            -- New token tried but invalid? Just restore token input.
-            pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+        Hydrated t pov ->
+            -- Failure outside of fetch indicates new token tried but invalid. Just restore previous token.
+            updatePovOnIApiFailure (Expired t) (Hydrated pov.token) convIdMaybe f pov
 
-        Just (Rehydrating _ pov) ->
-            -- Somehow Rehydrate failed. Just fall back to previous Hydrated state.
-            pure { sr | dict = Dict.insert teamIdStr (Hydrated pov.token pov) sr.dict }
+        Rehydrating t pov ->
+            -- Failure outside of fetch indicates rehydration somehow failed. Just restore previous Hydrated state.
+            updatePovOnIApiFailure (Expired t) (Hydrated pov.token) convIdMaybe f pov
 
-        Just (Revisit pov) ->
-            -- Somehow Revisit failed. Settle with Expired with old pov. TODO more precise failure handling
-            ( { sr | dict = Dict.insert teamIdStr (Expired pov.token pov) sr.dict }
-            , { yield | persist = True, updateFAM = calculateFAM pov.conversations }
-            )
+        Revisit pov ->
+            -- Somehow Revisit failed. Settle with Expired with old pov.
+            ( Expired pov.token pov, { yield | persist = True, updateFAM = calculateFAM pov.conversations } )
 
-        Just (Expired _ _) ->
+        Expired _ _ ->
             -- Any API failure on Expired. Just keep the state.
-            pure sr
+            pure slack
 
-        Nothing ->
-            -- Late arrival?
-            pure sr
+
+updatePovOnIApiFailure : (POV -> Slack) -> (POV -> Slack) -> Maybe ConversationIdStr -> RpcFailure -> POV -> ( Slack, Yield )
+updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
+    case ( f, convIdMaybe ) of
+        -- Slack API basically returns 200 OK, so we consider HttpFailure as transient
+        ( HttpFailure hf, Just fetchedConvIdStr ) ->
+            -- Fail on history fetch
+            withConversation tagger fetchedConvIdStr pov (Just Worque.SlackFetch) <|
+                updateFetchStatus FetchStatus.Fail
+
+        ( HttpFailure hf, Nothing ) ->
+            -- Fail on other
+            pure (tagger pov)
+
+        ( RpcError err, Just fetchedConvIdStr ) ->
+            if unauthorizedRpc err then
+                withConversation unauthorizedTagger fetchedConvIdStr pov (Just Worque.SlackFetch) <|
+                    updateFetchStatus FetchStatus.Fail
+
+            else if conversationUnavailable err then
+                let
+                    newConvs =
+                        Dict.remove fetchedConvIdStr pov.conversations
+                in
+                ( tagger { pov | conversations = newConvs }
+                , { yield | persist = True, work = Just Worque.SlackFetch, updateFAM = calculateFAM newConvs }
+                )
+
+            else
+                -- Transient otherwise
+                withConversation tagger fetchedConvIdStr pov (Just Worque.SlackFetch) <|
+                    updateFetchStatus FetchStatus.Fail
+
+        ( RpcError err, Nothing ) ->
+            if unauthorizedRpc err then
+                ( unauthorizedTagger pov, { yield | persist = True } )
+
+            else
+                -- Transient otherwise
+                pure (tagger pov)
+
+
+unauthorizedRpc : String -> Bool
+unauthorizedRpc err =
+    case err of
+        "not_authed" ->
+            True
+
+        "invalid_auth" ->
+            True
+
+        "account_inactive" ->
+            True
+
+        "token_revoked" ->
+            True
+
+        _ ->
+            False
+
+
+conversationUnavailable : String -> Bool
+conversationUnavailable err =
+    case err of
+        "channel_not_found" ->
+            True
+
+        "missing_scope" ->
+            True
+
+        "no_permission" ->
+            True
+
+        _ ->
+            False
 
 
 
@@ -1311,7 +1377,7 @@ revisit token userId (TeamId teamIdStr) =
         (teamInfoTask token)
         (conversationListTask token)
         (userListTask token)
-        |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr)
+        |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing)
 
 
 authTestTask : String -> Task RpcFailure UserId
@@ -1335,7 +1401,7 @@ teamInfoTask token =
 hydrate : String -> TeamId -> Cmd Msg
 hydrate token (TeamId teamIdStr) =
     Task.map2 (IHydrate teamIdStr) (conversationListTask token) (userListTask token)
-        |> rpcTry identity (IAPIFailure teamIdStr)
+        |> rpcTry identity (IAPIFailure teamIdStr Nothing)
 
 
 conversationListTask : String -> Task RpcFailure (Dict ConversationIdStr Conversation)
@@ -1377,7 +1443,7 @@ fetchConversationMessages token (TeamId teamIdStr) conv =
             { conversationId = convIdStr, messages = messages, posix = posix }
     in
     Task.map2 combiner (conversationHistoryTask token convIdStr lastRead) Time.now
-        |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr)
+        |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr))
 
 
 conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> Task RpcFailure (List ())
@@ -1387,19 +1453,19 @@ conversationHistoryTask token convIdStr lrMaybe =
             case lrMaybe of
                 -- 100 is the default; https://api.slack.com/methods/conversations.history
                 Just (LastRead lastRead) ->
-                    [ ( "limit", "100" ), ( "oldest", lastRead ) ]
+                    [ ( "channel", convIdStr ), ( "limit", "100" ), ( "oldest", lastRead ) ]
 
                 Nothing ->
                     -- Means never fetched. Without `latest`, it defaults to current time,
                     -- and the first segment returned IS the latest one.
                     -- We CAN then scroll backward, but we won't.
-                    [ ( "limit", "100" ) ]
+                    [ ( "channel", convIdStr ), ( "limit", "100" ) ]
     in
     -- Note that conversation.history returns messages sorted from latest to oldest
     -- BUT if `oldest` query is supplied, the first segment returned IS an older one,
-    -- so we must scroll forward until current time
+    -- so we must scroll forward until current time TODO scroll forward when it has `oldest` query
     rpcPostFormTask (apiPath conversationHistoryPath Nothing) token params <|
-        D.leakyList (D.succeed ())
+        D.field "messages" (D.leakyList (D.succeed ()))
 
 
 conversationHistoryPath : String

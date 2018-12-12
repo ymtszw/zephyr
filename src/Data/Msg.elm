@@ -398,8 +398,8 @@ producerMsgToEntry pMsg =
                 Slack.ITokenCommit teamIdStr ->
                     Entry "Slack.ITokenCommit" [ teamIdStr ]
 
-                Slack.IAPIFailure teamIdStr f ->
-                    Entry "Slack.IAPIFailure" <| teamIdStr :: rpcFailureToStr f
+                Slack.IAPIFailure teamIdStr convIdStrMaybe f ->
+                    Entry "Slack.IAPIFailure" <| [ teamIdStr, Maybe.withDefault "(Not fetch)" convIdStrMaybe ] ++ rpcFailureToStr f
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry
