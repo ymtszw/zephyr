@@ -1188,27 +1188,7 @@ conversationListTask token =
     rpcPostFormTask (apiPath "/conversations.list" Nothing)
         token
         [ ( "types", "public_channel,private_channel,im,mpim" ) ]
-        (D.field "channels" (D.dictFromList getConvIdStr conversationDecoder))
-
-
-getConvIdStr : Conversation -> ConversationIdStr
-getConvIdStr conv =
-    let
-        toStr (ConversationId convIdStr) =
-            convIdStr
-    in
-    case conv of
-        PublicChannel { id } ->
-            toStr id
-
-        PrivateChannel { id } ->
-            toStr id
-
-        IM { id } ->
-            toStr id
-
-        MPIM { id } ->
-            toStr id
+        (D.field "channels" (D.dictFromList getConversationIdStr conversationDecoder))
 
 
 userListTask : String -> Task RpcFailure (Dict UserIdStr User)
