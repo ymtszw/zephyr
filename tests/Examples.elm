@@ -657,6 +657,12 @@ slackSuite =
             (D.field "channels" (D.list Slack.conversationDecoder))
             (Json.Encode.list Slack.encodeConversation)
             (D.list Slack.conversationDecoder)
+        , test "should decode Message list" <|
+            -- TODO: encode
+            \_ ->
+                SlackTestData.conversationHistoryJson
+                    |> decodeString (D.field "messages" (D.list Slack.messageDecoder))
+                    |> Expect.ok
         , let
             pub name isMember =
                 Slack.PublicChannel

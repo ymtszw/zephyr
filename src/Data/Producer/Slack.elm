@@ -2,6 +2,7 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
+    , messageDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -15,12 +16,14 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
+@docs messageDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
 
 -}
 
+import Data.ColorTheme exposing (aubergine)
 import Data.Filter exposing (FilterAtom)
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
@@ -35,6 +38,7 @@ import Json.EncodeExtra as E
 import StringExtra
 import Task exposing (Task)
 import Time exposing (Posix)
+import TimeExtra exposing (posix)
 import Url exposing (Url)
 import Worque
 
@@ -752,6 +756,210 @@ conversationCacheTypeDecoder =
         , D.tag "PrivateChannelCache" PrivateChannelCache
         , D.tag "IMCache" IMCache
         , D.tag "MPIMCache" MPIMCache
+        ]
+
+
+messageDecoder : Decoder Message
+messageDecoder =
+    D.map6 Message
+        (D.field "ts" tsDecoder)
+        (D.field "text" D.string)
+        authorIdDecoder
+        (D.maybeField "username" D.string)
+        (D.optionField "files" (D.list sFileDecoder) [])
+        (D.optionField "attachements" (D.list attachmentDecoder) [])
+
+
+tsDecoder : Decoder Ts
+tsDecoder =
+    D.oneOf
+        [ D.tagged2 "Ts" Ts D.string (D.map posix D.int)
+
+        -- From Slack API
+        , D.do D.string <|
+            \tsStr ->
+                case String.toFloat tsStr of
+                    Just seconds ->
+                        -- ts values are only valid as timestamps to seconds. Decimal values are "uniqifiers"
+                        D.succeed (Ts tsStr (posix (floor seconds * 1000)))
+
+                    Nothing ->
+                        D.fail "Invalid `ts` value"
+        ]
+
+
+authorIdDecoder : Decoder AuthorId
+authorIdDecoder =
+    D.oneOf
+        [ D.field "authorId" <|
+            D.oneOf
+                [ D.tagged "UAuthorId" UAuthorId userIdDecoder, D.tagged "BAuthorId" BAuthorId botIdDecoder ]
+
+        -- From Slack API
+        , D.field "bot_id" (D.map BAuthorId botIdDecoder)
+        , D.field "user" (D.map UAuthorId userIdDecoder)
+        ]
+
+
+botIdDecoder : Decoder BotId
+botIdDecoder =
+    D.oneOf [ D.tagged "BotId" BotId D.string, D.map BotId D.string ]
+
+
+sFileDecoder : Decoder SFile
+sFileDecoder =
+    D.do (D.field "mode" modeDecoder) <|
+        \mode ->
+            D.map7 SFile
+                (D.field "name" D.string)
+                (D.field "mimetype" D.string)
+                (D.succeed mode)
+                (sFileUrlDecoder mode)
+                (D.maybeField "thumb_64" D.url)
+                (D.maybe thumb360Decoder)
+                (D.maybeField "preview" D.string)
+
+
+modeDecoder : Decoder Mode
+modeDecoder =
+    D.oneOf
+        [ D.tag "Hosted" Hosted
+        , D.tag "External" External
+        , D.tag "Snippet" Snippet
+        , D.tag "Post" Post
+
+        -- From Slack API
+        , D.do D.string <|
+            \str ->
+                D.succeed <|
+                    case str of
+                        "hosted" ->
+                            Hosted
+
+                        "external" ->
+                            External
+
+                        "snippet" ->
+                            Snippet
+
+                        "post" ->
+                            Post
+
+                        "space" ->
+                            -- Don't know why but Posts can have mode: "space"
+                            Post
+
+                        _ ->
+                            -- Treated as a fallback
+                            External
+        ]
+
+
+sFileUrlDecoder : Mode -> Decoder Url
+sFileUrlDecoder mode =
+    D.oneOf
+        [ D.field "url_" D.url
+
+        -- From Slack API;
+        -- `permalink` opens default viewer/redirecter in Slack, whereas `url_private` opens actual file entity
+        -- In case of Snippet/Post, file entites are plain texts or JSON files, so opening with default viewer would make more sense
+        , case mode of
+            Hosted ->
+                D.field "url_private" D.url
+
+            External ->
+                D.field "url_private" D.url
+
+            Snippet ->
+                D.field "permalink" D.url
+
+            Post ->
+                D.field "permalink" D.url
+        ]
+
+
+thumb360Decoder : Decoder ( Url, Int, Int )
+thumb360Decoder =
+    D.do (D.field "thumb_360" D.url) <|
+        \u ->
+            D.do (D.field "thumb_360_w" D.int) <|
+                \w ->
+                    D.do (D.field "thumb_360_h" D.int) <|
+                        \h ->
+                            D.succeed ( u, w, h )
+
+
+attachmentDecoder : Decoder Attachment
+attachmentDecoder =
+    D.map8 Attachment
+        (D.field "fallback" D.string)
+        (D.maybeField "color" colorDecoder)
+        (D.maybeField "pretext" D.string)
+        (D.maybe attachmentAuthorDecoder)
+        (D.maybe attachmentTitleDecoder)
+        (D.field "text" D.string)
+        (D.maybeField "image_url" D.url)
+        (D.maybeField "thumb_url" D.url)
+
+
+colorDecoder : Decoder Element.Color
+colorDecoder =
+    D.oneOf
+        [ D.color
+
+        -- From Slack API
+        , D.do D.string <|
+            \str ->
+                case str of
+                    "good" ->
+                        D.succeed aubergine.succ
+
+                    "warning" ->
+                        D.succeed aubergine.warn
+
+                    "danger" ->
+                        D.succeed aubergine.err
+
+                    _ ->
+                        if String.startsWith "#" str then
+                            D.hexColor (String.dropLeft 1 str)
+
+                        else
+                            D.hexColor str
+        ]
+
+
+attachmentAuthorDecoder : Decoder AttachmentAuthor
+attachmentAuthorDecoder =
+    D.oneOf
+        [ D.field "author" <|
+            D.map3 AttachmentAuthor
+                (D.field "name" D.string)
+                (D.field "link" (D.maybe D.url))
+                (D.field "icon" (D.maybe D.url))
+
+        -- From Slack API
+        , D.map3 AttachmentAuthor
+            (D.field "author_name" D.string)
+            (D.maybeField "author_link" D.url)
+            (D.maybeField "author_icon" D.url)
+
+        -- Deprecated or certain app only?
+        , D.map3 AttachmentAuthor
+            (D.field "service_name" D.string)
+            (D.maybeField "service_url" D.url)
+            (D.maybeField "service_icon" D.url)
+        ]
+
+
+attachmentTitleDecoder : Decoder AttachmentTitle
+attachmentTitleDecoder =
+    D.oneOf
+        [ D.field "title" <|
+            D.map2 AttachmentTitle (D.field "name" D.string) (D.maybeField "link" D.url)
+
+        -- From Slack API
+        , D.map2 AttachmentTitle (D.field "title" D.string) (D.maybeField "title_link" D.url)
         ]
 
 
