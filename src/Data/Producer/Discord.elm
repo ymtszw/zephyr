@@ -663,17 +663,7 @@ embedDecoder =
 
 colorDecoder : Decoder Element.Color
 colorDecoder =
-    let
-        decimalIntToHex =
-            Hex.toString >> String.padLeft 6 '0'
-
-        hexToColor hex =
-            Result.map3 Element.rgb255
-                (hex |> String.slice 0 2 |> Hex.fromString)
-                (hex |> String.slice 2 4 |> Hex.fromString)
-                (hex |> String.slice 4 6 |> Hex.fromString)
-    in
-    D.int |> D.andThen (decimalIntToHex >> hexToColor >> D.fromResult "Invalid Color")
+    D.int |> D.andThen (Hex.toString >> String.padLeft 6 '0' >> D.hexColor)
 
 
 embedImageDecoder : Decoder EmbedImage

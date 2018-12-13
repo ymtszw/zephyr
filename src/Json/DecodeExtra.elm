@@ -1,18 +1,20 @@
 module Json.DecodeExtra exposing
     ( when, conditional, succeedIf, do
     , tag, tagged, tagged2, tagged3
-    , url, leakyList, dictFromList, maybeField, optionField, fromResult
+    , url, hexColor, leakyList, dictFromList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
 @docs when, conditional, succeedIf, do
 @docs tag, tagged, tagged2, tagged3
-@docs url, leakyList, dictFromList, maybeField, optionField, fromResult
+@docs url, hexColor, leakyList, dictFromList, maybeField, optionField, fromResult
 
 -}
 
 import Dict exposing (Dict)
+import Element
+import Hex
 import Json.Decode exposing (..)
 import Url
 
@@ -166,6 +168,25 @@ url =
                     Nothing ->
                         fail ("URL is serialized incorrectly: " ++ urlString)
             )
+
+
+{-| Decode a 6-digit Hexadecimal Color string into Element.Color.
+-}
+hexColor : String -> Decoder Element.Color
+hexColor hexStr =
+    let
+        res =
+            Result.map3 Element.rgb255
+                (hexStr |> String.slice 0 2 |> Hex.fromString)
+                (hexStr |> String.slice 2 4 |> Hex.fromString)
+                (hexStr |> String.slice 4 6 |> Hex.fromString)
+    in
+    case res of
+        Ok color ->
+            succeed color
+
+        Err e ->
+            fail <| "Invalid Color: '" ++ hexStr ++ "'. " ++ e
 
 
 fromResult : String -> Result x a -> Decoder a
