@@ -960,7 +960,7 @@ slackConversationEl attrs opts =
                 [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.person }
                 , case Slack.getUser opts.users user of
                     Ok u ->
-                        text u.profile.displayName
+                        text (Maybe.withDefault u.profile.realName u.profile.displayName)
 
                     Err userIdStr ->
                         text userIdStr

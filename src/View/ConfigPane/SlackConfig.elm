@@ -204,13 +204,18 @@ userInfoEl user =
     row [ width fill, spacing spacingUnit ]
         [ squareIconOrHeadEl []
             { size = identityIconSize
-            , name = user.profile.displayName
+            , name = Maybe.withDefault user.profile.realName user.profile.displayName
             , url = Just (Url.toString user.profile.image48)
             }
-        , column [ width shrink, spacing spacingUnit ]
-            [ el [ Font.bold ] (breakT user.profile.displayName)
-            , el [ Font.size smallFontSize, Font.color aubergine.note ] (breakT user.profile.realName)
-            ]
+        , column [ width shrink, spacing spacingUnit ] <|
+            case user.profile.displayName of
+                Just dn ->
+                    [ el [ Font.bold ] (breakT dn)
+                    , el [ Font.size smallFontSize, Font.color aubergine.note ] (breakT user.profile.realName)
+                    ]
+
+                Nothing ->
+                    [ el [ Font.bold ] (breakT user.profile.realName) ]
         ]
 
 

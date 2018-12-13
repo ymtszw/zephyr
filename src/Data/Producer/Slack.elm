@@ -97,7 +97,7 @@ type alias UserIdStr =
 
 
 type alias UserProfile =
-    { displayName : String
+    { displayName : Maybe String -- Can be empty string!! Treat empty string as Nothing
     , realName : String
     , statusText : String
     , statusEmoji : String
@@ -299,7 +299,7 @@ encodeUser user =
         , ( "team_id", encodeTeamId user.teamId )
         , Tuple.pair "profile" <|
             E.object
-                [ ( "display_name", E.string user.profile.displayName )
+                [ ( "display_name", E.string (Maybe.withDefault "" user.profile.displayName) ) -- In-line with Slack API
                 , ( "real_name", E.string user.profile.realName )
                 , ( "status_text", E.string user.profile.statusText )
                 , ( "status_emoji", E.string user.profile.statusEmoji )
@@ -467,12 +467,21 @@ userDecoder =
     let
         profileDecoder =
             D.map6 UserProfile
-                (D.field "display_name" D.string)
+                (D.field "display_name" nonEmptyStringDecoder)
                 (D.field "real_name" D.string)
                 (D.field "status_text" D.string)
                 (D.field "status_emoji" D.string)
                 (D.field "image_32" D.url)
                 (D.field "image_48" D.url)
+
+        nonEmptyStringDecoder =
+            D.do D.string <|
+                \s ->
+                    if String.isEmpty s then
+                        D.succeed Nothing
+
+                    else
+                        D.succeed (Just s)
     in
     D.map3 User
         (D.field "id" userIdDecoder)
@@ -1644,8 +1653,13 @@ conversationFilter users filter conv =
         IM { user } ->
             case getUser users user of
                 Ok u ->
-                    StringExtra.containsCaseIgnored filter u.profile.displayName
-                        || StringExtra.containsCaseIgnored filter u.profile.realName
+                    case u.profile.displayName of
+                        Just dn ->
+                            StringExtra.containsCaseIgnored filter dn
+                                || StringExtra.containsCaseIgnored filter u.profile.realName
+
+                        Nothing ->
+                            StringExtra.containsCaseIgnored filter u.profile.realName
 
                 Err userIdStr ->
                     StringExtra.containsCaseIgnored filter userIdStr
