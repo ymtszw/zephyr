@@ -38,7 +38,7 @@ import Json.EncodeExtra as E
 import StringExtra
 import Task exposing (Task)
 import Time exposing (Posix)
-import TimeExtra exposing (posix)
+import TimeExtra exposing (ms, posix)
 import Url exposing (Url)
 import Worque
 
@@ -194,7 +194,7 @@ type alias ConversationIdStr =
 
 
 type LastRead
-    = LastRead String
+    = LastRead Ts
 
 
 type alias ConversationCache =
@@ -539,7 +539,7 @@ encodeConversationId (ConversationId convId) =
 
 encodeLastRead : LastRead -> E.Value
 encodeLastRead (LastRead lastRead) =
-    E.tagged "LastRead" (E.string lastRead)
+    E.tagged "LastRead" (encodeTs lastRead)
 
 
 encodeConversationCache : ConversationCache -> E.Value
@@ -565,6 +565,11 @@ encodeConversationCacheType type_ =
 
         MPIMCache ->
             E.tag "MPIMCache"
+
+
+encodeTs : Ts -> E.Value
+encodeTs (Ts ts posix_) =
+    E.tagged2 "Ts" (E.string ts) (E.int (ms posix_))
 
 
 
@@ -738,7 +743,7 @@ conversationIdDecoder =
 lastReadDecoder : Decoder LastRead
 lastReadDecoder =
     -- As in Discord's lastMessageId, we deliberately ignore "last_read" from Slack API.
-    D.tagged "LastRead" LastRead D.string
+    D.tagged "LastRead" LastRead tsDecoder
 
 
 conversationCacheDecoder : Decoder ConversationCache
@@ -1849,10 +1854,10 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
                 ]
     in
     case ( lrMaybe, cursorIn ) of
-        ( Just (LastRead lastRead), Initial ) ->
-            forwardScrollingTask [ ( "oldest", lastRead ) ] []
+        ( Just (LastRead (Ts lastReadTs _)), Initial ) ->
+            forwardScrollingTask [ ( "oldest", lastReadTs ) ] []
 
-        ( Just (LastRead lastRead), CursorIn cursorStr acc ) ->
+        ( Just (LastRead _), CursorIn cursorStr acc ) ->
             forwardScrollingTask [ ( "cursor", cursorStr ) ] acc
 
         ( Nothing, _ ) ->
