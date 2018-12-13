@@ -2,7 +2,7 @@ module Data.Producer.Discord exposing
     ( Discord(..), User, POV, Guild, Channel, init, decoder, encode, encodeUser
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
-    , encodeMessage, messageDecoder, colorDecoder, encodeColor
+    , encodeMessage, messageDecoder, colorDecoder
     , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
@@ -20,7 +20,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 @docs Discord, User, POV, Guild, Channel, init, decoder, encode, encodeUser
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 @docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
-@docs encodeMessage, messageDecoder, colorDecoder, encodeColor
+@docs encodeMessage, messageDecoder, colorDecoder
 @docs Msg, reload, update
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
 @docs getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
@@ -428,30 +428,12 @@ encodeEmbed embed =
         [ ( "title", E.maybe E.string embed.title )
         , ( "description", E.maybe E.string embed.description )
         , ( "url", E.maybe E.url embed.url )
-        , ( "color", E.maybe encodeColor embed.color )
+        , ( "color", E.maybe E.color embed.color )
         , ( "image", E.maybe encodeEmbedImage embed.image )
         , ( "thumbnail", E.maybe encodeEmbedImage embed.thumbnail )
         , ( "video", E.maybe encodeEmbedVideo embed.video )
         , ( "author", E.maybe encodeEmbedAuthor embed.author )
         ]
-
-
-encodeColor : Element.Color -> E.Value
-encodeColor color =
-    let
-        { red, green, blue } =
-            Element.toRgb color
-
-        hex2 =
-            floor >> Hex.toString >> String.padLeft 2 '0'
-    in
-    case Hex.fromString <| hex2 (red * 255) ++ hex2 (green * 255) ++ hex2 (blue * 255) of
-        Ok decimal ->
-            E.int decimal
-
-        Err _ ->
-            -- Should not happen
-            E.int 0
 
 
 encodeEmbedImage : EmbedImage -> E.Value
@@ -663,7 +645,12 @@ embedDecoder =
 
 colorDecoder : Decoder Element.Color
 colorDecoder =
-    D.int |> D.andThen (Hex.toString >> String.padLeft 6 '0' >> D.hexColor)
+    D.oneOf
+        [ D.color
+
+        -- From Discord API
+        , D.int |> D.andThen (Hex.toString >> String.padLeft 6 '0' >> D.hexColor)
+        ]
 
 
 embedImageDecoder : Decoder EmbedImage

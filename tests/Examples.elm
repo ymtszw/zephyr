@@ -14,6 +14,7 @@ import Fuzz
 import Hex
 import Json.Decode as D exposing (Decoder, decodeString, decodeValue)
 import Json.Encode exposing (Value, encode)
+import Json.EncodeExtra
 import ListExtra
 import Parser
 import SelectArray
@@ -629,11 +630,9 @@ testColorSerDe colorNum expectedHex =
             colorNum
                 |> fromInt
                 |> decodeString Data.Producer.Discord.colorDecoder
-                |> Expect.all
-                    [ Expect.equal (Ok expectedColor)
-                    , Result.map (Data.Producer.Discord.encodeColor >> encode 0 >> toInt)
-                        >> Expect.equal (Ok (Just colorNum))
-                    ]
+                |> Result.map (Json.EncodeExtra.color >> encode 0)
+                |> Result.andThen (decodeString Data.Producer.Discord.colorDecoder)
+                |> Expect.equal (Ok expectedColor)
 
 
 

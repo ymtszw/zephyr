@@ -1,14 +1,14 @@
 module Json.DecodeExtra exposing
     ( when, conditional, succeedIf, do
     , tag, tagged, tagged2, tagged3
-    , url, hexColor, leakyList, dictFromList, maybeField, optionField, fromResult
+    , url, hexColor, color, leakyList, dictFromList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
 @docs when, conditional, succeedIf, do
 @docs tag, tagged, tagged2, tagged3
-@docs url, hexColor, leakyList, dictFromList, maybeField, optionField, fromResult
+@docs url, hexColor, color, leakyList, dictFromList, maybeField, optionField, fromResult
 
 -}
 
@@ -182,11 +182,22 @@ hexColor hexStr =
                 (hexStr |> String.slice 4 6 |> Hex.fromString)
     in
     case res of
-        Ok color ->
-            succeed color
+        Ok c ->
+            succeed c
 
         Err e ->
             fail <| "Invalid Color: '" ++ hexStr ++ "'. " ++ e
+
+
+{-| Decode a well-structured Color object. Use it with EncodeExtra.color.
+-}
+color : Decoder Element.Color
+color =
+    map4 Element.rgba
+        (field "red" float)
+        (field "green" float)
+        (field "blue" float)
+        (field "alpha" float)
 
 
 fromResult : String -> Result x a -> Decoder a
