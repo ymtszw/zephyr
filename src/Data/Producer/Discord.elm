@@ -1541,7 +1541,7 @@ imageUrlNoFallback sizeMaybe image =
 imageUrlWithFallback : Maybe Int -> String -> Maybe Image -> String
 imageUrlWithFallback sizeMaybe discriminator imageMaybe =
     let
-        endpoint =
+        path =
             case ( imageMaybe, discriminator ) of
                 ( Just (Emoji string), _ ) ->
                     "/emojis/" ++ string ++ ".png"
@@ -1569,7 +1569,7 @@ imageUrlWithFallback sizeMaybe discriminator imageMaybe =
                 Nothing ->
                     ""
     in
-    "https://cdn.discordapp.com" ++ endpoint ++ sizeQuery
+    "https://cdn.discordapp.com" ++ path ++ sizeQuery
 
 
 imageQuerySize : Int -> Int
