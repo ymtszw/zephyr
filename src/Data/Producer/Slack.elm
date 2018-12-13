@@ -1270,8 +1270,8 @@ conversationUnavailable err =
 -- REST API CLIENTS
 
 
-apiPath : String -> Maybe String -> Url
-apiPath path queryMaybe =
+endpoint : String -> Maybe String -> Url
+endpoint path queryMaybe =
     { protocol = Url.Https
     , host = "slack.com"
     , port_ = Nothing
@@ -1370,19 +1370,19 @@ revisit token userId (TeamId teamIdStr) =
 
 authTestTask : String -> Task RpcFailure UserId
 authTestTask token =
-    rpcPostFormTask (apiPath "/auth.test" Nothing) token [] <|
+    rpcPostFormTask (endpoint "/auth.test" Nothing) token [] <|
         D.field "user_id" userIdDecoder
 
 
 userInfoTask : String -> UserId -> Task RpcFailure User
 userInfoTask token (UserId userId) =
-    rpcPostFormTask (apiPath "/users.info" Nothing) token [ ( "user", userId ) ] <|
+    rpcPostFormTask (endpoint "/users.info" Nothing) token [ ( "user", userId ) ] <|
         D.field "user" userDecoder
 
 
 teamInfoTask : String -> Task RpcFailure Team
 teamInfoTask token =
-    rpcPostFormTask (apiPath "/team.info" Nothing) token [] <|
+    rpcPostFormTask (endpoint "/team.info" Nothing) token [] <|
         D.field "team" teamDecoder
 
 
@@ -1394,7 +1394,7 @@ hydrate token (TeamId teamIdStr) =
 
 conversationListTask : String -> Task RpcFailure (Dict ConversationIdStr Conversation)
 conversationListTask token =
-    rpcPostFormTask (apiPath "/conversations.list" Nothing)
+    rpcPostFormTask (endpoint "/conversations.list" Nothing)
         token
         [ ( "types", "public_channel,private_channel,im,mpim" ) ]
         (D.field "channels" (D.dictFromList getConversationIdStr conversationDecoder))
@@ -1406,7 +1406,7 @@ userListTask token =
         toStr (UserId userIdStr) =
             userIdStr
     in
-    rpcPostFormTask (apiPath "/users.list" Nothing) token [] <|
+    rpcPostFormTask (endpoint "/users.list" Nothing) token [] <|
         D.field "members" (D.dictFromList (.id >> toStr) userDecoder)
 
 
@@ -1449,7 +1449,7 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
     let
         baseTask params =
             -- 100 is the default for limmit; https://api.slack.com/methods/conversations.history
-            rpcPostFormTask (apiPath conversationHistoryPath Nothing) token <|
+            rpcPostFormTask (endpoint conversationHistoryPath Nothing) token <|
                 [ ( "channel", convIdStr ), ( "limit", "100" ) ]
                     ++ params
 
@@ -1467,6 +1467,7 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
                     )
 
         baseDecoder =
+            -- TODO use messageDecoder when ready
             D.field "messages" (D.leakyList (D.succeed ()))
 
         scrollableDecoder =

@@ -1418,8 +1418,8 @@ handleGenericAPIError discord _ =
 -- REST API CLIENTS
 
 
-apiPath : String -> Maybe String -> Url
-apiPath path queryMaybe =
+endpoint : String -> Maybe String -> Url
+endpoint path queryMaybe =
     { protocol = Url.Https
     , host = "discordapp.com"
     , port_ = Nothing
@@ -1431,13 +1431,13 @@ apiPath path queryMaybe =
 
 identify : String -> Cmd Msg
 identify token =
-    HttpClient.getWithAuth (apiPath "/users/@me" Nothing) (HttpClient.auth token) userDecoder
+    HttpClient.getWithAuth (endpoint "/users/@me" Nothing) (HttpClient.auth token) userDecoder
         |> HttpClient.try Identify GenericAPIError
 
 
 hydrate : String -> Cmd Msg
 hydrate token =
-    HttpClient.getWithAuth (apiPath "/users/@me/guilds" Nothing) (HttpClient.auth token) (D.dictFromList .id guildDecoder)
+    HttpClient.getWithAuth (endpoint "/users/@me/guilds" Nothing) (HttpClient.auth token) (D.dictFromList .id guildDecoder)
         |> Task.andThen (hydrateChannels token)
         |> HttpClient.try identity GenericAPIError
 
@@ -1448,7 +1448,7 @@ hydrateChannels token guilds =
         -- TODO: we should also retrieve DMs, which are not tied to Guilds
         -- https://discordapp.com/developers/docs/resources/user#get-user-dms
         getGuildChannels guildId =
-            HttpClient.getWithAuth (apiPath ("/guilds/" ++ guildId ++ "/channels") Nothing)
+            HttpClient.getWithAuth (endpoint ("/guilds/" ++ guildId ++ "/channels") Nothing)
                 (HttpClient.auth token)
                 (D.leakyList (channelDecoder guilds))
 
@@ -1487,7 +1487,7 @@ fetchChannelMessagesTask token channel =
                     Just "limit=100"
     in
     -- Note that /messages API returns messages from latest to oldest
-    HttpClient.getWithAuth (apiPath (channelMessagesPath channel.id) query)
+    HttpClient.getWithAuth (endpoint (channelMessagesPath channel.id) query)
         (HttpClient.auth token)
         (D.leakyList messageDecoder)
 
@@ -1507,7 +1507,7 @@ postChannelMessage token { channelId, message, file } =
                 ]
 
         postTask =
-            HttpClient.postFormWithAuth (apiPath (channelMessagesPath channelId) Nothing)
+            HttpClient.postFormWithAuth (endpoint (channelMessagesPath channelId) Nothing)
                 postParts
                 (HttpClient.auth token)
                 (D.succeed ())
