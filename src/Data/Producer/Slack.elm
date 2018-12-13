@@ -330,14 +330,31 @@ type alias Attachment =
     { fallback : String -- Plain-text fallback contents without any markup
     , color : Maybe Element.Color -- Gutter color of attachment block
     , pretext : Maybe String -- Optional leading text before attachment block
-    , authorName : Maybe String
-    , authorUrl : Maybe Url -- Link on authorName. Only used if authorName exists
-    , authorIcon : Maybe Url -- Icon accompanying authorName. Only used if authorName exists
-    , title : Maybe String
-    , titleLink : Maybe Url -- Link on title. Only used if title exists
+    , author : Maybe AttachmentAuthor
+    , title : Maybe AttachmentTitle
     , text : String -- Can be empty, and can be marked-up
     , imageUrl : Maybe Url -- Optional image. It is a (possibly external) permalink and not resized/proxied by Slack
     , thumbUrl : Maybe Url -- Optional icon-like thumbnails. Preferred size is 75x75
+    }
+
+
+{-| Aggregated object from `author_name`, `author_link` and `author_icon`.
+
+May use `service_name` and `service_icon` instead, if `author_name` is absent.
+
+-}
+type alias AttachmentAuthor =
+    { name : String
+    , link : Maybe Url
+    , icon : Maybe Url
+    }
+
+
+{-| Aggregated object from `title` and `title_link`.
+-}
+type alias AttachmentTitle =
+    { name : String
+    , link : Maybe Url
     }
 
 
