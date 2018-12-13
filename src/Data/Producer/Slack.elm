@@ -25,6 +25,7 @@ import Data.Filter exposing (FilterAtom)
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
+import Element
 import Http
 import HttpClient exposing (noAuth)
 import Json.Decode as D exposing (Decoder)
@@ -204,6 +205,140 @@ type ConversationCacheType
     | PrivateChannelCache
     | IMCache
     | MPIMCache
+
+
+{-| A Message object.
+
+There are many properties and functions. Some of them may not be documented well.
+<https://api.slack.com/events/message>
+
+`text` is a main contents with marked-up text.
+<https://api.slack.com/docs/message-formatting>
+Markup includes:
+
+  - URLs: `<https://example.com|Optional Title>`
+  - User mention: `<@USERID>`
+  - Channel link: `<#CHANNELID|channel name>`
+  - Special commands: `<!everyone>`, `<!here>`, `<!channel>`
+
+Better use `leakyList` on decoding.
+
+TODO Support threading nicely
+
+-}
+type alias Message =
+    { ts : Ts
+    , text : String -- Most likely exists even if empty, but there MIGHT be exceptions.
+    , authorId : AuthorId -- Zephyr local; from `user` or `bot_id`
+    , username : Maybe String -- Manually selected username for a particular Message. Should supercede names in User or Bot
+    , files : List SFile
+    , attachements : List Attachment
+    }
+
+
+{-| Slack messages' ID AND timestamps.
+
+This is unique per channel, sorted, and can be translated as Posix timestamps.
+
+For convenience, they are parsed as Time.Posix at decoding and results are attached in the type.
+
+-}
+type Ts
+    = Ts String Posix
+
+
+{-| Bots MAY have an identity as User, but not necessarily.
+
+So if a Message has `bot_id` field, choose BAuthorId.
+Bot info must be lazily acquired from `bots.info` API, which does not have corresponding `.list` API.
+<https://api.slack.com/methods/bots.info>
+
+Otherwise use UserId from `user` field with UAuthorId.
+
+-}
+type AuthorId
+    = UAuthorId UserId
+    | BAuthorId BotId
+
+
+type BotId
+    = BotId BotIdStr
+
+
+type alias BotIdStr =
+    String
+
+
+type alias Bot =
+    { id : BotId
+    , name : String
+    , icons : BotIcons -- Yeah, plural
+    }
+
+
+type alias BotIcons =
+    { image36 : Url
+    , image48 : Url
+    , image72 : Url
+    }
+
+
+{-| File object. Differentiating from File.File by prefix "S".
+
+<https://api.slack.com/types/file>
+
+Parallel to Discord's Attachment.
+
+-}
+type alias SFile =
+    { name : String
+    , mimetype : String
+    , mode : Mode
+    , url_ : Url -- From `url_private` or `permalink`, whichever suitable depending on `mode`. Suffix `_` to differentiate from deprecated `url` field
+    , thumb64 : Maybe Url -- For images; smallest and most reliably existing SQUARE thumbnail, with at most 64x64 size
+    , thumb360 : Maybe ( Url, Int, Int ) -- For images; larger thumbnail with accurate aspect-ratio. At most 360 width OR height. Comes with width and height
+    , preview : Maybe String -- For text contents such as Snippet/Post
+    }
+
+
+{-| File modes. New modes may arrive later.
+
+  - Hosted/External indicate files' location.
+  - Snippet is online-editable snippets.
+  - Post is online-editable rich text document.
+
+-}
+type Mode
+    = Hosted
+    | External
+    | Snippet
+    | Post
+
+
+{-| Attachment object. There are many fields and they are not so nicely documented.
+
+<https://api.slack.com/docs/message-attachments>
+
+This is parallel to Discord's Embeds. Discord's Attachment corresponds to Slack's SFile.
+
+New functions added regularly. We will gradually catch up on them.
+
+Better use `leakyList` on decoding.
+
+-}
+type alias Attachment =
+    { fallback : String -- Plain-text fallback contents without any markup
+    , color : Maybe Element.Color -- Gutter color of attachment block
+    , pretext : Maybe String -- Optional leading text before attachment block
+    , authorName : Maybe String
+    , authorUrl : Maybe Url -- Link on authorName. Only used if authorName exists
+    , authorIcon : Maybe Url -- Icon accompanying authorName. Only used if authorName exists
+    , title : Maybe String
+    , titleLink : Maybe Url -- Link on title. Only used if title exists
+    , text : String -- Can be empty, and can be marked-up
+    , imageUrl : Maybe Url -- Optional image. It is a (possibly external) permalink and not resized/proxied by Slack
+    , thumbUrl : Maybe Url -- Optional icon-like thumbnails. Preferred size is 75x75
+    }
 
 
 {-| Runtime registry of multiple Slack state machines.

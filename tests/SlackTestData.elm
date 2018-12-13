@@ -1,6 +1,519 @@
 module SlackTestData exposing (convListJson, teamInfoJson, userInfoJson, userListJson)
 
 
+botInfoJson : String
+botInfoJson =
+    """
+{
+    "ok": true,
+    "bot": {
+        "id": "BDE9XGSD7",
+        "deleted": false,
+        "name": "GitHub",
+        "updated": 1539659476,
+        "app_id": "A8GBNUWU8",
+        "user_id": "UDE61U7LG",
+        "icons": {
+            "image_36": "https://slack-files2.s3-us-west-2.amazonaws.com/avatars/2017-12-19/288981919427_f45f04edd92902a96859_36.png",
+            "image_48": "https://slack-files2.s3-us-west-2.amazonaws.com/avatars/2017-12-19/288981919427_f45f04edd92902a96859_48.png",
+            "image_72": "https://slack-files2.s3-us-west-2.amazonaws.com/avatars/2017-12-19/288981919427_f45f04edd92902a96859_72.png"
+        }
+    }
+}
+    """
+
+
+conversationHistoryJson : String
+conversationHistoryJson =
+    """
+{
+    "ok": true,
+    "messages": [
+        {
+            "type": "message",
+            "text": "",
+            "files": [
+                {
+                    "id": "FETS7RDPH",
+                    "created": 1544689009,
+                    "timestamp": 1544689009,
+                    "name": "localhost_8000_ (3).png",
+                    "title": "localhost_8000_ (3).png",
+                    "mimetype": "image/png",
+                    "filetype": "png",
+                    "pretty_type": "PNG",
+                    "user": "UEPUX32MD",
+                    "editable": false,
+                    "size": 227816,
+                    "mode": "hosted",
+                    "is_external": false,
+                    "external_type": "",
+                    "is_public": true,
+                    "public_url_shared": false,
+                    "display_as_bot": false,
+                    "username": "",
+                    "url_private": "https://files.slack.com/files-pri/TEP3UKAJH-FETS7RDPH/localhost_8000___3_.png",
+                    "url_private_download": "https://files.slack.com/files-pri/TEP3UKAJH-FETS7RDPH/download/localhost_8000___3_.png",
+                    "thumb_64": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__64.png",
+                    "thumb_80": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__80.png",
+                    "thumb_360": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__360.png",
+                    "thumb_360_w": 88,
+                    "thumb_360_h": 360,
+                    "thumb_480": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__480.png",
+                    "thumb_480_w": 117,
+                    "thumb_480_h": 480,
+                    "thumb_160": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__160.png",
+                    "thumb_720": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__720.png",
+                    "thumb_720_w": 175,
+                    "thumb_720_h": 720,
+                    "thumb_800": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__800.png",
+                    "thumb_800_w": 195,
+                    "thumb_800_h": 800,
+                    "thumb_960": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__960.png",
+                    "thumb_960_w": 234,
+                    "thumb_960_h": 960,
+                    "thumb_1024": "https://files.slack.com/files-tmb/TEP3UKAJH-FETS7RDPH-146ccb7f79/localhost_8000___3__1024.png",
+                    "thumb_1024_w": 249,
+                    "thumb_1024_h": 1024,
+                    "image_exif_rotation": 1,
+                    "original_w": 346,
+                    "original_h": 1421,
+                    "permalink": "https://zephyr-dev.slack.com/files/UEPUX32MD/FETS7RDPH/localhost_8000___3_.png",
+                    "permalink_public": "https://slack-files.com/TEP3UKAJH-FETS7RDPH-0a0b6ef453"
+                }
+            ],
+            "upload": true,
+            "user": "UEPUX32MD",
+            "display_as_bot": false,
+            "ts": "1544689013.000600"
+        },
+        {
+            "type": "message",
+            "subtype": "bot_message",
+            "text": "<https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210|Pacers Fans Play The Most Infuriating Game Of Tic-Tac-Toe In Human History>
+Be warned: What you are about to see will trouble your dreams for years to come. What the fuck. Two Indiana Pacers fans squared off in a game of tic-tac-toe, and the results are just fucking mind-boggling.
+<https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210|Read more...>",
+            "ts": "1544686635.000400",
+            "username": "Kotaku",
+            "icons": {
+                "image_36": "https://a.slack-edge.com/66f9/img/services/rss_36.png",
+                "image_48": "https://a.slack-edge.com/66f9/img/services/rss_48.png",
+                "image_72": "https://a.slack-edge.com/205a/img/services/rss_72.png"
+            },
+            "bot_id": "BEST8J877",
+            "attachments": [
+                {
+                    "service_name": "Deadspin",
+                    "title": "Pacers Fans Play The Most Infuriating Game Of Tic-Tac-Toe In Human History",
+                    "title_link": "https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210",
+                    "text": "Be warned: What you are about to see will trouble your dreams for years to come. What the fuck. Two Indiana Pacers fans squared off in a game of tic-tac-toe, and the results are just fucking mind-boggling.",
+                    "fallback": "Deadspin: Pacers Fans Play The Most Infuriating Game Of Tic-Tac-Toe In Human History",
+                    "image_url": "https://i.kinja-img.com/gawker-media/image/upload/s--N4ciN-ev--/c_fill,fl_progressive,g_center,h_900,q_80,w_1600/qt1fswsdifj4fq1zeg7r.jpg",
+                    "from_url": "https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210",
+                    "image_width": 444,
+                    "image_height": 250,
+                    "image_bytes": 151733,
+                    "service_icon": "https://i.kinja-img.com/gawker-media/image/upload/s--iIvh_25i--/c_fill,fl_progressive,g_center,h_200,q_80,w_200/rnxqtvv6advgidzfs6am.png",
+                    "id": 1,
+                    "original_url": "https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210"
+                }
+            ]
+        },
+        {
+            "type": "message",
+            "subtype": "thread_broadcast",
+            "text": "threaded but globally visible!",
+            "user": "UEPUX32MD",
+            "ts": "1544685094.000100",
+            "thread_ts": "1544668605.000400",
+            "root": {
+                "client_msg_id": "195b9713-c56b-4e1a-8ad4-b0b725a8c1cd",
+                "type": "message",
+                "text": "threaded",
+                "user": "UEPUX32MD",
+                "ts": "1544668605.000400",
+                "thread_ts": "1544668605.000400",
+                "reply_count": 3,
+                "reply_users_count": 1,
+                "latest_reply": "1544685094.000100",
+                "reply_users": [
+                    "UEPUX32MD"
+                ],
+                "replies": [
+                    {
+                        "user": "UEPUX32MD",
+                        "ts": "1544668615.000500"
+                    },
+                    {
+                        "user": "UEPUX32MD",
+                        "ts": "1544668618.000700"
+                    },
+                    {
+                        "user": "UEPUX32MD",
+                        "ts": "1544685094.000100"
+                    }
+                ],
+                "subscribed": true,
+                "last_read": "1544685094.000100"
+            },
+            "client_msg_id": "a4608c9e-3f8c-4dc1-8c1f-78ba1a7c46cb"
+        },
+        {
+            "bot_id": "BES1GFZA4",
+            "type": "message",
+            "text": "",
+            "user": "UESV1NECD",
+            "ts": "1544682681.001300",
+            "attachments": [
+                {
+                    "text": "This channel will get notifications from <https://github.com/ymtszw/zephyr|ymtszw/zephyr> for:
+`issues`, `pulls`, `deployments`, `statuses`, `public`, `commits:all`, `releases`",
+                    "footer": "<https://github.com/integrations/slack#configuration|Learn More>",
+                    "id": 1,
+                    "color": "24292f",
+                    "mrkdwn_in": [
+                        "text",
+                        "footer"
+                    ],
+                    "fallback": "This channel will get notifications from <https://github.com/ymtszw/zephyr|ymtszw/zephyr> for:
+`issues`, `pulls`, `deployments`, `statuses`, `public`, `commits:all`, `releases`"
+                }
+            ]
+        },
+        {
+            "type": "message",
+            "text": "/github subscribe ymtszw/zephyr commits:all",
+            "user": "UEPUX32MD",
+            "ts": "1544682681.001200"
+        },
+        {
+            "bot_id": "BES1GFZA4",
+            "type": "message",
+            "text": "",
+            "user": "UESV1NECD",
+            "ts": "1544682553.001100",
+            "attachments": [
+                {
+                    "text": "Subscribed to <https://github.com/ymtszw/zephyr|ymtszw/zephyr>",
+                    "id": 1,
+                    "color": "24292f",
+                    "fallback": "Subscribed to <https://github.com/ymtszw/zephyr|ymtszw/zephyr>"
+                }
+            ]
+        },
+        {
+            "type": "message",
+            "text": "<https://github.com/kubernetes-incubator/external-storage/issues/953>",
+            "files": [
+                {
+                    "id": "FEU55K71U",
+                    "created": 1544680387,
+                    "timestamp": 1544680387,
+                    "name": "localhost_8000_.png",
+                    "title": "localhost_8000_.png",
+                    "mimetype": "image/png",
+                    "filetype": "png",
+                    "pretty_type": "PNG",
+                    "user": "UEPUX32MD",
+                    "editable": false,
+                    "size": 1413565,
+                    "mode": "hosted",
+                    "is_external": false,
+                    "external_type": "",
+                    "is_public": true,
+                    "public_url_shared": false,
+                    "display_as_bot": false,
+                    "username": "",
+                    "url_private": "https://files.slack.com/files-pri/TEP3UKAJH-FEU55K71U/localhost_8000_.png",
+                    "url_private_download": "https://files.slack.com/files-pri/TEP3UKAJH-FEU55K71U/download/localhost_8000_.png",
+                    "thumb_64": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__64.png",
+                    "thumb_80": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__80.png",
+                    "thumb_360": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__360.png",
+                    "thumb_360_w": 360,
+                    "thumb_360_h": 353,
+                    "thumb_480": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__480.png",
+                    "thumb_480_w": 480,
+                    "thumb_480_h": 471,
+                    "thumb_160": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__160.png",
+                    "thumb_720": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__720.png",
+                    "thumb_720_w": 720,
+                    "thumb_720_h": 707,
+                    "thumb_800": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__800.png",
+                    "thumb_800_w": 800,
+                    "thumb_800_h": 786,
+                    "thumb_960": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__960.png",
+                    "thumb_960_w": 960,
+                    "thumb_960_h": 943,
+                    "thumb_1024": "https://files.slack.com/files-tmb/TEP3UKAJH-FEU55K71U-e192b21afd/localhost_8000__1024.png",
+                    "thumb_1024_w": 1024,
+                    "thumb_1024_h": 1005,
+                    "image_exif_rotation": 1,
+                    "original_w": 1494,
+                    "original_h": 1467,
+                    "permalink": "https://zephyr-dev.slack.com/files/UEPUX32MD/FEU55K71U/localhost_8000_.png",
+                    "permalink_public": "https://slack-files.com/TEP3UKAJH-FEU55K71U-5486b18619"
+                }
+            ],
+            "upload": true,
+            "user": "UEPUX32MD",
+            "display_as_bot": false,
+            "ts": "1544680393.000100"
+        },
+        {
+            "client_msg_id": "a542b6a1-e494-4110-9eb4-85dfcc5f4641",
+            "type": "message",
+            "text": "<@USLACKBOT> /help",
+            "user": "UEPUX32MD",
+            "ts": "1544672975.003600"
+        },
+        {
+            "type": "message",
+            "text": "",
+            "files": [
+                {
+                    "id": "FETNETEUX",
+                    "created": 1544670675,
+                    "timestamp": 1544681294,
+                    "name": "Post",
+                    "title": "Post",
+                    "mimetype": "text/plain",
+                    "filetype": "space",
+                    "pretty_type": "ポスト",
+                    "user": "UEPUX32MD",
+                    "editable": true,
+                    "size": 697,
+                    "mode": "space",
+                    "is_external": false,
+                    "external_type": "",
+                    "is_public": true,
+                    "public_url_shared": false,
+                    "display_as_bot": false,
+                    "username": "",
+                    "url_private": "https://files.slack.com/files-pri/TEP3UKAJH-FETNETEUX/Post",
+                    "url_private_download": "https://files.slack.com/files-pri/TEP3UKAJH-FETNETEUX/download/Post",
+                    "permalink": "https://zephyr-dev.slack.com/files/UEPUX32MD/FETNETEUX/Post",
+                    "permalink_public": "https://slack-files.com/TEP3UKAJH-FETNETEUX-d9bb37beed",
+                    "preview": "<document><p>Post allows composing rich text document within Slack.</p><p>They are considered one of files from API perspective.</p><p></p><p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p></document>",
+                    "updated": 1544681294,
+                    "editor": "UEPUX32MD",
+                    "last_editor": "UEPUX32MD",
+                    "state": "inactive"
+                }
+            ],
+            "upload": false,
+            "user": "UEPUX32MD",
+            "display_as_bot": false,
+            "ts": "1544670757.003000"
+        },
+        {
+            "type": "message",
+            "text": "",
+            "files": [
+                {
+                    "id": "FESHS3DH9",
+                    "created": 1544670089,
+                    "timestamp": 1544670089,
+                    "name": "______.txt",
+                    "title": "無題",
+                    "mimetype": "text/plain",
+                    "filetype": "text",
+                    "pretty_type": "プレーンテキスト",
+                    "user": "UEPUX32MD",
+                    "editable": true,
+                    "size": 44,
+                    "mode": "snippet",
+                    "is_external": false,
+                    "external_type": "",
+                    "is_public": true,
+                    "public_url_shared": false,
+                    "display_as_bot": false,
+                    "username": "",
+                    "url_private": "https://files.slack.com/files-pri/TEP3UKAJH-FESHS3DH9/______.txt",
+                    "url_private_download": "https://files.slack.com/files-pri/TEP3UKAJH-FESHS3DH9/download/______.txt",
+                    "permalink": "https://zephyr-dev.slack.com/files/UEPUX32MD/FESHS3DH9/______.txt",
+                    "permalink_public": "https://slack-files.com/TEP3UKAJH-FESHS3DH9-ce823c07bd",
+                    "edit_link": "https://zephyr-dev.slack.com/files/UEPUX32MD/FESHS3DH9/______.txt/edit",
+                    "preview": "type AuthorId
+    = UAuthorId UserId
+    | BAuthorId BotId
+
+type BotId =",
+                    "preview_highlight": "<div class="CodeMirror cm-s-default CodeMirrorServer" oncopy="if(event.clipboardData){event.clipboardData.setData('text/plain',window.getSelection().toString().replace(/\\u{200b}/g,''));event.preventDefault();event.stopPropagation();}">
+<div class="CodeMirror-code">
+<div><pre>type AuthorId</pre></div>
+<div><pre>    = UAuthorId UserId</pre></div>
+<div><pre>    | BAuthorId BotId</pre></div>
+<div><pre></pre></div>
+<div><pre>type BotId =</pre></div>
+</div>
+</div>
+",
+                    "lines": 18,
+                    "lines_more": 13,
+                    "preview_is_truncated": false
+                }
+            ],
+            "upload": true,
+            "user": "UEPUX32MD",
+            "display_as_bot": false,
+            "ts": "1544670089.002700"
+        },
+        {
+            "client_msg_id": "800e6ef5-2820-452d-ae41-f1dc0abbc3a2",
+            "type": "message",
+            "text": "<https://github.com/ymtszw/zephyr>",
+            "user": "UEPUX32MD",
+            "ts": "1544668729.002500",
+            "attachments": [
+                {
+                    "service_name": "GitHub",
+                    "title": "ymtszw/zephyr",
+                    "title_link": "https://github.com/ymtszw/zephyr",
+                    "text": "Contribute to ymtszw/zephyr development by creating an account on GitHub.",
+                    "fallback": "GitHub: ymtszw/zephyr",
+                    "from_url": "https://github.com/ymtszw/zephyr",
+                    "thumb_url": "https://avatars1.githubusercontent.com/u/4507126?s=400&v=4",
+                    "thumb_width": 250,
+                    "thumb_height": 250,
+                    "service_icon": "https://a.slack-edge.com/bfaba/img/unfurl_icons/github.png",
+                    "id": 1,
+                    "original_url": "https://github.com/ymtszw/zephyr"
+                }
+            ]
+        },
+        {
+            "client_msg_id": "21d03db5-bbaa-4e78-981e-badbae761ab0",
+            "type": "message",
+            "text": "Markdown
+```
+code : String
+code =
+    "Hey!"
+```",
+            "user": "UEPUX32MD",
+            "ts": "1544668678.002100",
+            "edited": {
+                "user": "UEPUX32MD",
+                "ts": "1544668692.000000"
+            }
+        },
+        {
+            "type": "message",
+            "text": "file",
+            "files": [
+                {
+                    "id": "FESFH7KDJ",
+                    "created": 1544668652,
+                    "timestamp": 1544668652,
+                    "name": "elm.jpg",
+                    "title": "elm.jpg",
+                    "mimetype": "image/jpeg",
+                    "filetype": "jpg",
+                    "pretty_type": "JPEG",
+                    "user": "UEPUX32MD",
+                    "editable": false,
+                    "size": 3450,
+                    "mode": "hosted",
+                    "is_external": false,
+                    "external_type": "",
+                    "is_public": true,
+                    "public_url_shared": false,
+                    "display_as_bot": false,
+                    "username": "",
+                    "url_private": "https://files.slack.com/files-pri/TEP3UKAJH-FESFH7KDJ/elm.jpg",
+                    "url_private_download": "https://files.slack.com/files-pri/TEP3UKAJH-FESFH7KDJ/download/elm.jpg",
+                    "thumb_64": "https://files.slack.com/files-tmb/TEP3UKAJH-FESFH7KDJ-659e5100ff/elm_64.jpg",
+                    "thumb_80": "https://files.slack.com/files-tmb/TEP3UKAJH-FESFH7KDJ-659e5100ff/elm_80.jpg",
+                    "thumb_360": "https://files.slack.com/files-tmb/TEP3UKAJH-FESFH7KDJ-659e5100ff/elm_360.jpg",
+                    "thumb_360_w": 88,
+                    "thumb_360_h": 88,
+                    "thumb_160": "https://files.slack.com/files-tmb/TEP3UKAJH-FESFH7KDJ-659e5100ff/elm_160.jpg",
+                    "image_exif_rotation": 1,
+                    "original_w": 88,
+                    "original_h": 88,
+                    "permalink": "https://zephyr-dev.slack.com/files/UEPUX32MD/FESFH7KDJ/elm.jpg",
+                    "permalink_public": "https://slack-files.com/TEP3UKAJH-FESFH7KDJ-42f79e45e7"
+                }
+            ],
+            "upload": true,
+            "user": "UEPUX32MD",
+            "display_as_bot": false,
+            "ts": "1544668654.001500"
+        },
+        {
+            "client_msg_id": "4452cf08-3a4a-4947-ba59-bb25446f3c08",
+            "type": "message",
+            "text": "reaction",
+            "user": "UEPUX32MD",
+            "ts": "1544668627.001200",
+            "reactions": [
+                {
+                    "name": "heart",
+                    "users": [
+                        "UEPUX32MD"
+                    ],
+                    "count": 1
+                }
+            ]
+        },
+        {
+            "client_msg_id": "1c9b9be2-4900-4af8-838e-b8c6a7f97919",
+            "type": "message",
+            "text": "日本語",
+            "user": "UEPUX32MD",
+            "ts": "1544668624.001000"
+        },
+        {
+            "client_msg_id": "195b9713-c56b-4e1a-8ad4-b0b725a8c1cd",
+            "type": "message",
+            "text": "threaded",
+            "user": "UEPUX32MD",
+            "ts": "1544668605.000400",
+            "thread_ts": "1544668605.000400",
+            "reply_count": 3,
+            "reply_users_count": 1,
+            "latest_reply": "1544685094.000100",
+            "reply_users": [
+                "UEPUX32MD"
+            ],
+            "replies": [
+                {
+                    "user": "UEPUX32MD",
+                    "ts": "1544668615.000500"
+                },
+                {
+                    "user": "UEPUX32MD",
+                    "ts": "1544668618.000700"
+                },
+                {
+                    "user": "UEPUX32MD",
+                    "ts": "1544685094.000100"
+                }
+            ],
+            "subscribed": true,
+            "last_read": "1544685094.000100"
+        },
+        {
+            "client_msg_id": "6407b18b-2afd-4c2b-a084-d5f62c386aa7",
+            "type": "message",
+            "text": "test",
+            "user": "UEPUX32MD",
+            "ts": "1544668593.000200"
+        },
+        {
+            "user": "UEPUX32MD",
+            "type": "message",
+            "subtype": "channel_join",
+            "ts": "1544269050.000200",
+            "text": "<@UEPUX32MD>さんがチャンネルに参加しました"
+        }
+    ],
+    "has_more": false,
+    "pin_count": 0
+}
+    """
+
+
 userInfoJson : String
 userInfoJson =
     """
