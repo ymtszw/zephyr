@@ -1,4 +1,4 @@
-module SlackTestData exposing (convListJson, teamInfoJson, userInfoJson, userListJson)
+module SlackTestData exposing (botInfoJson, convListJson, conversationHistoryJson, teamInfoJson, userInfoJson, userListJson)
 
 
 botInfoJson : String
@@ -90,9 +90,7 @@ conversationHistoryJson =
         {
             "type": "message",
             "subtype": "bot_message",
-            "text": "<https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210|Pacers Fans Play The Most Infuriating Game Of Tic-Tac-Toe In Human History>
-Be warned: What you are about to see will trouble your dreams for years to come. What the fuck. Two Indiana Pacers fans squared off in a game of tic-tac-toe, and the results are just fucking mind-boggling.
-<https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210|Read more...>",
+            "text": "<https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210|Pacers Fans Play The Most Infuriating Game Of Tic-Tac-Toe In Human History>\\nBe warned: What you are about to see will trouble your dreams for years to come. What the fuck. Two Indiana Pacers fans squared off in a game of tic-tac-toe, and the results are just fucking mind-boggling.\\n<https://deadspin.com/pacers-fans-play-the-most-infuriating-game-of-tic-tac-t-1831064210|Read more...>",
             "ts": "1544686635.000400",
             "username": "Kotaku",
             "icons": {
@@ -166,8 +164,7 @@ Be warned: What you are about to see will trouble your dreams for years to come.
             "ts": "1544682681.001300",
             "attachments": [
                 {
-                    "text": "This channel will get notifications from <https://github.com/ymtszw/zephyr|ymtszw/zephyr> for:
-`issues`, `pulls`, `deployments`, `statuses`, `public`, `commits:all`, `releases`",
+                    "text": "This channel will get notifications from <https://github.com/ymtszw/zephyr|ymtszw/zephyr> for:\\n`issues`, `pulls`, `deployments`, `statuses`, `public`, `commits:all`, `releases`",
                     "footer": "<https://github.com/integrations/slack#configuration|Learn More>",
                     "id": 1,
                     "color": "24292f",
@@ -175,8 +172,7 @@ Be warned: What you are about to see will trouble your dreams for years to come.
                         "text",
                         "footer"
                     ],
-                    "fallback": "This channel will get notifications from <https://github.com/ymtszw/zephyr|ymtszw/zephyr> for:
-`issues`, `pulls`, `deployments`, `statuses`, `public`, `commits:all`, `releases`"
+                    "fallback": "This channel will get notifications from <https://github.com/ymtszw/zephyr|ymtszw/zephyr> for:\\n`issues`, `pulls`, `deployments`, `statuses`, `public`, `commits:all`, `releases`"
                 }
             ]
         },
@@ -333,21 +329,8 @@ Be warned: What you are about to see will trouble your dreams for years to come.
                     "permalink": "https://zephyr-dev.slack.com/files/UEPUX32MD/FESHS3DH9/______.txt",
                     "permalink_public": "https://slack-files.com/TEP3UKAJH-FESHS3DH9-ce823c07bd",
                     "edit_link": "https://zephyr-dev.slack.com/files/UEPUX32MD/FESHS3DH9/______.txt/edit",
-                    "preview": "type AuthorId
-    = UAuthorId UserId
-    | BAuthorId BotId
-
-type BotId =",
-                    "preview_highlight": "<div class="CodeMirror cm-s-default CodeMirrorServer" oncopy="if(event.clipboardData){event.clipboardData.setData('text/plain',window.getSelection().toString().replace(/\\u{200b}/g,''));event.preventDefault();event.stopPropagation();}">
-<div class="CodeMirror-code">
-<div><pre>type AuthorId</pre></div>
-<div><pre>    = UAuthorId UserId</pre></div>
-<div><pre>    | BAuthorId BotId</pre></div>
-<div><pre></pre></div>
-<div><pre>type BotId =</pre></div>
-</div>
-</div>
-",
+                    "preview": "type AuthorId\\n    = UAuthorId UserId\\n   | BAuthorId BotId\\n\\ntype BotId =",
+                    "preview_highlight": "",
                     "lines": 18,
                     "lines_more": 13,
                     "preview_is_truncated": false
@@ -384,12 +367,7 @@ type BotId =",
         {
             "client_msg_id": "21d03db5-bbaa-4e78-981e-badbae761ab0",
             "type": "message",
-            "text": "Markdown
-```
-code : String
-code =
-    "Hey!"
-```",
+            "text": "Markdown\\n```\\ncode : String\\ncode =\\n    \\"Hey!\\"\\n```",
             "user": "UEPUX32MD",
             "ts": "1544668678.002100",
             "edited": {
