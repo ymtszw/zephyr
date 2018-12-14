@@ -1973,12 +1973,15 @@ conversationListTask token users =
 userListTask : String -> Task RpcFailure (Dict UserIdStr User)
 userListTask token =
     let
+        listDecoder =
+            D.field "members" (D.list userDecoder)
+
         toStr (UserId userIdStr) =
             userIdStr
     in
-    -- TODO scroll for large workspaces
-    rpcPostFormTask (endpoint "/users.list" Nothing) token [] <|
-        D.field "members" (D.dictFromList (.id >> toStr) userDecoder)
+    -- `users.list` does not have default `limit`
+    forwardScrollingPostFormTask (endpoint "/users.list" Nothing) token [] listDecoder Initial
+        |> Task.map (List.foldl (\u accDict -> Dict.insert (toStr u.id) u accDict) Dict.empty)
 
 
 fetchConversationMessages : String -> TeamId -> Conversation -> Cmd Msg
