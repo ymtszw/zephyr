@@ -1,11 +1,11 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache, FAM
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, TeamIcon, Conversation(..), ConversationCache, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
-    , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
+    , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId, getConversationFromCache
     )
 
 {-| Producer for Slack workspaces.
@@ -13,13 +13,13 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache, FAM
+@docs Slack, SlackUnidentified, SlackRegistry, User, Team, TeamIcon, Conversation, ConversationCache, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
-@docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
+@docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId, getConversationFromCache
 
 -}
 
@@ -35,6 +35,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import ListExtra
 import StringExtra
 import Task exposing (Task)
 import Time exposing (Posix)
@@ -199,8 +200,9 @@ type LastRead
 
 type alias ConversationCache =
     { id : ConversationId
-    , name : String -- User name for IM must be resolved before caching
+    , name : String -- User name for IM/MPIM must be resolved before caching
     , type_ : ConversationCacheType
+    , team : Team -- Unjoined on save
     }
 
 
@@ -401,7 +403,6 @@ initUnidentified =
 type alias FAM =
     { default : FilterAtom
     , conversations : List ConversationCache -- List instead of Dict, should be sorted already
-    , users : Dict UserIdStr User -- Only includes Users that appeared in conversations (IM/MPIM)
     }
 
 
@@ -575,6 +576,7 @@ encodeConversationCache cache =
         [ ( "id", encodeConversationId cache.id )
         , ( "name", E.string cache.name )
         , ( "type_", encodeConversationCacheType cache.type_ )
+        , ( "team_id", encodeTeamId cache.team.id )
         ]
 
 
@@ -695,11 +697,29 @@ encodeAttachmentTitle title =
 
 encodeFam : FAM -> E.Value
 encodeFam fam =
+    let
+        ( encodedConvs, teams ) =
+            unjoinTeamsAndEncodeConvs fam.conversations
+    in
     E.object
         [ ( "default", Data.Filter.encodeFilterAtom fam.default )
-        , ( "conversations", E.list encodeConversationCache fam.conversations )
-        , ( "users", E.dict identity encodeUser fam.users )
+        , ( "conversations", E.list identity encodedConvs )
+        , ( "teams", E.dict identity encodeTeam teams )
         ]
+
+
+unjoinTeamsAndEncodeConvs : List ConversationCache -> ( List E.Value, Dict TeamIdStr Team )
+unjoinTeamsAndEncodeConvs conversations =
+    let
+        reducer c ( accList, accTeams ) =
+            let
+                (TeamId teamIdStr) =
+                    c.team.id
+            in
+            ( encodeConversationCache c :: accList, Dict.insert teamIdStr c.team accTeams )
+    in
+    -- Conserve the order of conversations; already sorted
+    List.foldr reducer ( [], Dict.empty ) conversations
 
 
 
@@ -891,12 +911,21 @@ lastReadDecoder =
     D.tagged "LastRead" LastRead tsDecoder
 
 
-conversationCacheDecoder : Decoder ConversationCache
-conversationCacheDecoder =
-    D.map3 ConversationCache
-        (D.field "id" conversationIdDecoder)
-        (D.field "name" D.string)
-        (D.field "type_" conversationCacheTypeDecoder)
+conversationCacheDecoder : Dict TeamIdStr Team -> Decoder ConversationCache
+conversationCacheDecoder teams =
+    D.do (D.field "team_id" teamIdDecoder) <|
+        \(TeamId teamIdStr) ->
+            case Dict.get teamIdStr teams of
+                Just team ->
+                    D.map4 ConversationCache
+                        (D.field "id" conversationIdDecoder)
+                        (D.field "name" D.string)
+                        (D.field "type_" conversationCacheTypeDecoder)
+                        (D.succeed team)
+
+                Nothing ->
+                    -- Should not happen
+                    D.fail ("Team [" ++ teamIdStr ++ "] is not cached!")
 
 
 conversationCacheTypeDecoder : Decoder ConversationCacheType
@@ -1109,10 +1138,11 @@ attachmentTitleDecoder =
 
 famDecoder : Decoder FAM
 famDecoder =
-    D.map3 FAM
-        (D.field "default" Data.Filter.filterAtomDecoder)
-        (D.field "conversations" (D.list conversationCacheDecoder))
-        (D.field "users" (D.dict userDecoder))
+    D.do (D.field "teams" (D.dict teamDecoder)) <|
+        \teams ->
+            D.map2 FAM
+                (D.field "default" Data.Filter.filterAtomDecoder)
+                (D.field "conversations" (D.list (conversationCacheDecoder teams)))
 
 
 
@@ -2041,6 +2071,11 @@ getUser users (UserId userIdStr) =
 
         Nothing ->
             Err userIdStr
+
+
+getConversationFromCache : ConversationIdStr -> List ConversationCache -> Maybe ConversationCache
+getConversationFromCache convIdStr caches =
+    ListExtra.findOne (\c -> c.id == ConversationId convIdStr) caches
 
 
 isChannel : Conversation -> Bool
