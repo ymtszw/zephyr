@@ -725,14 +725,20 @@ slackSuite =
 
 
 testCodec : String -> String -> Decoder a -> (a -> Value) -> Decoder a -> Test
-testCodec desc initial decA enc decB =
+testCodec desc initialData entryDecoder encodeForPersist savedStateDecoder =
     test desc <|
         \_ ->
-            initial
-                |> decodeString decA
-                |> Result.map (enc >> encode 0)
-                |> Result.andThen (decodeString decB)
-                |> Expect.ok
+            case decodeString entryDecoder initialData of
+                Ok enteredData ->
+                    enteredData
+                        |> encodeForPersist
+                        |> encode 0
+                        |> decodeString savedStateDecoder
+                        -- Must exactly match after state recovery
+                        |> Expect.equal (Ok enteredData)
+
+                Err e ->
+                    Expect.fail <| "Failed to decode on entry: " ++ D.errorToString e
 
 
 testCompareConversation : Slack.Conversation -> Slack.Conversation -> Order -> Test
