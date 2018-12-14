@@ -501,15 +501,13 @@ decoder =
 
 povDecoder : Decoder POV
 povDecoder =
-    D.field "guilds" (D.dict guildDecoder)
-        |> D.andThen
-            (\guilds ->
-                D.map4 POV
-                    (D.field "token" D.string)
-                    (D.field "user" userDecoder)
-                    (D.succeed guilds)
-                    (D.field "channels" (D.dict (channelDecoder guilds)))
-            )
+    D.do (D.field "guilds" (D.dict guildDecoder)) <|
+        \guilds ->
+            D.map4 POV
+                (D.field "token" D.string)
+                (D.field "user" userDecoder)
+                (D.succeed guilds)
+                (D.field "channels" (D.dict (channelDecoder guilds)))
 
 
 userDecoder : Decoder User
@@ -570,22 +568,21 @@ channelCacheDecoder guilds =
 
 channelTypeDecoder : Decoder ChannelType
 channelTypeDecoder =
-    D.int
-        |> D.andThen
-            (\num ->
-                case num of
-                    0 ->
-                        D.succeed GuildText
+    D.do D.int <|
+        \num ->
+            case num of
+                0 ->
+                    D.succeed GuildText
 
-                    1 ->
-                        D.succeed DM
+                1 ->
+                    D.succeed DM
 
-                    3 ->
-                        D.succeed GroupDM
+                3 ->
+                    D.succeed GroupDM
 
-                    _ ->
-                        D.fail "Invalid ChannelType"
-            )
+                _ ->
+                    -- Ignore voice channels and channel categories
+                    D.fail "Invalid ChannelType"
 
 
 messageDecoder : Decoder Message
@@ -606,27 +603,19 @@ authorDecoder : Decoder Author
 authorDecoder =
     let
         decodeFromDiscordApi =
-            D.maybeField "webhook_id" D.string
-                |> D.andThen
-                    (\webhookMaybe ->
-                        D.field "author" userDecoder
-                            |> D.map
-                                (case webhookMaybe of
-                                    Just _ ->
-                                        WebhookAuthor
+            D.do (D.maybeField "webhook_id" D.string) <|
+                \webhookMaybe ->
+                    case webhookMaybe of
+                        Just _ ->
+                            D.field "author" (D.map WebhookAuthor userDecoder)
 
-                                    Nothing ->
-                                        UserAuthor
-                                )
-                    )
+                        Nothing ->
+                            D.field "author" (D.map UserAuthor userDecoder)
     in
     D.oneOf
         [ decodeFromDiscordApi
-        , D.field "author" <|
-            D.oneOf
-                [ D.tagged "UserAuthor" UserAuthor userDecoder
-                , D.tagged "WebhookAuthor" WebhookAuthor userDecoder
-                ]
+        , D.field "author" <| D.tagged "UserAuthor" UserAuthor userDecoder
+        , D.field "author" <| D.tagged "WebhookAuthor" WebhookAuthor userDecoder
         ]
 
 

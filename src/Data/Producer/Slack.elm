@@ -721,17 +721,10 @@ conversationDecoder =
         -- From Slack API
         , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM mpimDecoder)
         , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
-        , D.oneOf
-            [ D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel privDecoder)
-
-            -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
-            , D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
-                identity
-                (D.map PrivateChannel privDecoder)
-            ]
-        , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool))
-            ((==) ( True, False ))
-            (D.map PublicChannel pubDecoder)
+        , D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel privDecoder)
+        , -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
+          D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) identity (D.map PrivateChannel privDecoder)
+        , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) ((==) ( True, False )) (D.map PublicChannel pubDecoder)
         ]
 
 
@@ -796,9 +789,8 @@ tsDecoder =
 authorIdDecoder : Decoder AuthorId
 authorIdDecoder =
     D.oneOf
-        [ D.field "authorId" <|
-            D.oneOf
-                [ D.tagged "UAuthorId" UAuthorId userIdDecoder, D.tagged "BAuthorId" BAuthorId botIdDecoder ]
+        [ D.field "authorId" <| D.tagged "UAuthorId" UAuthorId userIdDecoder
+        , D.field "authorId" <| D.tagged "BAuthorId" BAuthorId botIdDecoder
 
         -- From Slack API
         , D.field "bot_id" (D.map BAuthorId botIdDecoder)
