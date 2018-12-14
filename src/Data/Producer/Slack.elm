@@ -1,9 +1,9 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-    , encodeBot, botDecoder, encodeMessage, messageDecoder
-    , FAM, Msg(..), RpcFailure(..), reload, update
+    , encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
+    , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
     )
@@ -13,11 +13,11 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache
+@docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-@docs encodeBot, botDecoder, encodeMessage, messageDecoder
-@docs FAM, Msg, RpcFailure, reload, update
+@docs encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
+@docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
 
@@ -398,6 +398,13 @@ initUnidentified =
     TokenWritable ""
 
 
+type alias FAM =
+    { default : FilterAtom
+    , conversations : List ConversationCache -- List instead of Dict, should be sorted already
+    , users : Dict UserIdStr User -- Only includes Users that appeared in conversations (IM/MPIM)
+    }
+
+
 
 -- Encode
 
@@ -684,6 +691,15 @@ encodeAttachmentAuthor author =
 encodeAttachmentTitle : AttachmentTitle -> E.Value
 encodeAttachmentTitle title =
     E.object [ ( "name", E.string title.name ), ( "link", E.maybe E.url title.link ) ]
+
+
+encodeFam : FAM -> E.Value
+encodeFam fam =
+    E.object
+        [ ( "default", Data.Filter.encodeFilterAtom fam.default )
+        , ( "conversations", E.list encodeConversationCache fam.conversations )
+        , ( "users", E.dict identity encodeUser fam.users )
+        ]
 
 
 
@@ -1091,16 +1107,20 @@ attachmentTitleDecoder =
         ]
 
 
+famDecoder : Decoder FAM
+famDecoder =
+    D.map3 FAM
+        (D.field "default" Data.Filter.filterAtomDecoder)
+        (D.field "conversations" (D.list conversationCacheDecoder))
+        (D.field "users" (D.dict userDecoder))
+
+
 
 -- Component
 
 
 type alias Yield =
     Producer.Yield () FAM Msg
-
-
-type alias FAM =
-    ( FilterAtom, List ConversationCache )
 
 
 reload : SlackRegistry -> ( SlackRegistry, Yield )

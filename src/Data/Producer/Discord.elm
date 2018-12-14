@@ -1,9 +1,9 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), User, POV, Guild, Channel, init, decoder, encode, encodeUser
+    ( Discord(..), User, POV, Guild, Channel, FAM, init, decoder, encode, encodeUser
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
-    , encodeMessage, messageDecoder, colorDecoder
-    , FAM, Msg(..), reload, update
+    , encodeMessage, messageDecoder, colorDecoder, encodeFam, famDecoder
+    , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
     )
@@ -17,11 +17,11 @@ Using Discord's RESTful APIs to retrieve Items.
 Note that it involves a little "shady" work on retrieving
 full-privilege personal token for a Discord user. Discuss in private.
 
-@docs Discord, User, POV, Guild, Channel, init, decoder, encode, encodeUser
+@docs Discord, User, POV, Guild, Channel, FAM, init, decoder, encode, encodeUser
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 @docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
-@docs encodeMessage, messageDecoder, colorDecoder
-@docs FAM, Msg, reload, update
+@docs encodeMessage, messageDecoder, colorDecoder, encodeFam, famDecoder
+@docs Msg, reload, update
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
 @docs getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
 
@@ -278,6 +278,11 @@ type alias Attachment =
     }
 
 
+type alias FAM =
+    -- List instead of Dict, should be sorted already
+    ( FilterAtom, List ChannelCache )
+
+
 
 -- ENCODER
 
@@ -356,16 +361,15 @@ encodeGuild guild =
 
 encodeChannel : Channel -> E.Value
 encodeChannel channel =
-    E.object <|
-        encodeChannelShared channel
-            ++ [ ( "last_message_id", E.maybe (\(MessageId mid) -> E.tagged "MessageId" (E.string mid)) channel.lastMessageId )
-               , ( "fetchStatus", FetchStatus.encode channel.fetchStatus )
-               ]
+    encodeChannelShared channel <|
+        [ ( "last_message_id", E.maybe (\(MessageId mid) -> E.tagged "MessageId" (E.string mid)) channel.lastMessageId )
+        , ( "fetchStatus", FetchStatus.encode channel.fetchStatus )
+        ]
 
 
 encodeChannelCache : ChannelCache -> E.Value
 encodeChannelCache c =
-    E.object (encodeChannelShared c)
+    encodeChannelShared c []
 
 
 encodeChannelShared :
@@ -376,12 +380,17 @@ encodeChannelShared :
         , guildMaybe : Maybe Guild
     }
     -> List ( String, E.Value )
-encodeChannelShared channel =
-    [ ( "id", E.string channel.id )
-    , ( "name", E.string channel.name )
-    , ( "type", encodeChannelType channel.type_ )
-    , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
-    ]
+    -> E.Value
+encodeChannelShared channel others =
+    let
+        commonProps =
+            [ ( "id", E.string channel.id )
+            , ( "name", E.string channel.name )
+            , ( "type", encodeChannelType channel.type_ )
+            , ( "guild_id", E.maybe E.string (Maybe.map .id channel.guildMaybe) ) -- Only encode guild_id
+            ]
+    in
+    E.object (commonProps ++ others)
 
 
 encodeChannelType : ChannelType -> E.Value
@@ -473,6 +482,35 @@ encodeAttachment attachment =
         , ( "height", E.maybe E.int attachment.height )
         , ( "width", E.maybe E.int attachment.width )
         ]
+
+
+encodeFam : FAM -> E.Value
+encodeFam ( defaultAtom, channelsCache ) =
+    let
+        ( encodedChannels, guilds ) =
+            unjoinGuildsAndEncodeChannels channelsCache
+    in
+    E.object
+        [ ( "default", Data.Filter.encodeFilterAtom defaultAtom )
+        , ( "guilds", E.dict identity encodeGuild guilds )
+        , ( "channels", E.list identity encodedChannels )
+        ]
+
+
+unjoinGuildsAndEncodeChannels : List ChannelCache -> ( List E.Value, Dict String Guild )
+unjoinGuildsAndEncodeChannels channelCaches =
+    let
+        encodeChannelAndCollectGuild c ( acc, guilds ) =
+            Tuple.pair (encodeChannelCache c :: acc) <|
+                case c.guildMaybe of
+                    Just g ->
+                        Dict.insert g.id g guilds
+
+                    Nothing ->
+                        guilds
+    in
+    -- Notice the order; channelCaches are already sorted, must keep it
+    List.foldr encodeChannelAndCollectGuild ( [], Dict.empty ) channelCaches
 
 
 
@@ -677,16 +715,23 @@ attachmentDecoder =
         (D.maybeField "width" D.int)
 
 
+famDecoder : Decoder FAM
+famDecoder =
+    D.do (D.field "default" Data.Filter.filterAtomDecoder) <|
+        \fa ->
+            D.do (D.field "guilds" (D.dict guildDecoder)) <|
+                \guilds ->
+                    D.do (D.field "channels" (D.list (channelCacheDecoder guilds))) <|
+                        \channelCaches ->
+                            D.succeed ( fa, channelCaches )
+
+
 
 -- RELOADER
 
 
 type alias Yield =
     Producer.Yield Message FAM Msg
-
-
-type alias FAM =
-    ( FilterAtom, List ChannelCache )
 
 
 reload : Discord -> ( Discord, Yield )
