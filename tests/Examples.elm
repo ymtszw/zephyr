@@ -5,9 +5,10 @@ import ArrayExtra as Array
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
-import Data.Producer.Slack as Slack
+import Data.Producer.Slack as Slack exposing (ConversationType(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
+import Dict
 import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
@@ -649,9 +650,9 @@ slackSuite =
             Slack.teamDecoder
         , testCodec "should decode/encode Conversation list"
             SlackTestData.convListJson
-            (D.field "channels" (D.list Slack.conversationDecoder))
+            (D.field "channels" (D.list (Slack.conversationDecoder Dict.empty)))
             (E.list Slack.encodeConversation)
-            (D.list Slack.conversationDecoder)
+            (D.list (Slack.conversationDecoder Dict.empty))
         , testCodec "should decode/encode Message list"
             SlackTestData.conversationHistoryJson
             (D.field "messages" (D.list Slack.messageDecoder))
@@ -663,62 +664,49 @@ slackSuite =
             Slack.encodeBot
             Slack.botDecoder
         , let
-            pub name isMember =
-                Slack.PublicChannel
-                    { id = Slack.dummyConversationId, name = name, isMember = isMember, lastRead = Nothing, fetchStatus = Available }
-
-            priv name =
-                Slack.PrivateChannel
-                    { id = Slack.dummyConversationId, name = name, lastRead = Nothing, fetchStatus = Available }
-
-            im id =
-                Slack.IM
-                    { id = Slack.dummyConversationId, user = Slack.dummyUserId id, lastRead = Nothing, fetchStatus = Available }
-
-            mpim name =
-                Slack.MPIM
-                    { id = Slack.dummyConversationId, name = name, lastRead = Nothing, fetchStatus = Available }
+            c name type_ =
+                { id = Slack.dummyConversationId, name = name, lastRead = Nothing, type_ = type_, fetchStatus = Available }
           in
           describe "compareByMembersipThenName"
-            [ testCompareConversation (pub "Name" True) (pub "Aaaa" True) GT
-            , testCompareConversation (pub "Name" True) (pub "Name" True) EQ
-            , testCompareConversation (pub "Name" True) (pub "Zzzz" True) LT
-            , testCompareConversation (pub "Name" True) (priv "Name") LT
-            , testCompareConversation (pub "Name" True) (im "USER") LT
-            , testCompareConversation (pub "Name" True) (mpim "Users") LT
-            , testCompareConversation (pub "Name" True) (pub "Aaaa" False) LT
-            , testCompareConversation (pub "Name" True) (pub "Name" False) LT
-            , testCompareConversation (pub "Name" True) (pub "Zzzz" False) LT
-            , testCompareConversation (priv "Name") (pub "Name" True) GT
-            , testCompareConversation (priv "Name") (priv "Aaaa") GT
-            , testCompareConversation (priv "Name") (priv "Name") EQ
-            , testCompareConversation (priv "Name") (priv "Zzzz") LT
-            , testCompareConversation (priv "Name") (im "USER") LT
-            , testCompareConversation (priv "Name") (mpim "Users") LT
-            , testCompareConversation (priv "Name") (pub "Name" False) LT
-            , testCompareConversation (im "USER") (pub "Name" True) GT
-            , testCompareConversation (im "USER") (priv "Name") GT
-            , testCompareConversation (im "USER") (im "AAAA") GT
-            , testCompareConversation (im "USER") (im "USER") EQ
-            , testCompareConversation (im "USER") (im "ZZZZ") LT
-            , testCompareConversation (im "USER") (mpim "Users") LT
-            , testCompareConversation (im "USER") (pub "Name" False) LT
-            , testCompareConversation (mpim "Users") (pub "Name" True) GT
-            , testCompareConversation (mpim "Users") (priv "Name") GT
-            , testCompareConversation (mpim "Users") (im "USER") GT
-            , testCompareConversation (mpim "Users") (mpim "Aaaaa") GT
-            , testCompareConversation (mpim "Users") (mpim "Users") EQ
-            , testCompareConversation (mpim "Users") (mpim "Zzzzz") LT
-            , testCompareConversation (mpim "Users") (pub "Name" False) LT
-            , testCompareConversation (pub "Name" False) (pub "Aaaa" True) GT
-            , testCompareConversation (pub "Name" False) (pub "Name" True) GT
-            , testCompareConversation (pub "Name" False) (pub "Zzzz" True) GT
-            , testCompareConversation (pub "Name" False) (priv "Name") GT
-            , testCompareConversation (pub "Name" False) (im "USER") GT
-            , testCompareConversation (pub "Name" False) (mpim "Users") GT
-            , testCompareConversation (pub "Name" False) (pub "Aaaa" False) GT
-            , testCompareConversation (pub "Name" False) (pub "Name" False) EQ
-            , testCompareConversation (pub "Name" False) (pub "Zzzz" False) LT
+            [ testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" (PublicChannel True)) EQ
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel True)) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" PrivateChannel) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "USER" IM) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Users" MPIM) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Aaaa" PrivateChannel) GT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Name" PrivateChannel) EQ
+            , testCompareConversation (c "Name" PrivateChannel) (c "Zzzz" PrivateChannel) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "USER" IM) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Users" MPIM) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "USER" IM) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "USER" IM) (c "Name" PrivateChannel) GT
+            , testCompareConversation (c "USER" IM) (c "AAAA" IM) GT
+            , testCompareConversation (c "USER" IM) (c "USER" IM) EQ
+            , testCompareConversation (c "USER" IM) (c "ZZZZ" IM) LT
+            , testCompareConversation (c "USER" IM) (c "Users" MPIM) LT
+            , testCompareConversation (c "USER" IM) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "Users" MPIM) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "Users" MPIM) (c "Name" PrivateChannel) GT
+            , testCompareConversation (c "Users" MPIM) (c "USER" IM) GT
+            , testCompareConversation (c "Users" MPIM) (c "Aaaaa" MPIM) GT
+            , testCompareConversation (c "Users" MPIM) (c "Users" MPIM) EQ
+            , testCompareConversation (c "Users" MPIM) (c "Zzzzz" MPIM) LT
+            , testCompareConversation (c "Users" MPIM) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" PrivateChannel) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "USER" IM) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Users" MPIM) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel False)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel False)) EQ
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel False)) LT
             ]
         ]
 
