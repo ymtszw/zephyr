@@ -76,6 +76,7 @@ type alias POV =
     , team : Team
     , conversations : Dict ConversationIdStr Conversation
     , users : Dict UserIdStr User
+    , bots : Dict BotIdStr Bot -- Lazily populated/updated
     }
 
 
@@ -455,6 +456,7 @@ encodePov pov =
         , ( "team", encodeTeam pov.team )
         , ( "conversations", E.dict identity encodeConversation pov.conversations )
         , ( "users", E.dict identity encodeUser pov.users )
+        , ( "bots", E.dict identity encodeBot pov.bots )
         ]
 
 
@@ -727,12 +729,14 @@ sessionDecoder =
 
 povDecoder : Decoder POV
 povDecoder =
-    D.map5 POV
+    D.map6 POV
         (D.field "token" D.string)
         (D.field "user" userDecoder)
         (D.field "team" teamDecoder)
         (D.field "conversations" (D.dict conversationDecoder))
         (D.field "users" (D.dict userDecoder))
+        -- Migration; use D.field when ready
+        (D.optionField "bots" (D.dict botDecoder) Dict.empty)
 
 
 userDecoder : Decoder User
@@ -1293,7 +1297,7 @@ handleIHydrate : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> S
 handleIHydrate convs users slack =
     case slack of
         Identified { token, user, team } ->
-            ( Hydrated token { token = token, user = user, team = team, conversations = convs, users = users }
+            ( Hydrated token (initPov token user team convs users)
             , { yield | persist = True, work = Just Worque.SlackFetch }
             )
 
@@ -1309,6 +1313,17 @@ handleIHydrate convs users slack =
         _ ->
             -- Should not happen. See handleIRevisit for Revisit
             pure slack
+
+
+initPov : String -> User -> Team -> Dict ConversationIdStr Conversation -> Dict UserIdStr User -> POV
+initPov token user team convs users =
+    { token = token
+    , user = user
+    , team = team
+    , conversations = convs
+    , users = users
+    , bots = Dict.empty
+    }
 
 
 mergeConversations : Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation
@@ -1853,7 +1868,7 @@ Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload
 -}
 revisit : String -> UserId -> TeamId -> Cmd Msg
 revisit token userId (TeamId teamIdStr) =
-    Task.map4 (POV token)
+    Task.map4 (initPov token)
         (userInfoTask token userId)
         (teamInfoTask token)
         (conversationListTask token)
