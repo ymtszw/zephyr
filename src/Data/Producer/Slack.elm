@@ -1976,6 +1976,7 @@ userListTask token =
         toStr (UserId userIdStr) =
             userIdStr
     in
+    -- TODO scroll for large workspaces
     rpcPostFormTask (endpoint "/users.list" Nothing) token [] <|
         D.field "members" (D.dictFromList (.id >> toStr) userDecoder)
 
@@ -1993,17 +1994,27 @@ fetchConversationMessages token (TeamId teamIdStr) conv =
         |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr))
 
 
-type CursorIn
+type CursorIn a
     = Initial
-    | CursorIn String (List ())
+    | CursorIn String (List a)
 
 
-type CursorOut
-    = CursorOut String (List ())
-    | Done (List ())
+type CursorOut a
+    = CursorOut String (List a)
+    | Done (List a)
 
 
-conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn -> Task RpcFailure (List ())
+scrollableDecoder : Decoder (List a) -> Decoder (CursorOut a)
+scrollableDecoder dec =
+    D.map2 (|>) dec <|
+        D.oneOf
+            [ D.when (D.field "has_more" D.bool) identity <|
+                D.at [ "response_metadata", "next_cursor" ] (D.map CursorOut D.string)
+            , D.succeed Done
+            ]
+
+
+conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn () -> Task RpcFailure (List ())
 conversationHistoryTask token convIdStr lrMaybe cursorIn =
     let
         baseTask params =
@@ -2013,7 +2024,7 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
                     ++ params
 
         forwardScrollingTask params acc =
-            baseTask params scrollableDecoder
+            baseTask params (scrollableDecoder baseDecoder)
                 |> Task.andThen
                     (\cursorOut ->
                         case cursorOut of
@@ -2028,15 +2039,6 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
         baseDecoder =
             -- TODO use messageDecoder when ready
             D.field "messages" (D.leakyList (D.succeed ()))
-
-        scrollableDecoder =
-            D.map2 (|>) baseDecoder cursorOutDecoder
-
-        cursorOutDecoder =
-            D.oneOf
-                [ D.when (D.field "has_more" D.bool) identity (D.at [ "response_metadata", "next_cursor" ] D.string |> D.map CursorOut)
-                , D.succeed Done
-                ]
     in
     case ( lrMaybe, cursorIn ) of
         ( Just (LastRead (Ts lastReadTs _)), Initial ) ->
