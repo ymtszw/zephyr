@@ -12,9 +12,9 @@ import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
-import Json.Decode as D exposing (Decoder, decodeString, decodeValue)
-import Json.Encode exposing (Value, encode)
-import Json.EncodeExtra
+import Json.Decode as D exposing (Decoder)
+import Json.Encode as E exposing (Value)
+import Json.EncodeExtra as E
 import ListExtra
 import Parser
 import SelectArray
@@ -600,20 +600,20 @@ discordSuite : Test
 discordSuite =
     describe "Data.Producer.Discord"
         [ describe "colorDecoder/encodeColor"
-            [ testColorIntCodec 0 "000000"
-            , testColorIntCodec 15 "00000f"
-            , testColorIntCodec 255 "0000ff"
-            , testColorIntCodec 4095 "000fff"
-            , testColorIntCodec 65535 "00ffff"
-            , testColorIntCodec 1048575 "0fffff"
-            , testColorIntCodec 16777215 "ffffff"
+            [ testColorIntCodec "0" "000000"
+            , testColorIntCodec "15" "00000f"
+            , testColorIntCodec "255" "0000ff"
+            , testColorIntCodec "4095" "000fff"
+            , testColorIntCodec "65535" "00ffff"
+            , testColorIntCodec "1048575" "0fffff"
+            , testColorIntCodec "16777215" "ffffff"
             ]
         ]
 
 
-testColorIntCodec : Int -> String -> Test
-testColorIntCodec colorNum expectedHex =
-    test ("should decode/encode color integer " ++ fromInt colorNum) <|
+testColorIntCodec : String -> String -> Test
+testColorIntCodec colorNumStr expectedHex =
+    test ("should decode/encode color integer " ++ colorNumStr) <|
         \_ ->
             let
                 expectedColor =
@@ -623,11 +623,10 @@ testColorIntCodec colorNum expectedHex =
                         (expectedHex |> String.slice 4 6 |> Hex.fromString)
                         |> Result.withDefault (rgb255 0 0 0)
             in
-            colorNum
-                |> fromInt
-                |> decodeString Data.Producer.Discord.colorDecoder
-                |> Result.map (Json.EncodeExtra.color >> encode 0)
-                |> Result.andThen (decodeString Data.Producer.Discord.colorDecoder)
+            colorNumStr
+                |> D.decodeString Data.Producer.Discord.colorDecoder
+                |> Result.map (E.color >> E.encode 0)
+                |> Result.andThen (D.decodeString Data.Producer.Discord.colorDecoder)
                 |> Expect.equal (Ok expectedColor)
 
 
@@ -651,7 +650,7 @@ slackSuite =
         , testCodec "should decode/encode Conversation list"
             SlackTestData.convListJson
             (D.field "channels" (D.list Slack.conversationDecoder))
-            (Json.Encode.list Slack.encodeConversation)
+            (E.list Slack.encodeConversation)
             (D.list Slack.conversationDecoder)
         , test "should decode Message list" <|
             -- TODO: encode
@@ -724,12 +723,12 @@ testCodec : String -> String -> Decoder a -> (a -> Value) -> Decoder a -> Test
 testCodec desc initialData entryDecoder encodeForPersist savedStateDecoder =
     test desc <|
         \_ ->
-            case decodeString entryDecoder initialData of
+            case D.decodeString entryDecoder initialData of
                 Ok enteredData ->
                     enteredData
                         |> encodeForPersist
-                        |> encode 0
-                        |> decodeString savedStateDecoder
+                        |> E.encode 0
+                        |> D.decodeString savedStateDecoder
                         -- Must exactly match after state recovery
                         |> Expect.equal (Ok enteredData)
 
