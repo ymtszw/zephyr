@@ -172,16 +172,7 @@ stateHeaderEl rehydrating teamIdStr team user =
 teamInfoEl : Team -> Element Msg
 teamInfoEl team =
     row [ width fill, spacing spacingUnit ]
-        [ squareIconOrHeadEl [ BG.color aubergine.prim ]
-            { size = identityIconSize
-            , name = team.name
-            , url =
-                if team.icon.imageDefault then
-                    Nothing
-
-                else
-                    Just (Url.toString team.icon.image44)
-            }
+        [ slackTeamIconEl [] identityIconSize team
         , column [ width shrink, spacing spacingUnit ]
             [ el [ Font.bold ] (breakT team.name)
             , let

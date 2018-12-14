@@ -6,7 +6,7 @@ module View.Parts exposing
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , filtersToIconEl, filtersToTextEl, fetchStatusTextEl
-    , discordGuildIconEl, discordChannelEl, slackConversationEl
+    , discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackConversationEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
     , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
     , spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
@@ -29,7 +29,7 @@ module View.Parts exposing
 @docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 @docs filtersToIconEl, filtersToTextEl, fetchStatusTextEl
-@docs discordGuildIconEl, discordChannelEl, slackConversationEl
+@docs discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackConversationEl
 
 
 ## Constants
@@ -982,6 +982,30 @@ slackConversationEl attrs opts =
 slackConvIconColor : Color
 slackConvIconColor =
     aubergine.text
+
+
+slackTeamIconEl : List (Attribute msg) -> Int -> Slack.Team -> Element msg
+slackTeamIconEl attrs size team =
+    squareIconOrHeadEl ([ BG.color aubergine.prim ] ++ attrs)
+        { size = size
+        , name = team.name
+        , url = chooseSlackTeamIconUrl size team.icon
+        }
+
+
+chooseSlackTeamIconUrl : Int -> Slack.TeamIcon -> Maybe String
+chooseSlackTeamIconUrl size icon =
+    if icon.imageDefault then
+        Nothing
+
+    else if size <= 34 then
+        Just (Url.toString icon.image34)
+
+    else if size <= 44 then
+        Just (Url.toString icon.image44)
+
+    else
+        Just (Url.toString icon.image68)
 
 
 
