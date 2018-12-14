@@ -3,7 +3,7 @@ module Data.Producer.Discord exposing
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder
-    , Msg(..), reload, update
+    , FAM, Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
     )
@@ -21,7 +21,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 @docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
 @docs encodeMessage, messageDecoder, colorDecoder
-@docs Msg, reload, update
+@docs FAM, Msg, reload, update
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
 @docs getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
 
@@ -682,11 +682,11 @@ attachmentDecoder =
 
 
 type alias Yield =
-    Producer.Yield Message ( FilterAtom, List ChannelCache ) Msg
+    Producer.Yield Message FAM Msg
 
 
-type alias UpdateFAM =
-    Producer.UpdateFAM ( FilterAtom, List ChannelCache )
+type alias FAM =
+    ( FilterAtom, List ChannelCache )
 
 
 reload : Discord -> ( Discord, Yield )
@@ -706,7 +706,7 @@ reload discord =
             pure discord
 
 
-calculateFAM : Dict String Channel -> UpdateFAM
+calculateFAM : Dict String Channel -> Producer.UpdateFAM FAM
 calculateFAM channels =
     let
         filtered =
@@ -1039,7 +1039,7 @@ unsubscribeImpl tagger cId pov =
             pure (tagger pov)
 
 
-updateOrKeepFAM : Bool -> Dict String Channel -> UpdateFAM
+updateOrKeepFAM : Bool -> Dict String Channel -> Producer.UpdateFAM FAM
 updateOrKeepFAM doUpdate channels =
     if doUpdate then
         calculateFAM channels

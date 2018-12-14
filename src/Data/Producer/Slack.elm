@@ -3,7 +3,7 @@ module Data.Producer.Slack exposing
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder
-    , Msg(..), RpcFailure(..), reload, update
+    , FAM, Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
     )
@@ -17,7 +17,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder
-@docs Msg, RpcFailure, reload, update
+@docs FAM, Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
 
@@ -1096,7 +1096,11 @@ attachmentTitleDecoder =
 
 
 type alias Yield =
-    Producer.Yield () () Msg
+    Producer.Yield () FAM Msg
+
+
+type alias FAM =
+    ( FilterAtom, List ConversationCache )
 
 
 reload : SlackRegistry -> ( SlackRegistry, Yield )
@@ -1139,7 +1143,7 @@ reloadTeam _ slack y =
             y
 
 
-calculateFAM : Dict ConversationIdStr Conversation -> Producer.UpdateFAM ()
+calculateFAM : Dict ConversationIdStr Conversation -> Producer.UpdateFAM FAM
 calculateFAM convs =
     -- TODO
     KeepFAM
@@ -1478,7 +1482,7 @@ withConversation tagger convIdStr pov work func =
             )
 
 
-updateOrKeepFAM : Bool -> Dict ConversationIdStr Conversation -> Producer.UpdateFAM ()
+updateOrKeepFAM : Bool -> Dict ConversationIdStr Conversation -> Producer.UpdateFAM FAM
 updateOrKeepFAM doUpdate convs =
     if doUpdate then
         calculateFAM convs

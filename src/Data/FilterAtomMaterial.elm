@@ -113,8 +113,8 @@ slackMaterialDecoder =
 
 
 type UpdateInstruction
-    = DiscordInstruction (UpdateFAM ( FilterAtom, List Discord.ChannelCache ))
-    | SlackInstruction (UpdateFAM ())
+    = DiscordInstruction (UpdateFAM Discord.FAM)
+    | SlackInstruction (UpdateFAM Slack.FAM)
 
 
 update : List UpdateInstruction -> FilterAtomMaterial -> ( FilterAtomMaterial, Bool )
@@ -137,9 +137,14 @@ updateImpl instructions ( fam, persist ) =
         (DiscordInstruction DestroyFAM) :: xs ->
             updateImpl xs ( { fam | ofDiscordChannel = Nothing }, True )
 
-        (SlackInstruction _) :: xs ->
-            -- TODO
+        (SlackInstruction (SetFAM slackFAM)) :: xs ->
+            updateImpl xs ( { fam | ofSlackConversation = Just slackFAM }, True )
+
+        (SlackInstruction KeepFAM) :: xs ->
             updateImpl xs ( fam, persist )
+
+        (SlackInstruction DestroyFAM) :: xs ->
+            updateImpl xs ( { fam | ofSlackConversation = Nothing }, True )
 
 
 mapDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
