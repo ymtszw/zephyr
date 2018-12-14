@@ -400,8 +400,8 @@ encodeRegistry sr =
 
 
 encodeUnidentified : SlackUnidentified -> E.Value
-encodeUnidentified v =
-    case v of
+encodeUnidentified su =
+    case su of
         TokenWritable t ->
             E.tagged "TokenWritable" (E.string t)
 
