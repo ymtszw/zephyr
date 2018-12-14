@@ -657,6 +657,11 @@ slackSuite =
             (D.field "messages" (D.list Slack.messageDecoder))
             (E.list Slack.encodeMessage)
             (D.list Slack.messageDecoder)
+        , testCodec "should decode/encode Bot"
+            SlackTestData.botInfoJson
+            (D.field "bot" Slack.botDecoder)
+            Slack.encodeBot
+            Slack.botDecoder
         , let
             pub name isMember =
                 Slack.PublicChannel

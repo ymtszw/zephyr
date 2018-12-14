@@ -2,7 +2,7 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-    , encodeMessage, messageDecoder
+    , encodeBot, botDecoder, encodeMessage, messageDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -16,7 +16,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-@docs encodeMessage, messageDecoder
+@docs encodeBot, botDecoder, encodeMessage, messageDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -480,6 +480,25 @@ encodeUserId (UserId id) =
     E.tagged "UserId" (E.string id)
 
 
+encodeBot : Bot -> E.Value
+encodeBot bot =
+    E.object
+        [ ( "id", encodeBotId bot.id )
+        , ( "name", E.string bot.name )
+        , Tuple.pair "icons" <|
+            E.object
+                [ ( "image_36", E.url bot.icons.image36 )
+                , ( "image_48", E.url bot.icons.image48 )
+                , ( "image_72", E.url bot.icons.image72 )
+                ]
+        ]
+
+
+encodeBotId : BotId -> E.Value
+encodeBotId (BotId bId) =
+    E.tagged "BotId" (E.string bId)
+
+
 encodeTeamId : TeamId -> E.Value
 encodeTeamId (TeamId id) =
     E.tagged "TeamId" (E.string id)
@@ -591,11 +610,6 @@ encodeAuthorId aId =
 
         BAuthorId botId ->
             E.tagged "BAuthorId" (encodeBotId botId)
-
-
-encodeBotId : BotId -> E.Value
-encodeBotId (BotId bId) =
-    E.tagged "BotId" (E.string bId)
 
 
 encodeSFile : SFile -> E.Value
@@ -753,6 +767,26 @@ userIdDecoder =
     D.oneOf [ D.tagged "UserId" UserId D.string, D.map UserId D.string ]
 
 
+botDecoder : Decoder Bot
+botDecoder =
+    let
+        iconsDecoder =
+            D.map3 BotIcons
+                (D.field "image_36" D.url)
+                (D.field "image_48" D.url)
+                (D.field "image_72" D.url)
+    in
+    D.map3 Bot
+        (D.field "id" botIdDecoder)
+        (D.field "name" D.string)
+        (D.field "icons" iconsDecoder)
+
+
+botIdDecoder : Decoder BotId
+botIdDecoder =
+    D.oneOf [ D.tagged "BotId" BotId D.string, D.map BotId D.string ]
+
+
 teamIdDecoder : Decoder TeamId
 teamIdDecoder =
     D.oneOf [ D.tagged "TeamId" TeamId D.string, D.map TeamId D.string ]
@@ -894,11 +928,6 @@ authorIdDecoder =
         , D.field "bot_id" (D.map BAuthorId botIdDecoder)
         , D.field "user" (D.map UAuthorId userIdDecoder)
         ]
-
-
-botIdDecoder : Decoder BotId
-botIdDecoder =
-    D.oneOf [ D.tagged "BotId" BotId D.string, D.map BotId D.string ]
 
 
 sFileDecoder : Decoder SFile
