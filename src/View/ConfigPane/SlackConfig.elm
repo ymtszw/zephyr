@@ -4,7 +4,7 @@ import Data.ColorTheme exposing (aubergine)
 import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.FetchStatus as FetchStatus
-import Data.Producer.Slack as Slack exposing (Conversation(..), Slack(..), SlackRegistry, SlackUnidentified(..), Team, User)
+import Data.Producer.Slack as Slack exposing (Conversation, Slack(..), SlackRegistry, SlackUnidentified(..), Team, User)
 import Data.ProducerRegistry as ProducerRegistry
 import Dict exposing (Dict)
 import Element exposing (..)
@@ -15,6 +15,7 @@ import Element.Input
 import Element.Keyed
 import Element.Lazy exposing (..)
 import Octicons
+import StringExtra
 import Time
 import Url
 import View.Parts exposing (..)
@@ -273,19 +274,19 @@ conversationRows vs teamIdStr users conversations =
             Dict.toList conversations
                 |> List.filter (\( _, c ) -> Slack.isChannel c)
                 |> List.sortWith (\( _, a ) ( _, b ) -> Slack.compareByMembersipThenName a b)
-                |> List.partition (\( _, c ) -> FetchStatus.dormant (Slack.getFetchStatus c))
+                |> List.partition (\( _, c ) -> FetchStatus.dormant c.fetchStatus)
     in
     subbedChannels
-        |> List.map (subbedConversationRowKeyEl vs.timezone teamIdStr users)
+        |> List.map (subbedConversationRowKeyEl vs.timezone teamIdStr)
         |> (::) (subscribeRowKeyEl vs.selectState teamIdStr users notSubbedChannels)
 
 
-subbedConversationRowKeyEl : Time.Zone -> String -> Dict String User -> ( String, Conversation ) -> ( String, Element Msg )
-subbedConversationRowKeyEl tz teamIdStr users ( convIdStr, conv ) =
+subbedConversationRowKeyEl : Time.Zone -> String -> ( String, Conversation ) -> ( String, Element Msg )
+subbedConversationRowKeyEl tz teamIdStr ( convIdStr, conv ) =
     Tuple.pair convIdStr <|
         row [ width fill, spacing cellSpacing, clipX ]
-            [ slackConversationEl [ width fill ] { size = smallFontSize, users = users, conversation = conv }
-            , el [ width fill ] <| fetchStatusTextEl tz <| Slack.getFetchStatus conv
+            [ slackConversationEl [ width fill ] { size = smallFontSize, conversation = conv }
+            , el [ width fill ] <| fetchStatusTextEl tz <| conv.fetchStatus
             , row [ width fill, spacing spacingUnit ]
                 [ unsubscribeButtonEl teamIdStr conv
                 ]
@@ -331,9 +332,9 @@ subscribeRowKeyEl ss teamIdStr users convs =
         , thin = True
         , onSelect = ProducerCtrl << ProducerRegistry.SlackMsg << Slack.ISubscribe teamIdStr << Slack.getConversationIdStr
         , selectedOption = Nothing
-        , filterMatch = Just (Slack.conversationFilter users)
+        , filterMatch = Just (\f conv -> StringExtra.containsCaseIgnored f conv.name)
         , options = convs
-        , optionEl = \c -> slackConversationEl [] { size = smallFontSize, conversation = c, users = users }
+        , optionEl = \c -> slackConversationEl [] { size = smallFontSize, conversation = c }
         }
     , el [ width (fillPortion 2) ] none
     ]

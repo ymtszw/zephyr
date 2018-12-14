@@ -924,8 +924,16 @@ filterAtomTextEl fontSize color fam fa =
             el [ Font.size fontSize, Font.color color, Font.bold ] <|
                 Maybe.withDefault (breakT cId) <|
                     withSlackConversation cId fam <|
-                        -- TODO enrich icons
-                        \c -> breakT ("# " ++ c.name)
+                        \c ->
+                            case c.type_ of
+                                Slack.PublicChannel _ ->
+                                    breakT ("#" ++ c.name)
+
+                                Slack.PrivateChannel ->
+                                    breakT ("#" ++ c.name)
+
+                                _ ->
+                                    breakT c.name
 
         ByMessage query ->
             breakT ("\"" ++ query ++ "\"")
@@ -974,7 +982,7 @@ discordGuildIconEl attrs size guild =
 
 discordChannelEl : List (Attribute msg) -> { size : Int, channel : { x | name : String, guildMaybe : Maybe Discord.Guild } } -> Element msg
 discordChannelEl attrs { size, channel } =
-    row ([ spacing discordGuildIconSpacingX ] ++ attrs)
+    row ([ spacing discordGuildIconSpacingX, Font.size size ] ++ attrs)
         [ channel.guildMaybe |> Maybe.map (discordGuildIconEl [] size) |> Maybe.withDefault none
         , text ("#" ++ channel.name)
         ]
@@ -985,33 +993,26 @@ discordGuildIconSpacingX =
     2
 
 
-slackConversationEl : List (Attribute msg) -> { size : Int, users : Dict String Slack.User, conversation : Slack.Conversation } -> Element msg
+slackConversationEl :
+    List (Attribute msg)
+    -> { size : Int, conversation : { x | name : String, type_ : Slack.ConversationType } }
+    -> Element msg
 slackConversationEl attrs opts =
-    -- TODO it requires whole user Dictionary; let it rather take fewer information
-    row ([ spacing spacingUnit ] ++ attrs) <|
-        case opts.conversation of
-            Slack.PublicChannel { name } ->
-                [ text "#", text name ]
+    row ([ spacing spacingUnit, Font.size opts.size ] ++ attrs) <|
+        [ case opts.conversation.type_ of
+            Slack.PublicChannel _ ->
+                text "#"
 
-            Slack.PrivateChannel { name } ->
-                [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.lock }
-                , text name
-                ]
+            Slack.PrivateChannel ->
+                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.lock }
 
-            Slack.IM { user } ->
-                [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.person }
-                , case Slack.getUser opts.users user of
-                    Ok u ->
-                        text (Maybe.withDefault u.profile.realName u.profile.displayName)
+            Slack.IM ->
+                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.person }
 
-                    Err userIdStr ->
-                        text userIdStr
-                ]
-
-            Slack.MPIM { name } ->
-                [ octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.organization }
-                , text name
-                ]
+            Slack.MPIM ->
+                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.organization }
+        , text opts.conversation.name
+        ]
 
 
 slackConvIconColor : Color

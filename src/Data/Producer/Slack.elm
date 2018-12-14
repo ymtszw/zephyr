@@ -1,10 +1,11 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, TeamIcon, Conversation(..), ConversationCache, FAM
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, TeamIcon
+    , Conversation, ConversationType(..), ConversationCache, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
+    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId, getConversationFromCache
     )
 
@@ -13,12 +14,13 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, Team, TeamIcon, Conversation, ConversationCache, FAM
+@docs Slack, SlackUnidentified, SlackRegistry, User, Team, TeamIcon
+@docs Conversation, ConversationType, ConversationCache, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
+@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId, getConversationFromCache
 
 -}
@@ -36,7 +38,6 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import ListExtra
-import StringExtra
 import Task exposing (Task)
 import Time exposing (Posix)
 import Url exposing (Url)
@@ -156,34 +157,21 @@ Members of private conversations must be retrieved from conversations.members AP
 (Although conversation doc says there is `members` field, it is retired.
 <https://api.slack.com/changelog/2017-10-members-array-truncating>)
 
-We do not use `last_read` in conversation object directly,
+We do not use `last_read` returned from APIs directly,
 rather we locally record timestamps of actually retrieved messages.
 
 TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
 
 -}
-type Conversation
-    = PublicChannel PublicChannelRecord
-    | PrivateChannel PrivateChannelRecord
-    | IM IMRecord -- Instant Messages, presumably
-    | MPIM MPIMRecord -- Multi-person IM
+type alias Conversation =
+    { id : ConversationId
+    , name : String -- May start with values from API response, but should cannonicalize on Hydrate/Rehydrate
+    , lastRead : Maybe LastRead -- For IM, `last_read` is not supplied from conversation object. Though we do not directly use them anyway.
 
-
-type alias PublicChannelRecord =
-    { id : ConversationId, name : String, isMember : Bool, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
-
-
-type alias PrivateChannelRecord =
-    { id : ConversationId, name : String, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
-
-
-type alias IMRecord =
-    -- For IM, `last_read` is not supplied from conversation object. Though we do not directly use them anyway.
-    { id : ConversationId, user : UserId, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
-
-
-type alias MPIMRecord =
-    { id : ConversationId, name : String, lastRead : Maybe LastRead, fetchStatus : FetchStatus }
+    -- Zephyr local
+    , type_ : ConversationType
+    , fetchStatus : FetchStatus
+    }
 
 
 type ConversationId
@@ -198,19 +186,28 @@ type LastRead
     = LastRead Ts
 
 
+type ConversationType
+    = PublicChannel IsMember
+    | PrivateChannel
+    | IM -- Instant Messages, presumably
+    | MPIM -- Multi-person IM
+
+
+type alias IsMember =
+    Bool
+
+
+{-| Rarely updated prts of Conversation.
+
+Adding Team info since ConversationCaches can be mixed up with ones from other Teams in FAM.
+
+-}
 type alias ConversationCache =
     { id : ConversationId
-    , name : String -- User name for IM/MPIM must be resolved before caching
-    , type_ : ConversationCacheType
+    , name : String
+    , type_ : ConversationType
     , team : Team -- Unjoined on save
     }
-
-
-type ConversationCacheType
-    = PublicChannelCache
-    | PrivateChannelCache
-    | IMCache
-    | MPIMCache
 
 
 {-| Bot entity in the workspace.
@@ -532,32 +529,13 @@ encodeTeam team =
 
 encodeConversation : Conversation -> E.Value
 encodeConversation conv =
-    let
-        encodeImpl tag record others =
-            let
-                commons =
-                    [ ( "id", encodeConversationId record.id )
-                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
-                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
-                    ]
-            in
-            E.tagged tag (E.object (commons ++ others))
-    in
-    case conv of
-        PublicChannel record ->
-            encodeImpl "PublicChannel" record <|
-                [ ( "name", E.string record.name )
-                , ( "is_member", E.bool record.isMember )
-                ]
-
-        PrivateChannel record ->
-            encodeImpl "PrivateChannel" record [ ( "name", E.string record.name ) ]
-
-        IM record ->
-            encodeImpl "IM" record [ ( "user", encodeUserId record.user ) ]
-
-        MPIM record ->
-            encodeImpl "MPIM" record [ ( "name", E.string record.name ) ]
+    E.object
+        [ ( "id", encodeConversationId conv.id )
+        , ( "name", E.string conv.name )
+        , ( "last_read", E.maybe encodeLastRead conv.lastRead )
+        , ( "type_", encodeConversationType conv.type_ )
+        , ( "fetchStatus", FetchStatus.encode conv.fetchStatus )
+        ]
 
 
 encodeConversationId : ConversationId -> E.Value
@@ -575,25 +553,25 @@ encodeConversationCache cache =
     E.object
         [ ( "id", encodeConversationId cache.id )
         , ( "name", E.string cache.name )
-        , ( "type_", encodeConversationCacheType cache.type_ )
+        , ( "type_", encodeConversationType cache.type_ )
         , ( "team_id", encodeTeamId cache.team.id )
         ]
 
 
-encodeConversationCacheType : ConversationCacheType -> E.Value
-encodeConversationCacheType type_ =
+encodeConversationType : ConversationType -> E.Value
+encodeConversationType type_ =
     case type_ of
-        PublicChannelCache ->
-            E.tag "PublicChannelCache"
+        PublicChannel isMember ->
+            E.tagged "PublicChannel" (E.bool isMember)
 
-        PrivateChannelCache ->
-            E.tag "PrivateChannelCache"
+        PrivateChannel ->
+            E.tag "PrivateChannel"
 
-        IMCache ->
-            E.tag "IMCache"
+        IM ->
+            E.tag "IM"
 
-        MPIMCache ->
-            E.tag "MPIMCache"
+        MPIM ->
+            E.tag "MPIM"
 
 
 encodeMessage : Message -> E.Value
@@ -765,14 +743,16 @@ sessionDecoder =
 
 povDecoder : Decoder POV
 povDecoder =
-    D.map6 POV
-        (D.field "token" D.string)
-        (D.field "user" userDecoder)
-        (D.field "team" teamDecoder)
-        (D.field "conversations" (D.dict conversationDecoder))
-        (D.field "users" (D.dict userDecoder))
-        -- Migration; use D.field when ready
-        (D.optionField "bots" (D.dict botDecoder) Dict.empty)
+    D.do (D.field "users" (D.dict userDecoder)) <|
+        \users ->
+            D.map6 POV
+                (D.field "token" D.string)
+                (D.field "user" userDecoder)
+                (D.field "team" teamDecoder)
+                (D.field "conversations" (D.dict (conversationDecoder users)))
+                (D.succeed users)
+                -- Migration; use D.field when ready
+                (D.optionField "bots" (D.dict botDecoder) Dict.empty)
 
 
 userDecoder : Decoder User
@@ -850,53 +830,56 @@ teamDecoder =
         (D.field "icon" iconDecoder)
 
 
-conversationDecoder : Decoder Conversation
-conversationDecoder =
+conversationDecoder : Dict UserIdStr User -> Decoder Conversation
+conversationDecoder users =
     -- XXX We are including archived channels and IM with deleted users.
     let
-        pubDecoder =
-            D.map5 PublicChannelRecord
-                (D.field "id" conversationIdDecoder)
-                (D.field "name" D.string)
-                (D.optionField "is_member" D.bool False)
-                (D.maybeField "last_read" lastReadDecoder)
-                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+        conversationFromSlackApiDecoder =
+            D.do conversationTypeFromSlackApi <|
+                \type_ ->
+                    D.do (resolveName type_) <|
+                        \name ->
+                            D.do (D.field "id" conversationIdDecoder) <|
+                                \id ->
+                                    D.succeed (Conversation id name Nothing type_ Available)
 
-        privDecoder =
-            D.map4 PrivateChannelRecord
-                (D.field "id" conversationIdDecoder)
-                (D.field "name" D.string)
-                (D.maybeField "last_read" lastReadDecoder)
-                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+        conversationTypeFromSlackApi =
+            D.oneOf
+                [ D.when (D.field "is_mpim" D.bool) identity (D.succeed MPIM)
+                , D.when (D.field "is_im" D.bool) identity (D.succeed IM)
+                , D.when (D.field "is_group" D.bool) identity (D.succeed PrivateChannel)
+                , -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
+                  D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) identity (D.succeed PrivateChannel)
+                , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) ((==) ( True, False )) <|
+                    D.field "is_member" (D.map PublicChannel D.bool)
+                ]
 
-        imDecoder =
-            D.map4 IMRecord
-                (D.field "id" conversationIdDecoder)
-                (D.field "user" userIdDecoder)
-                (D.maybeField "last_read" lastReadDecoder)
-                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+        resolveName type_ =
+            case type_ of
+                IM ->
+                    D.field "user" userIdDecoder |> D.andThen (resolveUserNameDecoder users)
 
-        mpimDecoder =
-            D.map4 MPIMRecord
-                (D.field "id" conversationIdDecoder)
-                (D.field "name" D.string)
-                (D.maybeField "last_read" lastReadDecoder)
-                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+                MPIM ->
+                    -- TODO cannonicalize name; need to request to `conversations.members`?
+                    D.field "name" D.string
+
+                _ ->
+                    D.field "name" D.string
     in
     D.oneOf
         [ -- From IndexedDB
-          D.tagged "PublicChannel" PublicChannel pubDecoder
-        , D.tagged "PrivateChannel" PrivateChannel privDecoder
-        , D.tagged "IM" IM imDecoder
-        , D.tagged "MPIM" MPIM mpimDecoder
+          D.map5 Conversation
+            (D.field "id" conversationIdDecoder)
+            (D.field "name" D.string)
+            (D.maybeField "last_read" lastReadDecoder)
+            (D.field "type_" conversationTypeDecoder)
+            (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         -- From Slack API
-        , D.when (D.field "is_mpim" D.bool) identity (D.map MPIM mpimDecoder)
-        , D.when (D.field "is_im" D.bool) identity (D.map IM imDecoder)
-        , D.when (D.field "is_group" D.bool) identity (D.map PrivateChannel privDecoder)
-        , -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
-          D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) identity (D.map PrivateChannel privDecoder)
-        , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) ((==) ( True, False )) (D.map PublicChannel pubDecoder)
+        , conversationFromSlackApiDecoder
+
+        -- Old format where Conversation was a custom type
+        , oldConversationDecoder users
         ]
 
 
@@ -911,6 +894,75 @@ lastReadDecoder =
     D.tagged "LastRead" LastRead tsDecoder
 
 
+conversationTypeDecoder : Decoder ConversationType
+conversationTypeDecoder =
+    D.oneOf
+        [ D.tagged "PublicChannel" PublicChannel D.bool
+        , D.tag "PrivateChannel" PrivateChannel
+        , D.tag "IM" IM
+        , D.tag "MPIM" MPIM
+
+        -- Old formats where ConversationType was only used in caches
+        , D.tag "PublicChannelCache" (PublicChannel True) -- Making up True for new type, but IsMember must be properly rehydrated
+        , D.tag "PrivateChannelCache" PrivateChannel
+        , D.tag "IMCache" IM
+        , D.tag "MPIMCache" MPIM
+        ]
+
+
+resolveUserNameDecoder : Dict UserIdStr User -> UserId -> Decoder String
+resolveUserNameDecoder users (UserId userIdStr) =
+    Dict.get userIdStr users
+        |> Maybe.map (\u -> Maybe.withDefault u.profile.realName u.profile.displayName)
+        |> Maybe.withDefault userIdStr
+        |> D.succeed
+
+
+oldConversationDecoder : Dict UserIdStr User -> Decoder Conversation
+oldConversationDecoder users =
+    let
+        oldPubDecoder =
+            D.map5 Conversation
+                (D.field "id" conversationIdDecoder)
+                (D.field "name" D.string)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.map PublicChannel (D.optionField "is_member" D.bool False))
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+
+        oldPrivDecoder =
+            D.map5 Conversation
+                (D.field "id" conversationIdDecoder)
+                (D.field "name" D.string)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.succeed PrivateChannel)
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+
+        oldImDecoder =
+            D.do (D.field "user" userIdDecoder) <|
+                \userId ->
+                    D.map5 Conversation
+                        (D.field "id" conversationIdDecoder)
+                        (resolveUserNameDecoder users userId)
+                        (D.maybeField "last_read" lastReadDecoder)
+                        (D.succeed IM)
+                        (D.optionField "fetchStatus" FetchStatus.decoder Available)
+
+        oldMpimDecoder =
+            D.map5 Conversation
+                (D.field "id" conversationIdDecoder)
+                (D.field "name" D.string)
+                (D.maybeField "last_read" lastReadDecoder)
+                (D.succeed MPIM)
+                (D.optionField "fetchStatus" FetchStatus.decoder Available)
+    in
+    D.oneOf
+        [ D.tagged "PublicChannel" identity oldPubDecoder
+        , D.tagged "PrivateChannel" identity oldPrivDecoder
+        , D.tagged "IM" identity oldImDecoder
+        , D.tagged "MPIM" identity oldMpimDecoder
+        ]
+
+
 conversationCacheDecoder : Dict TeamIdStr Team -> Decoder ConversationCache
 conversationCacheDecoder teams =
     D.do (D.field "team_id" teamIdDecoder) <|
@@ -920,22 +972,12 @@ conversationCacheDecoder teams =
                     D.map4 ConversationCache
                         (D.field "id" conversationIdDecoder)
                         (D.field "name" D.string)
-                        (D.field "type_" conversationCacheTypeDecoder)
+                        (D.field "type_" conversationTypeDecoder)
                         (D.succeed team)
 
                 Nothing ->
                     -- Should not happen
                     D.fail ("Team [" ++ teamIdStr ++ "] is not cached!")
-
-
-conversationCacheTypeDecoder : Decoder ConversationCacheType
-conversationCacheTypeDecoder =
-    D.oneOf
-        [ D.tag "PublicChannelCache" PublicChannelCache
-        , D.tag "PrivateChannelCache" PrivateChannelCache
-        , D.tag "IMCache" IMCache
-        , D.tag "MPIMCache" MPIMCache
-        ]
 
 
 messageDecoder : Decoder Message
@@ -1206,7 +1248,7 @@ type Msg
     | UAPIFailure RpcFailure
     | Identify User Team
       -- Prefix "I" means Msg for identified token/team
-    | IHydrate TeamIdStr (Dict ConversationIdStr Conversation) (Dict UserIdStr User)
+    | IHydrate TeamIdStr (Dict UserIdStr User) (Dict ConversationIdStr Conversation)
     | IRehydrate TeamIdStr
     | IRevisit TeamIdStr POV
     | ISubscribe TeamIdStr ConversationIdStr
@@ -1237,8 +1279,8 @@ update msg sr =
         Identify user team ->
             handleIdentify user team team.id sr
 
-        IHydrate teamIdStr conversations users ->
-            withTeam teamIdStr sr <| handleIHydrate conversations users
+        IHydrate teamIdStr users conversations ->
+            withTeam teamIdStr sr <| handleIHydrate users conversations
 
         IRehydrate teamIdStr ->
             withTeam teamIdStr sr handleIRehydrate
@@ -1347,8 +1389,8 @@ withTeam teamIdStr sr func =
             pure sr
 
 
-handleIHydrate : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Slack -> ( Slack, Yield )
-handleIHydrate convs users slack =
+handleIHydrate : Dict UserIdStr User -> Dict ConversationIdStr Conversation -> Slack -> ( Slack, Yield )
+handleIHydrate users convs slack =
     case slack of
         Identified { token, user, team } ->
             ( Hydrated token (initPov token user team convs users)
@@ -1388,45 +1430,14 @@ mergeConversations oldConvs newConvs =
             acc
 
         foundInBoth cId old new acc =
-            Dict.insert cId (carryOverFetchStatus old new) acc
+            -- Use old's cursor (lastRead), let our polling naturally catch up
+            -- Note that the new conversation may change to different variant (e.g. PublicChannel => PrivateChannel)
+            Dict.insert cId { new | lastRead = old.lastRead, fetchStatus = old.fetchStatus } acc
 
         foundOnlyInNew cId new acc =
             Dict.insert cId new acc
     in
     Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldConvs newConvs Dict.empty
-
-
-carryOverFetchStatus : Conversation -> Conversation -> Conversation
-carryOverFetchStatus old new =
-    -- Use old's cursor (lastRead), let our polling naturally catch up
-    -- Note that the new conversation may change to different variant (e.g. PublicChannel => PrivateChannel)
-    let
-        ( lastRead, fetchStatus ) =
-            case old of
-                PublicChannel record ->
-                    ( record.lastRead, record.fetchStatus )
-
-                PrivateChannel record ->
-                    ( record.lastRead, record.fetchStatus )
-
-                IM record ->
-                    ( record.lastRead, record.fetchStatus )
-
-                MPIM record ->
-                    ( record.lastRead, record.fetchStatus )
-    in
-    case new of
-        PublicChannel record ->
-            PublicChannel { record | lastRead = lastRead, fetchStatus = fetchStatus }
-
-        PrivateChannel record ->
-            PrivateChannel { record | lastRead = lastRead, fetchStatus = fetchStatus }
-
-        IM record ->
-            IM { record | lastRead = lastRead, fetchStatus = fetchStatus }
-
-        MPIM record ->
-            MPIM { record | lastRead = lastRead, fetchStatus = fetchStatus }
 
 
 handleIRehydrate : Slack -> ( Slack, Yield )
@@ -1544,27 +1555,12 @@ updateOrKeepFAM doUpdate convs =
 updateFetchStatus : FetchStatus.Msg -> Conversation -> ( Conversation, ConvYield )
 updateFetchStatus fMsg conv =
     let
-        updateFs tagger rec =
-            let
-                { fs, persist, updateFAM } =
-                    FetchStatus.update fMsg rec.fetchStatus
-            in
-            ( tagger { rec | fetchStatus = fs }
-            , { persist = persist, items = [], updateFAM = updateFAM }
-            )
+        { fs, persist, updateFAM } =
+            FetchStatus.update fMsg conv.fetchStatus
     in
-    case conv of
-        PublicChannel record ->
-            updateFs PublicChannel record
-
-        PrivateChannel record ->
-            updateFs PrivateChannel record
-
-        IM record ->
-            updateFs IM record
-
-        MPIM record ->
-            updateFs MPIM record
+    ( { conv | fetchStatus = fs }
+    , { persist = persist, items = [], updateFAM = updateFAM }
+    )
 
 
 handleIUnsubscribe : ConversationIdStr -> Slack -> ( Slack, Yield )
@@ -1652,12 +1648,12 @@ recusrivelyFindConvToFetch posix teamIdStr conversations acc =
                 threshold =
                     case acc of
                         Just ( _, accConv ) ->
-                            getFetchStatus accConv
+                            accConv.fetchStatus
 
                         Nothing ->
                             NextFetchAt posix FetchStatus.BO10
             in
-            if FetchStatus.lessThan threshold (getFetchStatus x) then
+            if FetchStatus.lessThan threshold x.fetchStatus then
                 recusrivelyFindConvToFetch posix teamIdStr xs (Just ( teamIdStr, x ))
 
             else
@@ -1921,12 +1917,20 @@ Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload
 
 -}
 revisit : String -> UserId -> TeamId -> Cmd Msg
-revisit token userId (TeamId teamIdStr) =
-    Task.map4 (initPov token)
-        (userInfoTask token userId)
-        (teamInfoTask token)
-        (conversationListTask token)
-        (userListTask token)
+revisit token (UserId userIdStr) (TeamId teamIdStr) =
+    userListTask token
+        |> Task.andThen
+            (\users ->
+                case Dict.get userIdStr users of
+                    Just user ->
+                        Task.map2 (\team convs -> initPov token user team convs users)
+                            (teamInfoTask token)
+                            (conversationListTask token users)
+
+                    Nothing ->
+                        -- Should never happen; requesting user must be included in users
+                        Task.fail (RpcError ("Cannot retrieve User: " ++ userIdStr))
+            )
         |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing)
 
 
@@ -1950,16 +1954,20 @@ teamInfoTask token =
 
 hydrate : String -> TeamId -> Cmd Msg
 hydrate token (TeamId teamIdStr) =
-    Task.map2 (IHydrate teamIdStr) (conversationListTask token) (userListTask token)
+    userListTask token
+        |> Task.andThen
+            (\users ->
+                Task.map (IHydrate teamIdStr users) (conversationListTask token users)
+            )
         |> rpcTry identity (IAPIFailure teamIdStr Nothing)
 
 
-conversationListTask : String -> Task RpcFailure (Dict ConversationIdStr Conversation)
-conversationListTask token =
+conversationListTask : String -> Dict UserIdStr User -> Task RpcFailure (Dict ConversationIdStr Conversation)
+conversationListTask token users =
     rpcPostFormTask (endpoint "/conversations.list" Nothing)
         token
         [ ( "types", "public_channel,private_channel,im,mpim" ) ]
-        (D.field "channels" (D.dictFromList getConversationIdStr conversationDecoder))
+        (D.field "channels" (D.dictFromList getConversationIdStr (conversationDecoder users)))
 
 
 userListTask : String -> Task RpcFailure (Dict UserIdStr User)
@@ -1975,24 +1983,13 @@ userListTask token =
 fetchConversationMessages : String -> TeamId -> Conversation -> Cmd Msg
 fetchConversationMessages token (TeamId teamIdStr) conv =
     let
-        ( ConversationId convIdStr, lastRead ) =
-            case conv of
-                PublicChannel record ->
-                    ( record.id, record.lastRead )
-
-                PrivateChannel record ->
-                    ( record.id, record.lastRead )
-
-                IM record ->
-                    ( record.id, record.lastRead )
-
-                MPIM record ->
-                    ( record.id, record.lastRead )
+        (ConversationId convIdStr) =
+            conv.id
 
         combiner messages posix =
             { conversationId = convIdStr, messages = messages, posix = posix }
     in
-    Task.map2 combiner (conversationHistoryTask token convIdStr lastRead Initial) Time.now
+    Task.map2 combiner (conversationHistoryTask token convIdStr conv.lastRead Initial) Time.now
         |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr))
 
 
@@ -2080,23 +2077,23 @@ getConversationFromCache convIdStr caches =
 
 isChannel : Conversation -> Bool
 isChannel conv =
-    case conv of
+    case conv.type_ of
         PublicChannel _ ->
             True
 
-        PrivateChannel _ ->
+        PrivateChannel ->
             True
 
-        IM _ ->
+        IM ->
             False
 
-        MPIM _ ->
+        MPIM ->
             False
 
 
 compareByMembersipThenName : Conversation -> Conversation -> Order
-compareByMembersipThenName convA convB =
-    if convA == convB then
+compareByMembersipThenName conv1 conv2 =
+    if conv1 == conv2 then
         EQ
 
     else
@@ -2108,9 +2105,9 @@ compareByMembersipThenName convA convB =
                 else
                     LT
         in
-        case ( convA, convB ) of
-            ( PublicChannel pub1, PublicChannel pub2 ) ->
-                case ( pub1.isMember, pub2.isMember ) of
+        case ( conv1.type_, conv2.type_ ) of
+            ( PublicChannel isMemberA, PublicChannel isMemberB ) ->
+                case ( isMemberA, isMemberB ) of
                     ( True, False ) ->
                         LT
 
@@ -2118,113 +2115,52 @@ compareByMembersipThenName convA convB =
                         GT
 
                     _ ->
-                        compare pub1.name pub2.name
+                        compare conv1.name conv2.name
 
-            ( PublicChannel pub1, _ ) ->
-                if pub1.isMember then
-                    LT
-
-                else
-                    GT
-
-            ( PrivateChannel _, PublicChannel pub2 ) ->
-                compareToPub pub2.isMember
-
-            ( PrivateChannel priv1, PrivateChannel priv2 ) ->
-                compare priv1.name priv2.name
-
-            ( PrivateChannel _, _ ) ->
+            ( PublicChannel True, _ ) ->
                 LT
 
-            ( IM _, PublicChannel pub2 ) ->
-                compareToPub pub2.isMember
+            ( PublicChannel False, _ ) ->
+                GT
 
-            ( IM im1, IM im2 ) ->
-                let
-                    ( UserId u1, UserId u2 ) =
-                        ( im1.user, im2.user )
-                in
-                -- Compare by UserId, not by User's names
-                compare u1 u2
+            ( PrivateChannel, PublicChannel isMember ) ->
+                compareToPub isMember
 
-            ( IM _, MPIM _ ) ->
+            ( PrivateChannel, PrivateChannel ) ->
+                compare conv1.name conv2.name
+
+            ( PrivateChannel, _ ) ->
                 LT
 
-            ( IM _, _ ) ->
+            ( IM, PublicChannel isMember ) ->
+                compareToPub isMember
+
+            ( IM, IM ) ->
+                compare conv1.name conv2.name
+
+            ( IM, MPIM ) ->
+                LT
+
+            ( IM, _ ) ->
                 GT
 
-            ( MPIM _, PublicChannel pub2 ) ->
-                compareToPub pub2.isMember
+            ( MPIM, PublicChannel isMember ) ->
+                compareToPub isMember
 
-            ( MPIM mpim1, MPIM mpim2 ) ->
-                compare mpim1.name mpim2.name
+            ( MPIM, MPIM ) ->
+                compare conv1.name conv2.name
 
-            ( MPIM _, _ ) ->
+            ( MPIM, _ ) ->
                 GT
-
-
-getFetchStatus : Conversation -> FetchStatus
-getFetchStatus conv =
-    case conv of
-        PublicChannel record ->
-            record.fetchStatus
-
-        PrivateChannel record ->
-            record.fetchStatus
-
-        IM record ->
-            record.fetchStatus
-
-        MPIM record ->
-            record.fetchStatus
 
 
 getConversationIdStr : Conversation -> ConversationIdStr
 getConversationIdStr conv =
     let
-        toStr (ConversationId convIdStr) =
-            convIdStr
+        (ConversationId convIdStr) =
+            conv.id
     in
-    case conv of
-        PublicChannel record ->
-            toStr record.id
-
-        PrivateChannel record ->
-            toStr record.id
-
-        IM record ->
-            toStr record.id
-
-        MPIM record ->
-            toStr record.id
-
-
-conversationFilter : Dict UserIdStr User -> String -> Conversation -> Bool
-conversationFilter users filter conv =
-    case conv of
-        PublicChannel { name } ->
-            StringExtra.containsCaseIgnored filter name
-
-        PrivateChannel { name } ->
-            StringExtra.containsCaseIgnored filter name
-
-        IM { user } ->
-            case getUser users user of
-                Ok u ->
-                    case u.profile.displayName of
-                        Just dn ->
-                            StringExtra.containsCaseIgnored filter dn
-                                || StringExtra.containsCaseIgnored filter u.profile.realName
-
-                        Nothing ->
-                            StringExtra.containsCaseIgnored filter u.profile.realName
-
-                Err userIdStr ->
-                    StringExtra.containsCaseIgnored filter userIdStr
-
-        MPIM { name } ->
-            -- XXX use users dict?
-            StringExtra.containsCaseIgnored filter name
+    convIdStr
 
 
 defaultIconUrl : Maybe Int -> String
