@@ -2,7 +2,7 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, Conversation(..), ConversationCache
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-    , messageDecoder
+    , encodeMessage, messageDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
     , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -16,7 +16,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team, Conversation, ConversationCache
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-@docs messageDecoder
+@docs encodeMessage, messageDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getFetchStatus, getConversationIdStr, conversationFilter
 @docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId
@@ -557,9 +557,108 @@ encodeConversationCacheType type_ =
             E.tag "MPIMCache"
 
 
+encodeMessage : Message -> E.Value
+encodeMessage m =
+    E.object
+        [ ( "ts", encodeTs m.ts )
+        , ( "text", E.string m.text )
+        , ( "authorId", encodeAuthorId m.authorId )
+        , ( "username", E.maybe E.string m.username )
+        , ( "files", E.list encodeSFile m.files )
+        , ( "attachements", E.list encodeAttachment m.attachements )
+        ]
+
+
 encodeTs : Ts -> E.Value
-encodeTs (Ts ts posix_) =
-    E.tagged2 "Ts" (E.string ts) (E.int (ms posix_))
+encodeTs (Ts ts posix) =
+    E.tagged2 "Ts" (E.string ts) (E.int (Time.posixToMillis posix))
+
+
+encodeAuthorId : AuthorId -> E.Value
+encodeAuthorId aId =
+    case aId of
+        UAuthorId userId ->
+            E.tagged "UAuthorId" (encodeUserId userId)
+
+        BAuthorId botId ->
+            E.tagged "BAuthorId" (encodeBotId botId)
+
+
+encodeBotId : BotId -> E.Value
+encodeBotId (BotId bId) =
+    E.tagged "BotId" (E.string bId)
+
+
+encodeSFile : SFile -> E.Value
+encodeSFile sf =
+    let
+        baseProps =
+            [ ( "name", E.string sf.name )
+            , ( "mimetype", E.string sf.mimetype )
+            , ( "mode", encodeMode sf.mode )
+            , ( "url_", E.url sf.url_ )
+            , ( "thumb_64", E.maybe E.url sf.thumb64 )
+            , ( "preview", E.maybe E.string sf.preview )
+            ]
+    in
+    E.object (baseProps ++ encodeThumb360 sf.thumb360)
+
+
+encodeMode : Mode -> E.Value
+encodeMode mode =
+    case mode of
+        Hosted ->
+            E.tag "Hosted"
+
+        External ->
+            E.tag "External"
+
+        Snippet ->
+            E.tag "Snippet"
+
+        Post ->
+            E.tag "Post"
+
+
+encodeThumb360 : Maybe ( Url, Int, Int ) -> List ( String, E.Value )
+encodeThumb360 thumb360 =
+    case thumb360 of
+        Just ( url, width, height ) ->
+            [ ( "thumb_360", E.url url )
+            , ( "thumb_360_w", E.int width )
+            , ( "thumb_360_h", E.int height )
+            ]
+
+        Nothing ->
+            []
+
+
+encodeAttachment : Attachment -> E.Value
+encodeAttachment a =
+    E.object
+        [ ( "pretext", E.maybe E.string a.pretext )
+        , ( "color", E.maybe E.color a.color )
+        , ( "author", E.maybe encodeAttachmentAuthor a.author )
+        , ( "title", E.maybe encodeAttachmentTitle a.title )
+        , ( "text", E.string a.text )
+        , ( "image_url", E.maybe E.url a.imageUrl )
+        , ( "thumb_url", E.maybe E.url a.thumbUrl )
+        , ( "fallback", E.string a.fallback )
+        ]
+
+
+encodeAttachmentAuthor : AttachmentAuthor -> E.Value
+encodeAttachmentAuthor author =
+    E.object
+        [ ( "name", E.string author.name )
+        , ( "link", E.maybe E.url author.link )
+        , ( "icon", E.maybe E.url author.icon )
+        ]
+
+
+encodeAttachmentTitle : AttachmentTitle -> E.Value
+encodeAttachmentTitle title =
+    E.object [ ( "name", E.string title.name ), ( "link", E.maybe E.url title.link ) ]
 
 
 
