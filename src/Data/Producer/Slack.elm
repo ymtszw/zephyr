@@ -6,7 +6,7 @@ module Data.Producer.Slack exposing
     , encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr
-    , defaultIconUrl, teamUrl, dummyConversationId, dummyUserId, getConversationFromCache
+    , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     )
 
 {-| Producer for Slack workspaces.
@@ -21,7 +21,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr
-@docs defaultIconUrl, teamUrl, dummyConversationId, dummyUserId, getConversationFromCache
+@docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 
 -}
 
@@ -2198,10 +2198,3 @@ teamUrl team =
 dummyConversationId : ConversationId
 dummyConversationId =
     ConversationId "CDUMMYID"
-
-
-{-| Only for testing.
--}
-dummyUserId : String -> UserId
-dummyUserId userIdStr =
-    UserId userIdStr
