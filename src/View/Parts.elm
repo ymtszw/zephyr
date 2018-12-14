@@ -65,6 +65,7 @@ import ListExtra
 import Octicons
 import Time
 import TimeExtra
+import Url
 
 
 noneAttr : Attribute msg
@@ -787,6 +788,24 @@ filtersToIconEl attrs { size, fam, filters } =
         |> Maybe.withDefault (lazy2 fallbackIconEl attrs size)
 
 
+fallbackIconEl : List (Attribute msg) -> Int -> Element msg
+fallbackIconEl userAttrs size =
+    let
+        attrs =
+            [ width (px size)
+            , height (px size)
+            , clip
+            , BD.width 1
+            , BD.color oneDark.note
+            , BD.rounded rectElementRound
+            , Font.size (size // 2)
+            , Font.family [ Font.serif ]
+            ]
+                ++ userAttrs
+    in
+    el attrs <| el [ centerX, centerY ] <| text "Z"
+
+
 filterToIconEl : List (Attribute msg) -> Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
 filterToIconEl attrs size fam filter elMaybe =
     let
@@ -795,10 +814,13 @@ filterToIconEl attrs size fam filter elMaybe =
                 ( Just _, _ ) ->
                     acc
 
-                ( _, OfDiscordChannel cId ) ->
+                ( Nothing, OfDiscordChannel cId ) ->
                     withDiscordChannel cId fam (discordChannelIconEl attrs size)
 
-                ( _, _ ) ->
+                ( Nothing, OfSlackConversation cId ) ->
+                    withSlackConversation cId fam (slackConversationIconEl attrs size)
+
+                ( Nothing, _ ) ->
                     Nothing
     in
     Filter.foldl reducer elMaybe filter
@@ -808,6 +830,13 @@ withDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a)
 withDiscordChannel cId fam mapper =
     fam.ofDiscordChannel
         |> Maybe.andThen (\( _, caches ) -> ListExtra.findOne (\c -> c.id == cId) caches)
+        |> Maybe.map mapper
+
+
+withSlackConversation : String -> FilterAtomMaterial -> (Slack.ConversationCache -> a) -> Maybe a
+withSlackConversation cId fam mapper =
+    fam.ofSlackConversation
+        |> Maybe.andThen (\{ conversations } -> Slack.getConversationFromCache cId conversations)
         |> Maybe.map mapper
 
 
@@ -841,22 +870,24 @@ discordBadgeEl badgeSize =
         none
 
 
-fallbackIconEl : List (Attribute msg) -> Int -> Element msg
-fallbackIconEl userAttrs size =
-    let
-        attrs =
-            [ width (px size)
-            , height (px size)
-            , clip
-            , BD.width 1
-            , BD.color oneDark.note
-            , BD.rounded rectElementRound
-            , Font.size (size // 2)
-            , Font.family [ Font.serif ]
-            ]
-                ++ userAttrs
-    in
-    el attrs <| el [ centerX, centerY ] <| text "Z"
+slackConversationIconEl : List (Attribute msg) -> Int -> Slack.ConversationCache -> Element msg
+slackConversationIconEl attrs size c =
+    iconWithBadgeEl attrs
+        { size = size
+        , badge = Just (lazy slackBadgeEl)
+        , fallback = c.name
+        , url = chooseSlackTeamIconUrl size c.team.icon
+        }
+
+
+slackBadgeEl : Int -> Element msg
+slackBadgeEl badgeSize =
+    el
+        [ width (px badgeSize)
+        , height (px badgeSize)
+        , BG.uncropped (Slack.defaultIconUrl (Just badgeSize))
+        ]
+        none
 
 
 filtersToTextEl :
