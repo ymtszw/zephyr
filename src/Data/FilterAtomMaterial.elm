@@ -1,6 +1,6 @@
 module Data.FilterAtomMaterial exposing
     ( FilterAtomMaterial, init, encode, decoder
-    , UpdateInstruction(..), update, mapDiscordChannel
+    , UpdateInstruction(..), update
     )
 
 {-| Cache of relatively long-living information used for rendering FilterAtom.
@@ -9,7 +9,7 @@ Although a cache, it is persisted to IndexedDB, in order to display column infor
 at application load, without waiting for loading ProducerRegistry.
 
 @docs FilterAtomMaterial, init, encode, decoder
-@docs UpdateInstruction, update, mapDiscordChannel
+@docs UpdateInstruction, update
 
 -}
 
@@ -88,10 +88,3 @@ updateImpl instructions ( fam, persist ) =
 
         (SlackInstruction DestroyFAM) :: xs ->
             updateImpl xs ( { fam | ofSlackConversation = Nothing }, True )
-
-
-mapDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
-mapDiscordChannel cId fam mapper =
-    fam.ofDiscordChannel
-        |> Maybe.andThen (\( _, channels ) -> ListExtra.findOne (.id >> (==) cId) channels)
-        |> Maybe.map mapper

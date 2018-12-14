@@ -796,12 +796,19 @@ filterToIconEl attrs size fam filter elMaybe =
                     acc
 
                 ( _, OfDiscordChannel cId ) ->
-                    FAM.mapDiscordChannel cId fam (discordChannelIconEl attrs size)
+                    withDiscordChannel cId fam (discordChannelIconEl attrs size)
 
                 ( _, _ ) ->
                     Nothing
     in
     Filter.foldl reducer elMaybe filter
+
+
+withDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
+withDiscordChannel cId fam mapper =
+    fam.ofDiscordChannel
+        |> Maybe.andThen (\( _, caches ) -> ListExtra.findOne (\c -> c.id == cId) caches)
+        |> Maybe.map mapper
 
 
 discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
@@ -879,7 +886,7 @@ filterAtomTextEl fontSize color fam fa =
         OfDiscordChannel cId ->
             el [ Font.size fontSize, Font.color color, Font.bold ] <|
                 Maybe.withDefault (breakT cId) <|
-                    FAM.mapDiscordChannel cId fam <|
+                    withDiscordChannel cId fam <|
                         \c -> breakT ("#" ++ c.name)
 
         OfSlackConversation cId ->
