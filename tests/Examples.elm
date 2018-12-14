@@ -600,19 +600,19 @@ discordSuite : Test
 discordSuite =
     describe "Data.Producer.Discord"
         [ describe "colorDecoder/encodeColor"
-            [ testColorSerDe 0 "000000"
-            , testColorSerDe 15 "00000f"
-            , testColorSerDe 255 "0000ff"
-            , testColorSerDe 4095 "000fff"
-            , testColorSerDe 65535 "00ffff"
-            , testColorSerDe 1048575 "0fffff"
-            , testColorSerDe 16777215 "ffffff"
+            [ testColorIntCodec 0 "000000"
+            , testColorIntCodec 15 "00000f"
+            , testColorIntCodec 255 "0000ff"
+            , testColorIntCodec 4095 "000fff"
+            , testColorIntCodec 65535 "00ffff"
+            , testColorIntCodec 1048575 "0fffff"
+            , testColorIntCodec 16777215 "ffffff"
             ]
         ]
 
 
-testColorSerDe : Int -> String -> Test
-testColorSerDe colorNum expectedHex =
+testColorIntCodec : Int -> String -> Test
+testColorIntCodec colorNum expectedHex =
     test ("should decode/encode color integer " ++ fromInt colorNum) <|
         \_ ->
             let
