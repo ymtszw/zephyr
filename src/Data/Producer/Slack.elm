@@ -293,6 +293,8 @@ type alias BotIcons =
 
 Parallel to Discord's Attachment.
 
+TODO also add `url_download_`?
+
 -}
 type alias SFile =
     { name : String
@@ -493,43 +495,32 @@ encodeTeam team =
 
 encodeConversation : Conversation -> E.Value
 encodeConversation conv =
+    let
+        encodeImpl tag record others =
+            let
+                commons =
+                    [ ( "id", encodeConversationId record.id )
+                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
+                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
+                    ]
+            in
+            E.tagged tag (E.object (commons ++ others))
+    in
     case conv of
         PublicChannel record ->
-            E.tagged "PublicChannel" <|
-                E.object
-                    [ ( "id", encodeConversationId record.id )
-                    , ( "name", E.string record.name )
-                    , ( "is_member", E.bool record.isMember )
-                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
-                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
-                    ]
+            encodeImpl "PublicChannel" record <|
+                [ ( "name", E.string record.name )
+                , ( "is_member", E.bool record.isMember )
+                ]
 
         PrivateChannel record ->
-            E.tagged "PrivateChannel" <|
-                E.object
-                    [ ( "id", encodeConversationId record.id )
-                    , ( "name", E.string record.name )
-                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
-                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
-                    ]
+            encodeImpl "PrivateChannel" record [ ( "name", E.string record.name ) ]
 
         IM record ->
-            E.tagged "IM" <|
-                E.object
-                    [ ( "id", encodeConversationId record.id )
-                    , ( "user", encodeUserId record.user )
-                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
-                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
-                    ]
+            encodeImpl "IM" record [ ( "user", encodeUserId record.user ) ]
 
         MPIM record ->
-            E.tagged "MPIM" <|
-                E.object
-                    [ ( "id", encodeConversationId record.id )
-                    , ( "name", E.string record.name )
-                    , ( "last_read", E.maybe encodeLastRead record.lastRead )
-                    , ( "fetchStatus", FetchStatus.encode record.fetchStatus )
-                    ]
+            encodeImpl "MPIM" record [ ( "name", E.string record.name ) ]
 
 
 encodeConversationId : ConversationId -> E.Value
