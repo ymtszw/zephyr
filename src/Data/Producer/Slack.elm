@@ -333,14 +333,14 @@ Better use `leakyList` on decoding.
 
 -}
 type alias Attachment =
-    { fallback : String -- Plain-text fallback contents without any markup
+    { pretext : Maybe String -- Optional leading text before attachment block
     , color : Maybe Element.Color -- Gutter color of attachment block
-    , pretext : Maybe String -- Optional leading text before attachment block
     , author : Maybe AttachmentAuthor
     , title : Maybe AttachmentTitle
     , text : String -- Can be empty, and can be marked-up
     , imageUrl : Maybe Url -- Optional image. It is a (possibly external) permalink and not resized/proxied by Slack
     , thumbUrl : Maybe Url -- Optional icon-like thumbnails. Preferred size is 75x75
+    , fallback : String -- Plain-text fallback contents without any markup
     }
 
 
@@ -880,14 +880,14 @@ thumb360Decoder =
 attachmentDecoder : Decoder Attachment
 attachmentDecoder =
     D.map8 Attachment
-        (D.field "fallback" D.string)
-        (D.maybeField "color" colorDecoder)
         (D.maybeField "pretext" D.string)
+        (D.maybeField "color" colorDecoder)
         (D.maybe attachmentAuthorDecoder)
         (D.maybe attachmentTitleDecoder)
         (D.field "text" D.string)
         (D.maybeField "image_url" D.url)
         (D.maybeField "thumb_url" D.url)
+        (D.field "fallback" D.string)
 
 
 colorDecoder : Decoder Element.Color
