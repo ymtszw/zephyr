@@ -23,6 +23,7 @@ import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
 import Time exposing (Posix)
+import TimeExtra exposing (po)
 import Url
 
 
@@ -536,49 +537,44 @@ fetchStatusSuite =
     describe "Data.Producer.FetchStatus"
         [ describe "compare"
             [ testCompare Waiting Waiting EQ
-            , testCompare Waiting (NextFetchAt (p 1) BO10) LT
-            , testCompare Waiting (Fetching (p 1) BO10) LT
-            , testCompare Waiting (InitialFetching (p 1)) LT
+            , testCompare Waiting (NextFetchAt (po 1) BO10) LT
+            , testCompare Waiting (Fetching (po 1) BO10) LT
+            , testCompare Waiting (InitialFetching (po 1)) LT
             , testCompare Waiting Available LT
-            , testCompare (NextFetchAt (p 1) BO10) Waiting GT
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 0) BO10) GT
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 1) BO10) EQ
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 1) BO20) EQ
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 2) BO10) LT
-            , testCompare (NextFetchAt (p 1) BO10) (Fetching (p 1) BO10) LT
-            , testCompare (NextFetchAt (p 1) BO10) (InitialFetching (p 1)) LT
-            , testCompare (NextFetchAt (p 1) BO10) Available LT
-            , testCompare (Fetching (p 1) BO10) Waiting GT
-            , testCompare (Fetching (p 1) BO10) (NextFetchAt (p 1) BO10) GT
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 0) BO10) GT
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 1) BO10) EQ
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 1) BO20) EQ
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 2) BO10) LT
-            , testCompare (Fetching (p 1) BO10) (InitialFetching (p 1)) LT
-            , testCompare (Fetching (p 1) BO10) Available LT
-            , testCompare (InitialFetching (p 1)) Waiting GT
-            , testCompare (InitialFetching (p 1)) (NextFetchAt (p 1) BO10) GT
-            , testCompare (InitialFetching (p 1)) (Fetching (p 1) BO10) GT
-            , testCompare (InitialFetching (p 1)) (InitialFetching (p 0)) GT
-            , testCompare (InitialFetching (p 1)) (InitialFetching (p 1)) EQ
-            , testCompare (InitialFetching (p 1)) (InitialFetching (p 2)) LT
-            , testCompare (InitialFetching (p 1)) Available LT
+            , testCompare (NextFetchAt (po 1) BO10) Waiting GT
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 0) BO10) GT
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 1) BO10) EQ
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 1) BO20) EQ
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 2) BO10) LT
+            , testCompare (NextFetchAt (po 1) BO10) (Fetching (po 1) BO10) LT
+            , testCompare (NextFetchAt (po 1) BO10) (InitialFetching (po 1)) LT
+            , testCompare (NextFetchAt (po 1) BO10) Available LT
+            , testCompare (Fetching (po 1) BO10) Waiting GT
+            , testCompare (Fetching (po 1) BO10) (NextFetchAt (po 1) BO10) GT
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 0) BO10) GT
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 1) BO10) EQ
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 1) BO20) EQ
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 2) BO10) LT
+            , testCompare (Fetching (po 1) BO10) (InitialFetching (po 1)) LT
+            , testCompare (Fetching (po 1) BO10) Available LT
+            , testCompare (InitialFetching (po 1)) Waiting GT
+            , testCompare (InitialFetching (po 1)) (NextFetchAt (po 1) BO10) GT
+            , testCompare (InitialFetching (po 1)) (Fetching (po 1) BO10) GT
+            , testCompare (InitialFetching (po 1)) (InitialFetching (po 0)) GT
+            , testCompare (InitialFetching (po 1)) (InitialFetching (po 1)) EQ
+            , testCompare (InitialFetching (po 1)) (InitialFetching (po 2)) LT
+            , testCompare (InitialFetching (po 1)) Available LT
             , testCompare Available Waiting GT
-            , testCompare Available (NextFetchAt (p 1) BO10) GT
-            , testCompare Available (Fetching (p 1) BO10) GT
-            , testCompare Available (InitialFetching (p 1)) GT
+            , testCompare Available (NextFetchAt (po 1) BO10) GT
+            , testCompare Available (Fetching (po 1) BO10) GT
+            , testCompare Available (InitialFetching (po 1)) GT
             , testCompare Available Available EQ
             ]
         , describe "lessThan"
-            [ Waiting |> testLessThan (NextFetchAt (p 1) BO10)
-            , NextFetchAt (p 0) BO10 |> testLessThan (NextFetchAt (p 1) BO10)
+            [ Waiting |> testLessThan (NextFetchAt (po 1) BO10)
+            , NextFetchAt (po 0) BO10 |> testLessThan (NextFetchAt (po 1) BO10)
             ]
         ]
-
-
-p : Int -> Posix
-p =
-    Time.millisToPosix
 
 
 testCompare : FetchStatus -> FetchStatus -> Order -> Test

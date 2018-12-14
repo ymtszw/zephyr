@@ -38,7 +38,6 @@ import Json.EncodeExtra as E
 import StringExtra
 import Task exposing (Task)
 import Time exposing (Posix)
-import TimeExtra exposing (ms, posix)
 import Url exposing (Url)
 import Worque
 
@@ -762,7 +761,7 @@ messageDecoder =
 tsDecoder : Decoder Ts
 tsDecoder =
     D.oneOf
-        [ D.tagged2 "Ts" Ts D.string (D.map posix D.int)
+        [ D.tagged2 "Ts" Ts D.string (D.map Time.millisToPosix D.int)
 
         -- From Slack API
         , D.do D.string <|
@@ -770,7 +769,7 @@ tsDecoder =
                 case String.toFloat tsStr of
                     Just seconds ->
                         -- ts values are only valid as timestamps to seconds. Decimal values are "uniqifiers"
-                        D.succeed (Ts tsStr (posix (floor seconds * 1000)))
+                        D.succeed (Ts tsStr (Time.millisToPosix (floor seconds * 1000)))
 
                     Nothing ->
                         D.fail "Invalid `ts` value"

@@ -1,10 +1,10 @@
-module TimeExtra exposing (add, local, ms, posix, toNumMonth)
+module TimeExtra exposing (add, local, ms, po, toNumMonth)
 
 import Time exposing (Month(..), Posix, Zone)
 
 
-posix : Int -> Posix
-posix =
+po : Int -> Posix
+po =
     Time.millisToPosix
 
 
@@ -15,29 +15,29 @@ ms =
 
 add : Int -> Posix -> Posix
 add millis =
-    ms >> (+) millis >> posix
+    ms >> (+) millis >> po
 
 
 local : Zone -> Posix -> String
-local z po =
+local z posix =
     String.join ""
-        [ Time.toYear z po |> String.fromInt
+        [ Time.toYear z posix |> String.fromInt
         , "/"
-        , toNumMonth z po |> String.fromInt
+        , toNumMonth z posix |> String.fromInt
         , "/"
-        , Time.toDay z po |> String.fromInt
+        , Time.toDay z posix |> String.fromInt
         , " "
-        , Time.toHour z po |> String.fromInt |> String.padLeft 2 '0'
+        , Time.toHour z posix |> String.fromInt |> String.padLeft 2 '0'
         , ":"
-        , Time.toMinute z po |> String.fromInt |> String.padLeft 2 '0'
+        , Time.toMinute z posix |> String.fromInt |> String.padLeft 2 '0'
         , ":"
-        , Time.toSecond z po |> String.fromInt |> String.padLeft 2 '0'
+        , Time.toSecond z posix |> String.fromInt |> String.padLeft 2 '0'
         ]
 
 
 toNumMonth : Zone -> Posix -> Int
-toNumMonth z po =
-    case Time.toMonth z po of
+toNumMonth z posix =
+    case Time.toMonth z posix of
         Jan ->
             1
 

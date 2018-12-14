@@ -21,7 +21,7 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import Time exposing (Posix)
-import TimeExtra exposing (ms, posix)
+import TimeExtra exposing (ms)
 
 
 type FetchStatus
@@ -76,7 +76,7 @@ decoder : Decoder FetchStatus
 decoder =
     D.oneOf
         [ D.tag "Waiting" Waiting
-        , D.tagged2 "NextFetchAt" NextFetchAt (D.map posix D.int) backoffDecoder
+        , D.tagged2 "NextFetchAt" NextFetchAt (D.map Time.millisToPosix D.int) backoffDecoder
         , D.tag "Available" Available
 
         -- Old format

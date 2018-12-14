@@ -18,7 +18,6 @@ import Element.Lazy exposing (lazy2)
 import Html.Attributes
 import Octicons
 import Time
-import TimeExtra
 import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
