@@ -921,8 +921,11 @@ filterAtomTextEl fontSize color fam fa =
                         \c -> breakT ("#" ++ c.name)
 
         OfSlackConversation cId ->
-            -- TODO
-            breakT cId
+            el [ Font.size fontSize, Font.color color, Font.bold ] <|
+                Maybe.withDefault (breakT cId) <|
+                    withSlackConversation cId fam <|
+                        -- TODO enrich icons
+                        \c -> breakT ("# " ++ c.name)
 
         ByMessage query ->
             breakT ("\"" ++ query ++ "\"")
@@ -984,6 +987,7 @@ discordGuildIconSpacingX =
 
 slackConversationEl : List (Attribute msg) -> { size : Int, users : Dict String Slack.User, conversation : Slack.Conversation } -> Element msg
 slackConversationEl attrs opts =
+    -- TODO it requires whole user Dictionary; let it rather take fewer information
     row ([ spacing spacingUnit ] ++ attrs) <|
         case opts.conversation of
             Slack.PublicChannel { name } ->
