@@ -2004,12 +2004,37 @@ type CursorOut a
     | Done (List a)
 
 
+forwardScrollingPostFormTask : Url -> String -> List ( String, String ) -> Decoder (List a) -> CursorIn a -> Task RpcFailure (List a)
+forwardScrollingPostFormTask url token params dec cursorIn =
+    let
+        scrollOrDone acc cursorOut =
+            case cursorOut of
+                CursorOut cursor new ->
+                    forwardScrollingPostFormTask url token params dec (CursorIn cursor (new ++ acc))
+
+                Done new ->
+                    Task.succeed (new ++ acc)
+    in
+    case cursorIn of
+        Initial ->
+            rpcPostFormTask url token params (scrollableDecoder dec) |> Task.andThen (scrollOrDone [])
+
+        CursorIn c acc ->
+            rpcPostFormTask url token (( "cursor", c ) :: params) (scrollableDecoder dec) |> Task.andThen (scrollOrDone acc)
+
+
 scrollableDecoder : Decoder (List a) -> Decoder (CursorOut a)
 scrollableDecoder dec =
     D.map2 (|>) dec <|
         D.oneOf
-            [ D.when (D.field "has_more" D.bool) identity <|
-                D.at [ "response_metadata", "next_cursor" ] (D.map CursorOut D.string)
+            [ D.do (D.at [ "response_metadata", "next_cursor" ] D.string) <|
+                \c ->
+                    case c of
+                        "" ->
+                            D.fail "Cursor empty"
+
+                        _ ->
+                            D.succeed (CursorOut c)
             , D.succeed Done
             ]
 
@@ -2017,40 +2042,25 @@ scrollableDecoder dec =
 conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn () -> Task RpcFailure (List ())
 conversationHistoryTask token convIdStr lrMaybe cursorIn =
     let
-        baseTask params =
-            -- 100 is the default for limmit; https://api.slack.com/methods/conversations.history
-            rpcPostFormTask (endpoint conversationHistoryPath Nothing) token <|
-                [ ( "channel", convIdStr ), ( "limit", "100" ) ]
-                    ++ params
-
-        forwardScrollingTask params acc =
-            baseTask params (scrollableDecoder baseDecoder)
-                |> Task.andThen
-                    (\cursorOut ->
-                        case cursorOut of
-                            CursorOut cursorStr ms ->
-                                -- Prepending new segment since we are scrolling FORWARD; newer segment is arriving.
-                                conversationHistoryTask token convIdStr lrMaybe (CursorIn cursorStr (ms ++ acc))
-
-                            Done ms ->
-                                Task.succeed ms
-                    )
+        baseParams =
+            -- Recommended to be no more than 200; https://api.slack.com/methods/conversations.history
+            [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
             -- TODO use messageDecoder when ready
             D.field "messages" (D.leakyList (D.succeed ()))
+
+        url =
+            endpoint conversationHistoryPath Nothing
     in
-    case ( lrMaybe, cursorIn ) of
-        ( Just (LastRead (Ts lastReadTs _)), Initial ) ->
-            forwardScrollingTask [ ( "oldest", lastReadTs ) ] []
+    case lrMaybe of
+        Just (LastRead (Ts lastReadTs _)) ->
+            forwardScrollingPostFormTask url token (( "oldest", lastReadTs ) :: baseParams) baseDecoder Initial
 
-        ( Just (LastRead _), CursorIn cursorStr acc ) ->
-            forwardScrollingTask [ ( "cursor", cursorStr ) ] acc
-
-        ( Nothing, _ ) ->
+        Nothing ->
             -- Means never fetched. Without `latest`, it fetches up to current time,
             -- and the first segment returned IS the latest one. (No need to scrolling backward)
-            baseTask [] baseDecoder
+            rpcPostFormTask url token baseParams baseDecoder
 
 
 conversationHistoryPath : String
