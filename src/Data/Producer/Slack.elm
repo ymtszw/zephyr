@@ -210,6 +210,37 @@ type ConversationCacheType
     | MPIMCache
 
 
+{-| Bot entity in the workspace.
+
+A Bot is somewhat User-like, but different in many ways.
+<https://api.slack.com/methods/bots.info>
+
+We cannot enumerate available bots ahead of time by API (`bots.list` does not exist),
+so we must lazily acquire/update Bots' info when we see `bot_id` in messages, and store them in local dictionary.
+
+-}
+type alias Bot =
+    { id : BotId
+    , name : String
+    , icons : BotIcons -- Yeah, plural
+    }
+
+
+type alias BotIcons =
+    { image36 : Url
+    , image48 : Url
+    , image72 : Url
+    }
+
+
+type BotId
+    = BotId BotIdStr
+
+
+type alias BotIdStr =
+    String
+
+
 {-| A Message object.
 
 There are many properties and functions. Some of them may not be documented well.
@@ -262,28 +293,6 @@ Otherwise use UserId from `user` field with UAuthorId.
 type AuthorId
     = UAuthorId UserId
     | BAuthorId BotId
-
-
-type BotId
-    = BotId BotIdStr
-
-
-type alias BotIdStr =
-    String
-
-
-type alias Bot =
-    { id : BotId
-    , name : String
-    , icons : BotIcons -- Yeah, plural
-    }
-
-
-type alias BotIcons =
-    { image36 : Url
-    , image48 : Url
-    , image72 : Url
-    }
 
 
 {-| File object. Differentiating from File.File by prefix "S".
