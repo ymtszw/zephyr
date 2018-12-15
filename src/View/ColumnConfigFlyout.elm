@@ -433,35 +433,28 @@ ctorKey fa =
 
 
 filterAtomVariableInputEl : Select.State -> FilterAtomMaterial -> String -> Int -> Int -> FilterAtom -> Element Msg
-filterAtomVariableInputEl ss fam cId fi ai fa =
+filterAtomVariableInputEl ss fam columnId fi ai fa =
     case fa of
         OfDiscordChannel channelId ->
             let
-                channelSelectEl selected options optionEl =
-                    filterAtomVariableSelectEl (OfDiscordChannel << .id) <|
-                        FAVSOptions cId fi ai ss selected (Just Discord.channelFilter) options optionEl
+                ( selectedMaybe, options ) =
+                    Maybe.withDefault ( Nothing, [] ) (Maybe.map prepareOptions fam.ofDiscordChannel)
 
-                fallbackChannel =
-                    Discord.unavailableChannel channelId
+                prepareOptions ( _, channels ) =
+                    ( ListExtra.findOne (.id >> (==) channelId) channels
+                    , List.map (\c -> ( c.id, c )) channels
+                    )
             in
-            case fam.ofDiscordChannel of
-                Just ( _, channels ) ->
-                    let
-                        selectedChannel =
-                            channels |> ListExtra.findOne (\c -> c.id == channelId) |> Maybe.withDefault fallbackChannel
-                    in
-                    channelSelectEl selectedChannel (List.map (\c -> ( c.id, c )) channels) <|
-                        \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
-
-                Nothing ->
-                    channelSelectEl fallbackChannel [] (always none)
+            filterAtomVariableSelectEl (OfDiscordChannel << .id) <|
+                FAVSOptions columnId fi ai ss selectedMaybe (Just Discord.channelFilter) options <|
+                    \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
 
         OfSlackConversation convIdStr ->
             -- TODO
             none
 
         ByMessage query ->
-            filterAtomVariableTextInputEl ByMessage cId fi ai query
+            filterAtomVariableTextInputEl ByMessage columnId fi ai query
 
         ByMedia mediaType ->
             let
@@ -469,7 +462,7 @@ filterAtomVariableInputEl ss fam cId fi ai fa =
                     [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ]
             in
             filterAtomVariableSelectEl ByMedia <|
-                FAVSOptions cId fi ai ss mediaType Nothing options mediaTypeOptionEl
+                FAVSOptions columnId fi ai ss (Just mediaType) Nothing options mediaTypeOptionEl
 
         RemoveMe ->
             -- Should not happen
@@ -498,7 +491,7 @@ type alias FAVSOptions a =
     , filterIndex : Int
     , atomIndex : Int
     , state : Select.State
-    , selected : a
+    , selected : Maybe a
     , filterMatch : Maybe (String -> a -> Bool)
     , options : List ( String, a )
     , optionEl : a -> Element Msg
@@ -514,7 +507,7 @@ filterAtomVariableSelectEl faTagger opts =
         , theme = oneDark
         , thin = False
         , onSelect = onSelectFilterAtomVariable faTagger opts
-        , selectedOption = Just opts.selected
+        , selectedOption = opts.selected
         , filterMatch = opts.filterMatch
         , options = opts.options
         , optionEl = opts.optionEl

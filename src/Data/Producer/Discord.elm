@@ -5,7 +5,7 @@ module Data.Producer.Discord exposing
     , encodeMessage, messageDecoder, colorDecoder, encodeFam, famDecoder
     , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-    , getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
+    , getPov, compareByFetchStatus, compareByNames, channelFilter
     )
 
 {-| Polling Producer for Discord.
@@ -23,7 +23,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 @docs encodeMessage, messageDecoder, colorDecoder, encodeFam, famDecoder
 @docs Msg, reload, update
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
-@docs getPov, compareByFetchStatus, unavailableChannel, compareByNames, channelFilter
+@docs getPov, compareByFetchStatus, compareByNames, channelFilter
 
 -}
 
@@ -171,15 +171,6 @@ type alias ChannelCache =
     , name : String
     , type_ : ChannelType
     , guildMaybe : Maybe Guild
-    }
-
-
-unavailableChannel : String -> ChannelCache
-unavailableChannel id =
-    { id = id
-    , name = "(Unavailble)"
-    , type_ = GuildText
-    , guildMaybe = Nothing
     }
 
 

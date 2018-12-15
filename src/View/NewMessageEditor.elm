@@ -102,9 +102,8 @@ editorSelectOptionEl fam ( _, ce ) =
         DiscordMessageEditor { channelId } _ ->
             fam.ofDiscordChannel
                 |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
-                |> Maybe.withDefault (Discord.unavailableChannel channelId)
-                |> (\channel -> { size = editorFontSize, channel = channel })
-                |> discordChannelEl []
+                |> Maybe.map (\c -> discordChannelEl [] { size = editorFontSize, channel = c })
+                |> Maybe.withDefault (text channelId)
 
         LocalMessageEditor _ ->
             text "Personal Memo"
