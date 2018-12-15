@@ -8,6 +8,7 @@ import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -434,6 +435,10 @@ ctorKey fa =
 
 filterAtomVariableInputEl : Select.State -> FilterAtomMaterial -> String -> Int -> Int -> FilterAtom -> Element Msg
 filterAtomVariableInputEl ss fam columnId fi ai fa =
+    let
+        favsOptions =
+            FAVSOptions columnId fi ai ss
+    in
     case fa of
         OfDiscordChannel channelId ->
             let
@@ -446,12 +451,22 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
                     )
             in
             filterAtomVariableSelectEl (OfDiscordChannel << .id) <|
-                FAVSOptions columnId fi ai ss selectedMaybe (Just Discord.channelFilter) options <|
-                    \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
+                favsOptions selectedMaybe (Just Discord.channelFilter) options <|
+                    \c -> discordChannelEl [] { size = favsIconSize, channel = c }
 
         OfSlackConversation convIdStr ->
-            -- TODO
-            none
+            let
+                ( selectedMaybe, options ) =
+                    Maybe.withDefault ( Nothing, [] ) (Maybe.map prepareOptions fam.ofSlackConversation)
+
+                prepareOptions { conversations } =
+                    ( ListExtra.findOne (Slack.getConversationIdStr >> (==) convIdStr) conversations
+                    , List.map (\c -> ( Slack.getConversationIdStr c, c )) conversations
+                    )
+            in
+            filterAtomVariableSelectEl (OfSlackConversation << Slack.getConversationIdStr) <|
+                favsOptions selectedMaybe (Just slackConvCacheFilter) options <|
+                    \c -> slackConversationEl [] { size = favsIconSize, conversation = c }
 
         ByMessage query ->
             filterAtomVariableTextInputEl ByMessage columnId fi ai query
@@ -462,16 +477,21 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
                     [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ]
             in
             filterAtomVariableSelectEl ByMedia <|
-                FAVSOptions columnId fi ai ss (Just mediaType) Nothing options mediaTypeOptionEl
+                favsOptions (Just mediaType) Nothing options mediaTypeOptionEl
 
         RemoveMe ->
             -- Should not happen
             none
 
 
-discordGuildIconSize : Int
-discordGuildIconSize =
+favsIconSize : Int
+favsIconSize =
     20
+
+
+slackConvCacheFilter : String -> Slack.ConversationCache -> Bool
+slackConvCacheFilter f c =
+    StringExtra.containsCaseIgnored f c.name || StringExtra.containsCaseIgnored f c.team.name
 
 
 filterAtomVariableTextInputEl : (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg

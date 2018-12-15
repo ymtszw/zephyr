@@ -982,7 +982,7 @@ discordGuildIconEl attrs size guild =
 
 discordChannelEl : List (Attribute msg) -> { size : Int, channel : { x | name : String, guildMaybe : Maybe Discord.Guild } } -> Element msg
 discordChannelEl attrs { size, channel } =
-    row ([ spacing discordGuildIconSpacingX, Font.size size ] ++ attrs)
+    row ([ spacing discordGuildIconSpacingX ] ++ attrs)
         [ channel.guildMaybe |> Maybe.map (discordGuildIconEl [] size) |> Maybe.withDefault none
         , text ("#" ++ channel.name)
         ]
