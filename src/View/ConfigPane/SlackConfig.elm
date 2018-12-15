@@ -272,7 +272,7 @@ conversationRows vs teamIdStr users conversations =
         ( notSubbedChannels, subbedChannels ) =
             -- TODO support IM/MPIM
             Dict.toList conversations
-                |> List.filter (\( _, c ) -> Slack.isChannel c)
+                |> List.filter (\( _, c ) -> not c.isArchived && Slack.isChannel c)
                 |> List.sortWith (\( _, a ) ( _, b ) -> Slack.compareByMembersipThenName a b)
                 |> List.partition (\( _, c ) -> FetchStatus.dormant c.fetchStatus)
     in

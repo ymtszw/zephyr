@@ -26,7 +26,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 -}
 
 import Data.ColorTheme exposing (aubergine)
-import Data.Filter exposing (FilterAtom)
+import Data.Filter as Filter exposing (FilterAtom(..))
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
@@ -166,6 +166,7 @@ TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
 type alias Conversation =
     { id : ConversationId
     , name : String -- May start with values from API response, but should cannonicalize on Hydrate/Rehydrate
+    , isArchived : Bool
     , lastRead : Maybe LastRead -- For IM, `last_read` is not supplied from conversation object. Though we do not directly use them anyway.
 
     -- Zephyr local
@@ -205,6 +206,7 @@ Adding Team info since ConversationCaches can be mixed up with ones from other T
 type alias ConversationCache =
     { id : ConversationId
     , name : String
+    , isArchived : Bool
     , type_ : ConversationType
     , team : Team -- Unjoined on save
     }
@@ -532,6 +534,7 @@ encodeConversation conv =
     E.object
         [ ( "id", encodeConversationId conv.id )
         , ( "name", E.string conv.name )
+        , ( "is_archived", E.bool conv.isArchived )
         , ( "last_read", E.maybe encodeLastRead conv.lastRead )
         , ( "type_", encodeConversationType conv.type_ )
         , ( "fetchStatus", FetchStatus.encode conv.fetchStatus )
@@ -553,6 +556,7 @@ encodeConversationCache cache =
     E.object
         [ ( "id", encodeConversationId cache.id )
         , ( "name", E.string cache.name )
+        , ( "is_archived", E.bool cache.isArchived )
         , ( "type_", encodeConversationType cache.type_ )
         , ( "team_id", encodeTeamId cache.team.id )
         ]
@@ -680,7 +684,7 @@ encodeFam fam =
             unjoinTeamsAndEncodeConvs fam.conversations
     in
     E.object
-        [ ( "default", Data.Filter.encodeFilterAtom fam.default )
+        [ ( "default", Filter.encodeFilterAtom fam.default )
         , ( "conversations", E.list identity encodedConvs )
         , ( "teams", E.dict identity encodeTeam teams )
         ]
@@ -751,7 +755,6 @@ povDecoder =
                 (D.field "team" teamDecoder)
                 (D.field "conversations" (D.dict (conversationDecoder users)))
                 (D.succeed users)
-                -- Migration; use D.field when ready
                 (D.optionField "bots" (D.dict botDecoder) Dict.empty)
 
 
@@ -832,51 +835,18 @@ teamDecoder =
 
 conversationDecoder : Dict UserIdStr User -> Decoder Conversation
 conversationDecoder users =
-    -- XXX We are including archived channels and IM with deleted users.
-    let
-        conversationFromSlackApiDecoder =
-            D.do conversationTypeFromSlackApi <|
-                \type_ ->
-                    D.do (resolveName type_) <|
-                        \name ->
-                            D.do (D.field "id" conversationIdDecoder) <|
-                                \id ->
-                                    D.succeed (Conversation id name Nothing type_ Available)
-
-        conversationTypeFromSlackApi =
-            D.oneOf
-                [ D.when (D.field "is_mpim" D.bool) identity (D.succeed MPIM)
-                , D.when (D.field "is_im" D.bool) identity (D.succeed IM)
-                , D.when (D.field "is_group" D.bool) identity (D.succeed PrivateChannel)
-                , -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
-                  D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) identity (D.succeed PrivateChannel)
-                , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) ((==) ( True, False )) <|
-                    D.field "is_member" (D.map PublicChannel D.bool)
-                ]
-
-        resolveName type_ =
-            case type_ of
-                IM ->
-                    D.field "user" userIdDecoder |> D.andThen (resolveUserNameDecoder users)
-
-                MPIM ->
-                    -- TODO cannonicalize name; need to request to `conversations.members`?
-                    D.field "name" D.string
-
-                _ ->
-                    D.field "name" D.string
-    in
     D.oneOf
         [ -- From IndexedDB
-          D.map5 Conversation
+          D.map6 Conversation
             (D.field "id" conversationIdDecoder)
             (D.field "name" D.string)
+            (D.optionField "is_archived" D.bool False)
             (D.maybeField "last_read" lastReadDecoder)
             (D.field "type_" conversationTypeDecoder)
             (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         -- From Slack API
-        , conversationFromSlackApiDecoder
+        , conversationFromSlackApiDecoder users
 
         -- Old format where Conversation was a custom type
         , oldConversationDecoder users
@@ -910,6 +880,54 @@ conversationTypeDecoder =
         ]
 
 
+conversationFromSlackApiDecoder : Dict UserIdStr User -> Decoder Conversation
+conversationFromSlackApiDecoder users =
+    let
+        conversationTypeFromSlackApi =
+            D.oneOf
+                [ D.when (D.field "is_mpim" D.bool) identity (D.succeed MPIM)
+                , D.when (D.field "is_im" D.bool) identity (D.succeed IM)
+                , D.when (D.field "is_group" D.bool) identity (D.succeed PrivateChannel)
+                , -- The doc says it is a public channel when is_channel: true but it is possible to be paired with is_private: true
+                  D.when (D.map2 (&&) (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) identity (D.succeed PrivateChannel)
+                , D.when (D.map2 Tuple.pair (D.field "is_channel" D.bool) (D.field "is_private" D.bool)) ((==) ( True, False )) <|
+                    D.field "is_member" (D.map PublicChannel D.bool)
+                ]
+
+        resolveName type_ =
+            case type_ of
+                IM ->
+                    D.field "user" userIdDecoder |> D.andThen (resolveUserNameDecoder users)
+
+                MPIM ->
+                    -- TODO cannonicalize name; need to request to `conversations.members`?
+                    D.field "name" D.string
+
+                _ ->
+                    D.field "name" D.string
+
+        isArchivedDecoder type_ =
+            case type_ of
+                IM ->
+                    D.field "is_user_deleted" D.bool
+
+                MPIM ->
+                    D.succeed False
+
+                _ ->
+                    D.field "is_archived" D.bool
+    in
+    D.do conversationTypeFromSlackApi <|
+        \type_ ->
+            D.do (resolveName type_) <|
+                \name ->
+                    D.do (isArchivedDecoder type_) <|
+                        \isArchived ->
+                            D.do (D.field "id" conversationIdDecoder) <|
+                                \id ->
+                                    D.succeed (Conversation id name isArchived Nothing type_ Available)
+
+
 resolveUserNameDecoder : Dict UserIdStr User -> UserId -> Decoder String
 resolveUserNameDecoder users (UserId userIdStr) =
     Dict.get userIdStr users
@@ -922,17 +940,19 @@ oldConversationDecoder : Dict UserIdStr User -> Decoder Conversation
 oldConversationDecoder users =
     let
         oldPubDecoder =
-            D.map5 Conversation
+            D.map6 Conversation
                 (D.field "id" conversationIdDecoder)
                 (D.field "name" D.string)
+                (D.succeed False)
                 (D.maybeField "last_read" lastReadDecoder)
                 (D.map PublicChannel (D.optionField "is_member" D.bool False))
                 (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         oldPrivDecoder =
-            D.map5 Conversation
+            D.map6 Conversation
                 (D.field "id" conversationIdDecoder)
                 (D.field "name" D.string)
+                (D.succeed False)
                 (D.maybeField "last_read" lastReadDecoder)
                 (D.succeed PrivateChannel)
                 (D.optionField "fetchStatus" FetchStatus.decoder Available)
@@ -940,17 +960,19 @@ oldConversationDecoder users =
         oldImDecoder =
             D.do (D.field "user" userIdDecoder) <|
                 \userId ->
-                    D.map5 Conversation
+                    D.map6 Conversation
                         (D.field "id" conversationIdDecoder)
                         (resolveUserNameDecoder users userId)
+                        (D.succeed False)
                         (D.maybeField "last_read" lastReadDecoder)
                         (D.succeed IM)
                         (D.optionField "fetchStatus" FetchStatus.decoder Available)
 
         oldMpimDecoder =
-            D.map5 Conversation
+            D.map6 Conversation
                 (D.field "id" conversationIdDecoder)
                 (D.field "name" D.string)
+                (D.succeed False)
                 (D.maybeField "last_read" lastReadDecoder)
                 (D.succeed MPIM)
                 (D.optionField "fetchStatus" FetchStatus.decoder Available)
@@ -969,9 +991,10 @@ conversationCacheDecoder teams =
         \(TeamId teamIdStr) ->
             case Dict.get teamIdStr teams of
                 Just team ->
-                    D.map4 ConversationCache
+                    D.map5 ConversationCache
                         (D.field "id" conversationIdDecoder)
                         (D.field "name" D.string)
+                        (D.optionField "is_archived" D.bool False)
                         (D.field "type_" conversationTypeDecoder)
                         (D.succeed team)
 
@@ -1183,7 +1206,7 @@ famDecoder =
     D.do (D.field "teams" (D.dict teamDecoder)) <|
         \teams ->
             D.map2 FAM
-                (D.field "default" Data.Filter.filterAtomDecoder)
+                (D.field "default" Filter.filterAtomDecoder)
                 (D.field "conversations" (D.list (conversationCacheDecoder teams)))
 
 
@@ -1227,7 +1250,7 @@ reloadTeam _ slack y =
         Revisit pov ->
             { y
                 | cmd = Cmd.batch [ y.cmd, revisit pov.token pov.user.id pov.team.id ]
-                , updateFAM = calculateFAM pov.conversations
+                , updateFAM = calculateFAM pov
             }
 
         _ ->
@@ -1235,10 +1258,25 @@ reloadTeam _ slack y =
             y
 
 
-calculateFAM : Dict ConversationIdStr Conversation -> Producer.UpdateFAM FAM
-calculateFAM convs =
-    -- TODO
-    KeepFAM
+calculateFAM : POV -> Producer.UpdateFAM FAM
+calculateFAM pov =
+    let
+        filtered =
+            pov.conversations |> Dict.foldl reducer [] |> List.sortWith compareByMembersipThenName
+
+        reducer _ c acc =
+            if FetchStatus.subscribed c.fetchStatus then
+                ConversationCache c.id c.name c.isArchived c.type_ pov.team :: acc
+
+            else
+                acc
+    in
+    case filtered of
+        [] ->
+            DestroyFAM
+
+        c :: _ ->
+            SetFAM <| FAM (OfSlackConversation (getConversationIdStr c)) filtered
 
 
 type Msg
@@ -1403,7 +1441,7 @@ handleIHydrate users convs slack =
                     mergeConversations pov.conversations convs
             in
             ( Hydrated token { pov | users = users, conversations = newConvs }
-            , { yield | persist = True, updateFAM = calculateFAM newConvs }
+            , { yield | persist = True, updateFAM = calculateFAM pov }
             )
 
         _ ->
@@ -1460,7 +1498,7 @@ handleIRevisit pov slack =
                     mergeConversations oldPov.conversations pov.conversations
             in
             ( Hydrated pov.token { pov | conversations = newConvs }
-            , { yield | persist = True, updateFAM = calculateFAM newConvs, work = work }
+            , { yield | persist = True, updateFAM = calculateFAM pov, work = work }
             )
     in
     case slack of
@@ -1520,14 +1558,14 @@ withConversation tagger convIdStr pov work func =
                 ( newConv, cy ) =
                     func conv
 
-                newConvs =
-                    Dict.insert convIdStr newConv pov.conversations
+                newPov =
+                    { pov | conversations = Dict.insert convIdStr newConv pov.conversations }
             in
-            ( tagger { pov | conversations = newConvs }
+            ( tagger newPov
             , { yield
                 | persist = cy.persist
                 , items = cy.items
-                , updateFAM = updateOrKeepFAM cy.updateFAM newConvs
+                , updateFAM = updateOrKeepFAM cy.updateFAM newPov
                 , work = work
               }
             )
@@ -1537,16 +1575,16 @@ withConversation tagger convIdStr pov work func =
             ( tagger pov
             , { yield
                 | persist = True
-                , updateFAM = calculateFAM pov.conversations
+                , updateFAM = calculateFAM pov
                 , work = work
               }
             )
 
 
-updateOrKeepFAM : Bool -> Dict ConversationIdStr Conversation -> Producer.UpdateFAM FAM
-updateOrKeepFAM doUpdate convs =
+updateOrKeepFAM : Bool -> POV -> Producer.UpdateFAM FAM
+updateOrKeepFAM doUpdate pov =
     if doUpdate then
-        calculateFAM convs
+        calculateFAM pov
 
     else
         KeepFAM
@@ -1653,7 +1691,7 @@ recusrivelyFindConvToFetch posix teamIdStr conversations acc =
                         Nothing ->
                             NextFetchAt posix FetchStatus.BO10
             in
-            if FetchStatus.lessThan threshold x.fetchStatus then
+            if not x.isArchived && FetchStatus.lessThan threshold x.fetchStatus then
                 recusrivelyFindConvToFetch posix teamIdStr xs (Just ( teamIdStr, x ))
 
             else
@@ -1741,7 +1779,7 @@ handleIAPIFailure convIdMaybe f slack =
 
         Revisit pov ->
             -- Somehow Revisit failed. Settle with Expired with old pov.
-            ( Expired pov.token pov, { yield | persist = True, updateFAM = calculateFAM pov.conversations } )
+            ( Expired pov.token pov, { yield | persist = True, updateFAM = calculateFAM pov } )
 
         Expired _ _ ->
             -- Any API failure on Expired. Just keep the state.
@@ -1768,11 +1806,11 @@ updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
 
             else if conversationUnavailable err then
                 let
-                    newConvs =
-                        Dict.remove fetchedConvIdStr pov.conversations
+                    newPov =
+                        { pov | conversations = Dict.remove fetchedConvIdStr pov.conversations }
                 in
-                ( tagger { pov | conversations = newConvs }
-                , { yield | persist = True, work = Just Worque.SlackFetch, updateFAM = calculateFAM newConvs }
+                ( tagger newPov
+                , { yield | persist = True, work = Just Worque.SlackFetch, updateFAM = calculateFAM newPov }
                 )
 
             else
@@ -2106,7 +2144,10 @@ isChannel conv =
             False
 
 
-compareByMembersipThenName : Conversation -> Conversation -> Order
+compareByMembersipThenName :
+    { x | name : String, type_ : ConversationType }
+    -> { x | name : String, type_ : ConversationType }
+    -> Order
 compareByMembersipThenName conv1 conv2 =
     if conv1 == conv2 then
         EQ
@@ -2169,7 +2210,7 @@ compareByMembersipThenName conv1 conv2 =
                 GT
 
 
-getConversationIdStr : Conversation -> ConversationIdStr
+getConversationIdStr : { x | id : ConversationId } -> ConversationIdStr
 getConversationIdStr conv =
     let
         (ConversationId convIdStr) =
