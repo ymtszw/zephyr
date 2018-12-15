@@ -665,7 +665,13 @@ slackSuite =
             Slack.botDecoder
         , let
             c name type_ =
-                { id = Slack.dummyConversationId, name = name, lastRead = Nothing, type_ = type_, fetchStatus = Available }
+                { id = Slack.dummyConversationId
+                , name = name
+                , isArchived = False
+                , lastRead = Nothing
+                , type_ = type_
+                , fetchStatus = Available
+                }
           in
           describe "compareByMembersipThenName"
             [ testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel True)) GT
