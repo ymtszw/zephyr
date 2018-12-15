@@ -1,6 +1,6 @@
 module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, TeamIcon
-    , Conversation, ConversationType(..), ConversationCache, FAM
+    , Conversation, ConversationType(..), ConversationCache, Message, Attachment, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
@@ -15,7 +15,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team, TeamIcon
-@docs Conversation, ConversationType, ConversationCache, FAM
+@docs Conversation, ConversationType, ConversationCache, Message, Attachment, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
@@ -268,7 +268,7 @@ type alias Message =
     , authorId : AuthorId -- Zephyr local; from `user` or `bot_id`
     , username : Maybe String -- Manually selected username for a particular Message. Should supercede names in User or Bot
     , files : List SFile
-    , attachements : List Attachment
+    , attachments : List Attachment
     }
 
 
@@ -586,7 +586,7 @@ encodeMessage m =
         , ( "authorId", encodeAuthorId m.authorId )
         , ( "username", E.maybe E.string m.username )
         , ( "files", E.list encodeSFile m.files )
-        , ( "attachements", E.list encodeAttachment m.attachements )
+        , ( "attachments", E.list encodeAttachment m.attachments )
         ]
 
 
@@ -1011,7 +1011,7 @@ messageDecoder =
         authorIdDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.list sFileDecoder) [])
-        (D.optionField "attachements" (D.list attachmentDecoder) [])
+        (D.optionField "attachments" (D.list attachmentDecoder) [])
 
 
 tsDecoder : Decoder Ts
@@ -1215,7 +1215,7 @@ famDecoder =
 
 
 type alias Yield =
-    Producer.Yield () FAM Msg
+    Producer.Yield Message FAM Msg
 
 
 reload : SlackRegistry -> ( SlackRegistry, Yield )
@@ -1299,7 +1299,7 @@ type Msg
 
 
 type alias FetchSuccess =
-    { conversationId : ConversationIdStr, messages : List (), posix : Posix }
+    { conversationId : ConversationIdStr, messages : List Message, posix : Posix }
 
 
 update : Msg -> SlackRegistry -> ( SlackRegistry, Yield )
@@ -1539,7 +1539,7 @@ subscribeImpl tagger convIdStr pov =
 
 type alias ConvYield =
     { persist : Bool
-    , items : List () -- Must be sorted from oldest to latest (Broker-ready)
+    , items : List Message -- Must be sorted from oldest to latest (Broker-ready)
     , updateFAM : Bool
     }
 
@@ -1715,14 +1715,14 @@ handleIFetched { conversationId, messages, posix } slack =
             pure slack
 
 
-updatePovOnFetchSuccess : (POV -> Slack) -> ConversationIdStr -> List () -> Posix -> POV -> ( Slack, Yield )
+updatePovOnFetchSuccess : (POV -> Slack) -> ConversationIdStr -> List Message -> Posix -> POV -> ( Slack, Yield )
 updatePovOnFetchSuccess tagger convIdStr ms posix pov =
     withConversation tagger convIdStr pov (Just Worque.SlackFetch) <|
         case ms of
             [] ->
                 updateFetchStatus (FetchStatus.Miss posix)
 
-            () :: _ ->
+            m :: _ ->
                 \conv ->
                     let
                         ( newConv, cy ) =
@@ -2080,7 +2080,7 @@ scrollableDecoder dec =
             ]
 
 
-conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn () -> Task RpcFailure (List ())
+conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn Message -> Task RpcFailure (List Message)
 conversationHistoryTask token convIdStr lrMaybe cursorIn =
     let
         baseParams =
@@ -2088,8 +2088,7 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
             [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
-            -- TODO use messageDecoder when ready
-            D.field "messages" (D.leakyList (D.succeed ()))
+            D.field "messages" (D.leakyList messageDecoder)
 
         url =
             endpoint conversationHistoryPath Nothing

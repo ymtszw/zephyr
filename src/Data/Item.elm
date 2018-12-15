@@ -2,17 +2,19 @@ module Data.Item exposing (Item(..), decoder, encode, isImageFile, isMovieFile, 
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Element.Font
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import StringExtra
 import Url
 
 
 type Item
     = DiscordItem Discord.Message
-    | SlackItem ()
+    | SlackItem Slack.Message
 
 
 encode : Item -> E.Value
@@ -29,7 +31,7 @@ decoder : Decoder Item
 decoder =
     D.oneOf
         [ D.tagged "DiscordItem" DiscordItem Discord.messageDecoder
-        , D.tag "SlackItem" (SlackItem ())
+        , D.tagged "SlackItem" SlackItem Slack.messageDecoder
         ]
 
 
@@ -58,12 +60,14 @@ matchAtom item filterAtom =
             -- Short-circuit for empty query; this CAN be invalidated on input, but we are slacking
             True
 
-        ( ByMessage text, DiscordItem { content, embeds } ) ->
-            String.contains text content || List.any (discordEmbedHasText text) embeds
+        ( ByMessage text, DiscordItem { content, author, embeds } ) ->
+            StringExtra.containsCaseIgnored text content
+                || discordAuthorHasText text author
+                || List.any (discordEmbedHasText text) embeds
 
-        ( ByMessage text, SlackItem _ ) ->
-            -- TODO
-            False
+        ( ByMessage text, SlackItem m ) ->
+            StringExtra.containsCaseIgnored text m.text
+                || List.any (slackAttachmentHasText text) m.attachments
 
         ( ByMedia filter, DiscordItem discordMessage ) ->
             discordMessageHasMedia filter discordMessage
@@ -76,24 +80,31 @@ matchAtom item filterAtom =
             False
 
 
+discordAuthorHasText : String -> Discord.Author -> Bool
+discordAuthorHasText text author =
+    case author of
+        Discord.UserAuthor user ->
+            StringExtra.containsCaseIgnored text user.username
+
+        Discord.WebhookAuthor user ->
+            StringExtra.containsCaseIgnored text user.username
+
+
 discordEmbedHasText : String -> Discord.Embed -> Bool
 discordEmbedHasText text embed =
-    case embed.title of
-        Just title ->
-            String.contains text title
+    checkMaybeField text embed.title
+        || checkMaybeField text embed.description
+        || checkMaybeField text (Maybe.map .name embed.author)
+
+
+checkMaybeField : String -> Maybe String -> Bool
+checkMaybeField text stringMaybe =
+    case stringMaybe of
+        Just string ->
+            StringExtra.containsCaseIgnored text string
 
         Nothing ->
-            case embed.description of
-                Just desc ->
-                    String.contains text desc
-
-                Nothing ->
-                    case embed.url of
-                        Just url ->
-                            String.contains text (Url.toString url)
-
-                        Nothing ->
-                            False
+            False
 
 
 discordMessageHasMedia : MediaFilter -> Discord.Message -> Bool
@@ -156,3 +167,12 @@ discordEmbedHasMovie embed =
 
         Nothing ->
             False
+
+
+slackAttachmentHasText : String -> Slack.Attachment -> Bool
+slackAttachmentHasText text a =
+    checkMaybeField text a.pretext
+        || checkMaybeField text (Maybe.map .name a.author)
+        || checkMaybeField text (Maybe.map .name a.title)
+        || StringExtra.containsCaseIgnored text a.text
+        || StringExtra.containsCaseIgnored text a.fallback
