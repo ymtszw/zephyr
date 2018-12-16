@@ -1,4 +1,4 @@
-module Data.Item exposing (Item(..), decoder, encode, isImageFile, isMovieFile, matchFilter)
+module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsMovie, matchFilter)
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
@@ -50,7 +50,7 @@ matchAtom item filterAtom =
             False
 
         ( OfSlackConversation cId, SlackItem _ ) ->
-            -- TODO
+            -- TODO; Slack.Message require information to determine its belonging conversation at low cost
             False
 
         ( OfSlackConversation _, _ ) ->
@@ -72,9 +72,8 @@ matchAtom item filterAtom =
         ( ByMedia filter, DiscordItem discordMessage ) ->
             discordMessageHasMedia filter discordMessage
 
-        ( ByMedia filter, SlackItem _ ) ->
-            -- TODO
-            False
+        ( ByMedia filter, SlackItem m ) ->
+            slackMessageHasMedia filter m
 
         ( RemoveMe, _ ) ->
             False
@@ -111,19 +110,19 @@ discordMessageHasMedia : MediaFilter -> Discord.Message -> Bool
 discordMessageHasMedia mediaFilter dm =
     case mediaFilter of
         HasImage ->
-            List.any (\a -> isImageFile a.url.path) dm.attachments || List.any discordEmbedHasImage dm.embeds
+            List.any (\a -> extIsImage a.url.path) dm.attachments || List.any discordEmbedHasImage dm.embeds
 
         HasMovie ->
-            List.any (\a -> isMovieFile a.url.path) dm.attachments || List.any discordEmbedHasMovie dm.embeds
+            List.any (\a -> extIsMovie a.url.path) dm.attachments || List.any discordEmbedHasMovie dm.embeds
 
         HasNone ->
             not <|
-                List.any (\a -> isImageFile a.url.path || isMovieFile a.url.path) dm.attachments
+                List.any (\a -> extIsImage a.url.path || extIsMovie a.url.path) dm.attachments
                     || List.any (\e -> discordEmbedHasImage e || discordEmbedHasMovie e) dm.embeds
 
 
-isImageFile : String -> Bool
-isImageFile filename =
+extIsImage : String -> Bool
+extIsImage filename =
     let
         lower =
             String.toLower filename
@@ -134,8 +133,8 @@ isImageFile filename =
         || String.endsWith ".webp" lower
 
 
-isMovieFile : String -> Bool
-isMovieFile filename =
+extIsMovie : String -> Bool
+extIsMovie filename =
     let
         lower =
             String.toLower filename
@@ -176,3 +175,39 @@ slackAttachmentHasText text a =
         || checkMaybeField text (Maybe.map .name a.title)
         || StringExtra.containsCaseIgnored text a.text
         || StringExtra.containsCaseIgnored text a.fallback
+
+
+slackMessageHasMedia : MediaFilter -> Slack.Message -> Bool
+slackMessageHasMedia mediaFilter m =
+    case mediaFilter of
+        HasImage ->
+            List.any (.mimetype >> mimeIsImage) m.files || List.any slackAttachmentHasImage m.attachments
+
+        HasMovie ->
+            -- TODO Slack also has video_* fields but not yet supported
+            List.any (.mimetype >> mimeIsMovie) m.files
+
+        HasNone ->
+            not <|
+                List.any (\f -> mimeIsImage f.mimetype || mimeIsMovie f.mimetype) m.files
+                    || List.any slackAttachmentHasImage m.attachments
+
+
+mimeIsImage : String -> Bool
+mimeIsImage mime =
+    String.startsWith "image/" mime
+
+
+mimeIsMovie : String -> Bool
+mimeIsMovie mime =
+    String.startsWith "video/" mime
+
+
+slackAttachmentHasImage : Slack.Attachment -> Bool
+slackAttachmentHasImage a =
+    case a.imageUrl of
+        Just _ ->
+            True
+
+        Nothing ->
+            False

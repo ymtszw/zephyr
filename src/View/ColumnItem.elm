@@ -3,7 +3,7 @@ module View.ColumnItem exposing (columnItemKeyEl)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..), isImageFile, isMovieFile)
+import Data.Item exposing (Item(..), extIsImage, extIsMovie)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -390,7 +390,7 @@ maxThumbnailSize =
 
 discordAttachmentEl : Discord.Attachment -> Element Msg
 discordAttachmentEl attachment =
-    if isImageFile attachment.proxyUrl.path then
+    if extIsImage attachment.proxyUrl.path then
         newTabLink []
             { url = Url.toString attachment.url
             , label =
@@ -398,7 +398,7 @@ discordAttachmentEl attachment =
                     addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
             }
 
-    else if isMovieFile attachment.proxyUrl.path then
+    else if extIsMovie attachment.proxyUrl.path then
         let
             posterUrl =
                 attachment.proxyUrl
@@ -458,8 +458,8 @@ downloadIconSize =
     20
 
 
-slackMessageEl : Time.Zone -> ( (), Offset ) -> List ( (), Offset ) -> Element Msg
-slackMessageEl tz ( discordMessage, _ ) closeMessages =
+slackMessageEl : Time.Zone -> ( Slack.Message, Offset ) -> List ( Slack.Message, Offset ) -> Element Msg
+slackMessageEl tz ( m, _ ) closeMessages =
     column [ width fill, spacing 5, alignTop ]
         [ --TODO
           text "Slack message"
