@@ -1,4 +1,4 @@
-module Extra exposing (doAfter, map, pure, setTimeout)
+module Extra exposing (doAfter, doT, map, pure, setTimeout)
 
 {-| Basics.Extra. Provides frequently used idiomatic helper.
 -}
@@ -46,3 +46,8 @@ doAfter timeout toMsg taskOnTimeout =
         Time.now
         taskOnTimeout
         |> Task.attempt toMsg
+
+
+doT : Task x a -> (a -> Task x b) -> Task x b
+doT t1 toT2 =
+    Task.andThen toT2 t1

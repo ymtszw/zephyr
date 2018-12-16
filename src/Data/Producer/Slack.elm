@@ -31,6 +31,7 @@ import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
 import Element
+import Extra exposing (doT)
 import Http
 import HttpClient exposing (noAuth)
 import Json.Decode as D exposing (Decoder)
@@ -55,6 +56,10 @@ then fetch User and Team using `users.info` and `team.info`, populating `NewSess
 Since Slack APIs mostly return "not joined" data,
 we have to maintain User dictionary in order to show their info.
 We should occasionally (lazily) update it.
+
+There are another message posting entities: Bots.
+Unlike Users, Bots does not have listing API, so we have to collect their info with multiple requests.
+Thankfully, Bots aren't many compared to Users, so it SHOULD be OK.
 
 -}
 type Slack
@@ -1305,7 +1310,11 @@ type Msg
 
 
 type alias FetchSuccess =
-    { conversationId : ConversationIdStr, messages : List Message, posix : Posix }
+    { conversationId : ConversationIdStr
+    , messages : List Message
+    , bots : Dict BotIdStr Bot
+    , posix : Posix
+    }
 
 
 update : Msg -> SlackRegistry -> ( SlackRegistry, Yield )
@@ -1650,12 +1659,12 @@ handleFetchImpl posix conv slack =
     case slack of
         Hydrated t pov ->
             ( Hydrated t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
+            , { yield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
             )
 
         Rehydrating t pov ->
             ( Rehydrating t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
+            , { yield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
             )
 
         _ ->
@@ -1705,39 +1714,37 @@ recusrivelyFindConvToFetch posix teamIdStr conversations acc =
 
 
 handleIFetched : FetchSuccess -> Slack -> ( Slack, Yield )
-handleIFetched { conversationId, messages, posix } slack =
+handleIFetched { conversationId, messages, bots, posix } slack =
+    let
+        handleImpl tagger pov =
+            withConversation tagger conversationId { pov | bots = Dict.union bots pov.bots } (Just Worque.SlackFetch) <|
+                case messages of
+                    [] ->
+                        updateFetchStatus (FetchStatus.Miss posix)
+
+                    m :: _ ->
+                        let
+                            updateConv ( conv, cy ) =
+                                -- Expects messages to be sorted from latest to oldest
+                                -- TODO update lastRead of conv
+                                -- TODO return `List.reverse ms` when other implementations are ready
+                                ( conv, { cy | persist = True, items = [] } )
+                        in
+                        updateFetchStatus (FetchStatus.Hit posix) >> updateConv
+    in
     case slack of
         Hydrated t pov ->
-            updatePovOnFetchSuccess (Hydrated t) conversationId messages posix pov
+            handleImpl (Hydrated t) pov
 
         Rehydrating t pov ->
-            updatePovOnFetchSuccess (Rehydrating t) conversationId messages posix pov
+            handleImpl (Rehydrating t) pov
 
         Expired t pov ->
-            updatePovOnFetchSuccess (Expired t) conversationId messages posix pov
+            handleImpl (Expired t) pov
 
         _ ->
             -- Should not happen
             pure slack
-
-
-updatePovOnFetchSuccess : (POV -> Slack) -> ConversationIdStr -> List Message -> Posix -> POV -> ( Slack, Yield )
-updatePovOnFetchSuccess tagger convIdStr ms posix pov =
-    withConversation tagger convIdStr pov (Just Worque.SlackFetch) <|
-        case ms of
-            [] ->
-                updateFetchStatus (FetchStatus.Miss posix)
-
-            m :: _ ->
-                \conv ->
-                    let
-                        ( newConv, cy ) =
-                            updateFetchStatus (FetchStatus.Hit posix) conv
-                    in
-                    -- Expects ms to be sorted from latest to oldest. Reverse it for post-processing.
-                    -- TODO update lastRead of newConv
-                    -- TODO return `List.reverse ms` when Message type is ready
-                    ( newConv, { cy | persist = True, items = [] } )
 
 
 handleITokenInput : String -> Slack -> ( Slack, Yield )
@@ -1944,15 +1951,10 @@ rpcTry succ fail task =
 
 identify : String -> Cmd Msg
 identify token =
-    let
-        identifyTask userId =
-            Task.map2 Identify
-                (userInfoTask token userId)
-                (teamInfoTask token)
-    in
-    authTestTask token
-        |> Task.andThen identifyTask
-        |> rpcTry identity UAPIFailure
+    rpcTry identity UAPIFailure <|
+        doT (authTestTask token) <|
+            \userId ->
+                Task.map2 Identify (userInfoTask token userId) (teamInfoTask token)
 
 
 {-| Combines identify and hydrate, used on Revisit or Expired. Not requesting to auth.test.
@@ -1962,9 +1964,9 @@ Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload
 -}
 revisit : String -> UserId -> TeamId -> Cmd Msg
 revisit token (UserId userIdStr) (TeamId teamIdStr) =
-    userListTask token
-        |> Task.andThen
-            (\users ->
+    rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing) <|
+        doT (userListTask token) <|
+            \users ->
                 case Dict.get userIdStr users of
                     Just user ->
                         Task.map2 (\team convs -> initPov token user team convs users)
@@ -1974,8 +1976,6 @@ revisit token (UserId userIdStr) (TeamId teamIdStr) =
                     Nothing ->
                         -- Should never happen; requesting user must be included in users
                         Task.fail (RpcError ("Cannot retrieve User: " ++ userIdStr))
-            )
-        |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing)
 
 
 authTestTask : String -> Task RpcFailure UserId
@@ -1998,12 +1998,10 @@ teamInfoTask token =
 
 hydrate : String -> TeamId -> Cmd Msg
 hydrate token (TeamId teamIdStr) =
-    userListTask token
-        |> Task.andThen
-            (\users ->
+    rpcTry identity (IAPIFailure teamIdStr Nothing) <|
+        doT (userListTask token) <|
+            \users ->
                 Task.map (IHydrate teamIdStr users) (conversationListTask token users)
-            )
-        |> rpcTry identity (IAPIFailure teamIdStr Nothing)
 
 
 conversationListTask : String -> Dict UserIdStr User -> Task RpcFailure (Dict ConversationIdStr Conversation)
@@ -2028,17 +2026,18 @@ userListTask token =
         |> Task.map (List.foldl (\u accDict -> Dict.insert (toStr u.id) u accDict) Dict.empty)
 
 
-fetchConversationMessages : String -> TeamId -> Conversation -> Cmd Msg
-fetchConversationMessages token (TeamId teamIdStr) conv =
+fetchMessagesAndBots : String -> TeamId -> Conversation -> Cmd Msg
+fetchMessagesAndBots token (TeamId teamIdStr) conv =
     let
         (ConversationId convIdStr) =
             conv.id
-
-        combiner messages posix =
-            { conversationId = convIdStr, messages = messages, posix = posix }
     in
-    Task.map2 combiner (conversationHistoryTask token convIdStr conv.lastRead Initial) Time.now
-        |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr))
+    rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr)) <|
+        doT (conversationHistoryTask token convIdStr conv.lastRead Initial) <|
+            \messages ->
+                doT (collectBotsTask token messages) <|
+                    \bots ->
+                        Task.map (FetchSuccess convIdStr messages bots) Time.now
 
 
 type CursorIn a
@@ -2109,9 +2108,40 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
             rpcPostFormTask url token baseParams baseDecoder
 
 
-conversationHistoryPath : String
-conversationHistoryPath =
-    "/conversations.history"
+botInfoTask : String -> BotId -> Task RpcFailure ( BotIdStr, Bot )
+botInfoTask token (BotId botIdStr) =
+    rpcPostFormTask (endpoint "/bots.info" Nothing) token [ ( "bot", botIdStr ) ] <|
+        D.map (Tuple.pair botIdStr) (D.field "bot" botDecoder)
+
+
+collectBotsTask : String -> List Message -> Task RpcFailure (Dict BotIdStr Bot)
+collectBotsTask token messages =
+    case collectBotIds messages of
+        [] ->
+            Task.succeed Dict.empty
+
+        botIds ->
+            List.map (botInfoTask token) botIds
+                |> Task.sequence
+                |> Task.map Dict.fromList
+
+
+collectBotIds : List Message -> List BotId
+collectBotIds messages =
+    let
+        reducer m acc =
+            case m.authorId of
+                UAuthorId _ ->
+                    acc
+
+                BAuthorId botId ->
+                    if List.member botId acc then
+                        acc
+
+                    else
+                        botId :: acc
+    in
+    List.foldl reducer [] messages
 
 
 
