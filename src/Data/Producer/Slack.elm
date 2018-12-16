@@ -1157,17 +1157,11 @@ attachmentAuthorDecoder =
                 (D.field "link" (D.maybe D.url))
                 (D.field "icon" (D.maybe D.url))
 
-        -- From Slack API
+        -- From Slack API; in official app, author and service are both presented but it felt kind of redundant
         , D.map3 AttachmentAuthor
-            (D.field "author_name" D.string)
-            (D.maybeField "author_link" D.url)
-            (D.maybeField "author_icon" D.url)
-
-        -- Deprecated or certain app only?
-        , D.map3 AttachmentAuthor
-            (D.field "service_name" D.string)
-            (D.maybeField "service_url" D.url)
-            (D.maybeField "service_icon" D.url)
+            (D.oneOf [ D.field "author_name" D.string, D.field "service_name" D.string ])
+            (D.oneOf [ D.maybeField "author_link" D.url, D.maybeField "service_url" D.url ])
+            (D.oneOf [ D.maybeField "author_icon" D.url, D.maybeField "service_icon" D.url ])
         ]
 
 
@@ -1183,7 +1177,7 @@ attachmentTitleDecoder =
 
 
 {-| Diverge from messageDecoder; micro-optimization for reducing unnecessary evaluation paths,
-and also preparation for generalizing Message into common data structure.
+and also preparation for generalizing Message into common data structure (possibly).
 -}
 apiMessageDecoder : ConversationIdStr -> Decoder Message
 apiMessageDecoder convIdStr =
@@ -2103,7 +2097,7 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
             D.field "messages" (D.leakyList (apiMessageDecoder convIdStr))
 
         url =
-            endpoint conversationHistoryPath Nothing
+            endpoint "/conversations.history" Nothing
     in
     case lrMaybe of
         Just (LastRead (Ts lastReadTs _)) ->

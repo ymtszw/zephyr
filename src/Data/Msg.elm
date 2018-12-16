@@ -382,13 +382,12 @@ producerMsgToEntry pMsg =
                         [ teamIdStr
                         , succ.conversationId
                         , case succ.messages of
-                            -- TODO proper encoding
                             _ :: _ :: _ :: _ :: _ :: _ ->
                                 -- 5 or more
-                                E.encode 2 (E.list (always (E.string "TODO")) (List.take 5 succ.messages)) ++ "\n(truncated)"
+                                E.encode 2 (E.list Slack.encodeMessage (List.take 5 succ.messages)) ++ "\n(truncated)"
 
                             less ->
-                                E.encode 2 (E.list (always (E.string "TODO")) less)
+                                E.encode 2 (E.list Slack.encodeMessage less)
                         , Iso8601.fromTime succ.posix
                         ]
 

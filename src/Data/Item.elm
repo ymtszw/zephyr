@@ -23,8 +23,8 @@ encode item =
         DiscordItem discordMessage ->
             E.tagged "DiscordItem" (Discord.encodeMessage discordMessage)
 
-        SlackItem _ ->
-            E.tag "SlackItem"
+        SlackItem slackMessage ->
+            E.tagged "SlackItem" (Slack.encodeMessage slackMessage)
 
 
 decoder : Decoder Item
