@@ -6,7 +6,7 @@ module View.Parts exposing
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , filtersToIconEl, filtersToTextEl, fetchStatusTextEl
-    , discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackConversationEl
+    , discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackLogoClippedEl, slackConversationEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
     , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
     , spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
@@ -29,7 +29,7 @@ module View.Parts exposing
 @docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
 @docs filtersToIconEl, filtersToTextEl, fetchStatusTextEl
-@docs discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackConversationEl
+@docs discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackLogoClippedEl, slackConversationEl
 
 
 ## Constants
@@ -166,7 +166,6 @@ squareIconOrHeadEl userAttrs { size, name, url } =
         baseAttrs =
             [ width (px size)
             , height (px size)
-            , alignTop
             , clip
             , BG.color iconBackground
             , BD.rounded (iconRounding size)
@@ -184,7 +183,7 @@ squareIconOrHeadEl userAttrs { size, name, url } =
     el (baseAttrs ++ userAttrs) <|
         case url of
             Just url_ ->
-                image [ width (px size), height (px size) ] { src = url_, description = name }
+                image [ width (px size), height (px size), centerX, centerY ] { src = url_, description = name }
 
             Nothing ->
                 el [ centerX, centerY ] (text (String.left 1 name))
@@ -196,27 +195,28 @@ iconBackground =
 
 
 iconRounding : Int -> Int
-iconRounding badgeSize =
-    max 2 (badgeSize // 10)
+iconRounding size =
+    max 2 (size // 10)
 
 
 iconWithBadgeEl :
     List (Attribute msg)
     ->
         { size : Int
+        , theme : ColorTheme
         , badge : Maybe (Int -> Element msg)
         , fallback : String
         , url : Maybe String
         }
     -> Element msg
-iconWithBadgeEl userAttrs { size, badge, fallback, url } =
+iconWithBadgeEl userAttrs opts =
     let
         bottomRightBadgeAttrs =
-            case badge of
+            case opts.badge of
                 Just badgeEl ->
                     let
                         badgeSize =
-                            size // 3
+                            opts.size // 3
                     in
                     [ padding innerIconPadding
                     , inFront <|
@@ -233,11 +233,11 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
                     [ alignTop ]
 
         innerIconPadding =
-            max 1 (size // 20)
+            max 1 (opts.size // 20)
     in
     el (bottomRightBadgeAttrs ++ userAttrs) <|
-        squareIconOrHeadEl []
-            { size = size - (innerIconPadding * 2), name = fallback, url = url }
+        squareIconOrHeadEl [ BG.color opts.theme.prim ]
+            { size = opts.size - (innerIconPadding * 2), name = opts.fallback, url = opts.url }
 
 
 textInputEl :
@@ -846,6 +846,7 @@ discordChannelIconEl attrs size c =
         Just guild ->
             iconWithBadgeEl attrs
                 { size = size
+                , theme = oneDark
                 , badge = Just (lazy discordBadgeEl)
                 , fallback = c.name
                 , url = Maybe.map (Discord.imageUrlNoFallback (Just size)) guild.icon
@@ -854,6 +855,7 @@ discordChannelIconEl attrs size c =
         Nothing ->
             iconWithBadgeEl attrs
                 { size = size
+                , theme = oneDark
                 , badge = Nothing
                 , fallback = c.name
                 , url = Just (Discord.defaultIconUrl (Just size))
@@ -874,20 +876,11 @@ slackConversationIconEl : List (Attribute msg) -> Int -> Slack.ConversationCache
 slackConversationIconEl attrs size c =
     iconWithBadgeEl attrs
         { size = size
-        , badge = Just (lazy slackBadgeEl)
-        , fallback = c.name
+        , theme = aubergine
+        , badge = Just (lazy2 slackLogoClippedEl [])
+        , fallback = c.team.name
         , url = chooseSlackTeamIconUrl size c.team.icon
         }
-
-
-slackBadgeEl : Int -> Element msg
-slackBadgeEl badgeSize =
-    el
-        [ width (px badgeSize)
-        , height (px badgeSize)
-        , BG.uncropped (Slack.defaultIconUrl (Just badgeSize))
-        ]
-        none
 
 
 filtersToTextEl :
@@ -982,35 +975,71 @@ discordGuildIconEl attrs size guild =
 
 discordChannelEl : List (Attribute msg) -> { size : Int, channel : { x | name : String, guildMaybe : Maybe Discord.Guild } } -> Element msg
 discordChannelEl attrs { size, channel } =
-    row ([ spacing discordGuildIconSpacingX ] ++ attrs)
+    row ([ spacing channelTextSpacingX ] ++ attrs)
         [ channel.guildMaybe |> Maybe.map (discordGuildIconEl [] size) |> Maybe.withDefault none
-        , text ("#" ++ channel.name)
+        , text "#"
+        , text channel.name
         ]
 
 
-discordGuildIconSpacingX : Int
-discordGuildIconSpacingX =
+channelTextSpacingX : Int
+channelTextSpacingX =
     2
+
+
+slackLogoClippedEl : List (Attribute msg) -> Int -> Element msg
+slackLogoClippedEl attrs targetSize =
+    -- Slack logo returns with transparent outer frame, so we must clip that
+    let
+        slackIconSize =
+            (targetSize * 7) // 5
+
+        translate =
+            -- Negative value
+            String.fromFloat (toFloat (targetSize - slackIconSize) / 2)
+    in
+    el
+        [ width (px targetSize)
+        , height (px targetSize)
+        , BD.rounded (iconRounding targetSize)
+        , clip
+        , behindContent <|
+            image [ style "transform" ("translate(" ++ translate ++ "px," ++ translate ++ "px)") ]
+                { src = Slack.defaultIconUrl (Just slackIconSize)
+                , description = "Slack"
+                }
+        ]
+        none
 
 
 slackConversationEl :
     List (Attribute msg)
-    -> { size : Int, conversation : { x | name : String, type_ : Slack.ConversationType } }
+    ->
+        { fontSize : Int
+        , conversation : { x | name : String, type_ : Slack.ConversationType }
+        , team : Maybe ( Slack.Team, Int )
+        }
     -> Element msg
 slackConversationEl attrs opts =
-    row ([ spacing spacingUnit ] ++ attrs) <|
-        [ case opts.conversation.type_ of
+    row ([ spacing channelTextSpacingX, Font.size opts.fontSize ] ++ attrs) <|
+        [ case opts.team of
+            Just ( team, size ) ->
+                slackTeamIconEl [] size team
+
+            Nothing ->
+                none
+        , case opts.conversation.type_ of
             Slack.PublicChannel _ ->
-                text "#"
+                el [ width (px opts.fontSize), Font.center ] (text "#")
 
             Slack.PrivateChannel ->
-                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.lock }
+                octiconEl [] { size = opts.fontSize, color = slackConvIconColor, shape = Octicons.lock }
 
             Slack.IM ->
-                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.person }
+                octiconEl [] { size = opts.fontSize, color = slackConvIconColor, shape = Octicons.person }
 
             Slack.MPIM ->
-                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.organization }
+                octiconEl [] { size = opts.fontSize, color = slackConvIconColor, shape = Octicons.organization }
         , text opts.conversation.name
         ]
 

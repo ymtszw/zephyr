@@ -285,7 +285,7 @@ subbedConversationRowKeyEl : Time.Zone -> String -> ( String, Conversation ) -> 
 subbedConversationRowKeyEl tz teamIdStr ( convIdStr, conv ) =
     Tuple.pair convIdStr <|
         row [ width fill, spacing cellSpacing, clipX ]
-            [ slackConversationEl [ width fill ] { size = smallFontSize, conversation = conv }
+            [ slackConversationEl [ width fill ] { fontSize = smallFontSize, conversation = conv, team = Nothing }
             , el [ width fill ] <| fetchStatusTextEl tz <| conv.fetchStatus
             , row [ width fill, spacing spacingUnit ]
                 [ unsubscribeButtonEl teamIdStr conv
@@ -334,7 +334,7 @@ subscribeRowKeyEl ss teamIdStr users convs =
         , selectedOption = Nothing
         , filterMatch = Just (\f conv -> StringExtra.containsCaseIgnored f conv.name)
         , options = convs
-        , optionEl = \c -> slackConversationEl [] { size = smallFontSize, conversation = c }
+        , optionEl = \c -> slackConversationEl [] { fontSize = smallFontSize, conversation = c, team = Nothing }
         }
     , el [ width (fillPortion 2) ] none
     ]

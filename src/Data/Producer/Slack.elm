@@ -165,6 +165,8 @@ Members of private conversations must be retrieved from conversations.members AP
 We do not use `last_read` returned from APIs directly,
 rather we locally record timestamps of actually retrieved messages.
 
+This object COULD include Team, but deliberately excludng it for easier testing.
+
 TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
 
 -}

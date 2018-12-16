@@ -465,7 +465,7 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
             in
             filterAtomVariableSelectEl (OfSlackConversation << Slack.getConversationIdStr) <|
                 favsOptions selectedMaybe (Just slackConvCacheFilter) options <|
-                    \c -> slackConversationEl [] { size = favsIconSize, conversation = c }
+                    \c -> slackConversationEl [] { fontSize = baseFontSize, conversation = c, team = Just ( c.team, favsIconSize ) }
 
         ByMessage query ->
             filterAtomVariableTextInputEl ByMessage columnId fi ai query

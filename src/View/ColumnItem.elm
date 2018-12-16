@@ -1,7 +1,7 @@
 module View.ColumnItem exposing (columnItemKeyEl)
 
 import Broker exposing (Offset)
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (aubergine, oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
 import Data.Item exposing (Item(..), extIsImage, extIsVideo)
 import Data.Msg exposing (Msg(..))
@@ -76,6 +76,7 @@ itemAvatarEl item =
                 Discord.UserAuthor user ->
                     iconWithBadgeEl [ alignTop ]
                         { badge = Nothing
+                        , theme = oneDark
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
                         , size = columnItemAvatarSize
@@ -84,14 +85,17 @@ itemAvatarEl item =
                 Discord.WebhookAuthor user ->
                     iconWithBadgeEl [ alignTop ]
                         { badge = Just botIconEl
+                        , theme = oneDark
                         , fallback = user.username
                         , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
                         , size = columnItemAvatarSize
                         }
 
         Product _ (SlackItem _) ->
+            -- TODO author avatar
             iconWithBadgeEl [ alignTop ]
                 { badge = Nothing
+                , theme = aubergine
                 , fallback = "Slack"
                 , url = Just <| Slack.defaultIconUrl (Just columnItemAvatarSize)
                 , size = columnItemAvatarSize
