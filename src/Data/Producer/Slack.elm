@@ -1534,22 +1534,21 @@ handleIRevisit pov slack =
 
 handleISubscribe : ConversationIdStr -> Slack -> ( Slack, Yield )
 handleISubscribe convIdStr slack =
+    let
+        subscribeImpl tagger pov =
+            withConversation tagger convIdStr pov Nothing <|
+                updateFetchStatus FetchStatus.Sub
+    in
     case slack of
         Hydrated token pov ->
-            subscribeImpl (Hydrated token) convIdStr pov
+            subscribeImpl (Hydrated token) pov
 
         Rehydrating token pov ->
-            subscribeImpl (Hydrated token) convIdStr pov
+            subscribeImpl (Hydrated token) pov
 
         _ ->
             -- Otherwise not allowed (invluding Revisit)
             pure slack
-
-
-subscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
-subscribeImpl tagger convIdStr pov =
-    withConversation tagger convIdStr pov Nothing <|
-        updateFetchStatus FetchStatus.Sub
 
 
 type alias ConvYield =
