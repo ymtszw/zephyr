@@ -1,4 +1,4 @@
-module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsMovie, matchFilter)
+module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, matchFilter)
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
@@ -112,12 +112,12 @@ discordMessageHasMedia mediaFilter dm =
         HasImage ->
             List.any (\a -> extIsImage a.url.path) dm.attachments || List.any discordEmbedHasImage dm.embeds
 
-        HasMovie ->
-            List.any (\a -> extIsMovie a.url.path) dm.attachments || List.any discordEmbedHasMovie dm.embeds
+        HasVideo ->
+            List.any (\a -> extIsVideo a.url.path) dm.attachments || List.any discordEmbedHasMovie dm.embeds
 
         HasNone ->
             not <|
-                List.any (\a -> extIsImage a.url.path || extIsMovie a.url.path) dm.attachments
+                List.any (\a -> extIsImage a.url.path || extIsVideo a.url.path) dm.attachments
                     || List.any (\e -> discordEmbedHasImage e || discordEmbedHasMovie e) dm.embeds
 
 
@@ -133,8 +133,8 @@ extIsImage filename =
         || String.endsWith ".webp" lower
 
 
-extIsMovie : String -> Bool
-extIsMovie filename =
+extIsVideo : String -> Bool
+extIsVideo filename =
     let
         lower =
             String.toLower filename
@@ -183,7 +183,7 @@ slackMessageHasMedia mediaFilter m =
         HasImage ->
             List.any (.mimetype >> mimeIsImage) m.files || List.any slackAttachmentHasImage m.attachments
 
-        HasMovie ->
+        HasVideo ->
             -- TODO Slack also has video_* fields but not yet supported
             List.any (.mimetype >> mimeIsMovie) m.files
 

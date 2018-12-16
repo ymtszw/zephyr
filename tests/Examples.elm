@@ -504,14 +504,14 @@ filterSuite =
             , testcompareFilterAtom (ByMedia HasImage) (OfSlackConversation "a") GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMessage "a") GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasImage) GT
-            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasMovie) GT
-            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasImage) GT
+            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasVideo) GT
+            , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasImage) GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasImage) EQ
-            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasMovie) EQ
+            , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasVideo) EQ
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasNone) EQ
-            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasMovie) LT
+            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasVideo) LT
             , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasNone) LT
-            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasNone) LT
+            , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasImage) RemoveMe LT
             , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") GT
             , testcompareFilterAtom RemoveMe (OfSlackConversation "a") GT

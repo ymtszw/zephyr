@@ -44,7 +44,7 @@ type FilterAtom
 
 type MediaFilter
     = HasImage
-    | HasMovie
+    | HasVideo
     | HasNone
 
 
@@ -84,8 +84,8 @@ encodeMediaType mediaType =
         HasImage ->
             E.tag "HasImage"
 
-        HasMovie ->
-            E.tag "HasMovie"
+        HasVideo ->
+            E.tag "HasVideo"
 
         HasNone ->
             E.tag "HasNone"
@@ -117,7 +117,13 @@ filterAtomDecoder =
 
 mediaTypeDecoder : Decoder MediaFilter
 mediaTypeDecoder =
-    D.oneOf [ D.tag "HasImage" HasImage, D.tag "HasMovie" HasMovie, D.tag "HasNone" HasNone ]
+    D.oneOf
+        [ D.tag "HasImage" HasImage
+        , D.tag "HasVideo" HasVideo
+        , D.tag "HasNone" HasNone
+        , -- Old formats
+          D.tag "HasMovie" HasVideo
+        ]
 
 
 oldMetadataFilterDecoder : Decoder FilterAtom
@@ -316,8 +322,8 @@ atomToString fa =
         ByMedia HasImage ->
             "Has images"
 
-        ByMedia HasMovie ->
-            "Has movies"
+        ByMedia HasVideo ->
+            "Has videos"
 
         ByMedia HasNone ->
             "Has no media"
@@ -362,28 +368,28 @@ compareFilterAtom fa1 fa2 =
         ( ByMedia HasNone, ByMedia HasImage ) ->
             GT
 
-        ( ByMedia HasNone, ByMedia HasMovie ) ->
+        ( ByMedia HasNone, ByMedia HasVideo ) ->
             GT
 
-        ( ByMedia HasMovie, ByMedia HasImage ) ->
+        ( ByMedia HasVideo, ByMedia HasImage ) ->
             GT
 
         ( ByMedia HasImage, ByMedia HasImage ) ->
             EQ
 
-        ( ByMedia HasMovie, ByMedia HasMovie ) ->
+        ( ByMedia HasVideo, ByMedia HasVideo ) ->
             EQ
 
         ( ByMedia HasNone, ByMedia HasNone ) ->
             EQ
 
-        ( ByMedia HasImage, ByMedia HasMovie ) ->
+        ( ByMedia HasImage, ByMedia HasVideo ) ->
             LT
 
         ( ByMedia HasImage, ByMedia HasNone ) ->
             LT
 
-        ( ByMedia HasMovie, ByMedia HasNone ) ->
+        ( ByMedia HasVideo, ByMedia HasNone ) ->
             LT
 
         ( ByMedia _, _ ) ->

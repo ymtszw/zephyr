@@ -941,7 +941,7 @@ filterAtomTextEl fontSize color fam fa =
         ByMedia HasImage ->
             octiconEl [] { size = fontSize, color = color, shape = Octicons.fileMedia }
 
-        ByMedia HasMovie ->
+        ByMedia HasVideo ->
             octiconEl [] { size = fontSize, color = color, shape = Octicons.deviceCameraVideo }
 
         ByMedia HasNone ->

@@ -3,7 +3,7 @@ module View.ColumnItem exposing (columnItemKeyEl)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..), extIsImage, extIsMovie)
+import Data.Item exposing (Item(..), extIsImage, extIsVideo)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -398,7 +398,7 @@ discordAttachmentEl attachment =
                     addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
             }
 
-    else if extIsMovie attachment.proxyUrl.path then
+    else if extIsVideo attachment.proxyUrl.path then
         let
             posterUrl =
                 attachment.proxyUrl

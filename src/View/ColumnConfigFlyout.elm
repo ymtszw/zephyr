@@ -474,7 +474,7 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
         ByMedia mediaType ->
             let
                 options =
-                    [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ]
+                    [ ( "HasImage", HasImage ), ( "HasVideo", HasVideo ), ( "HasNone", HasNone ) ]
             in
             filterAtomVariableSelectEl ByMedia <|
                 favsOptions (Just mediaType) Nothing options mediaTypeOptionEl
@@ -551,8 +551,8 @@ mediaTypeOptionEl mediaType =
         HasImage ->
             text "Image"
 
-        HasMovie ->
-            text "Movie"
+        HasVideo ->
+            text "Video"
 
         HasNone ->
             text "None"
