@@ -498,7 +498,7 @@ mediaEl media =
         Image url ->
             imageEl "Image" url
 
-        Movie url ->
+        Video url ->
             videoEl Nothing url
 
 

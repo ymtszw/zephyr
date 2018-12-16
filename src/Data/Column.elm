@@ -63,7 +63,7 @@ type ColumnItem
 
 type Media
     = Image Url.Url
-    | Movie Url.Url
+    | Video Url.Url
 
 
 encode : Column -> E.Value
@@ -103,8 +103,8 @@ encodeMedia media =
         Image url ->
             E.tagged "Image" (E.string (Url.toString url))
 
-        Movie url ->
-            E.tagged "Movie" (E.string (Url.toString url))
+        Video url ->
+            E.tagged "Video" (E.string (Url.toString url))
 
 
 decoder : Int -> Decoder ( Column, Cmd Msg )
@@ -175,7 +175,9 @@ mediaDecoder : Decoder Media
 mediaDecoder =
     D.oneOf
         [ D.tagged "Image" Image D.url
-        , D.tagged "Movie" Movie D.url
+        , D.tagged "Video" Video D.url
+        , -- Old formats
+          D.tagged "Movie" Video D.url
         ]
 
 

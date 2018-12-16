@@ -113,12 +113,12 @@ discordMessageHasMedia mediaFilter dm =
             List.any (\a -> extIsImage a.url.path) dm.attachments || List.any discordEmbedHasImage dm.embeds
 
         HasVideo ->
-            List.any (\a -> extIsVideo a.url.path) dm.attachments || List.any discordEmbedHasMovie dm.embeds
+            List.any (\a -> extIsVideo a.url.path) dm.attachments || List.any discordEmbedHasVideo dm.embeds
 
         HasNone ->
             not <|
                 List.any (\a -> extIsImage a.url.path || extIsVideo a.url.path) dm.attachments
-                    || List.any (\e -> discordEmbedHasImage e || discordEmbedHasMovie e) dm.embeds
+                    || List.any (\e -> discordEmbedHasImage e || discordEmbedHasVideo e) dm.embeds
 
 
 extIsImage : String -> Bool
@@ -158,8 +158,8 @@ discordEmbedHasImage embed =
             False
 
 
-discordEmbedHasMovie : Discord.Embed -> Bool
-discordEmbedHasMovie embed =
+discordEmbedHasVideo : Discord.Embed -> Bool
+discordEmbedHasVideo embed =
     case embed.video of
         Just _ ->
             True
@@ -185,11 +185,11 @@ slackMessageHasMedia mediaFilter m =
 
         HasVideo ->
             -- TODO Slack also has video_* fields but not yet supported
-            List.any (.mimetype >> mimeIsMovie) m.files
+            List.any (.mimetype >> mimeIsVideo) m.files
 
         HasNone ->
             not <|
-                List.any (\f -> mimeIsImage f.mimetype || mimeIsMovie f.mimetype) m.files
+                List.any (\f -> mimeIsImage f.mimetype || mimeIsVideo f.mimetype) m.files
                     || List.any slackAttachmentHasImage m.attachments
 
 
@@ -198,8 +198,8 @@ mimeIsImage mime =
     String.startsWith "image/" mime
 
 
-mimeIsMovie : String -> Bool
-mimeIsMovie mime =
+mimeIsVideo : String -> Bool
+mimeIsVideo mime =
     String.startsWith "video/" mime
 
 
