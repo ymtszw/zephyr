@@ -3,7 +3,7 @@ module Data.Producer.Slack exposing
     , Conversation, ConversationType(..), ConversationCache, Message, Attachment, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-    , encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
+    , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
@@ -18,7 +18,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Conversation, ConversationType, ConversationCache, Message, Attachment, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
-@docs encodeBot, botDecoder, encodeMessage, messageDecoder, encodeFam, famDecoder
+@docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
@@ -269,6 +269,7 @@ type alias Message =
     , username : Maybe String -- Manually selected username for a particular Message. Should supercede names in User or Bot
     , files : List SFile
     , attachments : List Attachment
+    , conversation : ConversationIdStr -- Zephyr local; for Filter matching
     }
 
 
@@ -587,6 +588,7 @@ encodeMessage m =
         , ( "username", E.maybe E.string m.username )
         , ( "files", E.list encodeSFile m.files )
         , ( "attachments", E.list encodeAttachment m.attachments )
+        , ( "conversation", E.string m.conversation )
         ]
 
 
@@ -1005,31 +1007,19 @@ conversationCacheDecoder teams =
 
 messageDecoder : Decoder Message
 messageDecoder =
-    D.map6 Message
+    D.map7 Message
         (D.field "ts" tsDecoder)
         (D.field "text" D.string)
         authorIdDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.list sFileDecoder) [])
         (D.optionField "attachments" (D.list attachmentDecoder) [])
+        (D.field "conversation" D.string)
 
 
 tsDecoder : Decoder Ts
 tsDecoder =
-    D.oneOf
-        [ D.tagged2 "Ts" Ts D.string (D.map Time.millisToPosix D.int)
-
-        -- From Slack API
-        , D.do D.string <|
-            \tsStr ->
-                case String.toFloat tsStr of
-                    Just seconds ->
-                        -- ts values are only valid as timestamps to seconds. Decimal values are "uniqifiers"
-                        D.succeed (Ts tsStr (Time.millisToPosix (floor seconds * 1000)))
-
-                    Nothing ->
-                        D.fail "Invalid `ts` value"
-        ]
+    D.tagged2 "Ts" Ts D.string (D.map Time.millisToPosix D.int)
 
 
 authorIdDecoder : Decoder AuthorId
@@ -1037,10 +1027,6 @@ authorIdDecoder =
     D.oneOf
         [ D.field "authorId" <| D.tagged "UAuthorId" UAuthorId userIdDecoder
         , D.field "authorId" <| D.tagged "BAuthorId" BAuthorId botIdDecoder
-
-        -- From Slack API
-        , D.field "bot_id" (D.map BAuthorId botIdDecoder)
-        , D.field "user" (D.map UAuthorId userIdDecoder)
         ]
 
 
@@ -1199,6 +1185,37 @@ attachmentTitleDecoder =
         -- From Slack API
         , D.map2 AttachmentTitle (D.field "title" D.string) (D.maybeField "title_link" D.url)
         ]
+
+
+{-| Diverge from messageDecoder; micro-optimization for reducing unnecessary evaluation paths,
+and also preparation for generalizing Message into common data structure.
+-}
+apiMessageDecoder : ConversationIdStr -> Decoder Message
+apiMessageDecoder convIdStr =
+    let
+        stringToTsDecoder tsStr =
+            case String.toFloat tsStr of
+                Just seconds ->
+                    -- ts values are only valid as timestamps to seconds. Decimal values are "uniqifiers"
+                    D.succeed (Ts tsStr (Time.millisToPosix (floor seconds * 1000)))
+
+                Nothing ->
+                    D.fail "Invalid `ts` value"
+
+        apiAuthorIdDecoder =
+            D.oneOf
+                [ D.field "bot_id" (D.map BAuthorId botIdDecoder)
+                , D.field "user" (D.map UAuthorId userIdDecoder)
+                ]
+    in
+    D.map7 Message
+        (D.field "ts" (D.andThen stringToTsDecoder D.string))
+        (D.field "text" D.string)
+        apiAuthorIdDecoder
+        (D.maybeField "username" D.string)
+        (D.optionField "files" (D.list sFileDecoder) [])
+        (D.optionField "attachments" (D.list attachmentDecoder) [])
+        (D.succeed convIdStr)
 
 
 famDecoder : Decoder FAM
@@ -2088,7 +2105,7 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
             [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
-            D.field "messages" (D.leakyList messageDecoder)
+            D.field "messages" (D.leakyList (apiMessageDecoder convIdStr))
 
         url =
             endpoint conversationHistoryPath Nothing

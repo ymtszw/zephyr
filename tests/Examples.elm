@@ -655,7 +655,7 @@ slackSuite =
             (D.list (Slack.conversationDecoder Dict.empty))
         , testCodec "should decode/encode Message list"
             SlackTestData.conversationHistoryJson
-            (D.field "messages" (D.list Slack.messageDecoder))
+            (D.field "messages" (D.list (Slack.apiMessageDecoder "CDUMMYID")))
             (E.list Slack.encodeMessage)
             (D.list Slack.messageDecoder)
         , testCodec "should decode/encode Bot"

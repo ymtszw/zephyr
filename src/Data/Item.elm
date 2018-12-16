@@ -49,9 +49,8 @@ matchAtom item filterAtom =
         ( OfDiscordChannel cId, _ ) ->
             False
 
-        ( OfSlackConversation cId, SlackItem _ ) ->
-            -- TODO; Slack.Message require information to determine its belonging conversation at low cost
-            False
+        ( OfSlackConversation cId, SlackItem { conversation } ) ->
+            cId == conversation
 
         ( OfSlackConversation _, _ ) ->
             False
