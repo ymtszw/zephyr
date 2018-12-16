@@ -5,7 +5,7 @@ module Data.Producer.Slack exposing
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr
+    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     )
 
@@ -20,7 +20,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr
+@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 
 -}
@@ -2323,6 +2323,15 @@ getConversationIdStr conv =
             conv.id
     in
     convIdStr
+
+
+getPosix : { x | ts : Ts } -> Posix
+getPosix { ts } =
+    let
+        (Ts _ posix) =
+            ts
+    in
+    posix
 
 
 defaultIconUrl : Maybe Int -> String

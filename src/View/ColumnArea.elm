@@ -11,6 +11,7 @@ import Data.Item exposing (Item(..))
 import Data.Model exposing (ColumnSwap, Env, Model, ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack exposing (getPosix)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -327,8 +328,7 @@ shouldGroup newer older =
             shouldGroupDiscordMessage dNewer dOlder
 
         ( Product _ (SlackItem sNewer), Product _ (SlackItem sOlder) ) ->
-            -- TODO
-            False
+            shouldGroupSlackMessage sNewer sOlder
 
         ( _, _ ) ->
             False
@@ -344,6 +344,13 @@ shouldGroupDiscordMessage dNewer dOlder =
 groupingIntervalMillis : Int
 groupingIntervalMillis =
     60000
+
+
+shouldGroupSlackMessage : Slack.Message -> Slack.Message -> Bool
+shouldGroupSlackMessage sNewer sOlder =
+    (sNewer.conversation == sOlder.conversation)
+        && (sNewer.authorId == sOlder.authorId)
+        && (ms (getPosix sOlder) + groupingIntervalMillis > ms (getPosix sNewer))
 
 
 loadMoreKeyEl : String -> Bool -> ( String, Element Msg )
