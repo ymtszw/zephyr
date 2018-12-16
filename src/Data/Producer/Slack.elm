@@ -2,7 +2,7 @@ module Data.Producer.Slack exposing
     ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, TeamIcon
     , Conversation, ConversationType(..), ConversationCache, Message, Attachment, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
-    , encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
+    , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr
@@ -17,7 +17,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Slack, SlackUnidentified, SlackRegistry, User, Team, TeamIcon
 @docs Conversation, ConversationType, ConversationCache, Message, Attachment, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
-@docs encodeConversation, conversationDecoder, encodeConversationCache, conversationCacheDecoder
+@docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr
@@ -838,20 +838,15 @@ teamDecoder =
 conversationDecoder : Dict UserIdStr User -> Decoder Conversation
 conversationDecoder users =
     D.oneOf
-        [ -- From IndexedDB
-          D.map6 Conversation
+        [ D.map6 Conversation
             (D.field "id" conversationIdDecoder)
             (D.field "name" D.string)
             (D.optionField "is_archived" D.bool False)
             (D.maybeField "last_read" lastReadDecoder)
             (D.field "type_" conversationTypeDecoder)
             (D.optionField "fetchStatus" FetchStatus.decoder Available)
-
-        -- From Slack API
-        , conversationFromSlackApiDecoder users
-
-        -- Old format where Conversation was a custom type
-        , oldConversationDecoder users
+        , -- Old format where Conversation was a custom type
+          oldConversationDecoder users
         ]
 
 
@@ -882,8 +877,8 @@ conversationTypeDecoder =
         ]
 
 
-conversationFromSlackApiDecoder : Dict UserIdStr User -> Decoder Conversation
-conversationFromSlackApiDecoder users =
+apiConversationDecoder : Dict UserIdStr User -> Decoder Conversation
+apiConversationDecoder users =
     let
         conversationTypeFromSlackApi =
             D.oneOf
@@ -2022,7 +2017,7 @@ conversationListTask token users =
     rpcPostFormTask (endpoint "/conversations.list" Nothing)
         token
         [ ( "types", "public_channel,private_channel,im,mpim" ) ]
-        (D.field "channels" (D.dictFromList getConversationIdStr (conversationDecoder users)))
+        (D.field "channels" (D.dictFromList getConversationIdStr (apiConversationDecoder users)))
 
 
 userListTask : String -> Task RpcFailure (Dict UserIdStr User)

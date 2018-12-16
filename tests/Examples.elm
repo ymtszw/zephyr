@@ -650,7 +650,7 @@ slackSuite =
             Slack.teamDecoder
         , testCodec "should decode/encode Conversation list"
             SlackTestData.convListJson
-            (D.field "channels" (D.list (Slack.conversationDecoder Dict.empty)))
+            (D.field "channels" (D.list (Slack.apiConversationDecoder Dict.empty)))
             (E.list Slack.encodeConversation)
             (D.list (Slack.conversationDecoder Dict.empty))
         , testCodec "should decode/encode Message list"
