@@ -391,6 +391,9 @@ producerMsgToEntry pMsg =
                         , Iso8601.fromTime succ.posix
                         ]
 
+                Slack.IBotsFetched teamIdStr bots ->
+                    Entry "Slack.IBotsFetched" [ teamIdStr, E.encode 2 (E.dict identity Slack.encodeBot bots) ]
+
                 Slack.ITokenInput teamIdStr str ->
                     Entry "Slack.ITokenInput" [ teamIdStr, str ]
 

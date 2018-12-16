@@ -1299,6 +1299,7 @@ type Msg
     | IUnsubscribe TeamIdStr ConversationIdStr
     | Fetch Posix -- Fetch is shared across Teams
     | IFetched TeamIdStr FetchSuccess
+    | IBotsFetched TeamIdStr (Dict BotIdStr Bot)
     | ITokenInput TeamIdStr String
     | ITokenCommit TeamIdStr
     | IAPIFailure TeamIdStr (Maybe ConversationIdStr) RpcFailure
@@ -1343,6 +1344,9 @@ update msg sr =
 
         IFetched teamIdStr fetchSucc ->
             withTeam teamIdStr sr <| handleIFetched fetchSucc
+
+        IBotsFetched teamIdStr bots ->
+            withTeam teamIdStr sr <| handleIBotsFetched bots
 
         ITokenInput teamIdStr token ->
             withTeam teamIdStr sr <| handleITokenInput token
@@ -1740,6 +1744,23 @@ updatePovOnFetchSuccess tagger convIdStr ms posix pov =
                     ( newConv, { cy | persist = True, items = [] } )
 
 
+handleIBotsFetched : Dict BotIdStr Bot -> Slack -> ( Slack, Yield )
+handleIBotsFetched bots slack =
+    case slack of
+        Hydrated t pov ->
+            ( Hydrated t { pov | bots = Dict.union bots pov.bots }, { yield | persist = True } )
+
+        Rehydrating t pov ->
+            ( Rehydrating t { pov | bots = Dict.union bots pov.bots }, { yield | persist = True } )
+
+        Expired t pov ->
+            ( Expired t { pov | bots = Dict.union bots pov.bots }, { yield | persist = True } )
+
+        _ ->
+            -- Should not happen
+            pure slack
+
+
 handleITokenInput : String -> Slack -> ( Slack, Yield )
 handleITokenInput token slack =
     case slack of
@@ -2109,9 +2130,10 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
             rpcPostFormTask url token baseParams baseDecoder
 
 
-conversationHistoryPath : String
-conversationHistoryPath =
-    "/conversations.history"
+botInfoTask : String -> BotId -> Task RpcFailure Bot
+botInfoTask token (BotId botIdStr) =
+    rpcPostFormTask (endpoint "/bots.info" Nothing) token [ ( "bot", botIdStr ) ] <|
+        D.field "bot" botDecoder
 
 
 
