@@ -57,6 +57,10 @@ Since Slack APIs mostly return "not joined" data,
 we have to maintain User dictionary in order to show their info.
 We should occasionally (lazily) update it.
 
+There are another message posting entities: Bots.
+Unlike Users, Bots does not have listing API, so we have to collect their info with multiple requests.
+Thankfully, Bots aren't many compared to Users, so it SHOULD be OK.
+
 -}
 type Slack
     = Identified NewSession
@@ -1655,12 +1659,12 @@ handleFetchImpl posix conv slack =
     case slack of
         Hydrated t pov ->
             ( Hydrated t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
+            , { yield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
             )
 
         Rehydrating t pov ->
             ( Rehydrating t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { yield | cmd = fetchConversationMessages pov.token pov.team.id conv }
+            , { yield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
             )
 
         _ ->
@@ -2031,17 +2035,18 @@ userListTask token =
         |> Task.map (List.foldl (\u accDict -> Dict.insert (toStr u.id) u accDict) Dict.empty)
 
 
-fetchConversationMessages : String -> TeamId -> Conversation -> Cmd Msg
-fetchConversationMessages token (TeamId teamIdStr) conv =
+fetchMessagesAndBots : String -> TeamId -> Conversation -> Cmd Msg
+fetchMessagesAndBots token (TeamId teamIdStr) conv =
     let
         (ConversationId convIdStr) =
             conv.id
-
-        combiner messages posix =
-            { conversationId = convIdStr, messages = messages, posix = posix }
     in
-    Task.map2 combiner (conversationHistoryTask token convIdStr conv.lastRead Initial) Time.now
-        |> rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr))
+    rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr)) <|
+        doT (conversationHistoryTask token convIdStr conv.lastRead Initial) <|
+            \messages ->
+                doT (collectBotsTask token messages) <|
+                    \bots ->
+                        Task.map (FetchSuccess convIdStr messages bots) Time.now
 
 
 type CursorIn a
@@ -2112,10 +2117,40 @@ conversationHistoryTask token convIdStr lrMaybe cursorIn =
             rpcPostFormTask url token baseParams baseDecoder
 
 
-botInfoTask : String -> BotId -> Task RpcFailure Bot
+botInfoTask : String -> BotId -> Task RpcFailure ( BotIdStr, Bot )
 botInfoTask token (BotId botIdStr) =
     rpcPostFormTask (endpoint "/bots.info" Nothing) token [ ( "bot", botIdStr ) ] <|
-        D.field "bot" botDecoder
+        D.map (Tuple.pair botIdStr) (D.field "bot" botDecoder)
+
+
+collectBotsTask : String -> List Message -> Task RpcFailure (Dict BotIdStr Bot)
+collectBotsTask token messages =
+    case collectBotIds messages of
+        [] ->
+            Task.succeed Dict.empty
+
+        botIds ->
+            List.map (botInfoTask token) botIds
+                |> Task.sequence
+                |> Task.map Dict.fromList
+
+
+collectBotIds : List Message -> List BotId
+collectBotIds messages =
+    let
+        reducer m acc =
+            case m.authorId of
+                UAuthorId _ ->
+                    acc
+
+                BAuthorId botId ->
+                    if List.member botId acc then
+                        acc
+
+                    else
+                        botId :: acc
+    in
+    List.foldl reducer [] messages
 
 
 
