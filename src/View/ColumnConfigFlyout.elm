@@ -405,8 +405,7 @@ availableFilterAtomsWithDefaultArguments fam faInputType =
         serviceFilterAtoms =
             List.filterMap identity
                 [ Maybe.map Tuple.first fam.ofDiscordChannel
-
-                -- TODO add slack
+                , Maybe.map .default fam.ofSlackConversation
                 ]
     in
     (serviceFilterAtoms ++ [ ByMessage "text", ByMedia HasImage ])

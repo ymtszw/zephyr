@@ -998,7 +998,7 @@ slackConversationEl :
     -> { size : Int, conversation : { x | name : String, type_ : Slack.ConversationType } }
     -> Element msg
 slackConversationEl attrs opts =
-    row ([ spacing spacingUnit, Font.size opts.size ] ++ attrs) <|
+    row ([ spacing spacingUnit ] ++ attrs) <|
         [ case opts.conversation.type_ of
             Slack.PublicChannel _ ->
                 text "#"
