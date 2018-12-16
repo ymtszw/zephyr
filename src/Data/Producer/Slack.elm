@@ -165,6 +165,8 @@ Members of private conversations must be retrieved from conversations.members AP
 We do not use `last_read` returned from APIs directly,
 rather we locally record timestamps of actually retrieved messages.
 
+This object COULD include Team, but deliberately excludng it for easier testing.
+
 TODO: consider how to support IM/MPIMs, while aligning with Discord DM/GroupDM
 
 -}
@@ -407,7 +409,9 @@ initUnidentified =
 
 type alias FAM =
     { default : FilterAtom
-    , conversations : List ConversationCache -- List instead of Dict, should be sorted already
+    , -- List instead of Dict, should be sorted already
+      -- XXX Also, this list is SHARED ACROSS MULTIPLE TEAMS!!!
+      conversations : List ConversationCache
     }
 
 
@@ -1229,65 +1233,145 @@ type alias Yield =
     Producer.Yield Message FAM Msg
 
 
+{-| Yield from sub component of SlackRegistry (i.e. Team or Conversation).
+
+Bubbling up to root registry, then Cmds are batched and the updateFAM is calculated.
+
+-}
+type alias SubYield =
+    { cmd : Cmd Msg
+    , persist : Bool
+    , items : List Message
+    , updateFAM : Bool
+    , work : Maybe Worque.Work
+    }
+
+
+sYield : SubYield
+sYield =
+    { cmd = Cmd.none
+    , persist = False
+    , items = []
+    , updateFAM = False
+    , work = Nothing
+    }
+
+
+liftToYield : SubYield -> SlackRegistry -> Yield
+liftToYield sy sr =
+    { cmd = sy.cmd
+    , persist = sy.persist
+    , items = sy.items
+    , work = sy.work
+    , updateFAM =
+        if sy.updateFAM then
+            calculateFAM sr
+
+        else
+            KeepFAM
+    }
+
+
+calculateFAM : SlackRegistry -> Producer.UpdateFAM FAM
+calculateFAM sr =
+    case subscribedConvsAcrossTeams sr.dict of
+        [] ->
+            DestroyFAM
+
+        (c :: _) as subscribed ->
+            SetFAM <| FAM (OfSlackConversation (getConversationIdStr c)) subscribed
+
+
+subscribedConvsAcrossTeams : Dict TeamIdStr Slack -> List ConversationCache
+subscribedConvsAcrossTeams dict =
+    let
+        reducer teamIdStr slack acc =
+            let
+                accumSubbed team _ conv accInner =
+                    if not conv.isArchived && FetchStatus.subscribed conv.fetchStatus then
+                        convToCache team conv :: accInner
+
+                    else
+                        accInner
+            in
+            case slack of
+                Hydrated _ pov ->
+                    Dict.foldl (accumSubbed pov.team) acc pov.conversations
+
+                Rehydrating _ pov ->
+                    Dict.foldl (accumSubbed pov.team) acc pov.conversations
+
+                Revisit pov ->
+                    Dict.foldl (accumSubbed pov.team) acc pov.conversations
+
+                Expired _ pov ->
+                    Dict.foldl (accumSubbed pov.team) acc pov.conversations
+
+                _ ->
+                    acc
+
+        globalSorter conv1 conv2 =
+            case compare conv1.team.name conv2.team.name of
+                EQ ->
+                    compareByMembersipThenName conv1 conv2
+
+                diff ->
+                    diff
+    in
+    dict |> Dict.foldl reducer [] |> List.sortWith globalSorter
+
+
+convToCache : Team -> Conversation -> ConversationCache
+convToCache team c =
+    { id = c.id
+    , name = c.name
+    , isArchived = c.isArchived
+    , type_ = c.type_
+    , team = team
+    }
+
+
+
+-- Reload
+
+
 reload : SlackRegistry -> ( SlackRegistry, Yield )
 reload sr =
-    ( sr, yield )
-        |> reloadUnidentified
-        |> reloadAllTeam
+    let
+        cmdU =
+            case sr.unidentified of
+                TokenWritable _ ->
+                    Cmd.none
+
+                TokenIdentifying token ->
+                    identify token
+
+        y =
+            liftToYield (Dict.foldl reloadTeam sYield sr.dict) sr
+    in
+    ( sr, { y | cmd = Cmd.batch [ y.cmd, cmdU ] } )
 
 
-reloadUnidentified : ( SlackRegistry, Yield ) -> ( SlackRegistry, Yield )
-reloadUnidentified ( sr, y ) =
-    case sr.unidentified of
-        TokenWritable _ ->
-            ( sr, y )
-
-        TokenIdentifying token ->
-            ( sr, { y | cmd = Cmd.batch [ y.cmd, identify token ] } )
-
-
-reloadAllTeam : ( SlackRegistry, Yield ) -> ( SlackRegistry, Yield )
-reloadAllTeam ( sr, y ) =
-    ( sr, Dict.foldl reloadTeam y sr.dict )
-
-
-reloadTeam : TeamIdStr -> Slack -> Yield -> Yield
-reloadTeam _ slack y =
+reloadTeam : TeamIdStr -> Slack -> SubYield -> SubYield
+reloadTeam _ slack sy =
     case slack of
         Identified { token, team } ->
             -- Saved during hydrate? Retry
-            { y | cmd = Cmd.batch [ y.cmd, hydrate token team.id ] }
+            { sy | cmd = Cmd.batch [ sy.cmd, hydrate token team.id ] }
 
         Revisit pov ->
-            { y
-                | cmd = Cmd.batch [ y.cmd, revisit pov.token pov.user.id pov.team.id ]
-                , updateFAM = calculateFAM pov
+            { sy
+                | cmd = Cmd.batch [ sy.cmd, revisit pov.token pov.user.id pov.team.id ]
+                , updateFAM = True
             }
 
         _ ->
             -- Other states should not come from IndexedDB
-            y
+            sy
 
 
-calculateFAM : POV -> Producer.UpdateFAM FAM
-calculateFAM pov =
-    let
-        filtered =
-            pov.conversations |> Dict.foldl reducer [] |> List.sortWith compareByMembersipThenName
 
-        reducer _ c acc =
-            if FetchStatus.subscribed c.fetchStatus then
-                ConversationCache c.id c.name c.isArchived c.type_ pov.team :: acc
-
-            else
-                acc
-    in
-    case filtered of
-        [] ->
-            DestroyFAM
-
-        c :: _ ->
-            SetFAM <| FAM (OfSlackConversation (getConversationIdStr c)) filtered
+-- Update
 
 
 type Msg
@@ -1428,26 +1512,29 @@ handleIdentify user team (TeamId teamIdStr) sr =
                     initTeam token
 
 
-withTeam : TeamIdStr -> SlackRegistry -> (Slack -> ( Slack, Yield )) -> ( SlackRegistry, Yield )
+withTeam : TeamIdStr -> SlackRegistry -> (Slack -> ( Slack, SubYield )) -> ( SlackRegistry, Yield )
 withTeam teamIdStr sr func =
     case Dict.get teamIdStr sr.dict of
         Just slack ->
             let
-                ( newSlack, y ) =
+                ( newSlack, sy ) =
                     func slack
+
+                newSr =
+                    { sr | dict = Dict.insert teamIdStr newSlack sr.dict }
             in
-            ( { sr | dict = Dict.insert teamIdStr newSlack sr.dict }, y )
+            ( newSr, liftToYield sy newSr )
 
         Nothing ->
             pure sr
 
 
-handleIHydrate : Dict UserIdStr User -> Dict ConversationIdStr Conversation -> Slack -> ( Slack, Yield )
+handleIHydrate : Dict UserIdStr User -> Dict ConversationIdStr Conversation -> Slack -> ( Slack, SubYield )
 handleIHydrate users convs slack =
     case slack of
         Identified { token, user, team } ->
             ( Hydrated token (initPov token user team convs users)
-            , { yield | persist = True, work = Just Worque.SlackFetch }
+            , { sYield | persist = True, work = Just Worque.SlackFetch }
             )
 
         Rehydrating token pov ->
@@ -1456,12 +1543,12 @@ handleIHydrate users convs slack =
                     mergeConversations pov.conversations convs
             in
             ( Hydrated token { pov | users = users, conversations = newConvs }
-            , { yield | persist = True, updateFAM = calculateFAM pov }
+            , { sYield | persist = True, updateFAM = True }
             )
 
         _ ->
             -- Should not happen. See handleIRevisit for Revisit
-            pure slack
+            ( slack, sYield )
 
 
 initPov : String -> User -> Team -> Dict ConversationIdStr Conversation -> Dict UserIdStr User -> POV
@@ -1475,7 +1562,10 @@ initPov token user team convs users =
     }
 
 
-mergeConversations : Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation -> Dict ConversationIdStr Conversation
+mergeConversations :
+    Dict ConversationIdStr Conversation
+    -> Dict ConversationIdStr Conversation
+    -> Dict ConversationIdStr Conversation
 mergeConversations oldConvs newConvs =
     let
         foundOnlyInOld _ _ acc =
@@ -1493,18 +1583,18 @@ mergeConversations oldConvs newConvs =
     Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldConvs newConvs Dict.empty
 
 
-handleIRehydrate : Slack -> ( Slack, Yield )
+handleIRehydrate : Slack -> ( Slack, SubYield )
 handleIRehydrate slack =
     case slack of
         Hydrated token pov ->
             -- Rehydrate should only be available in Hydrated state
-            ( Rehydrating token pov, { yield | cmd = hydrate pov.token pov.team.id } )
+            ( Rehydrating token pov, { sYield | cmd = hydrate pov.token pov.team.id } )
 
         _ ->
-            pure slack
+            ( slack, sYield )
 
 
-handleIRevisit : POV -> Slack -> ( Slack, Yield )
+handleIRevisit : POV -> Slack -> ( Slack, SubYield )
 handleIRevisit pov slack =
     let
         hydrateWithNewPov work oldPov =
@@ -1513,7 +1603,7 @@ handleIRevisit pov slack =
                     mergeConversations oldPov.conversations pov.conversations
             in
             ( Hydrated pov.token { pov | conversations = newConvs }
-            , { yield | persist = True, updateFAM = calculateFAM pov, work = work }
+            , { sYield | persist = True, updateFAM = True, work = work }
             )
     in
     case slack of
@@ -1529,27 +1619,26 @@ handleIRevisit pov slack =
 
         _ ->
             -- Should not happen
-            pure slack
+            ( slack, sYield )
 
 
-handleISubscribe : ConversationIdStr -> Slack -> ( Slack, Yield )
+handleISubscribe : ConversationIdStr -> Slack -> ( Slack, SubYield )
 handleISubscribe convIdStr slack =
+    let
+        subscribeImpl tagger pov =
+            withConversation tagger convIdStr pov Nothing <|
+                updateFetchStatus FetchStatus.Sub
+    in
     case slack of
         Hydrated token pov ->
-            subscribeImpl (Hydrated token) convIdStr pov
+            subscribeImpl (Hydrated token) pov
 
         Rehydrating token pov ->
-            subscribeImpl (Hydrated token) convIdStr pov
+            subscribeImpl (Hydrated token) pov
 
         _ ->
             -- Otherwise not allowed (invluding Revisit)
-            pure slack
-
-
-subscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
-subscribeImpl tagger convIdStr pov =
-    withConversation tagger convIdStr pov Nothing <|
-        updateFetchStatus FetchStatus.Sub
+            ( slack, sYield )
 
 
 type alias ConvYield =
@@ -1564,79 +1653,55 @@ withConversation :
     -> ConversationIdStr
     -> POV
     -> Maybe Worque.Work
-    -> (Conversation -> ( Conversation, ConvYield ))
-    -> ( Slack, Yield )
+    -> (Conversation -> ( Conversation, SubYield ))
+    -> ( Slack, SubYield )
 withConversation tagger convIdStr pov work func =
     case Dict.get convIdStr pov.conversations of
         Just conv ->
             let
-                ( newConv, cy ) =
+                ( newConv, sy ) =
                     func conv
-
-                newPov =
-                    { pov | conversations = Dict.insert convIdStr newConv pov.conversations }
             in
-            ( tagger newPov
-            , { yield
-                | persist = cy.persist
-                , items = cy.items
-                , updateFAM = updateOrKeepFAM cy.updateFAM newPov
-                , work = work
-              }
+            ( tagger { pov | conversations = Dict.insert convIdStr newConv pov.conversations }
+            , { sy | work = work }
             )
 
         Nothing ->
             -- Conversation somehow gone; should not basically happen
-            ( tagger pov
-            , { yield
-                | persist = True
-                , updateFAM = calculateFAM pov
-                , work = work
-              }
-            )
+            ( tagger pov, { sYield | persist = True, updateFAM = True, work = work } )
 
 
-updateOrKeepFAM : Bool -> POV -> Producer.UpdateFAM FAM
-updateOrKeepFAM doUpdate pov =
-    if doUpdate then
-        calculateFAM pov
-
-    else
-        KeepFAM
-
-
-updateFetchStatus : FetchStatus.Msg -> Conversation -> ( Conversation, ConvYield )
+updateFetchStatus : FetchStatus.Msg -> Conversation -> ( Conversation, SubYield )
 updateFetchStatus fMsg conv =
     let
         { fs, persist, updateFAM } =
             FetchStatus.update fMsg conv.fetchStatus
     in
     ( { conv | fetchStatus = fs }
-    , { persist = persist, items = [], updateFAM = updateFAM }
+    , { sYield | persist = persist, updateFAM = updateFAM }
     )
 
 
-handleIUnsubscribe : ConversationIdStr -> Slack -> ( Slack, Yield )
+handleIUnsubscribe : ConversationIdStr -> Slack -> ( Slack, SubYield )
 handleIUnsubscribe convIdStr slack =
+    let
+        unsubscribeImpl tagger pov =
+            withConversation tagger convIdStr pov Nothing <|
+                updateFetchStatus FetchStatus.Unsub
+    in
     case slack of
         Hydrated token pov ->
-            unsubscribeImpl (Hydrated token) convIdStr pov
+            unsubscribeImpl (Hydrated token) pov
 
         Rehydrating token pov ->
-            unsubscribeImpl (Rehydrating token) convIdStr pov
+            unsubscribeImpl (Rehydrating token) pov
 
         Expired token pov ->
-            unsubscribeImpl (Expired token) convIdStr pov
+            unsubscribeImpl (Expired token) pov
 
         _ ->
             -- Otherwise not allowed, including Revisit
-            pure slack
-
-
-unsubscribeImpl : (POV -> Slack) -> ConversationIdStr -> POV -> ( Slack, Yield )
-unsubscribeImpl tagger convIdStr pov =
-    withConversation tagger convIdStr pov Nothing <|
-        updateFetchStatus FetchStatus.Unsub
+            ( slack, sYield )
 
 
 handleFetch : Posix -> SlackRegistry -> ( SlackRegistry, Yield )
@@ -1649,32 +1714,33 @@ handleFetch posix sr =
             ( sr, { yield | work = Just Worque.SlackFetch } )
 
 
-handleFetchImpl : Posix -> Conversation -> Slack -> ( Slack, Yield )
+handleFetchImpl : Posix -> Conversation -> Slack -> ( Slack, SubYield )
 handleFetchImpl posix conv slack =
     let
         ( newConv, _ ) =
-            -- We never persist on Start
+            -- We never persist/updateFAM on Start
             updateFetchStatus (FetchStatus.Start posix) conv
     in
     case slack of
         Hydrated t pov ->
             ( Hydrated t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { yield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
+            , { sYield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
             )
 
         Rehydrating t pov ->
             ( Rehydrating t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { yield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
+            , { sYield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
             )
 
         _ ->
             -- Keep next SlackFetch pushed, since it is shared across Teams.
             -- Single Expired Team should not stop the SlackRegistry as a whole.
-            ( slack, { yield | work = Just Worque.SlackFetch } )
+            ( slack, { sYield | work = Just Worque.SlackFetch } )
 
 
 readyToFetchTeamAndConv : Posix -> Dict TeamIdStr Slack -> Maybe ( TeamIdStr, Conversation )
 readyToFetchTeamAndConv posix dict =
+    -- XXX Looks slowish... could use more optimization?
     let
         reducer teamIdStr slack acc =
             case slack of
@@ -1690,7 +1756,12 @@ readyToFetchTeamAndConv posix dict =
     Dict.foldl reducer Nothing dict
 
 
-recusrivelyFindConvToFetch : Posix -> TeamIdStr -> List Conversation -> Maybe ( TeamIdStr, Conversation ) -> Maybe ( TeamIdStr, Conversation )
+recusrivelyFindConvToFetch :
+    Posix
+    -> TeamIdStr
+    -> List Conversation
+    -> Maybe ( TeamIdStr, Conversation )
+    -> Maybe ( TeamIdStr, Conversation )
 recusrivelyFindConvToFetch posix teamIdStr conversations acc =
     case conversations of
         [] ->
@@ -1713,7 +1784,7 @@ recusrivelyFindConvToFetch posix teamIdStr conversations acc =
                 recusrivelyFindConvToFetch posix teamIdStr xs acc
 
 
-handleIFetched : FetchSuccess -> Slack -> ( Slack, Yield )
+handleIFetched : FetchSuccess -> Slack -> ( Slack, SubYield )
 handleIFetched { conversationId, messages, bots, posix } slack =
     let
         handleImpl tagger pov =
@@ -1744,43 +1815,43 @@ handleIFetched { conversationId, messages, bots, posix } slack =
 
         _ ->
             -- Should not happen
-            pure slack
+            ( slack, sYield )
 
 
-handleITokenInput : String -> Slack -> ( Slack, Yield )
+handleITokenInput : String -> Slack -> ( Slack, SubYield )
 handleITokenInput token slack =
     case slack of
         Hydrated _ pov ->
-            pure (Hydrated token pov)
+            ( Hydrated token pov, sYield )
 
         Expired _ pov ->
-            pure (Expired token pov)
+            ( Expired token pov, sYield )
 
         _ ->
             -- Otherwise not allowed
-            pure slack
+            ( slack, sYield )
 
 
-handleITokenCommit : Slack -> ( Slack, Yield )
+handleITokenCommit : Slack -> ( Slack, SubYield )
 handleITokenCommit slack =
     case slack of
         Hydrated newToken pov ->
-            ( slack, { yield | cmd = revisit newToken pov.user.id pov.team.id } )
+            ( slack, { sYield | cmd = revisit newToken pov.user.id pov.team.id } )
 
         Expired newToken pov ->
-            ( slack, { yield | cmd = revisit newToken pov.user.id pov.team.id } )
+            ( slack, { sYield | cmd = revisit newToken pov.user.id pov.team.id } )
 
         _ ->
             -- Otherwise not allowed
-            pure slack
+            ( slack, sYield )
 
 
-handleIAPIFailure : Maybe ConversationIdStr -> RpcFailure -> Slack -> ( Slack, Yield )
+handleIAPIFailure : Maybe ConversationIdStr -> RpcFailure -> Slack -> ( Slack, SubYield )
 handleIAPIFailure convIdMaybe f slack =
     case slack of
         Identified { token, team } ->
             -- If successfully Identified, basically Hydrate should not fail. Just retry. TODO limit number of retries
-            ( slack, { yield | cmd = hydrate token team.id } )
+            ( slack, { sYield | cmd = hydrate token team.id } )
 
         Hydrated t pov ->
             -- Failure outside of fetch indicates new token tried but invalid. Just restore previous token.
@@ -1792,14 +1863,14 @@ handleIAPIFailure convIdMaybe f slack =
 
         Revisit pov ->
             -- Somehow Revisit failed. Settle with Expired with old pov.
-            ( Expired pov.token pov, { yield | persist = True, updateFAM = calculateFAM pov } )
+            ( Expired pov.token pov, { sYield | persist = True, updateFAM = True } )
 
         Expired _ _ ->
             -- Any API failure on Expired. Just keep the state.
-            pure slack
+            ( slack, sYield )
 
 
-updatePovOnIApiFailure : (POV -> Slack) -> (POV -> Slack) -> Maybe ConversationIdStr -> RpcFailure -> POV -> ( Slack, Yield )
+updatePovOnIApiFailure : (POV -> Slack) -> (POV -> Slack) -> Maybe ConversationIdStr -> RpcFailure -> POV -> ( Slack, SubYield )
 updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
     case ( f, convIdMaybe ) of
         -- Slack API basically returns 200 OK, so we consider HttpFailure as transient
@@ -1810,7 +1881,7 @@ updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
 
         ( HttpFailure hf, Nothing ) ->
             -- Fail on other
-            pure (tagger pov)
+            ( tagger pov, sYield )
 
         ( RpcError err, Just fetchedConvIdStr ) ->
             if unauthorizedRpc err then
@@ -1823,7 +1894,7 @@ updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
                         { pov | conversations = Dict.remove fetchedConvIdStr pov.conversations }
                 in
                 ( tagger newPov
-                , { yield | persist = True, work = Just Worque.SlackFetch, updateFAM = calculateFAM newPov }
+                , { sYield | persist = True, work = Just Worque.SlackFetch, updateFAM = True }
                 )
 
             else
@@ -1833,11 +1904,11 @@ updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
 
         ( RpcError err, Nothing ) ->
             if unauthorizedRpc err then
-                ( unauthorizedTagger pov, { yield | persist = True } )
+                ( unauthorizedTagger pov, { sYield | persist = True } )
 
             else
                 -- Transient otherwise
-                pure (tagger pov)
+                ( tagger pov, sYield )
 
 
 unauthorizedRpc : String -> Bool

@@ -405,8 +405,7 @@ availableFilterAtomsWithDefaultArguments fam faInputType =
         serviceFilterAtoms =
             List.filterMap identity
                 [ Maybe.map Tuple.first fam.ofDiscordChannel
-
-                -- TODO add slack
+                , Maybe.map .default fam.ofSlackConversation
                 ]
     in
     (serviceFilterAtoms ++ [ ByMessage "text", ByMedia HasImage ])
@@ -466,7 +465,7 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
             in
             filterAtomVariableSelectEl (OfSlackConversation << Slack.getConversationIdStr) <|
                 favsOptions selectedMaybe (Just slackConvCacheFilter) options <|
-                    \c -> slackConversationEl [] { size = favsIconSize, conversation = c }
+                    \c -> slackConversationEl [] { fontSize = baseFontSize, conversation = c, team = Just ( c.team, favsIconSize ) }
 
         ByMessage query ->
             filterAtomVariableTextInputEl ByMessage columnId fi ai query

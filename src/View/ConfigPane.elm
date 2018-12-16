@@ -125,11 +125,7 @@ sectionBaseFontSize =
 slackConfigTitleEl : Element Msg
 slackConfigTitleEl =
     row [ spacing spacingUnit ]
-        [ squareIconOrHeadEl []
-            { size = sectionTitleFontSize
-            , name = "Slack"
-            , url = Just (Slack.defaultIconUrl (Just sectionTitleFontSize))
-            }
+        [ slackLogoClippedEl [] sectionTitleFontSize
         , text "Slack"
         ]
 
