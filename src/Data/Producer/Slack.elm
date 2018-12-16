@@ -1951,15 +1951,10 @@ rpcTry succ fail task =
 
 identify : String -> Cmd Msg
 identify token =
-    let
-        identifyTask userId =
-            Task.map2 Identify
-                (userInfoTask token userId)
-                (teamInfoTask token)
-    in
-    authTestTask token
-        |> Task.andThen identifyTask
-        |> rpcTry identity UAPIFailure
+    rpcTry identity UAPIFailure <|
+        doT (authTestTask token) <|
+            \userId ->
+                Task.map2 Identify (userInfoTask token userId) (teamInfoTask token)
 
 
 {-| Combines identify and hydrate, used on Revisit or Expired. Not requesting to auth.test.
@@ -1969,9 +1964,9 @@ Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload
 -}
 revisit : String -> UserId -> TeamId -> Cmd Msg
 revisit token (UserId userIdStr) (TeamId teamIdStr) =
-    userListTask token
-        |> Task.andThen
-            (\users ->
+    rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing) <|
+        doT (userListTask token) <|
+            \users ->
                 case Dict.get userIdStr users of
                     Just user ->
                         Task.map2 (\team convs -> initPov token user team convs users)
@@ -1981,8 +1976,6 @@ revisit token (UserId userIdStr) (TeamId teamIdStr) =
                     Nothing ->
                         -- Should never happen; requesting user must be included in users
                         Task.fail (RpcError ("Cannot retrieve User: " ++ userIdStr))
-            )
-        |> rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing)
 
 
 authTestTask : String -> Task RpcFailure UserId
@@ -2005,12 +1998,10 @@ teamInfoTask token =
 
 hydrate : String -> TeamId -> Cmd Msg
 hydrate token (TeamId teamIdStr) =
-    userListTask token
-        |> Task.andThen
-            (\users ->
+    rpcTry identity (IAPIFailure teamIdStr Nothing) <|
+        doT (userListTask token) <|
+            \users ->
                 Task.map (IHydrate teamIdStr users) (conversationListTask token users)
-            )
-        |> rpcTry identity (IAPIFailure teamIdStr Nothing)
 
 
 conversationListTask : String -> Dict UserIdStr User -> Task RpcFailure (Dict ConversationIdStr Conversation)
