@@ -8,6 +8,7 @@ import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -312,10 +313,13 @@ filterAtomCtorSelectEl selectState fam cId faInputType =
     in
     select [ width (px filterAtomCtorFixedWidth) ]
         { state = selectState
+        , msgTagger = SelectCtrl
         , id = selectId
         , theme = oneDark
+        , thin = False
         , onSelect = filterAtomOnSelect cId faInputType
         , selectedOption = selectedOption
+        , filterMatch = Nothing
         , options = availableFilterAtomsWithDefaultArguments fam faInputType
         , optionEl = filterAtomCtorOptionEl
         }
@@ -354,13 +358,16 @@ filterAtomCtorOptionEl : FilterAtom -> Element msg
 filterAtomCtorOptionEl filterAtom =
     case filterAtom of
         OfDiscordChannel _ ->
-            text "Discord message in channel..."
+            text "Discord message in ..."
+
+        OfSlackConversation _ ->
+            text "Slack message in ..."
 
         ByMessage _ ->
-            text "Message contains..."
+            text "Message contains ..."
 
         ByMedia _ ->
-            text "Attached media..."
+            text "Attached media ..."
 
         RemoveMe ->
             text "Remove this filter"
@@ -375,13 +382,16 @@ availableFilterAtomsWithDefaultArguments fam faInputType =
                     let
                         replaceIfSameType option =
                             case ( selected, option ) of
+                                ( OfDiscordChannel _, OfDiscordChannel _ ) ->
+                                    selected
+
+                                ( OfSlackConversation _, OfSlackConversation _ ) ->
+                                    selected
+
                                 ( ByMessage _, ByMessage _ ) ->
                                     selected
 
                                 ( ByMedia _, ByMedia _ ) ->
-                                    selected
-
-                                ( OfDiscordChannel _, OfDiscordChannel _ ) ->
                                     selected
 
                                 _ ->
@@ -391,9 +401,15 @@ availableFilterAtomsWithDefaultArguments fam faInputType =
 
                 _ ->
                     options
+
+        serviceFilterAtoms =
+            List.filterMap identity
+                [ Maybe.map Tuple.first fam.ofDiscordChannel
+
+                -- TODO add slack
+                ]
     in
-    List.filterMap identity [ Maybe.map Tuple.first fam.ofDiscordChannel ]
-        |> List.append [ ByMessage "text", ByMedia HasImage ]
+    (serviceFilterAtoms ++ [ ByMessage "text", ByMedia HasImage ])
         |> editByInputType
         |> List.map (\fa -> ( ctorKey fa, fa ))
 
@@ -403,6 +419,9 @@ ctorKey fa =
     case fa of
         OfDiscordChannel _ ->
             "OfDiscordChannel"
+
+        OfSlackConversation _ ->
+            "OfSlackConversation"
 
         ByMessage _ ->
             "ByMessage"
@@ -415,51 +434,70 @@ ctorKey fa =
 
 
 filterAtomVariableInputEl : Select.State -> FilterAtomMaterial -> String -> Int -> Int -> FilterAtom -> Element Msg
-filterAtomVariableInputEl ss fam cId fi ai fa =
+filterAtomVariableInputEl ss fam columnId fi ai fa =
+    let
+        favsOptions =
+            FAVSOptions columnId fi ai ss
+    in
     case fa of
         OfDiscordChannel channelId ->
             let
-                channelSelectEl selected options =
-                    filterAtomVariableSelectEl (OfDiscordChannel << .id) ss cId fi ai selected options
+                ( selectedMaybe, options ) =
+                    Maybe.withDefault ( Nothing, [] ) (Maybe.map prepareOptions fam.ofDiscordChannel)
 
-                fallbackChannel =
-                    Discord.unavailableChannel channelId
+                prepareOptions ( _, channels ) =
+                    ( ListExtra.findOne (.id >> (==) channelId) channels
+                    , List.map (\c -> ( c.id, c )) channels
+                    )
             in
-            case fam.ofDiscordChannel of
-                Just ( _, channels ) ->
-                    let
-                        selectedChannel =
-                            channels |> ListExtra.findOne (\c -> c.id == channelId) |> Maybe.withDefault fallbackChannel
-                    in
-                    channelSelectEl selectedChannel <|
-                        ( List.map (\c -> ( c.id, c )) channels
-                        , \c -> discordChannelEl [] { size = discordGuildIconSize, channel = c }
-                        )
+            filterAtomVariableSelectEl (OfDiscordChannel << .id) <|
+                favsOptions selectedMaybe (Just Discord.channelFilter) options <|
+                    \c -> discordChannelEl [] { size = favsIconSize, channel = c }
 
-                Nothing ->
-                    channelSelectEl fallbackChannel ( [], always none )
+        OfSlackConversation convIdStr ->
+            let
+                ( selectedMaybe, options ) =
+                    Maybe.withDefault ( Nothing, [] ) (Maybe.map prepareOptions fam.ofSlackConversation)
+
+                prepareOptions { conversations } =
+                    ( ListExtra.findOne (Slack.getConversationIdStr >> (==) convIdStr) conversations
+                    , List.map (\c -> ( Slack.getConversationIdStr c, c )) conversations
+                    )
+            in
+            filterAtomVariableSelectEl (OfSlackConversation << Slack.getConversationIdStr) <|
+                favsOptions selectedMaybe (Just slackConvCacheFilter) options <|
+                    \c -> slackConversationEl [] { size = favsIconSize, conversation = c }
 
         ByMessage query ->
-            filterAtomVariableTextInputEl ByMessage cId fi ai query
+            filterAtomVariableTextInputEl ByMessage columnId fi ai query
 
         ByMedia mediaType ->
-            filterAtomVariableSelectEl ByMedia ss cId fi ai mediaType <|
-                ( [ ( "HasImage", HasImage ), ( "HasMovie", HasMovie ), ( "HasNone", HasNone ) ], mediaTypeOptionEl )
+            let
+                options =
+                    [ ( "HasImage", HasImage ), ( "HasVideo", HasVideo ), ( "HasNone", HasNone ) ]
+            in
+            filterAtomVariableSelectEl ByMedia <|
+                favsOptions (Just mediaType) Nothing options mediaTypeOptionEl
 
         RemoveMe ->
             -- Should not happen
             none
 
 
-discordGuildIconSize : Int
-discordGuildIconSize =
+favsIconSize : Int
+favsIconSize =
     20
 
 
+slackConvCacheFilter : String -> Slack.ConversationCache -> Bool
+slackConvCacheFilter f c =
+    StringExtra.containsCaseIgnored f c.name || StringExtra.containsCaseIgnored f c.team.name
+
+
 filterAtomVariableTextInputEl : (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg
-filterAtomVariableTextInputEl tagger cId fi ai current =
-    textInputEl
-        { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger str })
+filterAtomVariableTextInputEl faTagger cId fi ai current =
+    textInputEl []
+        { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = faTagger str })
         , theme = oneDark
         , enabled = True
         , text = current
@@ -468,25 +506,43 @@ filterAtomVariableTextInputEl tagger cId fi ai current =
         }
 
 
-filterAtomVariableSelectEl :
-    (a -> FilterAtom)
-    -> Select.State
-    -> String
-    -> Int
-    -> Int
-    -> a
-    -> ( List ( String, a ), a -> Element Msg )
-    -> Element Msg
-filterAtomVariableSelectEl tagger selectState cId fi ai selected ( options, optionEl ) =
-    select []
-        { state = selectState
-        , id = cId ++ "-filter_" ++ fromInt fi ++ "-atom_" ++ fromInt ai ++ "_variable"
+type alias FAVSOptions a =
+    { columnId : String
+    , filterIndex : Int
+    , atomIndex : Int
+    , state : Select.State
+    , selected : Maybe a
+    , filterMatch : Maybe (String -> a -> Bool)
+    , options : List ( String, a )
+    , optionEl : a -> Element Msg
+    }
+
+
+filterAtomVariableSelectEl : (a -> FilterAtom) -> FAVSOptions a -> Element Msg
+filterAtomVariableSelectEl faTagger opts =
+    select [ width fill ]
+        { state = opts.state
+        , msgTagger = SelectCtrl
+        , id = filterAtomVariableSelectId opts
         , theme = oneDark
-        , onSelect = \option -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = tagger option })
-        , selectedOption = Just selected
-        , options = options
-        , optionEl = optionEl
+        , thin = False
+        , onSelect = onSelectFilterAtomVariable faTagger opts
+        , selectedOption = opts.selected
+        , filterMatch = opts.filterMatch
+        , options = opts.options
+        , optionEl = opts.optionEl
         }
+
+
+filterAtomVariableSelectId : FAVSOptions a -> String
+filterAtomVariableSelectId opts =
+    opts.columnId ++ "-filter_" ++ fromInt opts.filterIndex ++ "-atom_" ++ fromInt opts.atomIndex ++ "_variable"
+
+
+onSelectFilterAtomVariable : (a -> FilterAtom) -> FAVSOptions a -> a -> Msg
+onSelectFilterAtomVariable faTagger opts var =
+    ColumnCtrl opts.columnId <|
+        SetFilterAtom { filterIndex = opts.filterIndex, atomIndex = opts.atomIndex, atom = faTagger var }
 
 
 mediaTypeOptionEl : MediaFilter -> Element msg
@@ -495,8 +551,8 @@ mediaTypeOptionEl mediaType =
         HasImage ->
             text "Image"
 
-        HasMovie ->
-            text "Movie"
+        HasVideo ->
+            text "Video"
 
         HasNone ->
             text "None"
@@ -518,7 +574,7 @@ columnDeleteEl c =
 
 columnDeleteGateEl : String -> String -> Element Msg
 columnDeleteGateEl cId deleteGate =
-    textInputEl
+    textInputEl []
         { onChange = ColumnCtrl cId << DeleteGateInput
         , theme = oneDark
         , enabled = True

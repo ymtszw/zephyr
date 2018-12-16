@@ -1,12 +1,12 @@
 module View.Parts exposing
-    ( noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
+    ( noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
     , breakP, breakT, breakTColumn, collapsingColumn
+    , scale12, cssRgba, brightness, setAlpha, manualStyle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
-    , scale12, cssRgba, brightness, setAlpha, manualStyle
-    , filtersToIconEl, filtersToTextEl
-    , discordGuildIconEl, discordChannelEl
+    , filtersToIconEl, filtersToTextEl, fetchStatusTextEl
+    , discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackConversationEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
     , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
     , spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
@@ -16,36 +16,20 @@ module View.Parts exposing
 {-| View parts, complementing Element and Html.
 
 
-## Essenstials
+## Helpers
 
-@docs noneAttr, style, visible, switchCursor, borderFlash, onAnimationEnd, inputScreen, dragHandle
+@docs noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
 @docs breakP, breakT, breakTColumn, collapsingColumn
-
-
-## Icons
-
-@docs octiconEl, squareIconOrHeadEl, iconWithBadgeEl
-
-
-## Inputs
-
-@docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
-@docs primaryButtonEl, successButtonEl, dangerButtonEl
-
-
-## Styles
-
 @docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
-## Column Filter
+## Elements
 
-@docs filtersToIconEl, filtersToTextEl
-
-
-## Discord
-
-@docs discordGuildIconEl, discordChannelEl
+@docs octiconEl, squareIconOrHeadEl, iconWithBadgeEl
+@docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
+@docs primaryButtonEl, successButtonEl, dangerButtonEl
+@docs filtersToIconEl, filtersToTextEl, fetchStatusTextEl
+@docs discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackConversationEl
 
 
 ## Constants
@@ -58,10 +42,13 @@ module View.Parts exposing
 -}
 
 import Array exposing (Array)
-import Data.ColorTheme exposing (ColorTheme, oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Producer.Discord as Discord
+import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus)
+import Data.Producer.Slack as Slack
+import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -76,6 +63,9 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode
 import ListExtra
 import Octicons
+import Time
+import TimeExtra
+import Url
 
 
 noneAttr : Attribute msg
@@ -123,7 +113,7 @@ switchCursor enabled =
 borderFlash : Bool -> Attribute msg
 borderFlash doFlash =
     if doFlash then
-        style "animation" "2s ease-out borderFlash"
+        style "animation" <| "2s ease-out " ++ borderFlashKeyframesName
 
     else
         noneAttr
@@ -132,6 +122,20 @@ borderFlash doFlash =
 borderFlashKeyframesName : String
 borderFlashKeyframesName =
     "borderFlash"
+
+
+rotating : Bool -> Attribute msg
+rotating doRotate =
+    if doRotate then
+        style "animation" <| "1.5s linear 0s infinite " ++ rotatingKeyframesName
+
+    else
+        noneAttr
+
+
+rotatingKeyframesName : String
+rotatingKeyframesName =
+    "rotating"
 
 
 {-| Fired when a CSS animation has been concluded.
@@ -159,23 +163,31 @@ octiconEl attrs { size, color, shape } =
 squareIconOrHeadEl : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Element msg
 squareIconOrHeadEl userAttrs { size, name, url } =
     let
-        attrs =
+        baseAttrs =
             [ width (px size)
             , height (px size)
             , alignTop
+            , clip
             , BG.color iconBackground
             , BD.rounded (iconRounding size)
-            , clip
+            , Font.size (size // 2)
+            , Font.bold
+            , Font.family
+                [ Font.typeface "Tahoma"
+                , Font.typeface "Verdana"
+                , Font.typeface "Arial"
+                , Font.typeface "Helvetica"
+                , Font.sansSerif
+                ]
             ]
-                ++ userAttrs
     in
-    el attrs <|
+    el (baseAttrs ++ userAttrs) <|
         case url of
             Just url_ ->
                 image [ width (px size), height (px size) ] { src = url_, description = name }
 
             Nothing ->
-                el [ centerX, centerY, Font.size (size // 2) ] (text (String.left 1 name))
+                el [ centerX, centerY ] (text (String.left 1 name))
 
 
 iconBackground : Color
@@ -229,29 +241,34 @@ iconWithBadgeEl userAttrs { size, badge, fallback, url } =
 
 
 textInputEl :
-    { onChange : String -> msg
-    , theme : ColorTheme
-    , enabled : Bool
-    , text : String
-    , label : Element.Input.Label msg
-    , placeholder : Maybe (Element msg)
-    }
+    List (Attribute msg)
+    ->
+        { onChange : String -> msg
+        , theme : ColorTheme
+        , enabled : Bool
+        , text : String
+        , label : Element.Input.Label msg
+        , placeholder : Maybe (Element msg)
+        }
     -> Element msg
-textInputEl { onChange, theme, enabled, text, label, placeholder } =
-    Element.Input.text
-        [ width fill
-        , height fill
-        , padding textInputPadding
-        , BG.color theme.note
-        , BD.width 0
-        , BD.rounded rectElementRound
-        , Font.color theme.text
-        , switchCursor enabled
-        , customPlaceholder theme placeholder text
-        , inputScreen enabled
-        , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
-        , disabled (not enabled)
-        ]
+textInputEl attrs { onChange, theme, enabled, text, label, placeholder } =
+    let
+        baseAttrs =
+            [ width fill
+            , height fill
+            , padding textInputPadding
+            , BG.color theme.note
+            , BD.width 0
+            , BD.rounded rectElementRound
+            , Font.color theme.text
+            , switchCursor enabled
+            , customPlaceholder theme placeholder text
+            , inputScreen rectElementRound enabled
+            , style "line-height" "1" -- Cancelling line-height introduced by elm-ui
+            , disabled (not enabled)
+            ]
+    in
+    Element.Input.text (baseAttrs ++ attrs)
         { onChange = onChange
         , text = text
         , placeholder = Nothing
@@ -482,7 +499,7 @@ rectButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled
             , BG.color enabledColor
             , Font.color enabledFontColor
             , clip
-            , inputScreen enabled
+            , inputScreen rectElementRound enabled
             , switchCursor enabled
             ]
                 ++ userAttrs
@@ -514,9 +531,17 @@ over the target input element. And when the input is enabled, its turned off via
 whcih does not cause style recalc nor layout/reflow (due to inFront == position: absolute;)
 
 -}
-inputScreen : Bool -> Attribute msg
-inputScreen enabled =
-    inFront <| el [ width fill, height fill, visible (not enabled), BG.color (rgba255 0 0 0 0.5) ] none
+inputScreen : Int -> Bool -> Attribute msg
+inputScreen round enabled =
+    inFront <|
+        el
+            [ width fill
+            , height fill
+            , visible (not enabled)
+            , BD.rounded round
+            , BG.color (rgba255 0 0 0 0.5)
+            ]
+            none
 
 
 thinButtonEl :
@@ -539,7 +564,7 @@ thinButtonEl userAttrs { onPress, width, enabledColor, enabledFontColor, enabled
             , BG.color enabledColor
             , Font.color enabledFontColor
             , clip
-            , inputScreen enabled
+            , inputScreen thinButtonPadding enabled
             , switchCursor enabled
             ]
                 ++ userAttrs
@@ -613,18 +638,20 @@ squareButtonEl :
     ->
         { onPress : msg
         , enabled : Bool
+        , round : Int
         , innerElement : Element msg
         , innerElementSize : Int
         }
     -> Element msg
-squareButtonEl userAttrs { onPress, enabled, innerElement, innerElementSize } =
+squareButtonEl userAttrs { onPress, enabled, round, innerElement, innerElementSize } =
     let
         attrs =
             [ width (px innerElementSize)
             , height (px innerElementSize)
             , clip
+            , BD.rounded round
             , switchCursor enabled
-            , inputScreen enabled
+            , inputScreen round enabled
             , disabled (not enabled)
             ]
                 ++ userAttrs
@@ -761,6 +788,24 @@ filtersToIconEl attrs { size, fam, filters } =
         |> Maybe.withDefault (lazy2 fallbackIconEl attrs size)
 
 
+fallbackIconEl : List (Attribute msg) -> Int -> Element msg
+fallbackIconEl userAttrs size =
+    let
+        attrs =
+            [ width (px size)
+            , height (px size)
+            , clip
+            , BD.width 1
+            , BD.color oneDark.note
+            , BD.rounded rectElementRound
+            , Font.size (size // 2)
+            , Font.family [ Font.serif ]
+            ]
+                ++ userAttrs
+    in
+    el attrs <| el [ centerX, centerY ] <| text "Z"
+
+
 filterToIconEl : List (Attribute msg) -> Int -> FilterAtomMaterial -> Filter -> Maybe (Element msg) -> Maybe (Element msg)
 filterToIconEl attrs size fam filter elMaybe =
     let
@@ -769,13 +814,30 @@ filterToIconEl attrs size fam filter elMaybe =
                 ( Just _, _ ) ->
                     acc
 
-                ( _, OfDiscordChannel cId ) ->
-                    FAM.mapDiscordChannel cId fam (discordChannelIconEl attrs size)
+                ( Nothing, OfDiscordChannel cId ) ->
+                    withDiscordChannel cId fam (discordChannelIconEl attrs size)
 
-                ( _, _ ) ->
+                ( Nothing, OfSlackConversation cId ) ->
+                    withSlackConversation cId fam (slackConversationIconEl attrs size)
+
+                ( Nothing, _ ) ->
                     Nothing
     in
     Filter.foldl reducer elMaybe filter
+
+
+withDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
+withDiscordChannel cId fam mapper =
+    fam.ofDiscordChannel
+        |> Maybe.andThen (\( _, caches ) -> ListExtra.findOne (\c -> c.id == cId) caches)
+        |> Maybe.map mapper
+
+
+withSlackConversation : String -> FilterAtomMaterial -> (Slack.ConversationCache -> a) -> Maybe a
+withSlackConversation cId fam mapper =
+    fam.ofSlackConversation
+        |> Maybe.andThen (\{ conversations } -> Slack.getConversationFromCache cId conversations)
+        |> Maybe.map mapper
 
 
 discordChannelIconEl : List (Attribute msg) -> Int -> Discord.ChannelCache -> Element msg
@@ -808,22 +870,24 @@ discordBadgeEl badgeSize =
         none
 
 
-fallbackIconEl : List (Attribute msg) -> Int -> Element msg
-fallbackIconEl userAttrs size =
-    let
-        attrs =
-            [ width (px size)
-            , height (px size)
-            , clip
-            , BD.width 1
-            , BD.color oneDark.note
-            , BD.rounded rectElementRound
-            , Font.size (size // 2)
-            , Font.family [ Font.serif ]
-            ]
-                ++ userAttrs
-    in
-    el attrs <| el [ centerX, centerY ] <| text "Z"
+slackConversationIconEl : List (Attribute msg) -> Int -> Slack.ConversationCache -> Element msg
+slackConversationIconEl attrs size c =
+    iconWithBadgeEl attrs
+        { size = size
+        , badge = Just (lazy slackBadgeEl)
+        , fallback = c.name
+        , url = chooseSlackTeamIconUrl size c.team.icon
+        }
+
+
+slackBadgeEl : Int -> Element msg
+slackBadgeEl badgeSize =
+    el
+        [ width (px badgeSize)
+        , height (px badgeSize)
+        , BG.uncropped (Slack.defaultIconUrl (Just badgeSize))
+        ]
+        none
 
 
 filtersToTextEl :
@@ -853,8 +917,23 @@ filterAtomTextEl fontSize color fam fa =
         OfDiscordChannel cId ->
             el [ Font.size fontSize, Font.color color, Font.bold ] <|
                 Maybe.withDefault (breakT cId) <|
-                    FAM.mapDiscordChannel cId fam <|
+                    withDiscordChannel cId fam <|
                         \c -> breakT ("#" ++ c.name)
+
+        OfSlackConversation cId ->
+            el [ Font.size fontSize, Font.color color, Font.bold ] <|
+                Maybe.withDefault (breakT cId) <|
+                    withSlackConversation cId fam <|
+                        \c ->
+                            case c.type_ of
+                                Slack.PublicChannel _ ->
+                                    breakT ("#" ++ c.name)
+
+                                Slack.PrivateChannel ->
+                                    breakT ("#" ++ c.name)
+
+                                _ ->
+                                    breakT c.name
 
         ByMessage query ->
             breakT ("\"" ++ query ++ "\"")
@@ -862,7 +941,7 @@ filterAtomTextEl fontSize color fam fa =
         ByMedia HasImage ->
             octiconEl [] { size = fontSize, color = color, shape = Octicons.fileMedia }
 
-        ByMedia HasMovie ->
+        ByMedia HasVideo ->
             octiconEl [] { size = fontSize, color = color, shape = Octicons.deviceCameraVideo }
 
         ByMedia HasNone ->
@@ -870,6 +949,26 @@ filterAtomTextEl fontSize color fam fa =
 
         RemoveMe ->
             none
+
+
+fetchStatusTextEl : Time.Zone -> FetchStatus -> Element msg
+fetchStatusTextEl tz fs =
+    breakT <|
+        case fs of
+            FetchStatus.NextFetchAt posix _ ->
+                "Next: " ++ TimeExtra.local tz posix
+
+            FetchStatus.Fetching _ _ ->
+                "Fetching..."
+
+            FetchStatus.Waiting ->
+                "Checking availability..."
+
+            FetchStatus.InitialFetching _ ->
+                "Checking availability..."
+
+            FetchStatus.Available ->
+                "Not subscribed"
 
 
 discordGuildIconEl : List (Attribute msg) -> Int -> Discord.Guild -> Element msg
@@ -894,6 +993,57 @@ discordGuildIconSpacingX =
     2
 
 
+slackConversationEl :
+    List (Attribute msg)
+    -> { size : Int, conversation : { x | name : String, type_ : Slack.ConversationType } }
+    -> Element msg
+slackConversationEl attrs opts =
+    row ([ spacing spacingUnit, Font.size opts.size ] ++ attrs) <|
+        [ case opts.conversation.type_ of
+            Slack.PublicChannel _ ->
+                text "#"
+
+            Slack.PrivateChannel ->
+                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.lock }
+
+            Slack.IM ->
+                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.person }
+
+            Slack.MPIM ->
+                octiconEl [] { size = opts.size, color = slackConvIconColor, shape = Octicons.organization }
+        , text opts.conversation.name
+        ]
+
+
+slackConvIconColor : Color
+slackConvIconColor =
+    aubergine.text
+
+
+slackTeamIconEl : List (Attribute msg) -> Int -> Slack.Team -> Element msg
+slackTeamIconEl attrs size team =
+    squareIconOrHeadEl ([ BG.color aubergine.prim ] ++ attrs)
+        { size = size
+        , name = team.name
+        , url = chooseSlackTeamIconUrl size team.icon
+        }
+
+
+chooseSlackTeamIconUrl : Int -> Slack.TeamIcon -> Maybe String
+chooseSlackTeamIconUrl size icon =
+    if icon.imageDefault then
+        Nothing
+
+    else if size <= 34 then
+        Just (Url.toString icon.image34)
+
+    else if size <= 44 then
+        Just (Url.toString icon.image44)
+
+    else
+        Just (Url.toString icon.image68)
+
+
 
 -- MANUAL STYLE
 
@@ -910,6 +1060,7 @@ manualStyle =
         , Html.text "a:link{text-decoration:none;}" -- Disabled browser-default link-underlining
         , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
         , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
+        , Html.text <| "@keyframes " ++ rotatingKeyframesName ++ "{from{transform:rotate(0turn);}to{transform:rotate(1turn);}}"
         ]
 
 

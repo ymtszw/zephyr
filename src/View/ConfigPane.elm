@@ -2,15 +2,16 @@ module View.ConfigPane exposing (configPaneEl)
 
 import Array
 import Broker
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Model as Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
+import Data.ProducerRegistry exposing (ProducerRegistry)
 import Deque
 import Element exposing (..)
 import Element.Background as BG
@@ -21,6 +22,7 @@ import Logger
 import Octicons
 import StringExtra
 import View.ConfigPane.DiscordConfig exposing (discordConfigEl)
+import View.ConfigPane.SlackConfig exposing (slackConfigEl)
 import View.Parts exposing (..)
 
 
@@ -66,11 +68,13 @@ configInnerEl m =
         , height fill
         , spacingXY 0 sectionSpacingY
         ]
-        [ configSectionWrapper prefTitleEl <|
+        [ configSectionWrapper oneDark prefTitleEl <|
             prefEl m.pref m.columnStore
-        , configSectionWrapper discordConfigTitleEl <|
+        , configSectionWrapper aubergine slackConfigTitleEl <|
+            slackConfigEl m.viewState m.producerRegistry.slack
+        , configSectionWrapper oneDark discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
-        , configSectionWrapper statusTitleEl <| statusEl m
+        , configSectionWrapper oneDark statusTitleEl <| statusEl m
         , if m.env.isLocalDevelopment then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
@@ -86,18 +90,19 @@ sectionSpacingY =
     20
 
 
-configSectionWrapper : Element Msg -> Element Msg -> Element Msg
-configSectionWrapper titleEl element =
+configSectionWrapper : ColorTheme -> Element Msg -> Element Msg -> Element Msg
+configSectionWrapper theme titleEl element =
     column
         [ width fill
         , padding rectElementOuterPadding
         , spacing spacingUnit
-        , BG.color oneDark.main
+        , BG.color theme.main
         , BD.rounded rectElementRound
         , Font.size sectionBaseFontSize
         ]
         [ el
             [ width fill
+            , padding rectElementInnerPadding
             , Font.bold
             , Font.size sectionTitleFontSize
             , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
@@ -115,6 +120,78 @@ sectionTitleFontSize =
 sectionBaseFontSize : Int
 sectionBaseFontSize =
     scale12 2
+
+
+slackConfigTitleEl : Element Msg
+slackConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ squareIconOrHeadEl []
+            { size = sectionTitleFontSize
+            , name = "Slack"
+            , url = Just (Slack.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Slack"
+        ]
+
+
+discordConfigTitleEl : Element Msg
+discordConfigTitleEl =
+    row [ spacing spacingUnit ]
+        [ squareIconOrHeadEl []
+            { size = sectionTitleFontSize
+            , name = "Discord"
+            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
+            }
+        , text "Discord"
+        ]
+
+
+statusTitleEl : Element Msg
+statusTitleEl =
+    row [ spacing spacingUnit ]
+        [ octiconEl []
+            { size = sectionTitleFontSize
+            , color = oneDark.succ
+            , shape = Octicons.pulse
+            }
+        , text "Status"
+        ]
+
+
+statusEl : Model -> Element Msg
+statusEl m =
+    let
+        numColumns =
+            ColumnStore.size m.columnStore
+
+        numVisible =
+            Array.length m.columnStore.order
+    in
+    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
+        List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
+            [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
+            , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
+            , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
+            , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
+            , [ "* Pinned columns", StringExtra.punctuateNumber <| ColumnStore.sizePinned m.columnStore ]
+            , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
+            , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
+            , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
+            , [ "ServiceWorker"
+              , if m.env.serviceWorkerAvailable then
+                    "Registered"
+
+                else
+                    "Not available"
+              ]
+            , [ "IndexedDB"
+              , if m.env.indexedDBAvailable then
+                    "Used"
+
+                else
+                    "Not available"
+              ]
+            ]
 
 
 prefTitleEl : Element Msg
@@ -233,66 +310,7 @@ deleteColumnButtonEl cId =
     squareButtonEl [ alignRight ]
         { onPress = DelColumn cId
         , enabled = True
+        , round = 0
         , innerElement = octiconEl [] { size = shadowColumnIconSize, color = oneDark.err, shape = Octicons.trashcan }
         , innerElementSize = shadowColumnIconSize
         }
-
-
-discordConfigTitleEl : Element Msg
-discordConfigTitleEl =
-    row [ spacing spacingUnit ]
-        [ squareIconOrHeadEl []
-            { size = sectionTitleFontSize
-            , name = "Discord"
-            , url = Just (Discord.defaultIconUrl (Just sectionTitleFontSize))
-            }
-        , text "Discord"
-        ]
-
-
-statusTitleEl : Element Msg
-statusTitleEl =
-    row [ spacing spacingUnit ]
-        [ octiconEl []
-            { size = sectionTitleFontSize
-            , color = oneDark.succ
-            , shape = Octicons.pulse
-            }
-        , text "Status"
-        ]
-
-
-statusEl : Model -> Element Msg
-statusEl m =
-    let
-        numColumns =
-            ColumnStore.size m.columnStore
-
-        numVisible =
-            Array.length m.columnStore.order
-    in
-    column [ padding rectElementInnerPadding, spacing spacingUnit, Font.size descFontSize ] <|
-        List.map (row [ spacing spacingUnit ] << List.map text << List.intersperse "-")
-            [ [ "Local message buffer capacity", StringExtra.punctuateNumber <| Broker.capacity m.itemBroker ]
-            , [ "Maximum messages per column", StringExtra.punctuateNumber Column.columnItemLimit ]
-            , [ "Number of columns", StringExtra.punctuateNumber numColumns ]
-            , [ "* Visible columns", StringExtra.punctuateNumber numVisible ]
-            , [ "* Pinned columns", StringExtra.punctuateNumber <| ColumnStore.sizePinned m.columnStore ]
-            , [ "* Shadow columns", StringExtra.punctuateNumber (numColumns - numVisible) ]
-            , [ "ClientHeight", StringExtra.punctuateNumber m.env.clientHeight ]
-            , [ "ClientWidth", StringExtra.punctuateNumber m.env.clientWidth ]
-            , [ "ServiceWorker"
-              , if m.env.serviceWorkerAvailable then
-                    "Registered"
-
-                else
-                    "Not available"
-              ]
-            , [ "IndexedDB"
-              , if m.env.indexedDBAvailable then
-                    "Used"
-
-                else
-                    "Not available"
-              ]
-            ]

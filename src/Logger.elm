@@ -63,8 +63,11 @@ defaultFilters =
     -- Timer ticks and text inputs are good candidates of default filters
     [ MsgFilter False "Tick"
     , MsgFilter False "NoOp"
+    , MsgFilter False "Select.FilterInput"
+    , MsgFilter False "Select.DebounceMsg"
     , MsgFilter False "Logger.FilterInput"
     , MsgFilter False "Discord.TokenInput"
+    , MsgFilter False "Slack.UTokenInput"
     , MsgFilter False "Column.DeleteGateInput"
     , MsgFilter False "Column.EditorInput"
     ]
@@ -394,7 +397,7 @@ msgFilterDeleteIconColor =
 
 payloadFilterInputEl : History -> Element Msg
 payloadFilterInputEl (History h) =
-    textInputEl
+    textInputEl []
         { onChange = FilterInput
         , theme = oneDark
         , enabled = True

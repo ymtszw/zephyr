@@ -1,17 +1,20 @@
 module Json.DecodeExtra exposing
     ( when, conditional, succeedIf, do
     , tag, tagged, tagged2, tagged3
-    , url, leakyList, maybeField, fromResult
+    , url, hexColor, color, leakyList, dictFromList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
 @docs when, conditional, succeedIf, do
 @docs tag, tagged, tagged2, tagged3
-@docs url, leakyList, maybeField, fromResult
+@docs url, hexColor, color, leakyList, dictFromList, maybeField, optionField, fromResult
 
 -}
 
+import Dict exposing (Dict)
+import Element
+import Hex
 import Json.Decode exposing (..)
 import Url
 
@@ -93,6 +96,16 @@ maybeField fieldName decoder =
     map flatten (maybe (field fieldName (maybe decoder)))
 
 
+{-| Omittable field. You must supply default
+-}
+optionField : String -> Decoder a -> a -> Decoder a
+optionField fieldName decoder default =
+    oneOf
+        [ field fieldName decoder
+        , succeed default
+        ]
+
+
 {-| Decode a serialized custom type value of 0-variable.
 
 Use with EncodeExtra.tag.
@@ -157,6 +170,36 @@ url =
             )
 
 
+{-| Decode a 6-digit Hexadecimal Color string into Element.Color.
+-}
+hexColor : String -> Decoder Element.Color
+hexColor hexStr =
+    let
+        res =
+            Result.map3 Element.rgb255
+                (hexStr |> String.slice 0 2 |> Hex.fromString)
+                (hexStr |> String.slice 2 4 |> Hex.fromString)
+                (hexStr |> String.slice 4 6 |> Hex.fromString)
+    in
+    case res of
+        Ok c ->
+            succeed c
+
+        Err e ->
+            fail <| "Invalid Color: '" ++ hexStr ++ "'. " ++ e
+
+
+{-| Decode a well-structured Color object. Use it with EncodeExtra.color.
+-}
+color : Decoder Element.Color
+color =
+    map4 Element.rgba
+        (field "red" float)
+        (field "green" float)
+        (field "blue" float)
+        (field "alpha" float)
+
+
 fromResult : String -> Result x a -> Decoder a
 fromResult message result =
     case result of
@@ -175,3 +218,17 @@ Discussed here: <https://discourse.elm-lang.org/t/experimental-json-decoding-api
 do : Decoder a -> (a -> Decoder b) -> Decoder b
 do dec cont =
     andThen cont dec
+
+
+{-| Construct Dict from Json Array.
+
+Useful for making ID-based dictionary of items.
+
+-}
+dictFromList : (a -> comparable) -> Decoder a -> Decoder (Dict comparable a)
+dictFromList toKey valueDec =
+    let
+        listToDict =
+            List.map (\a -> ( toKey a, a )) >> Dict.fromList
+    in
+    map listToDict (list valueDec)

@@ -20,7 +20,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref
-import Data.Producer as Producer
+import Data.ProducerRegistry as ProducerRegistry
 import Data.SavedState as SavedState
 import Data.Storable as Storable exposing (Storable)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
@@ -69,8 +69,8 @@ stateDecoder env =
                 else if id == ItemBroker.storeId then
                     D.map LoadItemBroker ItemBroker.decoder
 
-                else if id == Producer.registryStoreId then
-                    D.map LoadProducerRegistry Producer.registryDecoder
+                else if id == ProducerRegistry.storeId then
+                    D.map LoadProducerRegistry ProducerRegistry.decoder
 
                 else if id == Pref.storeId then
                     D.map LoadPref (Pref.decoder env.clientWidth)
@@ -90,7 +90,7 @@ requestItemBroker =
 
 requestProducerRegistry : Cmd msg
 requestProducerRegistry =
-    requestStored Producer.registryStoreId
+    requestStored ProducerRegistry.storeId
 
 
 requestPref : Cmd msg
@@ -186,7 +186,7 @@ changeSetToCmds m (ChangeSet cs) =
             doPersist (ItemBroker.encode m.itemBroker)
     , toCmd cs.producerRegistry <|
         \_ ->
-            doPersist (Producer.encodeRegistry m.producerRegistry)
+            doPersist (ProducerRegistry.encode m.producerRegistry)
     , toCmd cs.pref <|
         \_ ->
             doPersist (Pref.encode m.pref)

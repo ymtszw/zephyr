@@ -63,16 +63,15 @@ editorSelectEl ss fam c =
         selectedIndex =
             SelectArray.selectedIndex c.editors
     in
-    Select.select
-        [ width (px editorSelectWidth)
-        , paddingEach { top = 0, right = 0, bottom = 0, left = rectElementInnerPadding }
-        , Font.size editorFontSize
-        ]
+    Select.select [ width (px editorSelectWidth), Font.size editorFontSize ]
         { state = ss
+        , msgTagger = SelectCtrl
         , id = editorSelectId c.id
         , theme = oneDark
+        , thin = True
         , onSelect = onEditorSelect c.id selectedIndex
         , selectedOption = Just ( selectedIndex, SelectArray.selected c.editors )
+        , filterMatch = Nothing
         , options = indexedEditors
         , optionEl = editorSelectOptionEl fam
         }
@@ -103,9 +102,8 @@ editorSelectOptionEl fam ( _, ce ) =
         DiscordMessageEditor { channelId } _ ->
             fam.ofDiscordChannel
                 |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
-                |> Maybe.withDefault (Discord.unavailableChannel channelId)
-                |> (\channel -> { size = editorFontSize, channel = channel })
-                |> discordChannelEl []
+                |> Maybe.map (\c -> discordChannelEl [] { size = editorFontSize, channel = c })
+                |> Maybe.withDefault (text channelId)
 
         LocalMessageEditor _ ->
             text "Personal Memo"

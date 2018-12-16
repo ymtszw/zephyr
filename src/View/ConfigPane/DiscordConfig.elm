@@ -4,9 +4,9 @@ import Data.ColorTheme exposing (oneDark)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
-import Data.Producer as Producer
 import Data.Producer.Discord as Discord exposing (Channel, Discord(..), POV, User)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
+import Data.ProducerRegistry as ProducerRegistry
 import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as BG
@@ -18,28 +18,32 @@ import Element.Lazy exposing (lazy2)
 import Html.Attributes
 import Octicons
 import Time
-import TimeExtra
 import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
 
 discordConfigEl : ViewState -> Discord -> Element Msg
 discordConfigEl vs discord =
-    discordConfigBodyEl vs discord
+    let
+        currentStates =
+            currentStateEl vs discord
 
-
-discordConfigBodyEl : ViewState -> Discord -> Element Msg
-discordConfigBodyEl vs discord =
-    column [ width fill, padding rectElementInnerPadding, spacing spacingUnit ] <|
-        [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
-        , lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
+        tokenForm =
+            [ lazy2 tokenInputEl (tokenInputAllowed discord) (tokenText discord)
+            , lazy2 tokenSubmitButtonEl (tokenSubmitAllowed discord) (tokenSubmitButtonText discord)
+            ]
+    in
+    column
+        [ width fill
+        , padding rectElementInnerPadding
+        , spacing spacingUnit
         ]
-            ++ currentStateEl vs discord
+        (currentStates ++ tokenForm)
 
 
 tokenInputEl : Bool -> String -> Element Msg
 tokenInputEl enabled text =
-    textInputEl
+    textInputEl []
         { onChange = Discord.TokenInput
         , theme = oneDark
         , enabled = enabled
@@ -68,13 +72,13 @@ tokenInputAllowed discord =
 
 mapToRoot : Element Discord.Msg -> Element Msg
 mapToRoot =
-    map (Producer.DiscordMsg >> ProducerCtrl)
+    map (ProducerRegistry.DiscordMsg >> ProducerCtrl)
 
 
 tokenSubmitButtonEl : Bool -> String -> Element Msg
 tokenSubmitButtonEl enabled text_ =
     primaryButtonEl [ alignRight ]
-        { onPress = Discord.CommitToken
+        { onPress = Discord.TokenCommit
         , width = shrink
         , theme = oneDark
         , enabled = enabled
@@ -139,6 +143,11 @@ tokenLabelEl =
             [ el [] (text "Token")
             , paragraph [ Font.color oneDark.note, Font.size smallFontSize ]
                 [ text "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
+            , paragraph [ Font.color oneDark.note, Font.size smallFontSize ]
+                [ text "Tokens are stored in IndexedDB of your web browser, and only sent to 'discordapp.com'. Otherwise it "
+                , el [ Font.bold ] (text "never")
+                , text " get out of your web browser."
+                ]
             ]
 
 
@@ -183,35 +192,35 @@ currentStateEl : ViewState -> Discord -> List (Element Msg)
 currentStateEl vs discord =
     case discord of
         Identified newSession ->
-            [ userNameAndAvatarEl newSession.user ]
+            [ userNameAndAvatarEl False newSession.user ]
 
         Hydrated _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Rehydrating _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl True pov
+            [ userNameAndAvatarEl True pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Revisit pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl True pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Expired _ pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
         Switching newSession pov ->
-            [ userNameAndAvatarEl pov.user
-            , guildsEl False pov
+            [ userNameAndAvatarEl False pov.user
+            , guildsEl pov
             , subbedChannelsEl vs pov
             ]
 
@@ -219,8 +228,8 @@ currentStateEl vs discord =
             []
 
 
-userNameAndAvatarEl : User -> Element Msg
-userNameAndAvatarEl user =
+userNameAndAvatarEl : Bool -> User -> Element Msg
+userNameAndAvatarEl rehydrating user =
     row [ width fill, spacing spacingUnit ]
         [ el [] (text "User: ")
         , el
@@ -232,6 +241,7 @@ userNameAndAvatarEl user =
             none
         , breakT user.username
         , el [ Font.size smallFontSize, Font.color oneDark.note ] (breakT ("#" ++ user.discriminator))
+        , rehydrateButtonEl rehydrating
         ]
 
 
@@ -240,32 +250,14 @@ userAvatarSize =
     32
 
 
-guildsEl : Bool -> POV -> Element Msg
-guildsEl rehydrating pov =
-    row [ width fill, spacing spacingUnit ]
-        [ column [ alignTop, spacing spacingUnit ]
-            [ text "Servers: "
-            , rehydrateButtonEl rehydrating pov
-            ]
-        , pov.guilds
-            |> Dict.foldl (\_ guild acc -> discordGuildIconEl [] guildIconSize guild :: acc) []
-            |> wrappedRow [ width fill, spacing spacingUnit ]
-        ]
-
-
-guildIconSize : Int
-guildIconSize =
-    50
-
-
-rehydrateButtonEl : Bool -> POV -> Element Msg
-rehydrateButtonEl rehydrating pov =
-    roundButtonEl []
+rehydrateButtonEl : Bool -> Element Msg
+rehydrateButtonEl rehydrating =
+    roundButtonEl [ alignTop, alignRight ]
         { onPress = Discord.Rehydrate
         , enabled = not rehydrating
         , innerElementSize = rehydrateButtonSize
         , innerElement =
-            octiconEl []
+            octiconEl [ rotating rehydrating ]
                 { size = rehydrateButtonSize
                 , color =
                     if rehydrating then
@@ -276,7 +268,7 @@ rehydrateButtonEl rehydrating pov =
                 , shape = Octicons.sync
                 }
         }
-        |> map (Producer.DiscordMsg >> ProducerCtrl)
+        |> mapToRoot
 
 
 rehydrateButtonSize : Int
@@ -287,6 +279,21 @@ rehydrateButtonSize =
 activeRehydrateButtonColor : Color
 activeRehydrateButtonColor =
     oneDark.prim
+
+
+guildsEl : POV -> Element Msg
+guildsEl pov =
+    row [ width fill, spacing spacingUnit ]
+        [ el [ alignTop ] <| text "Servers: "
+        , pov.guilds
+            |> Dict.foldl (\_ guild acc -> discordGuildIconEl [] guildIconSize guild :: acc) []
+            |> wrappedRow [ width fill, spacing spacingUnit ]
+        ]
+
+
+guildIconSize : Int
+guildIconSize =
+    50
 
 
 subbedChannelsEl : ViewState -> POV -> Element Msg
@@ -342,26 +349,6 @@ channelRowKeyEl tz c =
             ]
 
 
-fetchStatusTextEl : Time.Zone -> FetchStatus -> Element Msg
-fetchStatusTextEl tz fs =
-    breakT <|
-        case fs of
-            NextFetchAt posix _ ->
-                "Next: " ++ TimeExtra.local tz posix
-
-            Fetching _ _ ->
-                "Fetching..."
-
-            Waiting ->
-                "Checking availability..."
-
-            InitialFetching _ ->
-                "Checking availability..."
-
-            Available ->
-                "Not subscribed"
-
-
 createColumnButtonEl : Channel -> Element Msg
 createColumnButtonEl c =
     thinButtonEl []
@@ -392,15 +379,21 @@ unsubscribeButtonEl c =
 
 subscribeRowKeyEl : Select.State -> List Channel -> ( String, Element Msg )
 subscribeRowKeyEl selectState notSubbed =
-    select [ width (px channelSelectWidth), alignLeft ]
+    [ select [ width (fillPortion 1), alignLeft ]
         { state = selectState
+        , msgTagger = SelectCtrl
         , id = channelSelectId
         , theme = oneDark
-        , onSelect = ProducerCtrl << Producer.DiscordMsg << Discord.Subscribe << .id
+        , thin = True
+        , onSelect = ProducerCtrl << ProducerRegistry.DiscordMsg << Discord.Subscribe << .id
         , selectedOption = Nothing
+        , filterMatch = Just Discord.channelFilter
         , options = List.map (\c -> ( c.id, c )) notSubbed
         , optionEl = \c -> discordChannelEl [] { size = channelTableFontSize, channel = c }
         }
+    , el [ width (fillPortion 2) ] none
+    ]
+        |> row [ width fill ]
         |> Tuple.pair channelSelectId
 
 

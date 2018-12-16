@@ -26,8 +26,9 @@ import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
+import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen
 import IndexedDb exposing (..)
 import Logger
@@ -136,14 +137,12 @@ update msg m_ =
         LinkClicked (Browser.External url) ->
             noPersist ( m, Nav.load url )
 
-        SelectToggle sId True ->
-            pure { m | viewState = { viewState | selectState = View.Select.open sId viewState.selectState } }
-
-        SelectToggle _ False ->
-            pure { m | viewState = { viewState | selectState = View.Select.close } }
-
-        SelectPick actualMsg ->
-            update actualMsg { m | viewState = { viewState | selectState = View.Select.close } }
+        SelectCtrl sMsg ->
+            let
+                ( ss, cmd ) =
+                    View.Select.update SelectCtrl sMsg viewState.selectState
+            in
+            noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
         AddEmptyColumn ->
             UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
@@ -240,7 +239,7 @@ update msg m_ =
             applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId cMsg m.columnStore
 
         ProducerCtrl pctrl ->
-            applyProducerYield m <| Producer.update pctrl m.producerRegistry
+            applyProducerYield m <| ProducerRegistry.update pctrl m.producerRegistry
 
         Tick posix ->
             onTick posix m
@@ -319,7 +318,11 @@ onTick posix m_ =
             pure { m | worque = Worque.push (BrokerScan (n - 1)) m.worque }
 
         Just DiscordFetch ->
-            Producer.update (Producer.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
+            ProducerRegistry.update (ProducerRegistry.DiscordMsg (Discord.Fetch posix)) m.producerRegistry
+                |> applyProducerYield m
+
+        Just SlackFetch ->
+            ProducerRegistry.update (ProducerRegistry.SlackMsg (Slack.Fetch posix)) m.producerRegistry
                 |> applyProducerYield m
 
         Just DropOldState ->
@@ -419,7 +422,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
     finalize <|
         case pp.producerMsg of
             Just pMsg ->
-                applyProducerYield m_ <| Producer.update pMsg m_.producerRegistry
+                applyProducerYield m_ <| ProducerRegistry.update pMsg m_.producerRegistry
 
             Nothing ->
                 ( m_, Cmd.none, changeSet )
@@ -441,7 +444,7 @@ pacemaker heartstopper m =
             { m | heartrate = Model.defaultHeartrateMillis }
 
 
-{-| Restart producers on savedState reload.
+{-| Restart producers on application state reload.
 
 Always persist producerRegistry in order to apply new encoding format, if any.
 
@@ -449,34 +452,34 @@ Always persist producerRegistry in order to apply new encoding format, if any.
 reloadProducers : Model -> ( Model, Cmd Msg, ChangeSet )
 reloadProducers m =
     let
-        reloaded =
-            Producer.reloadAll m.producerRegistry
+        ( producerRegistry, gr ) =
+            ProducerRegistry.reloadAll m.producerRegistry
 
-        ( newColumnStore, _ ) =
-            ColumnStore.updateFAM reloaded.famInstructions m.columnStore
+        ( columnStore, _ ) =
+            ColumnStore.updateFAM gr.famInstructions m.columnStore
     in
     ( { m
-        | producerRegistry = reloaded.producerRegistry
-        , columnStore = newColumnStore
-        , worque = Worque.pushAll reloaded.works m.worque
+        | producerRegistry = producerRegistry
+        , columnStore = columnStore
+        , worque = Worque.pushAll gr.works m.worque
       }
-    , Cmd.map ProducerCtrl reloaded.cmd
+    , Cmd.map ProducerCtrl gr.cmd
     , changeSet |> saveProducerRegistry |> saveColumnStore
     )
 
 
-applyProducerYield : Model -> Producer.Yield -> ( Model, Cmd Msg, ChangeSet )
-applyProducerYield m_ y =
+applyProducerYield : Model -> ( ProducerRegistry, ProducerRegistry.Yield ) -> ( Model, Cmd Msg, ChangeSet )
+applyProducerYield m_ ( producerRegistry, y ) =
     let
-        ( newColumnStore, persistColumnStore ) =
-            ColumnStore.updateFAM [ y.postProcess.famInstruction ] m_.columnStore
+        ( columnStore, persistColumnStore ) =
+            ColumnStore.updateFAM [ y.famInstruction ] m_.columnStore
 
         m =
             { m_
-                | producerRegistry = y.producerRegistry
-                , columnStore = newColumnStore
+                | producerRegistry = producerRegistry
+                , columnStore = columnStore
                 , worque =
-                    case y.postProcess.work of
+                    case y.work of
                         Just w ->
                             Worque.push w m_.worque
 
@@ -485,7 +488,7 @@ applyProducerYield m_ y =
             }
 
         changeSetBase =
-            case ( y.postProcess.persist, persistColumnStore ) of
+            case ( y.persist, persistColumnStore ) of
                 ( True, True ) ->
                     changeSet |> saveProducerRegistry |> saveColumnStore
 

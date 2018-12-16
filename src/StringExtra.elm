@@ -1,4 +1,4 @@
-module StringExtra exposing (appendWithSpace, punctuateNumber, splitAt)
+module StringExtra exposing (appendWithSpace, containsCaseIgnored, punctuateNumber, splitAt)
 
 
 splitAt : Int -> String -> List String
@@ -37,3 +37,8 @@ punctuateNumber decimal =
             decimal |> String.fromInt |> String.foldr reducer ( [], "" )
     in
     String.fromList rem ++ punctuated
+
+
+containsCaseIgnored : String -> String -> Bool
+containsCaseIgnored query str =
+    String.contains (String.toLower query) (String.toLower str)

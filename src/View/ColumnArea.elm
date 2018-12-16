@@ -209,9 +209,10 @@ importantFilterTextColor =
 
 columnDismissButtonEl : Bool -> Int -> Element Msg
 columnDismissButtonEl pinned index =
-    squareButtonEl [ alignRight, BD.rounded rectElementRound, visible (not pinned) ]
+    squareButtonEl [ alignRight, visible (not pinned) ]
         { onPress = DismissColumn index
         , enabled = True
+        , round = rectElementRound
         , innerElement =
             octiconEl [ mouseOver [ BG.color oneDark.succ ] ]
                 { size = rightButtonSize
@@ -224,9 +225,10 @@ columnDismissButtonEl pinned index =
 
 columnPinButtonEl : Bool -> String -> Element Msg
 columnPinButtonEl pinned cId =
-    squareButtonEl [ alignRight, BD.rounded rectElementRound ]
+    squareButtonEl [ alignRight ]
         { onPress = ColumnCtrl cId (Column.Pin (not pinned))
         , enabled = True
+        , round = rectElementRound
         , innerElement =
             octiconEl
                 [ style "transition" "transform 0.2s"
@@ -257,9 +259,10 @@ rightButtonSize =
 
 columnConfigToggleButtonEl : Bool -> String -> Element Msg
 columnConfigToggleButtonEl configOpen id =
-    squareButtonEl [ alignRight, BD.rounded rectElementRound ]
+    squareButtonEl [ alignRight ]
         { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
         , enabled = True
+        , round = rectElementRound
         , innerElement =
             octiconEl []
                 { size = rightButtonSize
@@ -322,6 +325,10 @@ shouldGroup newer older =
     case ( newer, older ) of
         ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
             shouldGroupDiscordMessage dNewer dOlder
+
+        ( Product _ (SlackItem sNewer), Product _ (SlackItem sOlder) ) ->
+            -- TODO
+            False
 
         ( _, _ ) ->
             False

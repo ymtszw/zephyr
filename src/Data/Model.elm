@@ -20,8 +20,8 @@ import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Pref as Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.Storable exposing (Storable)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D exposing (Decoder)
@@ -79,7 +79,7 @@ init env navKey =
     if env.indexedDBAvailable then
         { columnStore = ColumnStore.init
         , itemBroker = ItemBroker.init
-        , producerRegistry = Producer.initRegistry
+        , producerRegistry = ProducerRegistry.init
         , idGen = UniqueIdGen.init
         , pref = Pref.init env.clientWidth
         , worque = Worque.init
@@ -113,20 +113,15 @@ defaultViewState =
 welcome : Env -> Key -> Model
 welcome env navKey =
     let
+        m =
+            init env navKey
+
         ( welcomeColumn, finalGen ) =
-            UniqueIdGen.init
+            m.idGen
                 |> UniqueIdGen.gen UniqueIdGen.columnPrefix
                 |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome env.clientHeight idGen cId)
     in
-    { columnStore = ColumnStore.add Nothing welcomeColumn ColumnStore.init
-    , itemBroker = ItemBroker.init
-    , producerRegistry = Producer.initRegistry
-    , worque = Worque.init
-    , idGen = finalGen
-    , pref = Pref.init env.clientWidth
-    , log = Logger.init
-    , heartrate = defaultHeartrateMillis
-    , navKey = navKey
-    , viewState = defaultViewState
-    , env = env
+    { m
+        | columnStore = ColumnStore.add Nothing welcomeColumn m.columnStore
+        , idGen = finalGen
     }

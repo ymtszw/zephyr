@@ -36,6 +36,7 @@ type Filter
 
 type FilterAtom
     = OfDiscordChannel String
+    | OfSlackConversation String
     | ByMessage String
     | ByMedia MediaFilter
     | RemoveMe -- This is only for deletion from UI, not actually used as filter
@@ -43,7 +44,7 @@ type FilterAtom
 
 type MediaFilter
     = HasImage
-    | HasMovie
+    | HasVideo
     | HasNone
 
 
@@ -63,6 +64,9 @@ encodeFilterAtom filterAtom =
         OfDiscordChannel channelId ->
             E.tagged "OfDiscordChannel" (E.string channelId)
 
+        OfSlackConversation convIdStr ->
+            E.tagged "OfSlackConversation" (E.string convIdStr)
+
         ByMessage query ->
             E.tagged "ByMessage" (E.string query)
 
@@ -80,8 +84,8 @@ encodeMediaType mediaType =
         HasImage ->
             E.tag "HasImage"
 
-        HasMovie ->
-            E.tag "HasMovie"
+        HasVideo ->
+            E.tag "HasVideo"
 
         HasNone ->
             E.tag "HasNone"
@@ -99,6 +103,7 @@ filterAtomDecoder : Decoder FilterAtom
 filterAtomDecoder =
     D.oneOf
         [ D.tagged "OfDiscordChannel" OfDiscordChannel D.string
+        , D.tagged "OfSlackConversation" OfSlackConversation D.string
         , D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
 
@@ -112,7 +117,13 @@ filterAtomDecoder =
 
 mediaTypeDecoder : Decoder MediaFilter
 mediaTypeDecoder =
-    D.oneOf [ D.tag "HasImage" HasImage, D.tag "HasMovie" HasMovie, D.tag "HasNone" HasNone ]
+    D.oneOf
+        [ D.tag "HasImage" HasImage
+        , D.tag "HasVideo" HasVideo
+        , D.tag "HasNone" HasNone
+        , -- Old formats
+          D.tag "HasMovie" HasVideo
+        ]
 
 
 oldMetadataFilterDecoder : Decoder FilterAtom
@@ -302,14 +313,17 @@ atomToString fa =
         OfDiscordChannel cId ->
             "Discord Ch: " ++ cId
 
+        OfSlackConversation cId ->
+            "Slack Ch: " ++ cId
+
         ByMessage query ->
             "Contains: " ++ query
 
         ByMedia HasImage ->
             "Has images"
 
-        ByMedia HasMovie ->
-            "Has movies"
+        ByMedia HasVideo ->
+            "Has videos"
 
         ByMedia HasNone ->
             "Has no media"
@@ -324,71 +338,65 @@ compareFilterAtom fa1 fa2 =
         ( OfDiscordChannel cId1, OfDiscordChannel cId2 ) ->
             compare cId1 cId2
 
-        ( OfDiscordChannel _, ByMessage _ ) ->
+        ( OfDiscordChannel _, _ ) ->
             LT
 
-        ( OfDiscordChannel _, ByMedia _ ) ->
-            LT
+        ( OfSlackConversation _, OfDiscordChannel _ ) ->
+            GT
 
-        ( OfDiscordChannel _, RemoveMe ) ->
+        ( OfSlackConversation cId1, OfSlackConversation cId2 ) ->
+            compare cId1 cId2
+
+        ( OfSlackConversation _, _ ) ->
             LT
 
         ( ByMessage _, OfDiscordChannel _ ) ->
             GT
 
+        ( ByMessage _, OfSlackConversation _ ) ->
+            GT
+
         ( ByMessage q1, ByMessage q2 ) ->
             compare q1 q2
 
-        ( ByMessage _, ByMedia _ ) ->
-            LT
-
-        ( ByMessage _, RemoveMe ) ->
-            LT
-
-        ( ByMedia _, OfDiscordChannel _ ) ->
-            GT
-
-        ( ByMedia _, ByMessage _ ) ->
-            GT
-
-        ( ByMedia HasNone, ByMedia HasImage ) ->
-            GT
-
-        ( ByMedia HasNone, ByMedia HasMovie ) ->
-            GT
-
-        ( ByMedia HasMovie, ByMedia HasImage ) ->
-            GT
-
-        ( ByMedia HasImage, ByMedia HasImage ) ->
-            EQ
-
-        ( ByMedia HasMovie, ByMedia HasMovie ) ->
-            EQ
-
-        ( ByMedia HasNone, ByMedia HasNone ) ->
-            EQ
-
-        ( ByMedia HasImage, ByMedia HasMovie ) ->
-            LT
-
-        ( ByMedia HasImage, ByMedia HasNone ) ->
-            LT
-
-        ( ByMedia HasMovie, ByMedia HasNone ) ->
+        ( ByMessage _, _ ) ->
             LT
 
         ( ByMedia _, RemoveMe ) ->
             LT
 
-        ( RemoveMe, OfDiscordChannel _ ) ->
+        ( ByMedia HasNone, ByMedia HasImage ) ->
+            GT
+
+        ( ByMedia HasNone, ByMedia HasVideo ) ->
+            GT
+
+        ( ByMedia HasVideo, ByMedia HasImage ) ->
+            GT
+
+        ( ByMedia HasImage, ByMedia HasImage ) ->
+            EQ
+
+        ( ByMedia HasVideo, ByMedia HasVideo ) ->
+            EQ
+
+        ( ByMedia HasNone, ByMedia HasNone ) ->
+            EQ
+
+        ( ByMedia HasImage, ByMedia HasVideo ) ->
             LT
 
-        ( RemoveMe, ByMessage _ ) ->
+        ( ByMedia HasImage, ByMedia HasNone ) ->
             LT
 
-        ( RemoveMe, ByMedia _ ) ->
+        ( ByMedia HasVideo, ByMedia HasNone ) ->
             LT
+
+        ( ByMedia _, _ ) ->
+            GT
 
         ( RemoveMe, RemoveMe ) ->
             EQ
+
+        ( RemoveMe, _ ) ->
+            GT

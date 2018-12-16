@@ -5,21 +5,26 @@ import ArrayExtra as Array
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
+import Data.Producer.Slack as Slack exposing (ConversationType(..))
 import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
+import Dict
 import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
-import Json.Decode exposing (decodeString, decodeValue)
-import Json.Encode exposing (encode)
+import Json.Decode as D exposing (Decoder)
+import Json.Encode as E exposing (Value)
+import Json.EncodeExtra as E
 import ListExtra
 import Parser
 import SelectArray
+import SlackTestData
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
 import Time exposing (Posix)
+import TimeExtra exposing (po)
 import Url
 
 
@@ -35,6 +40,7 @@ suite =
         , filterSuite
         , fetchStatusSuite
         , discordSuite
+        , slackSuite
         ]
 
 
@@ -476,30 +482,41 @@ filterSuite =
             [ testcompareFilterAtom (OfDiscordChannel "b") (OfDiscordChannel "a") GT
             , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
             , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "b") LT
+            , testcompareFilterAtom (OfDiscordChannel "a") (OfSlackConversation "a") LT
             , testcompareFilterAtom (OfDiscordChannel "a") (ByMessage "a") LT
             , testcompareFilterAtom (OfDiscordChannel "a") (ByMedia HasImage) LT
             , testcompareFilterAtom (OfDiscordChannel "a") RemoveMe LT
+            , testcompareFilterAtom (OfSlackConversation "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (OfSlackConversation "b") (OfSlackConversation "a") GT
+            , testcompareFilterAtom (OfSlackConversation "a") (OfSlackConversation "a") EQ
+            , testcompareFilterAtom (OfSlackConversation "a") (OfSlackConversation "b") LT
+            , testcompareFilterAtom (OfSlackConversation "a") (ByMessage "a") LT
+            , testcompareFilterAtom (OfSlackConversation "a") (ByMedia HasImage) LT
+            , testcompareFilterAtom (OfSlackConversation "a") RemoveMe LT
             , testcompareFilterAtom (ByMessage "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMessage "a") (OfSlackConversation "a") GT
             , testcompareFilterAtom (ByMessage "b") (ByMessage "a") GT
             , testcompareFilterAtom (ByMessage "a") (ByMessage "a") EQ
             , testcompareFilterAtom (ByMessage "a") (ByMessage "b") LT
             , testcompareFilterAtom (ByMessage "a") (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMessage "a") RemoveMe LT
             , testcompareFilterAtom (ByMedia HasImage) (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMedia HasImage) (OfSlackConversation "a") GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMessage "a") GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasImage) GT
-            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasMovie) GT
-            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasImage) GT
+            , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasVideo) GT
+            , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasImage) GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasImage) EQ
-            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasMovie) EQ
+            , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasVideo) EQ
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasNone) EQ
-            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasMovie) LT
+            , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasVideo) LT
             , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasNone) LT
-            , testcompareFilterAtom (ByMedia HasMovie) (ByMedia HasNone) LT
+            , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasImage) RemoveMe LT
-            , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") LT
-            , testcompareFilterAtom RemoveMe (ByMessage "a") LT
-            , testcompareFilterAtom RemoveMe (ByMedia HasImage) LT
+            , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") GT
+            , testcompareFilterAtom RemoveMe (OfSlackConversation "a") GT
+            , testcompareFilterAtom RemoveMe (ByMessage "a") GT
+            , testcompareFilterAtom RemoveMe (ByMedia HasImage) GT
             , testcompareFilterAtom RemoveMe RemoveMe EQ
             ]
         ]
@@ -521,49 +538,44 @@ fetchStatusSuite =
     describe "Data.Producer.FetchStatus"
         [ describe "compare"
             [ testCompare Waiting Waiting EQ
-            , testCompare Waiting (NextFetchAt (p 1) BO10) LT
-            , testCompare Waiting (Fetching (p 1) BO10) LT
-            , testCompare Waiting (InitialFetching (p 1)) LT
+            , testCompare Waiting (NextFetchAt (po 1) BO10) LT
+            , testCompare Waiting (Fetching (po 1) BO10) LT
+            , testCompare Waiting (InitialFetching (po 1)) LT
             , testCompare Waiting Available LT
-            , testCompare (NextFetchAt (p 1) BO10) Waiting GT
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 0) BO10) GT
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 1) BO10) EQ
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 1) BO20) EQ
-            , testCompare (NextFetchAt (p 1) BO10) (NextFetchAt (p 2) BO10) LT
-            , testCompare (NextFetchAt (p 1) BO10) (Fetching (p 1) BO10) LT
-            , testCompare (NextFetchAt (p 1) BO10) (InitialFetching (p 1)) LT
-            , testCompare (NextFetchAt (p 1) BO10) Available LT
-            , testCompare (Fetching (p 1) BO10) Waiting GT
-            , testCompare (Fetching (p 1) BO10) (NextFetchAt (p 1) BO10) GT
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 0) BO10) GT
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 1) BO10) EQ
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 1) BO20) EQ
-            , testCompare (Fetching (p 1) BO10) (Fetching (p 2) BO10) LT
-            , testCompare (Fetching (p 1) BO10) (InitialFetching (p 1)) LT
-            , testCompare (Fetching (p 1) BO10) Available LT
-            , testCompare (InitialFetching (p 1)) Waiting GT
-            , testCompare (InitialFetching (p 1)) (NextFetchAt (p 1) BO10) GT
-            , testCompare (InitialFetching (p 1)) (Fetching (p 1) BO10) GT
-            , testCompare (InitialFetching (p 1)) (InitialFetching (p 0)) GT
-            , testCompare (InitialFetching (p 1)) (InitialFetching (p 1)) EQ
-            , testCompare (InitialFetching (p 1)) (InitialFetching (p 2)) LT
-            , testCompare (InitialFetching (p 1)) Available LT
+            , testCompare (NextFetchAt (po 1) BO10) Waiting GT
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 0) BO10) GT
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 1) BO10) EQ
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 1) BO20) EQ
+            , testCompare (NextFetchAt (po 1) BO10) (NextFetchAt (po 2) BO10) LT
+            , testCompare (NextFetchAt (po 1) BO10) (Fetching (po 1) BO10) LT
+            , testCompare (NextFetchAt (po 1) BO10) (InitialFetching (po 1)) LT
+            , testCompare (NextFetchAt (po 1) BO10) Available LT
+            , testCompare (Fetching (po 1) BO10) Waiting GT
+            , testCompare (Fetching (po 1) BO10) (NextFetchAt (po 1) BO10) GT
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 0) BO10) GT
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 1) BO10) EQ
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 1) BO20) EQ
+            , testCompare (Fetching (po 1) BO10) (Fetching (po 2) BO10) LT
+            , testCompare (Fetching (po 1) BO10) (InitialFetching (po 1)) LT
+            , testCompare (Fetching (po 1) BO10) Available LT
+            , testCompare (InitialFetching (po 1)) Waiting GT
+            , testCompare (InitialFetching (po 1)) (NextFetchAt (po 1) BO10) GT
+            , testCompare (InitialFetching (po 1)) (Fetching (po 1) BO10) GT
+            , testCompare (InitialFetching (po 1)) (InitialFetching (po 0)) GT
+            , testCompare (InitialFetching (po 1)) (InitialFetching (po 1)) EQ
+            , testCompare (InitialFetching (po 1)) (InitialFetching (po 2)) LT
+            , testCompare (InitialFetching (po 1)) Available LT
             , testCompare Available Waiting GT
-            , testCompare Available (NextFetchAt (p 1) BO10) GT
-            , testCompare Available (Fetching (p 1) BO10) GT
-            , testCompare Available (InitialFetching (p 1)) GT
+            , testCompare Available (NextFetchAt (po 1) BO10) GT
+            , testCompare Available (Fetching (po 1) BO10) GT
+            , testCompare Available (InitialFetching (po 1)) GT
             , testCompare Available Available EQ
             ]
         , describe "lessThan"
-            [ Waiting |> testLessThan (NextFetchAt (p 1) BO10)
-            , NextFetchAt (p 0) BO10 |> testLessThan (NextFetchAt (p 1) BO10)
+            [ Waiting |> testLessThan (NextFetchAt (po 1) BO10)
+            , NextFetchAt (po 0) BO10 |> testLessThan (NextFetchAt (po 1) BO10)
             ]
         ]
-
-
-p : Int -> Posix
-p =
-    Time.millisToPosix
 
 
 testCompare : FetchStatus -> FetchStatus -> Order -> Test
@@ -589,20 +601,20 @@ discordSuite : Test
 discordSuite =
     describe "Data.Producer.Discord"
         [ describe "colorDecoder/encodeColor"
-            [ testColorSerDe 0 "000000"
-            , testColorSerDe 15 "00000f"
-            , testColorSerDe 255 "0000ff"
-            , testColorSerDe 4095 "000fff"
-            , testColorSerDe 65535 "00ffff"
-            , testColorSerDe 1048575 "0fffff"
-            , testColorSerDe 16777215 "ffffff"
+            [ testColorIntCodec "0" "000000"
+            , testColorIntCodec "15" "00000f"
+            , testColorIntCodec "255" "0000ff"
+            , testColorIntCodec "4095" "000fff"
+            , testColorIntCodec "65535" "00ffff"
+            , testColorIntCodec "1048575" "0fffff"
+            , testColorIntCodec "16777215" "ffffff"
             ]
         ]
 
 
-testColorSerDe : Int -> String -> Test
-testColorSerDe colorNum expectedHex =
-    test ("should decode/encode color integer " ++ fromInt colorNum) <|
+testColorIntCodec : String -> String -> Test
+testColorIntCodec colorNumStr expectedHex =
+    test ("should decode/encode color integer " ++ colorNumStr) <|
         \_ ->
             let
                 expectedColor =
@@ -612,11 +624,118 @@ testColorSerDe colorNum expectedHex =
                         (expectedHex |> String.slice 4 6 |> Hex.fromString)
                         |> Result.withDefault (rgb255 0 0 0)
             in
-            colorNum
-                |> fromInt
-                |> decodeString Data.Producer.Discord.colorDecoder
-                |> Expect.all
-                    [ Expect.equal (Ok expectedColor)
-                    , Result.map (Data.Producer.Discord.encodeColor >> encode 0 >> toInt)
-                        >> Expect.equal (Ok (Just colorNum))
-                    ]
+            colorNumStr
+                |> D.decodeString Data.Producer.Discord.colorDecoder
+                |> Result.map (E.color >> E.encode 0)
+                |> Result.andThen (D.decodeString Data.Producer.Discord.colorDecoder)
+                |> Expect.equal (Ok expectedColor)
+
+
+
+-- Data.Producer.Slack
+
+
+slackSuite : Test
+slackSuite =
+    describe "Data.Producer.Slack"
+        [ testCodec "should decode/encode User"
+            SlackTestData.userInfoJson
+            (D.field "user" Slack.userDecoder)
+            Slack.encodeUser
+            Slack.userDecoder
+        , testCodec "should decode/encode Team"
+            SlackTestData.teamInfoJson
+            (D.field "team" Slack.teamDecoder)
+            Slack.encodeTeam
+            Slack.teamDecoder
+        , testCodec "should decode/encode Conversation list"
+            SlackTestData.convListJson
+            (D.field "channels" (D.list (Slack.apiConversationDecoder Dict.empty)))
+            (E.list Slack.encodeConversation)
+            (D.list (Slack.conversationDecoder Dict.empty))
+        , testCodec "should decode/encode Message list"
+            SlackTestData.conversationHistoryJson
+            (D.field "messages" (D.list (Slack.apiMessageDecoder "CDUMMYID")))
+            (E.list Slack.encodeMessage)
+            (D.list Slack.messageDecoder)
+        , testCodec "should decode/encode Bot"
+            SlackTestData.botInfoJson
+            (D.field "bot" Slack.botDecoder)
+            Slack.encodeBot
+            Slack.botDecoder
+        , let
+            c name type_ =
+                { id = Slack.dummyConversationId
+                , name = name
+                , isArchived = False
+                , lastRead = Nothing
+                , type_ = type_
+                , fetchStatus = Available
+                }
+          in
+          describe "compareByMembersipThenName"
+            [ testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" (PublicChannel True)) EQ
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel True)) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" PrivateChannel) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "USER" IM) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Users" MPIM) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Aaaa" PrivateChannel) GT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Name" PrivateChannel) EQ
+            , testCompareConversation (c "Name" PrivateChannel) (c "Zzzz" PrivateChannel) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "USER" IM) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Users" MPIM) LT
+            , testCompareConversation (c "Name" PrivateChannel) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "USER" IM) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "USER" IM) (c "Name" PrivateChannel) GT
+            , testCompareConversation (c "USER" IM) (c "AAAA" IM) GT
+            , testCompareConversation (c "USER" IM) (c "USER" IM) EQ
+            , testCompareConversation (c "USER" IM) (c "ZZZZ" IM) LT
+            , testCompareConversation (c "USER" IM) (c "Users" MPIM) LT
+            , testCompareConversation (c "USER" IM) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "Users" MPIM) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "Users" MPIM) (c "Name" PrivateChannel) GT
+            , testCompareConversation (c "Users" MPIM) (c "USER" IM) GT
+            , testCompareConversation (c "Users" MPIM) (c "Aaaaa" MPIM) GT
+            , testCompareConversation (c "Users" MPIM) (c "Users" MPIM) EQ
+            , testCompareConversation (c "Users" MPIM) (c "Zzzzz" MPIM) LT
+            , testCompareConversation (c "Users" MPIM) (c "Name" (PublicChannel False)) LT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel True)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" PrivateChannel) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "USER" IM) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Users" MPIM) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel False)) GT
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel False)) EQ
+            , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel False)) LT
+            ]
+        ]
+
+
+testCodec : String -> String -> Decoder a -> (a -> Value) -> Decoder a -> Test
+testCodec desc initialData entryDecoder encodeForPersist savedStateDecoder =
+    test desc <|
+        \_ ->
+            case D.decodeString entryDecoder initialData of
+                Ok enteredData ->
+                    enteredData
+                        |> encodeForPersist
+                        |> E.encode 0
+                        |> D.decodeString savedStateDecoder
+                        -- Must exactly match after state recovery
+                        |> Expect.equal (Ok enteredData)
+
+                Err e ->
+                    Expect.fail <| "Failed to decode on entry: " ++ D.errorToString e
+
+
+testCompareConversation : Slack.Conversation -> Slack.Conversation -> Order -> Test
+testCompareConversation a b order =
+    test ("'" ++ Debug.toString a ++ "' " ++ Debug.toString order ++ " '" ++ Debug.toString b ++ "'") <|
+        \_ ->
+            Slack.compareByMembersipThenName a b |> Expect.equal order

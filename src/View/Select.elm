@@ -1,7 +1,7 @@
-module View.Select exposing (State, close, init, isOpen, open, select)
+module View.Select exposing (Msg(..), State, init, isOpen, select, update)
 
 import Data.ColorTheme exposing (ColorTheme)
-import Data.Msg exposing (Msg(..))
+import Debounce exposing (Debounce)
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
@@ -9,7 +9,9 @@ import Element.Events
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import Element.Lazy exposing (lazy)
 import Octicons
+import Task
 import View.Parts exposing (..)
 
 
@@ -20,7 +22,7 @@ Therefore you should only have one instance of this type in your application's m
 
 -}
 type State
-    = Open String
+    = Open { id : String, filter : String, filterSettled : String, filterDebouncer : Debounce String }
     | AllClosed
 
 
@@ -29,24 +31,101 @@ init =
     AllClosed
 
 
-open : String -> State -> State
-open id state =
-    Open id
+type Msg msg
+    = Toggle String Bool
+    | Pick msg
+    | FilterInput String
+    | FilterSettle String
+    | DebounceMsg Debounce.Msg
 
 
-close : State
-close =
-    AllClosed
+update : (Msg msg -> msg) -> Msg msg -> State -> ( State, Cmd msg )
+update msgTagger msg state =
+    case msg of
+        Toggle id True ->
+            ( Open { id = id, filter = "", filterSettled = "", filterDebouncer = Debounce.init }, Cmd.none )
+
+        Toggle _ False ->
+            ( AllClosed, Cmd.none )
+
+        Pick x ->
+            ( AllClosed, send x )
+
+        FilterInput filter ->
+            case state of
+                Open record ->
+                    let
+                        ( filterDebouncer, cmd ) =
+                            Debounce.push filterDebouncerConfig filter record.filterDebouncer
+                    in
+                    ( Open { record | filter = filter, filterDebouncer = filterDebouncer }, Cmd.map msgTagger cmd )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
+
+        FilterSettle filterSettled ->
+            case state of
+                Open record ->
+                    ( Open { record | filterSettled = filterSettled }, Cmd.none )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
+
+        DebounceMsg dMsg ->
+            case state of
+                Open record ->
+                    let
+                        ( filterDebouncer, cmd ) =
+                            Debounce.update filterDebouncerConfig sendOnSettle dMsg record.filterDebouncer
+                    in
+                    ( Open { record | filterDebouncer = filterDebouncer }, Cmd.map msgTagger cmd )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
+
+
+filterDebouncerConfig : Debounce.Config (Msg msg)
+filterDebouncerConfig =
+    Debounce.Config (Debounce.later settleMillis) DebounceMsg
+
+
+settleMillis : Float
+settleMillis =
+    500
+
+
+sendOnSettle : Debounce.Send String (Msg msg)
+sendOnSettle =
+    Debounce.takeLast (send << FilterSettle)
+
+
+send : msg -> Cmd msg
+send =
+    Task.succeed >> Task.perform identity
 
 
 isOpen : String -> State -> Bool
 isOpen id state =
     case state of
-        Open openId ->
-            openId == id
+        Open record ->
+            record.id == id
 
         AllClosed ->
             False
+
+
+type alias Options a msg =
+    { state : State
+    , msgTagger : Msg msg -> msg
+    , id : String
+    , theme : ColorTheme
+    , thin : Bool
+    , onSelect : a -> msg
+    , selectedOption : Maybe a
+    , filterMatch : Maybe (String -> a -> Bool)
+    , options : List ( String, a )
+    , optionEl : a -> Element msg
+    }
 
 
 {-| Select input element.
@@ -55,49 +134,40 @@ Require `id` and `state` to control open/closed status.
 Also, it uess Keyed.column.
 
 -}
-select :
-    List (Attribute Msg)
-    ->
-        { state : State
-        , id : String
-        , theme : ColorTheme
-        , onSelect : a -> Msg
-        , selectedOption : Maybe a
-        , options : List ( String, a )
-        , optionEl : a -> Element Msg
-        }
-    -> Element Msg
-select userAttrs { state, id, theme, onSelect, selectedOption, options, optionEl } =
+select : List (Attribute msg) -> Options a msg -> Element msg
+select userAttrs opts =
     let
         opened =
-            isOpen id state
+            isOpen opts.id opts.state
 
         attrs =
-            [ width (fill |> minimum 0)
-            , height fill
-            , padding headerPadding
-            , BD.rounded rectElementRound
-            , BG.color theme.note
-            , below (optionsEl onSelect theme opened optionEl selectedOption options)
-            ]
-                ++ userAttrs
+            [ below (optionsWithFilterEl opened opts) ] ++ userAttrs
+
+        onHeaderPress =
+            opts.msgTagger (Toggle opts.id (not opened))
     in
-    el attrs (headerEl (SelectToggle id (not opened)) theme selectedOption optionEl)
+    el attrs (headerEl onHeaderPress opts)
 
 
-headerEl : Msg -> ColorTheme -> Maybe a -> (a -> Element Msg) -> Element Msg
-headerEl onPress theme selectedOption optionEl =
+headerEl : msg -> Options a msg -> Element msg
+headerEl onPress opts =
     Element.Input.button
         [ width fill
-        , Font.color theme.text
+        , Font.color opts.theme.text
         ]
         { onPress = Just onPress
         , label =
-            row [ width fill, spacingXY headerChevronSpacingX 0 ]
+            row
+                [ width fill
+                , padding (headerPadding opts.thin)
+                , spacingXY headerChevronSpacingX 0
+                , BD.rounded rectElementRound
+                , BG.color opts.theme.note
+                ]
                 [ -- `minimum 0` enforces `min-width: 0;` style which allows clip/scroll inside flex items
                   -- <http://kudakurage.hatenadiary.com/entry/2016/04/01/232722>
-                  el [ width (fill |> minimum 0), clipX ] <|
-                    Maybe.withDefault (text "Select...") (Maybe.map optionEl selectedOption)
+                  el [ width (fill |> minimum 0), paddingXY headerTextPaddingX 0, clipX ] <|
+                    Maybe.withDefault (text "Select...") (Maybe.map opts.optionEl opts.selectedOption)
                 , octiconEl
                     [ width (px headerChevronSize)
                     , alignRight
@@ -107,16 +177,25 @@ headerEl onPress theme selectedOption optionEl =
                         , bottomLeft = 0
                         , bottomRight = rectElementRound
                         }
-                    , BG.color theme.sub
+                    , BG.color opts.theme.sub
                     ]
                     { size = headerChevronSize, color = defaultOcticonColor, shape = Octicons.chevronDown }
                 ]
         }
 
 
-headerPadding : Int
-headerPadding =
-    5
+headerPadding : Bool -> Int
+headerPadding thin =
+    if thin then
+        0
+
+    else
+        5
+
+
+headerTextPaddingX : Int
+headerTextPaddingX =
+    3
 
 
 headerChevronSpacingX : Int
@@ -129,26 +208,67 @@ headerChevronSize =
     20
 
 
-optionsEl : (a -> Msg) -> ColorTheme -> Bool -> (a -> Element Msg) -> Maybe a -> List ( String, a ) -> Element Msg
-optionsEl onSelect theme opened optionEl selectedOption options =
-    options
-        |> List.map (optionRowKeyEl onSelect theme optionEl selectedOption)
-        |> Element.Keyed.column
-            [ width (fill |> minimum optionListMinWidth)
-            , paddingXY 0 optionListPaddingY
-            , scrollbarY
-            , BD.width optionListBorderWidth
-            , BD.rounded rectElementRound
-            , BD.color theme.bd
-            , BD.shadow
-                { offset = ( 5.0, 5.0 )
-                , blur = 10.0
-                , size = 0.0
-                , color = theme.bg
+optionsWithFilterEl : Bool -> Options a msg -> Element msg
+optionsWithFilterEl opened opts =
+    column
+        [ height (fill |> maximum optionListMaxHeight)
+        , paddingXY 0 optionListPaddingY
+        , visible opened
+        , BD.rounded rectElementRound
+        , BD.shadow
+            { offset = ( 5.0, 5.0 )
+            , blur = 10.0
+            , size = 0.0
+            , color = opts.theme.bg
+            }
+        , BG.color opts.theme.note
+        ]
+        [ lazy optionFilterEl opts
+        , lazy optionsEl opts
+        ]
+
+
+optionFilterEl : Options a msg -> Element msg
+optionFilterEl opts =
+    case opts.filterMatch of
+        Just _ ->
+            textInputEl
+                [ BD.rounded 0
+                , BD.widthXY 0 1
+                , BD.color opts.theme.bd
+                ]
+                { onChange = opts.msgTagger << FilterInput
+                , theme = opts.theme
+                , enabled = True
+                , text =
+                    case opts.state of
+                        Open { filter } ->
+                            filter
+
+                        AllClosed ->
+                            ""
+                , label = Element.Input.labelHidden "Select Filter"
+                , placeholder = Just (text "Filter")
                 }
-            , BG.color theme.note
-            ]
-        |> el [ height (fill |> maximum optionListMaxHeight), visible opened ]
+
+        Nothing ->
+            none
+
+
+optionsEl : Options a msg -> Element msg
+optionsEl opts =
+    Element.Keyed.column [ width (fill |> minimum optionListMinWidth), scrollbarY ] <|
+        List.map (optionRowKeyEl opts) <|
+            case ( opts.state, opts.filterMatch ) of
+                ( Open { filterSettled }, Just matcher ) ->
+                    if filterSettled /= "" then
+                        List.filter (Tuple.second >> matcher filterSettled) opts.options
+
+                    else
+                        opts.options
+
+                _ ->
+                    opts.options
 
 
 optionListMinWidth : Int
@@ -166,25 +286,24 @@ optionListPaddingY =
     5
 
 
-optionListBorderWidth : Int
-optionListBorderWidth =
-    1
-
-
-optionRowKeyEl : (a -> Msg) -> ColorTheme -> (a -> Element Msg) -> Maybe a -> ( String, a ) -> ( String, Element Msg )
-optionRowKeyEl onSelect theme optionEl selectedOption ( optionKey, option ) =
+optionRowKeyEl : Options a msg -> ( String, a ) -> ( String, Element msg )
+optionRowKeyEl opts ( optionKey, option ) =
+    let
+        onPickOption =
+            opts.msgTagger (Pick (opts.onSelect option))
+    in
     Element.Input.button
         [ width fill
         , padding optionPadding
-        , mouseOver [ BG.color theme.sub ]
-        , if selectedOption == Just option then
-            BG.color theme.prim
+        , mouseOver [ BG.color opts.theme.sub ]
+        , if opts.selectedOption == Just option then
+            BG.color opts.theme.prim
 
           else
             noneAttr
         ]
-        { onPress = Just (SelectPick (onSelect option))
-        , label = optionEl option
+        { onPress = Just onPickOption
+        , label = opts.optionEl option
         }
         |> Tuple.pair optionKey
 

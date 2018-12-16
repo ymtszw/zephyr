@@ -3,9 +3,10 @@ module View.ColumnItem exposing (columnItemKeyEl)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..), isImageFile, isMovieFile)
+import Data.Item exposing (Item(..), extIsImage, extIsVideo)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Data.TextRenderer
 import Element exposing (..)
 import Element.Background as BG
@@ -88,6 +89,14 @@ itemAvatarEl item =
                         , size = columnItemAvatarSize
                         }
 
+        Product _ (SlackItem _) ->
+            iconWithBadgeEl [ alignTop ]
+                { badge = Nothing
+                , fallback = "Slack"
+                , url = Just <| Slack.defaultIconUrl (Just columnItemAvatarSize)
+                , size = columnItemAvatarSize
+                }
+
         System _ _ ->
             octiconAvatarEl Octicons.info
 
@@ -152,6 +161,20 @@ itemContentsEl tz item closeItems =
             closeItems
                 |> List.filterMap unwrap
                 |> discordMessageEl tz ( discordMessage, offset )
+
+        Product offset (SlackItem slackMessage) ->
+            let
+                unwrap cItem =
+                    case cItem of
+                        Product o (SlackItem sm) ->
+                            Just ( sm, o )
+
+                        _ ->
+                            Nothing
+            in
+            closeItems
+                |> List.filterMap unwrap
+                |> slackMessageEl tz ( slackMessage, offset )
 
         System _ { message, mediaMaybe } ->
             defaultItemEl message mediaMaybe
@@ -367,7 +390,7 @@ maxThumbnailSize =
 
 discordAttachmentEl : Discord.Attachment -> Element Msg
 discordAttachmentEl attachment =
-    if isImageFile attachment.proxyUrl.path then
+    if extIsImage attachment.proxyUrl.path then
         newTabLink []
             { url = Url.toString attachment.url
             , label =
@@ -375,7 +398,7 @@ discordAttachmentEl attachment =
                     addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
             }
 
-    else if isMovieFile attachment.proxyUrl.path then
+    else if extIsVideo attachment.proxyUrl.path then
         let
             posterUrl =
                 attachment.proxyUrl
@@ -435,6 +458,14 @@ downloadIconSize =
     20
 
 
+slackMessageEl : Time.Zone -> ( Slack.Message, Offset ) -> List ( Slack.Message, Offset ) -> Element Msg
+slackMessageEl tz ( m, _ ) closeMessages =
+    column [ width fill, spacing 5, alignTop ]
+        [ --TODO
+          text "Slack message"
+        ]
+
+
 defaultItemEl : String -> Maybe Media -> Element Msg
 defaultItemEl message mediaMaybe =
     case mediaMaybe of
@@ -467,7 +498,7 @@ mediaEl media =
         Image url ->
             imageEl "Image" url
 
-        Movie url ->
+        Video url ->
             videoEl Nothing url
 
 

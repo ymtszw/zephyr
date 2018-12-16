@@ -9,8 +9,9 @@ import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref exposing (Pref)
-import Data.Producer as Producer exposing (ProducerRegistry)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
+import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import File
@@ -24,6 +25,7 @@ import Scroll
 import String exposing (fromInt)
 import Time exposing (Posix, Zone)
 import Url
+import View.Select as Select
 
 
 type Msg
@@ -34,8 +36,7 @@ type Msg
     | VisibilityChanged Bool
     | LoggerCtrl Logger.Msg
     | LinkClicked Browser.UrlRequest
-    | SelectToggle String Bool
-    | SelectPick Msg
+    | SelectCtrl (Select.Msg Msg)
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
     | DelColumn String
@@ -52,7 +53,7 @@ type Msg
     | LoadErr D.Error
     | ToggleConfig Bool
     | ColumnCtrl String Column.Msg
-    | ProducerCtrl Producer.Msg
+    | ProducerCtrl ProducerRegistry.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
     | ZephyrMode Bool
@@ -90,11 +91,8 @@ logEntry msg =
         LinkClicked (Browser.External str) ->
             Entry "LinkClicked.External" [ str ]
 
-        SelectToggle sId bool ->
-            Entry "SelectToggle" [ sId, boolStr bool ]
-
-        SelectPick sMsg ->
-            logEntry sMsg
+        SelectCtrl sMsg ->
+            selectMsgToEntry sMsg
 
         AddEmptyColumn ->
             Entry "AddEmptyColumn" []
@@ -219,6 +217,25 @@ loggerMsgToEntry lMsg =
             Entry "Logger.DelMsgFilter" [ filterMode isPos ++ ctor ]
 
 
+selectMsgToEntry : Select.Msg msg -> Entry
+selectMsgToEntry sMsg =
+    case sMsg of
+        Select.Toggle cId bool ->
+            Entry "Select.Toggle" [ cId, boolStr bool ]
+
+        Select.Pick _ ->
+            Entry "Select.Pick" []
+
+        Select.FilterInput filter ->
+            Entry "Select.FilterInput" [ filter ]
+
+        Select.FilterSettle filter ->
+            Entry "Select.FilterSettle" [ filter ]
+
+        Select.DebounceMsg msgDebounce ->
+            Entry "Select.DebounceMsg" [ "<Debounce>" ]
+
+
 scrollMsgToEntry : String -> Scroll.Msg -> Entry
 scrollMsgToEntry prefix sMsg =
     case sMsg of
@@ -250,16 +267,16 @@ scrollMsgToEntry prefix sMsg =
             Entry (prefix ++ ".AdjustExec") [ String.fromInt boundingHeight, viewportToString vp ]
 
 
-producerMsgToEntry : Producer.Msg -> Entry
+producerMsgToEntry : ProducerRegistry.Msg -> Entry
 producerMsgToEntry pMsg =
     case pMsg of
-        Producer.DiscordMsg msgDiscord ->
+        ProducerRegistry.DiscordMsg msgDiscord ->
             case msgDiscord of
                 Discord.TokenInput input ->
                     Entry "Discord.TokenInput" [ input ]
 
-                Discord.CommitToken ->
-                    Entry "Discord.CommitToken" []
+                Discord.TokenCommit ->
+                    Entry "Discord.TokenCommit" []
 
                 Discord.Identify user ->
                     Entry "Discord.Identify" [ E.encode 2 (Discord.encodeUser user) ]
@@ -282,7 +299,13 @@ producerMsgToEntry pMsg =
                 Discord.Fetched succ ->
                     Entry "Discord.Fetched"
                         [ succ.channelId
-                        , E.encode 2 (E.list Discord.encodeMessage succ.messages)
+                        , case succ.messages of
+                            _ :: _ :: _ :: _ :: _ :: _ ->
+                                -- 5 or more
+                                E.encode 2 (E.list Discord.encodeMessage (List.take 5 succ.messages)) ++ "\n(truncated)"
+
+                            less ->
+                                E.encode 2 (E.list Discord.encodeMessage less)
                         , Iso8601.fromTime succ.posix
                         ]
 
@@ -306,6 +329,77 @@ producerMsgToEntry pMsg =
                         , req.method
                         , Url.toString req.url
                         ]
+
+        ProducerRegistry.SlackMsg sMsg ->
+            let
+                rpcFailureToStr f =
+                    case f of
+                        Slack.HttpFailure ( e, req ) ->
+                            [ HttpClient.errorToString e
+                            , req.method
+                            , Url.toString req.url
+                            ]
+
+                        Slack.RpcError e ->
+                            [ e ]
+            in
+            case sMsg of
+                Slack.UTokenInput t ->
+                    Entry "Slack.UTokenInput" [ t ]
+
+                Slack.UTokenCommit ->
+                    Entry "Slack.UTokenCommit" []
+
+                Slack.UAPIFailure f ->
+                    Entry "Slack.UAPIFailure" <| rpcFailureToStr f
+
+                Slack.Identify user team ->
+                    Entry "Slack.Identify"
+                        [ E.encode 2 (Slack.encodeUser user)
+                        , E.encode 2 (Slack.encodeTeam team)
+                        ]
+
+                Slack.IHydrate teamIdStr convs users ->
+                    Entry "Slack.IHydrate" [ teamIdStr, "<IHydrate>" ]
+
+                Slack.IRehydrate teamIdStr ->
+                    Entry "Slack.IRehydrate" [ teamIdStr ]
+
+                Slack.IRevisit teamIdStr _ ->
+                    Entry "Slack.IRevisit" [ teamIdStr, "<IRevisit>" ]
+
+                Slack.ISubscribe teamIdStr convIdStr ->
+                    Entry "Slack.ISubscribe" [ teamIdStr, convIdStr ]
+
+                Slack.IUnsubscribe teamIdStr convIdStr ->
+                    Entry "Slack.IUnsubscribe" [ teamIdStr, convIdStr ]
+
+                Slack.Fetch posix ->
+                    Entry "Slack.Fetch" [ Iso8601.fromTime posix ]
+
+                Slack.IFetched teamIdStr succ ->
+                    Entry "Slack.IFetched"
+                        [ teamIdStr
+                        , succ.conversationId
+                        , case succ.messages of
+                            -- TODO proper encoding
+                            _ :: _ :: _ :: _ :: _ :: _ ->
+                                -- 5 or more
+                                E.encode 2 (E.list (always (E.string "TODO")) (List.take 5 succ.messages)) ++ "\n(truncated)"
+
+                            less ->
+                                E.encode 2 (E.list (always (E.string "TODO")) less)
+                        , Iso8601.fromTime succ.posix
+                        ]
+
+                Slack.ITokenInput teamIdStr str ->
+                    Entry "Slack.ITokenInput" [ teamIdStr, str ]
+
+                Slack.ITokenCommit teamIdStr ->
+                    Entry "Slack.ITokenCommit" [ teamIdStr ]
+
+                Slack.IAPIFailure teamIdStr convIdStrMaybe f ->
+                    Entry "Slack.IAPIFailure" <| [ teamIdStr, Maybe.withDefault "(Not fetch)" convIdStrMaybe ] ++ rpcFailureToStr f
 
 
 columnMsgToEntry : String -> Column.Msg -> Entry
