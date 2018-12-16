@@ -31,6 +31,7 @@ import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
 import Element
+import Extra exposing (doT)
 import Http
 import HttpClient exposing (noAuth)
 import Json.Decode as D exposing (Decoder)
@@ -1299,14 +1300,17 @@ type Msg
     | IUnsubscribe TeamIdStr ConversationIdStr
     | Fetch Posix -- Fetch is shared across Teams
     | IFetched TeamIdStr FetchSuccess
-    | IBotsFetched TeamIdStr (Dict BotIdStr Bot)
     | ITokenInput TeamIdStr String
     | ITokenCommit TeamIdStr
     | IAPIFailure TeamIdStr (Maybe ConversationIdStr) RpcFailure
 
 
 type alias FetchSuccess =
-    { conversationId : ConversationIdStr, messages : List Message, posix : Posix }
+    { conversationId : ConversationIdStr
+    , messages : List Message
+    , bots : Dict BotIdStr Bot
+    , posix : Posix
+    }
 
 
 update : Msg -> SlackRegistry -> ( SlackRegistry, Yield )
@@ -1344,9 +1348,6 @@ update msg sr =
 
         IFetched teamIdStr fetchSucc ->
             withTeam teamIdStr sr <| handleIFetched fetchSucc
-
-        IBotsFetched teamIdStr bots ->
-            withTeam teamIdStr sr <| handleIBotsFetched bots
 
         ITokenInput teamIdStr token ->
             withTeam teamIdStr sr <| handleITokenInput token
@@ -1709,52 +1710,33 @@ recusrivelyFindConvToFetch posix teamIdStr conversations acc =
 
 
 handleIFetched : FetchSuccess -> Slack -> ( Slack, Yield )
-handleIFetched { conversationId, messages, posix } slack =
+handleIFetched { conversationId, messages, bots, posix } slack =
+    let
+        handleImpl tagger pov =
+            withConversation tagger conversationId { pov | bots = Dict.union bots pov.bots } (Just Worque.SlackFetch) <|
+                case messages of
+                    [] ->
+                        updateFetchStatus (FetchStatus.Miss posix)
+
+                    m :: _ ->
+                        let
+                            updateConv ( conv, cy ) =
+                                -- Expects messages to be sorted from latest to oldest
+                                -- TODO update lastRead of conv
+                                -- TODO return `List.reverse ms` when other implementations are ready
+                                ( conv, { cy | persist = True, items = [] } )
+                        in
+                        updateFetchStatus (FetchStatus.Hit posix) >> updateConv
+    in
     case slack of
         Hydrated t pov ->
-            updatePovOnFetchSuccess (Hydrated t) conversationId messages posix pov
+            handleImpl (Hydrated t) pov
 
         Rehydrating t pov ->
-            updatePovOnFetchSuccess (Rehydrating t) conversationId messages posix pov
+            handleImpl (Rehydrating t) pov
 
         Expired t pov ->
-            updatePovOnFetchSuccess (Expired t) conversationId messages posix pov
-
-        _ ->
-            -- Should not happen
-            pure slack
-
-
-updatePovOnFetchSuccess : (POV -> Slack) -> ConversationIdStr -> List Message -> Posix -> POV -> ( Slack, Yield )
-updatePovOnFetchSuccess tagger convIdStr ms posix pov =
-    withConversation tagger convIdStr pov (Just Worque.SlackFetch) <|
-        case ms of
-            [] ->
-                updateFetchStatus (FetchStatus.Miss posix)
-
-            m :: _ ->
-                \conv ->
-                    let
-                        ( newConv, cy ) =
-                            updateFetchStatus (FetchStatus.Hit posix) conv
-                    in
-                    -- Expects ms to be sorted from latest to oldest. Reverse it for post-processing.
-                    -- TODO update lastRead of newConv
-                    -- TODO return `List.reverse ms` when Message type is ready
-                    ( newConv, { cy | persist = True, items = [] } )
-
-
-handleIBotsFetched : Dict BotIdStr Bot -> Slack -> ( Slack, Yield )
-handleIBotsFetched bots slack =
-    case slack of
-        Hydrated t pov ->
-            ( Hydrated t { pov | bots = Dict.union bots pov.bots }, { yield | persist = True } )
-
-        Rehydrating t pov ->
-            ( Rehydrating t { pov | bots = Dict.union bots pov.bots }, { yield | persist = True } )
-
-        Expired t pov ->
-            ( Expired t { pov | bots = Dict.union bots pov.bots }, { yield | persist = True } )
+            handleImpl (Expired t) pov
 
         _ ->
             -- Should not happen
