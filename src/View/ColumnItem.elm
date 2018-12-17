@@ -72,24 +72,22 @@ itemAvatarEl : ColumnItem -> Element Msg
 itemAvatarEl item =
     case item of
         Product _ (DiscordItem { author }) ->
-            case author of
-                Discord.UserAuthor user ->
-                    iconWithBadgeEl [ alignTop ]
-                        { badge = Nothing
-                        , theme = oneDark
-                        , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
-                        , size = columnItemAvatarSize
-                        }
+            let
+                ( user, badge ) =
+                    case author of
+                        Discord.UserAuthor u ->
+                            ( u, Nothing )
 
-                Discord.WebhookAuthor user ->
-                    iconWithBadgeEl [ alignTop ]
-                        { badge = Just botIconEl
-                        , theme = oneDark
-                        , fallback = user.username
-                        , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
-                        , size = columnItemAvatarSize
-                        }
+                        Discord.WebhookAuthor u ->
+                            ( u, Just botIconEl )
+            in
+            iconWithBadgeEl [ alignTop ]
+                { badge = badge
+                , theme = oneDark
+                , fallback = user.username
+                , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
+                , size = columnItemAvatarSize
+                }
 
         Product _ (SlackItem _) ->
             -- TODO author avatar
