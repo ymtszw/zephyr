@@ -258,8 +258,8 @@ discordMessageBodyEl discordMessage =
 
 discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
-    [ embed.author |> Maybe.map discordEmbedAuthorEl
-    , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
+    [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
+    , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
     , embed.description |> Maybe.map (messageToParagraph oneDark)
     ]
         |> List.filterMap identity
@@ -275,34 +275,35 @@ maxEmbeddedMediaWidth =
     maxMediaWidth - 15
 
 
-discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
-discordEmbedAuthorEl author =
-    let
-        wrapWithLink element =
-            case author.url of
-                Just url ->
-                    newTabLink [] { url = Url.toString url, label = element }
-
-                Nothing ->
-                    element
-    in
-    row [ spacing 5, Font.bold ]
-        [ wrapWithLink <|
+embedAuthorEl : Maybe Url.Url -> String -> Maybe Url.Url -> Element Msg
+embedAuthorEl link name icon =
+    row [ spacing spacingUnit, Font.bold ]
+        [ wrapWithLink link <|
             squareIconOrHeadEl []
                 { size = columnItemAvatarSize // 2
-                , name = author.name
-                , url = Maybe.map Url.toString author.proxyIconUrl
+                , name = name
+                , url = Maybe.map Url.toString icon
                 }
-        , paragraph [] [ wrapWithLink <| text author.name ]
+        , paragraph [] [ wrapWithLink link <| text name ]
         ]
 
 
-discordEmbedTitleEl : Maybe Url.Url -> String -> Element Msg
-discordEmbedTitleEl urlMaybe title =
-    paragraph [ Font.color oneDark.link ]
+wrapWithLink : Maybe Url.Url -> Element Msg -> Element Msg
+wrapWithLink link e =
+    case link of
+        Just url ->
+            newTabLink [] { url = Url.toString url, label = e }
+
+        Nothing ->
+            e
+
+
+embedTitleEl : ColorTheme -> Maybe Url.Url -> String -> Element Msg
+embedTitleEl theme urlMaybe title =
+    paragraph [ Font.bold ]
         [ case urlMaybe of
             Just url ->
-                newTabLink [] { url = Url.toString url, label = text title }
+                newTabLink [ Font.color theme.link ] { url = Url.toString url, label = text title }
 
             Nothing ->
                 text title
@@ -350,12 +351,12 @@ discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
 discordSmartThumbnailEl embed element =
     let
         wrapperAttrs =
-            [ padding 5
-            , spacing 5
+            [ padding rectElementInnerPadding
+            , spacing spacingUnit
             , BG.color (brightness -1 oneDark.main)
             , BD.color (Maybe.withDefault oneDark.bg embed.color)
-            , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
-            , BD.rounded 3
+            , BD.widthEach { left = gutterWidth, top = 0, right = 0, bottom = 0 }
+            , BD.rounded embedRound
             ]
 
         linkUrlMaybe =
@@ -391,6 +392,16 @@ discordSmartThumbnailEl embed element =
                 [ element
                 , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
                 ]
+
+
+gutterWidth : Int
+gutterWidth =
+    4
+
+
+embedRound : Int
+embedRound =
+    3
 
 
 iconLike : Maybe Int -> Maybe Int -> Bool
@@ -516,6 +527,34 @@ slackMessageBodyEl : Slack.Message -> Element Msg
 slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
         [ messageToParagraph aubergine m.text
+        , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
+        ]
+
+
+slackAttachmentEl : Slack.Attachment -> Element Msg
+slackAttachmentEl a =
+    column [ width fill, spacingXY 0 spacingUnit ] <|
+        List.filterMap identity <|
+            [ Maybe.map (messageToParagraph aubergine) a.pretext
+            , Just (slackAttachmentBodyEl a)
+            ]
+
+
+slackAttachmentBodyEl : Slack.Attachment -> Element Msg
+slackAttachmentBodyEl a =
+    row
+        [ width fill
+        , padding rectElementInnerPadding
+        , BD.color (Maybe.withDefault aubergine.bd a.color)
+        , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
+        , BD.rounded embedRound
+        ]
+        [ column [ width fill, spacingXY 0 spacingUnit ] <|
+            List.filterMap identity <|
+                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
+                , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
+                , Just (messageToParagraph aubergine a.text)
+                ]
         ]
 
 
