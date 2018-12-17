@@ -1,7 +1,7 @@
 module View.ColumnConfigFlyout exposing (columnConfigFlyoutEl)
 
 import Array
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column as Column exposing (Msg(..))
 import Data.Filter as Filter exposing (Filter(..), FilterAtom(..), MediaFilter(..))
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
@@ -24,26 +24,26 @@ import View.Parts exposing (..)
 import View.Select as Select exposing (select)
 
 
-columnConfigFlyoutEl : Select.State -> FilterAtomMaterial -> Int -> Column.Column -> Element Msg
-columnConfigFlyoutEl ss fam index c =
+columnConfigFlyoutEl : ColorTheme -> Select.State -> FilterAtomMaterial -> Int -> Column.Column -> Element Msg
+columnConfigFlyoutEl theme ss fam index c =
     column
         [ width fill
         , alignTop
         , padding rectElementInnerPadding
         , spacing spacingUnit
         , visible c.configOpen
-        , BG.color flyoutBackground
+        , BG.color (flyoutBackground theme)
         , BD.width 1
-        , BD.color flyoutFrameColor
+        , BD.color (flyoutFrameColor theme)
         , Font.size baseFontSize
         ]
-        [ statusHeaderEl
-        , lazy3 statusEl (Scroll.size c.items) c.pinned c.id
-        , lazy2 filterSectionHeaderEl c.id (c.filters /= c.pendingFilters)
-        , lazy3 filtersEl ss fam c
-        , dangerZoneHeaderEl
-        , columnDeleteEl c
-        , lazy columnConfigCloseButtonEl c.id
+        [ lazy statusHeaderEl theme
+        , lazy4 statusEl theme (Scroll.size c.items) c.pinned c.id
+        , lazy3 filterSectionHeaderEl theme c.id (c.filters /= c.pendingFilters)
+        , lazy4 filtersEl theme ss fam c
+        , lazy dangerZoneHeaderEl theme
+        , columnDeleteEl theme c
+        , lazy2 columnConfigCloseButtonEl theme c.id
         ]
 
 
@@ -52,27 +52,27 @@ baseFontSize =
     scale12 1
 
 
-flyoutBackground : Color
+flyoutBackground : ColorTheme -> Color
 flyoutBackground =
-    oneDark.sub
+    .sub
 
 
-flyoutFrameColor : Color
+flyoutFrameColor : ColorTheme -> Color
 flyoutFrameColor =
-    oneDark.note
+    .note
 
 
-statusHeaderEl : Element Msg
-statusHeaderEl =
+statusHeaderEl : ColorTheme -> Element Msg
+statusHeaderEl theme =
     row
         [ width fill
         , padding titlePadding
         , spacing spacingUnit
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
-        , Font.color flyoutFrameColor
+        , Font.color (flyoutFrameColor theme)
         ]
-        [ octiconEl [] { size = titleFontSize, color = oneDark.succ, shape = Octicons.pulse }
+        [ octiconEl [] { size = titleFontSize, color = theme.succ, shape = Octicons.pulse }
         , text "Status"
         ]
 
@@ -87,8 +87,8 @@ titlePadding =
     2
 
 
-statusEl : Int -> Bool -> String -> Element Msg
-statusEl nItems pinned cId =
+statusEl : ColorTheme -> Int -> Bool -> String -> Element Msg
+statusEl theme nItems pinned cId =
     [ [ "ID", cId ]
     , [ "Stored messages", StringExtra.punctuateNumber nItems ]
     , [ "Pinned"
@@ -105,87 +105,87 @@ statusEl nItems pinned cId =
             , padding rectElementInnerPadding
             , spacing spacingUnit
             , BD.rounded rectElementRound
-            , BG.color sectionBackground
+            , BG.color (sectionBackground theme)
             ]
 
 
-filterSectionHeaderEl : String -> Bool -> Element Msg
-filterSectionHeaderEl cId isDirty =
+filterSectionHeaderEl : ColorTheme -> String -> Bool -> Element Msg
+filterSectionHeaderEl theme cId isDirty =
     row
         [ width fill
         , padding titlePadding
         , spacing spacingUnit
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
-        , Font.color flyoutFrameColor
+        , Font.color (flyoutFrameColor theme)
         ]
-        [ octiconEl [] { size = titleFontSize, color = oneDark.prim, shape = Octicons.rocket }
+        [ octiconEl [] { size = titleFontSize, color = theme.prim, shape = Octicons.rocket }
         , text "Filter Rules"
         , thinButtonEl [ alignRight, Font.size baseFontSize ]
             { onPress = ColumnCtrl cId ConfirmFilter
             , width = shrink |> minimum 60
-            , enabledColor = oneDark.succ
-            , enabledFontColor = oneDark.text
+            , enabledColor = theme.succ
+            , enabledFontColor = theme.text
             , enabled = isDirty
             , innerElement = text "Apply"
             }
         ]
 
 
-dangerZoneHeaderEl : Element Msg
-dangerZoneHeaderEl =
+dangerZoneHeaderEl : ColorTheme -> Element Msg
+dangerZoneHeaderEl theme =
     row
         [ width fill
         , padding titlePadding
         , spacing spacingUnit
         , BD.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
         , Font.size titleFontSize
-        , Font.color flyoutFrameColor
+        , Font.color (flyoutFrameColor theme)
         ]
-        [ octiconEl [] { size = titleFontSize, color = oneDark.err, shape = Octicons.stop }
+        [ octiconEl [] { size = titleFontSize, color = theme.err, shape = Octicons.stop }
         , text "Danger Zone"
         ]
 
 
-filtersEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
-filtersEl ss fam c =
-    Array.indexedMap (\fi f -> filterEditorEl ss fam c.id (EditF fi f)) c.pendingFilters
-        |> Array.push (filterEditorEl ss fam c.id AddF)
+filtersEl : ColorTheme -> Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
+filtersEl theme ss fam c =
+    Array.indexedMap (\fi f -> filterEditorEl theme ss fam c.id (EditF fi f)) c.pendingFilters
+        |> Array.push (filterEditorEl theme ss fam c.id AddF)
         |> Array.toList
-        |> List.intersperse (filterLogicSeparator "AND")
+        |> List.intersperse (filterLogicSeparator theme "AND")
         |> List.append
             [ if Array.isEmpty c.filters then
                 none
 
               else
-                filterHelpEl
+                filterHelpEl theme
             ]
         |> column
             [ width (fill |> minimum 0)
             , padding rectElementInnerPadding
             , spacing spacingUnit
             , BD.rounded rectElementRound
-            , BG.color sectionBackground
+            , BG.color (sectionBackground theme)
             ]
 
 
-sectionBackground : Color
+sectionBackground : ColorTheme -> Color
 sectionBackground =
-    oneDark.main
+    .main
 
 
-filterHelpEl : Element Msg
-filterHelpEl =
-    breakTColumn [ width fill, Font.color flyoutFrameColor ]
+filterHelpEl : ColorTheme -> Element Msg
+filterHelpEl theme =
+    breakTColumn [ width fill, Font.color (flyoutFrameColor theme) ]
         [ breakP []
-            [ el [ Font.color oneDark.warn, Font.italic ] (breakT "CAUTION: ")
+            [ el [ Font.color theme.warn, Font.italic ] (breakT "CAUTION: ")
             , breakT "Messages currently stored in this column will be "
-            , el [ Font.color oneDark.err ] (breakT "discarded")
+            , el [ Font.color theme.err ] (breakT "discarded")
             , breakT " when filter rules are updated."
             ]
         , breakP []
             [ breakT "After the update is "
-            , el [ BG.color oneDark.succ, Font.color oneDark.text, paddingXY spacingUnit 0 ] (breakT "Applied,")
+            , el [ BG.color theme.succ, Font.color theme.text, paddingXY spacingUnit 0 ] (breakT "Applied,")
             , breakT " messages still available in the local buffer are re-read and inserted to this column according to the new filter rules."
             ]
         ]
@@ -196,19 +196,19 @@ type FEditorType
     | AddF
 
 
-filterEditorEl : Select.State -> FilterAtomMaterial -> String -> FEditorType -> Element Msg
-filterEditorEl ss fam cId editorType =
+filterEditorEl : ColorTheme -> Select.State -> FilterAtomMaterial -> String -> FEditorType -> Element Msg
+filterEditorEl theme ss fam cId editorType =
     row
         [ width fill
         , BD.width 1
         , BD.rounded rectElementRound
-        , BD.color flyoutFrameColor
+        , BD.color (flyoutFrameColor theme)
         ]
         [ case editorType of
             EditF fi filter ->
-                Filter.indexedMap (\ai fa -> filterAtomEditorEl ss fam cId (EditFA fi ai fa)) filter
-                    ++ [ filterAtomEditorEl ss fam cId (AddFA fi) ]
-                    |> List.intersperse (filterLogicSeparator "OR")
+                Filter.indexedMap (\ai fa -> filterAtomEditorEl theme ss fam cId (EditFA fi ai fa)) filter
+                    ++ [ filterAtomEditorEl theme ss fam cId (AddFA fi) ]
+                    |> List.intersperse (filterLogicSeparator theme "OR")
                     |> column
                         [ width (fill |> minimum 0)
                         , padding rectElementInnerPadding
@@ -217,21 +217,21 @@ filterEditorEl ss fam cId editorType =
 
             AddF ->
                 column [ width (fill |> minimum 0), padding rectElementInnerPadding ]
-                    [ filterAtomEditorEl ss fam cId GenFilter
+                    [ filterAtomEditorEl theme ss fam cId GenFilter
                     ]
-        , deleteFilterButtonEl cId editorType
+        , deleteFilterButtonEl theme cId editorType
         ]
 
 
-deleteFilterButtonEl : String -> FEditorType -> Element Msg
-deleteFilterButtonEl cId editorType =
+deleteFilterButtonEl : ColorTheme -> String -> FEditorType -> Element Msg
+deleteFilterButtonEl theme cId editorType =
     case editorType of
         EditF fi _ ->
             Element.Input.button
                 [ width (px deleteFilterButtonWidth)
                 , height fill
-                , mouseOver [ BG.color oneDark.err ]
-                , focused [ BG.color oneDark.err ]
+                , mouseOver [ BG.color theme.err ]
+                , focused [ BG.color theme.err ]
                 , alignRight
                 , BD.roundEach
                     { topLeft = 0
@@ -263,12 +263,12 @@ deleteFilterIconSize =
     18
 
 
-filterLogicSeparator : String -> Element msg
-filterLogicSeparator operator =
+filterLogicSeparator : ColorTheme -> String -> Element msg
+filterLogicSeparator theme operator =
     el
         [ width (fill |> minimum 0)
         , Font.size separatorFontSize
-        , Font.color flyoutFrameColor
+        , Font.color (flyoutFrameColor theme)
         ]
         (el [ centerX ] (text operator))
 
@@ -284,21 +284,21 @@ type FAInputType
     | GenFilter
 
 
-filterAtomEditorEl : Select.State -> FilterAtomMaterial -> String -> FAInputType -> Element Msg
-filterAtomEditorEl ss fam cId faInputType =
+filterAtomEditorEl : ColorTheme -> Select.State -> FilterAtomMaterial -> String -> FAInputType -> Element Msg
+filterAtomEditorEl theme ss fam cId faInputType =
     row [ width (fill |> minimum 0), spacing spacingUnit ] <|
         case faInputType of
             EditFA fi ai fa ->
-                [ filterAtomCtorSelectEl ss fam cId faInputType
-                , filterAtomVariableInputEl ss fam cId fi ai fa
+                [ filterAtomCtorSelectEl theme ss fam cId faInputType
+                , filterAtomVariableInputEl theme ss fam cId fi ai fa
                 ]
 
             _ ->
-                [ filterAtomCtorSelectEl ss fam cId faInputType ]
+                [ filterAtomCtorSelectEl theme ss fam cId faInputType ]
 
 
-filterAtomCtorSelectEl : Select.State -> FilterAtomMaterial -> String -> FAInputType -> Element Msg
-filterAtomCtorSelectEl selectState fam cId faInputType =
+filterAtomCtorSelectEl : ColorTheme -> Select.State -> FilterAtomMaterial -> String -> FAInputType -> Element Msg
+filterAtomCtorSelectEl theme selectState fam cId faInputType =
     let
         ( selectId, selectedOption ) =
             case faInputType of
@@ -315,7 +315,7 @@ filterAtomCtorSelectEl selectState fam cId faInputType =
         { state = selectState
         , msgTagger = SelectCtrl
         , id = selectId
-        , theme = oneDark
+        , theme = theme
         , thin = False
         , onSelect = filterAtomOnSelect cId faInputType
         , selectedOption = selectedOption
@@ -432,8 +432,8 @@ ctorKey fa =
             "RemoveMe"
 
 
-filterAtomVariableInputEl : Select.State -> FilterAtomMaterial -> String -> Int -> Int -> FilterAtom -> Element Msg
-filterAtomVariableInputEl ss fam columnId fi ai fa =
+filterAtomVariableInputEl : ColorTheme -> Select.State -> FilterAtomMaterial -> String -> Int -> Int -> FilterAtom -> Element Msg
+filterAtomVariableInputEl theme ss fam columnId fi ai fa =
     let
         favsOptions =
             FAVSOptions columnId fi ai ss
@@ -449,7 +449,7 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
                     , List.map (\c -> ( c.id, c )) channels
                     )
             in
-            filterAtomVariableSelectEl (OfDiscordChannel << .id) <|
+            filterAtomVariableSelectEl theme (OfDiscordChannel << .id) <|
                 favsOptions selectedMaybe (Just Discord.channelFilter) options <|
                     \c -> discordChannelEl [] { size = favsIconSize, channel = c }
 
@@ -463,19 +463,19 @@ filterAtomVariableInputEl ss fam columnId fi ai fa =
                     , List.map (\c -> ( Slack.getConversationIdStr c, c )) conversations
                     )
             in
-            filterAtomVariableSelectEl (OfSlackConversation << Slack.getConversationIdStr) <|
+            filterAtomVariableSelectEl theme (OfSlackConversation << Slack.getConversationIdStr) <|
                 favsOptions selectedMaybe (Just slackConvCacheFilter) options <|
                     \c -> slackConversationEl [] { fontSize = baseFontSize, conversation = c, team = Just ( c.team, favsIconSize ) }
 
         ByMessage query ->
-            filterAtomVariableTextInputEl ByMessage columnId fi ai query
+            filterAtomVariableTextInputEl theme ByMessage columnId fi ai query
 
         ByMedia mediaType ->
             let
                 options =
                     [ ( "HasImage", HasImage ), ( "HasVideo", HasVideo ), ( "HasNone", HasNone ) ]
             in
-            filterAtomVariableSelectEl ByMedia <|
+            filterAtomVariableSelectEl theme ByMedia <|
                 favsOptions (Just mediaType) Nothing options mediaTypeOptionEl
 
         RemoveMe ->
@@ -493,11 +493,11 @@ slackConvCacheFilter f c =
     StringExtra.containsCaseIgnored f c.name || StringExtra.containsCaseIgnored f c.team.name
 
 
-filterAtomVariableTextInputEl : (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg
-filterAtomVariableTextInputEl faTagger cId fi ai current =
+filterAtomVariableTextInputEl : ColorTheme -> (String -> FilterAtom) -> String -> Int -> Int -> String -> Element Msg
+filterAtomVariableTextInputEl theme faTagger cId fi ai current =
     textInputEl []
         { onChange = \str -> ColumnCtrl cId (SetFilterAtom { filterIndex = fi, atomIndex = ai, atom = faTagger str })
-        , theme = oneDark
+        , theme = theme
         , enabled = True
         , text = current
         , placeholder = Nothing
@@ -517,13 +517,13 @@ type alias FAVSOptions a =
     }
 
 
-filterAtomVariableSelectEl : (a -> FilterAtom) -> FAVSOptions a -> Element Msg
-filterAtomVariableSelectEl faTagger opts =
+filterAtomVariableSelectEl : ColorTheme -> (a -> FilterAtom) -> FAVSOptions a -> Element Msg
+filterAtomVariableSelectEl theme faTagger opts =
     select [ width fill ]
         { state = opts.state
         , msgTagger = SelectCtrl
         , id = filterAtomVariableSelectId opts
-        , theme = oneDark
+        , theme = theme
         , thin = False
         , onSelect = onSelectFilterAtomVariable faTagger opts
         , selectedOption = opts.selected
@@ -557,25 +557,25 @@ mediaTypeOptionEl mediaType =
             text "None"
 
 
-columnDeleteEl : Column.Column -> Element Msg
-columnDeleteEl c =
+columnDeleteEl : ColorTheme -> Column.Column -> Element Msg
+columnDeleteEl theme c =
     row
         [ width fill
         , padding rectElementInnerPadding
         , spacing spacingUnit
-        , BG.color sectionBackground
+        , BG.color (sectionBackground theme)
         , BD.rounded rectElementRound
         ]
-        [ columnDeleteGateEl c.id c.deleteGate
-        , lazy2 columnDeleteButtonEl c.id (String.toLower c.deleteGate == "delete")
+        [ columnDeleteGateEl theme c.id c.deleteGate
+        , lazy3 columnDeleteButtonEl theme c.id (String.toLower c.deleteGate == "delete")
         ]
 
 
-columnDeleteGateEl : String -> String -> Element Msg
-columnDeleteGateEl cId deleteGate =
+columnDeleteGateEl : ColorTheme -> String -> String -> Element Msg
+columnDeleteGateEl theme cId deleteGate =
     textInputEl []
         { onChange = ColumnCtrl cId << DeleteGateInput
-        , theme = oneDark
+        , theme = theme
         , enabled = True
         , text = deleteGate
         , label = Element.Input.labelHidden "Delete Confirmation"
@@ -583,12 +583,12 @@ columnDeleteGateEl cId deleteGate =
         }
 
 
-columnDeleteButtonEl : String -> Bool -> Element Msg
-columnDeleteButtonEl cId confirmed =
+columnDeleteButtonEl : ColorTheme -> String -> Bool -> Element Msg
+columnDeleteButtonEl theme cId confirmed =
     dangerButtonEl []
         { onPress = DelColumn cId
         , width = px deleteButtonWidth
-        , theme = oneDark
+        , theme = theme
         , enabled = confirmed
         , innerElement =
             text <|
@@ -605,9 +605,9 @@ deleteButtonWidth =
     100
 
 
-columnConfigCloseButtonEl : String -> Element Msg
-columnConfigCloseButtonEl cId =
-    Element.Input.button [ width fill, BG.color oneDark.sub ]
+columnConfigCloseButtonEl : ColorTheme -> String -> Element Msg
+columnConfigCloseButtonEl theme cId =
+    Element.Input.button [ width fill, BG.color theme.sub ]
         { onPress = Just (ColumnCtrl cId (Column.ToggleConfig False))
         , label = octiconEl [ centerX ] { size = closeTriangleSize, color = defaultOcticonColor, shape = Octicons.triangleUp }
         }

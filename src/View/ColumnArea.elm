@@ -68,7 +68,7 @@ columnKeyEl m fam index c =
     Tuple.pair c.id <|
         column (baseAttrs ++ dragAttributes m.env.clientHeight m.viewState.columnSwapMaybe index c)
             [ lazy4 columnHeaderEl theme fam index c
-            , lazy4 columnConfigFlyoutEl m.viewState.selectState fam index c
+            , lazy5 columnConfigFlyoutEl theme m.viewState.selectState fam index c
             , newMessageEditorEl m.viewState.selectState fam c
             , lazy4 itemsEl theme m.viewState.timezone c.id c.items
             , fillerEl
