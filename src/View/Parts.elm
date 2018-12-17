@@ -1081,8 +1081,7 @@ manualStyle : Html.Html msg
 manualStyle =
     Html.node "style"
         []
-        [ Html.text "*{scroll-behavior:smooth;}" -- Smooth-scrolling on JS-invoked scrolls
-        , Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
+        [ Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}" -- Breakable inline texts
         , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}" -- Drag handle cursor
         , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
