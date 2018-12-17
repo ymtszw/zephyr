@@ -30,6 +30,29 @@ conversationHistoryJson =
     "ok": true,
     "messages": [
         {
+            "bot_id": "BESP6DK8A",
+            "type": "message",
+            "text": "",
+            "user": "UESV1NECD",
+            "ts": "1545051759.001200",
+            "attachments": [
+                {
+                    "fallback": "[ymtszw/zephyr] Issue closed by ymtszw",
+                    "pretext": "Issue closed by ymtszw",
+                    "title": "#24 Consider deduplication of Items",
+                    "footer": "<https://github.com/ymtszw/zephyr|ymtszw/zephyr>",
+                    "id": 1,
+                    "title_link": "https://github.com/ymtszw/zephyr/issues/24",
+                    "footer_icon": "https://assets-cdn.github.com/favicon.ico",
+                    "ts": 1542021767,
+                    "color": "cb2431",
+                    "mrkdwn_in": [
+                        "text"
+                    ]
+                }
+            ]
+        },
+        {
             "type": "message",
             "text": "",
             "files": [
