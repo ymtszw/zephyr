@@ -1,39 +1,11 @@
-module Extra exposing (doAfter, doT, map, pure, setTimeout)
+module Extra exposing (doAfter, doT)
 
-{-| Basics.Extra. Provides frequently used idiomatic helper.
+{-| Extensions for Platform.Cmd/Sub and Task.
 -}
 
 import Process
 import Task exposing (Task)
 import Time exposing (Posix)
-
-
-{-| Just apply new Model, without any Cmd. Hence the name.
--}
-pure : model -> ( model, Cmd msg, Bool )
-pure m =
-    ( m, Cmd.none, False )
-
-
-map :
-    (innerModel -> outerModel)
-    -> (innerMsg -> outerMsg)
-    -> ( innerModel, Cmd innerMsg, Bool )
-    -> ( outerModel, Cmd outerMsg, Bool )
-map modelTagger msgTagger ( m, cmd, shouldPersist ) =
-    ( modelTagger m, Cmd.map msgTagger cmd, shouldPersist )
-
-
-{-| Convenient timer.
-
-Sleep for a set amount of time, then fire event with current posix time.
-
--}
-setTimeout : (Posix -> msg) -> Float -> Cmd msg
-setTimeout timeoutMsg timeout =
-    Process.sleep timeout
-        |> Task.andThen (\() -> Time.now)
-        |> Task.perform timeoutMsg
 
 
 {-| Do a Task after a set amount of time.
