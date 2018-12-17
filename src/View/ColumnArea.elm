@@ -403,6 +403,7 @@ loadMoreKeyEl theme cId hasMore =
                     , centerY
                     , pointer
                     , onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.LoadMore))
+                    , wiggle
                     ]
                     { size = helpTextSize + rectElementOuterPadding * 2
                     , color = theme.note
