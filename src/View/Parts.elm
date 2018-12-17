@@ -1,6 +1,6 @@
 module View.Parts exposing
-    ( noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
-    , breakP, breakT, breakTColumn, collapsingColumn
+    ( noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
+    , breakP, breakT, breakTColumn, collapsingColumn, inputScreen, dragHandle
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
@@ -18,8 +18,8 @@ module View.Parts exposing
 
 ## Helpers
 
-@docs noneAttr, style, visible, switchCursor, borderFlash, rotating, onAnimationEnd, inputScreen, dragHandle
-@docs breakP, breakT, breakTColumn, collapsingColumn
+@docs noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
+@docs breakP, breakT, breakTColumn, collapsingColumn, inputScreen, dragHandle
 @docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
@@ -136,6 +136,16 @@ rotating doRotate =
 rotatingKeyframesName : String
 rotatingKeyframesName =
     "rotating"
+
+
+wiggle : Attribute msg
+wiggle =
+    style "animation" <| "1s ease-in-out 0s 3 " ++ wiggleKeyframesName
+
+
+wiggleKeyframesName : String
+wiggleKeyframesName =
+    "wiggle"
 
 
 {-| Fired when a CSS animation has been concluded.
@@ -1081,8 +1091,7 @@ manualStyle : Html.Html msg
 manualStyle =
     Html.node "style"
         []
-        [ Html.text "*{scroll-behavior:smooth;}" -- Smooth-scrolling on JS-invoked scrolls
-        , Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
+        [ Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}" -- Breakable inline texts
         , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}" -- Drag handle cursor
         , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
@@ -1090,6 +1099,18 @@ manualStyle =
         , Html.text "a:link:hover{text-decoration:underline;}" -- Workaround for underline not being appliable to mouseOver or focused
         , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
         , Html.text <| "@keyframes " ++ rotatingKeyframesName ++ "{from{transform:rotate(0turn);}to{transform:rotate(1turn);}}"
+        , Html.text <| "@keyframes " ++ wiggleKeyframesName ++ "{" ++ wiggleKeyframes ++ "}"
+        ]
+
+
+wiggleKeyframes : String
+wiggleKeyframes =
+    String.join ""
+        [ "0%{transform:rotate(10deg);}"
+        , "25%{transform:rotate(-10deg);}"
+        , "50%{transform:rotate(20deg);}"
+        , "75%{transform:rotate(-5deg);}"
+        , "100%{transform:rotate(0deg);}"
         ]
 
 

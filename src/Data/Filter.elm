@@ -1,6 +1,6 @@
 module Data.Filter exposing
     ( Filter(..), FilterAtom(..), MediaFilter(..), encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString
-    , append, setAt, removeAt, updateAt, any, foldl, map, indexedMap, toList, compareFilterAtom
+    , append, setAt, removeAt, updateAt, any, foldl, map, indexedMap, toList, compareFilterAtom, serviceRelated
     )
 
 {-| Filter to narrow down Items flowing into a Column.
@@ -19,7 +19,7 @@ since IMO, that matches better with users' expectations in those kind of GUIs.
 For that, this module reluctantly exposes `append` API.
 
 @docs Filter, FilterAtom, MediaFilter, encode, encodeFilterAtom, decoder, filterAtomDecoder, toString, atomToString
-@docs append, setAt, removeAt, updateAt, any, foldl, map, indexedMap, toList, compareFilterAtom
+@docs append, setAt, removeAt, updateAt, any, foldl, map, indexedMap, toList, compareFilterAtom, serviceRelated
 
 -}
 
@@ -400,3 +400,16 @@ compareFilterAtom fa1 fa2 =
 
         ( RemoveMe, _ ) ->
             GT
+
+
+serviceRelated : FilterAtom -> Bool
+serviceRelated fa =
+    case fa of
+        OfDiscordChannel _ ->
+            True
+
+        OfSlackConversation _ ->
+            True
+
+        _ ->
+            False

@@ -1,6 +1,6 @@
 module View.NewMessageEditor exposing (newMessageEditorEl)
 
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme)
 import Data.Column as Column
 import Data.ColumnEditor exposing (ColumnEditor(..), CommonEditorOpts)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
@@ -23,8 +23,8 @@ import View.Parts exposing (..)
 import View.Select as Select
 
 
-newMessageEditorEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
-newMessageEditorEl ss fam c =
+newMessageEditorEl : ColorTheme -> Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
+newMessageEditorEl theme ss fam c =
     let
         selectedEditor =
             SelectArray.selected c.editors
@@ -34,18 +34,18 @@ newMessageEditorEl ss fam c =
         , alignTop
         , padding rectElementInnerPadding
         , spacing spacingUnit
-        , BD.color oneDark.bd
+        , BD.color theme.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
         ]
         [ row [ width fill, spacing spacingUnit, centerY, visible c.editorActive ]
             [ octiconEl [] { size = editorHeaderIconSize, color = defaultOcticonColor, shape = Octicons.pencil }
-            , editorSelectEl ss fam c
-            , editorResetButtonEl c.id
-            , editorDismissButtonEl c.id
+            , editorSelectEl theme ss fam c
+            , editorResetButtonEl theme c.id
+            , editorDismissButtonEl theme c.id
             ]
-        , textAreaInputEl c selectedEditor
-        , selectedFilesEl c selectedEditor
-        , editorButtonsEl c.editorActive c.id selectedEditor
+        , textAreaInputEl theme c selectedEditor
+        , selectedFilesEl theme c selectedEditor
+        , editorButtonsEl theme c.editorActive c.id selectedEditor
         ]
 
 
@@ -54,8 +54,8 @@ editorHeaderIconSize =
     scale12 2
 
 
-editorSelectEl : Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
-editorSelectEl ss fam c =
+editorSelectEl : ColorTheme -> Select.State -> FilterAtomMaterial -> Column.Column -> Element Msg
+editorSelectEl theme ss fam c =
     let
         indexedEditors =
             SelectArray.indexedMap (\{ index, e } -> ( String.fromInt index, ( index, e ) )) c.editors
@@ -67,7 +67,7 @@ editorSelectEl ss fam c =
         { state = ss
         , msgTagger = SelectCtrl
         , id = editorSelectId c.id
-        , theme = oneDark
+        , theme = theme
         , thin = True
         , onSelect = onEditorSelect c.id selectedIndex
         , selectedOption = Just ( selectedIndex, SelectArray.selected c.editors )
@@ -114,42 +114,42 @@ editorFontSize =
     scale12 1
 
 
-editorResetButtonEl : String -> Element Msg
-editorResetButtonEl cId =
-    thinButtonEl [ alignRight, mouseOver [ BG.color oneDark.err ] ]
+editorResetButtonEl : ColorTheme -> String -> Element Msg
+editorResetButtonEl theme cId =
+    thinButtonEl [ alignRight, mouseOver [ BG.color theme.err ] ]
         { onPress = ColumnCtrl cId Column.EditorReset
         , enabled = True
-        , enabledColor = oneDark.main
-        , enabledFontColor = oneDark.text
+        , enabledColor = theme.main
+        , enabledFontColor = theme.text
         , width = shrink
         , innerElement =
             octiconEl [ paddingEach trashcanPaddingAdjust ]
                 { size = editorHeaderIconSize
-                , color = oneDark.text
+                , color = theme.text
                 , shape = Octicons.trashcan
                 }
         }
 
 
-editorDismissButtonEl : String -> Element Msg
-editorDismissButtonEl cId =
-    thinButtonEl [ alignRight, mouseOver [ BG.color oneDark.note ] ]
+editorDismissButtonEl : ColorTheme -> String -> Element Msg
+editorDismissButtonEl theme cId =
+    thinButtonEl [ alignRight, mouseOver [ BG.color theme.note ] ]
         { onPress = ColumnCtrl cId (Column.EditorToggle False)
         , enabled = True
-        , enabledColor = oneDark.main
-        , enabledFontColor = oneDark.text
+        , enabledColor = theme.main
+        , enabledFontColor = theme.text
         , width = shrink
         , innerElement =
             octiconEl []
                 { size = editorHeaderIconSize
-                , color = oneDark.text
+                , color = theme.text
                 , shape = Octicons.x
                 }
         }
 
 
-textAreaInputEl : Column.Column -> ColumnEditor -> Element Msg
-textAreaInputEl c ce =
+textAreaInputEl : ColorTheme -> Column.Column -> ColumnEditor -> Element Msg
+textAreaInputEl theme c ce =
     case ce of
         DiscordMessageEditor _ opts ->
             messageInputBaseEl []
@@ -158,6 +158,7 @@ textAreaInputEl c ce =
                 , placeholder = "Message"
                 , labelText = "Discord Message"
                 , isActive = c.editorActive
+                , theme = theme
                 }
                 opts
 
@@ -168,6 +169,7 @@ textAreaInputEl c ce =
                 , placeholder = "Memo"
                 , labelText = "Personal Memo"
                 , isActive = c.editorActive
+                , theme = theme
                 }
                 opts
 
@@ -180,6 +182,7 @@ messageInputBaseEl :
         , placeholder : String
         , labelText : String
         , isActive : Bool
+        , theme : ColorTheme
         }
     -> CommonEditorOpts
     -> Element Msg
@@ -190,10 +193,10 @@ messageInputBaseEl attrs opts { buffer } =
 
         ( heightPx, fontColor, bgColor ) =
             if opts.isActive then
-                ( bufferToHeight buffer, oneDark.text, oneDark.note )
+                ( bufferToHeight buffer, opts.theme.text, opts.theme.note )
 
             else
-                ( editorFontSize * 2, oneDark.note, oneDark.sub )
+                ( editorFontSize * 2, opts.theme.note, opts.theme.sub )
 
         bufferToHeight b =
             let
@@ -230,13 +233,13 @@ messageInputBaseEl attrs opts { buffer } =
         }
 
 
-selectedFilesEl : Column.Column -> ColumnEditor -> Element Msg
-selectedFilesEl c ce =
+selectedFilesEl : ColorTheme -> Column.Column -> ColumnEditor -> Element Msg
+selectedFilesEl theme c ce =
     case ( c.editorActive, ce ) of
         ( True, DiscordMessageEditor { file } _ ) ->
             case file of
                 Just ( f, dataUrl ) ->
-                    previewWrapperEl c.id f <|
+                    previewWrapperEl theme c.id f <|
                         if String.startsWith "image/" (File.mime f) then
                             image
                                 [ centerX
@@ -248,7 +251,7 @@ selectedFilesEl c ce =
                         else
                             octiconEl [ centerX, padding otherFileIconSize ]
                                 { size = otherFileIconSize
-                                , color = oneDark.text
+                                , color = theme.text
                                 , shape = Octicons.file
                                 }
 
@@ -274,27 +277,27 @@ otherFileIconSize =
     scale12 3
 
 
-previewWrapperEl : String -> File -> Element Msg -> Element Msg
-previewWrapperEl cId f =
+previewWrapperEl : ColorTheme -> String -> File -> Element Msg -> Element Msg
+previewWrapperEl theme cId f =
     el
         [ width fill
         , clip
         , BD.rounded rectElementRound
-        , BG.color oneDark.sub
+        , BG.color theme.sub
         , Font.size editorFontSize
-        , inFront (previewOverlayEl cId f)
+        , inFront (previewOverlayEl theme cId f)
         ]
 
 
-previewOverlayEl : String -> File -> Element Msg
-previewOverlayEl cId f =
+previewOverlayEl : ColorTheme -> String -> File -> Element Msg
+previewOverlayEl theme cId f =
     let
         wrapInP t =
             breakP
                 [ width shrink
                 , padding rectElementInnerPadding
                 , BD.rounded rectElementRound
-                , BG.color (setAlpha 0.5 oneDark.bg)
+                , BG.color (setAlpha 0.5 theme.bg)
                 ]
                 [ t ]
     in
@@ -311,14 +314,14 @@ previewOverlayEl cId f =
         , el [ width fill, alignTop ] <|
             roundButtonEl
                 [ alignRight
-                , BG.color (setAlpha 0.5 oneDark.bg)
+                , BG.color (setAlpha 0.5 theme.bg)
                 ]
                 { onPress = ColumnCtrl cId Column.EditorFileDiscard
                 , enabled = True
                 , innerElement =
                     octiconEl [ padding rectElementInnerPadding ]
                         { size = editorHeaderIconSize
-                        , color = oneDark.text
+                        , color = theme.text
                         , shape = Octicons.x
                         }
                 , innerElementSize = editorHeaderIconSize + rectElementInnerPadding * 2
@@ -326,8 +329,8 @@ previewOverlayEl cId f =
         ]
 
 
-editorButtonsEl : Bool -> String -> ColumnEditor -> Element Msg
-editorButtonsEl isActive cId ce =
+editorButtonsEl : ColorTheme -> Bool -> String -> ColumnEditor -> Element Msg
+editorButtonsEl theme isActive cId ce =
     let
         rowAttrs opts =
             [ width fill
@@ -343,40 +346,40 @@ editorButtonsEl isActive cId ce =
                     not (String.isEmpty opts.buffer) || file /= Nothing
             in
             row (rowAttrs opts)
-                [ selectFileButtonEl cId
-                , submitButtonEl cId submittable
+                [ selectFileButtonEl theme cId
+                , submitButtonEl theme cId submittable
                 ]
 
         LocalMessageEditor opts ->
             row (rowAttrs opts)
-                [ submitButtonEl cId (not (String.isEmpty opts.buffer))
+                [ submitButtonEl theme cId (not (String.isEmpty opts.buffer))
                 ]
 
 
-selectFileButtonEl : String -> Element Msg
-selectFileButtonEl cId =
+selectFileButtonEl : ColorTheme -> String -> Element Msg
+selectFileButtonEl theme cId =
     thinButtonEl
         [ alignLeft
-        , BG.color oneDark.bd
-        , mouseOver [ BG.color oneDark.note ]
+        , BG.color theme.bd
+        , mouseOver [ BG.color theme.note ]
         ]
         { onPress = ColumnCtrl cId (Column.EditorFileRequest [ "*/*" ])
         , width = px editorButtonWidth
-        , enabledColor = oneDark.main
-        , enabledFontColor = oneDark.text
+        , enabledColor = theme.main
+        , enabledFontColor = theme.text
         , enabled = True
         , innerElement =
-            octiconEl [] { size = editorFontSize, color = oneDark.text, shape = Octicons.plus }
+            octiconEl [] { size = editorFontSize, color = theme.text, shape = Octicons.plus }
         }
 
 
-submitButtonEl : String -> Bool -> Element Msg
-submitButtonEl cId enabled =
+submitButtonEl : ColorTheme -> String -> Bool -> Element Msg
+submitButtonEl theme cId enabled =
     thinButtonEl [ alignRight ]
         { onPress = ColumnCtrl cId Column.EditorSubmit
         , width = px editorButtonWidth
-        , enabledColor = oneDark.succ
-        , enabledFontColor = oneDark.text
+        , enabledColor = theme.succ
+        , enabledFontColor = theme.text
         , enabled = enabled
         , innerElement = text "Submit"
         }

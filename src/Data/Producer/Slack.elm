@@ -1,6 +1,6 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, Team, TeamIcon
-    , Conversation, ConversationType(..), ConversationCache, Message, Attachment, FAM
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, UserId(..), Bot, BotId(..), Team, TeamIcon
+    , Conversation, ConversationType(..), ConversationCache, Message, Author(..), Attachment, FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
@@ -14,8 +14,8 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, Team, TeamIcon
-@docs Conversation, ConversationType, ConversationCache, Message, Attachment, FAM
+@docs Slack, SlackUnidentified, SlackRegistry, User, UserId, Bot, BotId, Team, TeamIcon
+@docs Conversation, ConversationType, ConversationCache, Message, Author, Attachment, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
@@ -1828,13 +1828,13 @@ handleIFetched succ slack =
                     [] ->
                         updateFetchStatus (FetchStatus.Miss succ.posix)
 
-                    m :: _ ->
+                    (m :: _) as ms ->
                         let
                             updateConv ( conv, cy ) =
                                 -- Expects messages to be sorted from latest to oldest
-                                -- TODO update lastRead of conv
-                                -- TODO return `List.reverse ms` when other implementations are ready
-                                ( conv, { cy | persist = True, items = [] } )
+                                ( { conv | lastRead = Just (LastRead m.ts) }
+                                , { cy | persist = True, items = List.reverse ms }
+                                )
                         in
                         updateFetchStatus (FetchStatus.Hit succ.posix) >> updateConv
     in

@@ -478,11 +478,16 @@ update msg (Scroll s) =
             ( incrementTier (Scroll s), requestAdjust s.id s.lastBoundingHeight )
 
         AdjustReq boundingHeight ->
-            if boundingHeight /= s.lastBoundingHeight then
-                ( Scroll s, requestAdjust s.id boundingHeight )
+            case s.viewportStatus of
+                Scrolling _ ->
+                    ( Scroll s, Cmd.none )
 
-            else
-                ( Scroll s, Cmd.none )
+                _ ->
+                    if boundingHeight /= s.lastBoundingHeight then
+                        ( Scroll s, requestAdjust s.id boundingHeight )
+
+                    else
+                        ( Scroll s, Cmd.none )
 
         AdjustExec boundingHeight vp ->
             -- Adjust parameters dynamically (in somewhat crude way),
@@ -513,7 +518,7 @@ queryViewportWithDelay id =
 
 queryDelay : Float
 queryDelay =
-    250
+    500
 
 
 calculateTier : Scroll a -> Scroll a
