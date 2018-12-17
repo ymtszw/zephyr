@@ -68,7 +68,17 @@ If all elements failed to be decoded, it succeeds with an empty list.
 -}
 leakyList : Decoder a -> Decoder (List a)
 leakyList decoder =
-    map (List.filterMap (decodeValue decoder >> Result.toMaybe)) (list value)
+    let
+        itemDecoder v =
+            case decodeValue decoder v of
+                Ok a ->
+                    Just a
+
+                Err e ->
+                    -- Debug here when necessary
+                    Nothing
+    in
+    map (List.filterMap itemDecoder) (list value)
 
 
 {-| Merger of Json.Decode.field AND Json.Decode.maybe.
@@ -96,7 +106,7 @@ maybeField fieldName decoder =
     map flatten (maybe (field fieldName (maybe decoder)))
 
 
-{-| Omittable field. You must supply default
+{-| Omittable field. You must supply a default value.
 -}
 optionField : String -> Decoder a -> a -> Decoder a
 optionField fieldName decoder default =

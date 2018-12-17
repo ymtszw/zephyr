@@ -1242,8 +1242,8 @@ apiMessageDecoder users bots convIdStr =
         (D.field "text" D.string)
         apiAuthorDecoder
         (D.maybeField "username" D.string)
-        (D.optionField "files" (D.list sFileDecoder) [])
-        (D.optionField "attachments" (D.list attachmentDecoder) [])
+        (D.optionField "files" (D.leakyList sFileDecoder) [])
+        (D.optionField "attachments" (D.leakyList attachmentDecoder) [])
         (D.succeed convIdStr)
 
 
