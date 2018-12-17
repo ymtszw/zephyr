@@ -20,6 +20,8 @@ doAfter timeout toMsg taskOnTimeout =
         |> Task.attempt toMsg
 
 
+{-| Continuation-Passing Style (CPS) Task composition. Flipped `andThen`.
+-}
 doT : Task x a -> (a -> Task x b) -> Task x b
 doT t1 toT2 =
     Task.andThen toT2 t1
