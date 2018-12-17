@@ -89,13 +89,31 @@ itemAvatarEl item =
                 , size = columnItemAvatarSize
                 }
 
-        Product _ (SlackItem _) ->
-            -- TODO author avatar
+        Product _ (SlackItem m) ->
+            let
+                ( name, url, badge ) =
+                    case m.author of
+                        Slack.UserAuthor u ->
+                            ( Maybe.withDefault u.profile.realName u.profile.displayName
+                            , Just (Url.toString u.profile.image48)
+                            , Nothing
+                            )
+
+                        Slack.UserAuthorId (Slack.UserId str) ->
+                            -- Slack default CDN icon require cropping, so we don't bother using
+                            ( str, Nothing, Nothing )
+
+                        Slack.BotAuthor b ->
+                            ( Maybe.withDefault b.name m.username, Just (Url.toString b.icons.image48), Just botIconEl )
+
+                        Slack.BotAuthorId (Slack.BotId str) ->
+                            ( str, Nothing, Just botIconEl )
+            in
             iconWithBadgeEl [ alignTop ]
-                { badge = Nothing
+                { badge = badge
                 , theme = aubergine
-                , fallback = "Slack"
-                , url = Just <| Slack.defaultIconUrl (Just columnItemAvatarSize)
+                , fallback = name
+                , url = url
                 , size = columnItemAvatarSize
                 }
 
