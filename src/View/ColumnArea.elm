@@ -69,7 +69,7 @@ columnKeyEl m fam index c =
         column (baseAttrs ++ dragAttributes m.env.clientHeight m.viewState.columnSwapMaybe index c)
             [ lazy4 columnHeaderEl theme fam index c
             , lazy5 columnConfigFlyoutEl theme m.viewState.selectState fam index c
-            , newMessageEditorEl m.viewState.selectState fam c
+            , newMessageEditorEl theme m.viewState.selectState fam c
             , lazy4 itemsEl theme m.viewState.timezone c.id c.items
             , fillerEl
             ]
