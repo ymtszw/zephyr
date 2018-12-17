@@ -1137,7 +1137,8 @@ attachmentDecoder =
         (D.maybeField "color" colorDecoder)
         (D.maybe attachmentAuthorDecoder)
         (D.maybe attachmentTitleDecoder)
-        (D.field "text" D.string)
+        -- `text` can be absent!!
+        (D.optionField "text" D.string "")
         (D.maybeField "image_url" D.url)
         (D.maybeField "thumb_url" D.url)
         (D.field "fallback" D.string)
