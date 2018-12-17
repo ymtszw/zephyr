@@ -342,7 +342,7 @@ itemsEl theme tz cId items =
         -- Do note that items are sorted from latest to oldest
         itemsVisible
             |> ListExtra.groupWhile shouldGroup
-            |> List.map (columnItemKeyEl tz)
+            |> List.map (columnItemKeyEl theme tz)
             |> (\itemEls -> itemEls ++ [ loadMoreKeyEl theme cId hasMore ])
             |> Element.Keyed.column columnAttrs
 

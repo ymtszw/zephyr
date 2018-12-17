@@ -22,8 +22,8 @@ import Url
 import View.Parts exposing (..)
 
 
-columnItemKeyEl : Time.Zone -> List ColumnItem -> ( String, Element Msg )
-columnItemKeyEl tz closeItems =
+columnItemKeyEl : ColorTheme -> Time.Zone -> List ColumnItem -> ( String, Element Msg )
+columnItemKeyEl theme tz closeItems =
     -- Reverse, since we want to show closeItems in oldest to latest, opposite from other places
     case List.reverse closeItems of
         [] ->
@@ -36,10 +36,10 @@ columnItemKeyEl tz closeItems =
                 , paddingXY 0 rectElementInnerPadding
                 , spacing spacingUnit
                 , BD.widthEach { top = 0, bottom = columnItemBorderBottom, left = 0, right = 0 }
-                , BD.color oneDark.bd
+                , BD.color theme.bd
                 , Font.size baseFontSize
                 ]
-                [ itemAvatarEl item
+                [ itemAvatarEl theme item
                 , itemContentsEl tz item items
                 ]
                 |> Tuple.pair (columnItemKey reversed)
@@ -68,8 +68,8 @@ columnItemKey closeItems =
         |> String.join "-"
 
 
-itemAvatarEl : ColumnItem -> Element Msg
-itemAvatarEl item =
+itemAvatarEl : ColorTheme -> ColumnItem -> Element Msg
+itemAvatarEl theme item =
     case item of
         Product _ (DiscordItem { author }) ->
             let
@@ -79,11 +79,11 @@ itemAvatarEl item =
                             ( u, Nothing )
 
                         Discord.WebhookAuthor u ->
-                            ( u, Just botIconEl )
+                            ( u, Just (botIconEl oneDark) )
             in
             iconWithBadgeEl [ alignTop ]
                 { badge = badge
-                , theme = oneDark
+                , theme = theme
                 , fallback = user.username
                 , url = Just <| Discord.imageUrlWithFallback (Just columnItemAvatarSize) user.discriminator user.avatar
                 , size = columnItemAvatarSize
@@ -104,10 +104,10 @@ itemAvatarEl item =
                             ( str, Nothing, Nothing )
 
                         Slack.BotAuthor b ->
-                            ( Maybe.withDefault b.name m.username, Just (Url.toString b.icons.image48), Just botIconEl )
+                            ( Maybe.withDefault b.name m.username, Just (Url.toString b.icons.image48), Just (botIconEl aubergine) )
 
                         Slack.BotAuthorId (Slack.BotId str) ->
-                            ( str, Nothing, Just botIconEl )
+                            ( str, Nothing, Just (botIconEl aubergine) )
             in
             iconWithBadgeEl [ alignTop ]
                 { badge = badge
@@ -118,30 +118,30 @@ itemAvatarEl item =
                 }
 
         System _ _ ->
-            octiconAvatarEl Octicons.info
+            octiconAvatarEl theme Octicons.info
 
         LocalMessage _ _ ->
-            octiconAvatarEl Octicons.note
+            octiconAvatarEl theme Octicons.note
 
 
-botIconEl : Int -> Element Msg
-botIconEl badgeSize =
-    octiconEl [ BG.color botIconBackground, htmlAttribute (title "BOT") ]
-        { size = badgeSize, color = avatarIconFillColor, shape = Octicons.zap }
+botIconEl : ColorTheme -> Int -> Element Msg
+botIconEl theme badgeSize =
+    octiconEl [ BG.color (botIconBackground theme), htmlAttribute (title "BOT") ]
+        { size = badgeSize, color = avatarIconFillColor theme, shape = Octicons.zap }
 
 
-avatarIconFillColor : Color
+avatarIconFillColor : ColorTheme -> Color
 avatarIconFillColor =
-    oneDark.text
+    .text
 
 
-botIconBackground : Color
+botIconBackground : ColorTheme -> Color
 botIconBackground =
-    oneDark.succ
+    .succ
 
 
-octiconAvatarEl : (Octicons.Options -> Html.Html msg) -> Element msg
-octiconAvatarEl shape =
+octiconAvatarEl : ColorTheme -> (Octicons.Options -> Html.Html msg) -> Element msg
+octiconAvatarEl theme shape =
     let
         octiconAvatarPadding =
             7
@@ -154,13 +154,13 @@ octiconAvatarEl shape =
         , height (px columnItemAvatarSize)
         , padding octiconAvatarPadding
         , alignTop
-        , BD.color oneDark.note
+        , BD.color theme.note
         , BD.dashed
         , BD.width 1
         , BD.rounded rectElementRound
         ]
         { size = octiconSize
-        , color = avatarIconFillColor
+        , color = avatarIconFillColor theme
         , shape = shape
         }
 
@@ -250,7 +250,7 @@ timestampFontColor =
 discordMessageBodyEl : Discord.Message -> Element Msg
 discordMessageBodyEl discordMessage =
     column [ spacingXY 0 5, width fill ]
-        [ messageToParagraph discordMessage.content
+        [ messageToParagraph oneDark discordMessage.content
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordAttachmentEl discordMessage.attachments
         ]
@@ -260,7 +260,7 @@ discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
     [ embed.author |> Maybe.map discordEmbedAuthorEl
     , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
-    , embed.description |> Maybe.map messageToParagraph
+    , embed.description |> Maybe.map (messageToParagraph oneDark)
     ]
         |> List.filterMap identity
         |> breakTColumn
@@ -451,7 +451,7 @@ discordAttachmentEl attachment =
                     ]
                     [ breakP
                         [ Font.size attachmentFilenameFontSize
-                        , Font.color attachmentFilenameColor
+                        , Font.color oneDark.link
                         ]
                         [ breakT attachment.filename ]
                     , octiconEl [ alignRight ]
@@ -466,11 +466,6 @@ discordAttachmentEl attachment =
 attachmentFilenameFontSize : Int
 attachmentFilenameFontSize =
     scale12 2
-
-
-attachmentFilenameColor : Color
-attachmentFilenameColor =
-    oneDark.link
 
 
 downloadIconSize : Int
@@ -520,7 +515,7 @@ slackMessageHeaderEl tz m =
 slackMessageBodyEl : Slack.Message -> Element Msg
 slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
-        [ messageToParagraph m.text
+        [ messageToParagraph aubergine m.text
         ]
 
 
@@ -529,23 +524,23 @@ defaultItemEl message mediaMaybe =
     case mediaMaybe of
         Just media ->
             textColumn [ spacingXY 0 10, width fill, alignTop ]
-                [ messageToParagraph message
+                [ messageToParagraph oneDark message
                 , mediaEl media
                 ]
 
         Nothing ->
-            el [ width fill, alignTop ] (messageToParagraph message)
+            el [ width fill, alignTop ] (messageToParagraph oneDark message)
 
 
-messageToParagraph : String -> Element Msg
-messageToParagraph message =
+messageToParagraph : ColorTheme -> String -> Element Msg
+messageToParagraph theme message =
     if String.isEmpty message then
         none
 
     else
         -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
         message
-            |> Data.TextRenderer.default oneDark
+            |> Data.TextRenderer.default theme
             |> List.map html
             |> breakP []
 
