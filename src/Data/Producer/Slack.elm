@@ -83,7 +83,7 @@ type alias POV =
     , team : Team
     , conversations : Dict ConversationIdStr Conversation
     , users : Dict UserIdStr User
-    , bots : Dict BotIdStr Bot -- Lazily populated/updated
+    , bots : Dict BotIdStr Bot -- Lazily populated/updated; TODO can become stale, needs some update trigger
     }
 
 
