@@ -1,7 +1,7 @@
 module View.ColumnItem exposing (columnItemKeyEl)
 
 import Broker exposing (Offset)
-import Data.ColorTheme exposing (aubergine, oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
 import Data.Item exposing (Item(..), extIsImage, extIsVideo)
 import Data.Msg exposing (Msg(..))
@@ -232,7 +232,7 @@ discordMessageHeaderEl tz { author, timestamp, channelId } =
     in
     row [ width fill, spacing 5 ]
         [ userNameEl
-        , el [ alignRight, Font.color timestampFontColor ] <|
+        , el [ alignRight, Font.color (timestampFontColor oneDark) ] <|
             text (TimeExtra.local tz timestamp)
         ]
 
@@ -242,9 +242,9 @@ userNameFontSize =
     scale12 2
 
 
-timestampFontColor : Color
+timestampFontColor : ColorTheme -> Color
 timestampFontColor =
-    oneDark.note
+    .note
 
 
 discordMessageBodyEl : Discord.Message -> Element Msg
@@ -480,9 +480,47 @@ downloadIconSize =
 
 slackMessageEl : Time.Zone -> ( Slack.Message, Offset ) -> List ( Slack.Message, Offset ) -> Element Msg
 slackMessageEl tz ( m, _ ) closeMessages =
-    column [ width fill, spacing 5, alignTop ]
-        [ --TODO
-          text "Slack message"
+    column [ width fill, spacing spacingUnit, alignTop ] <|
+        (::) (slackMessageHeaderEl tz m) <|
+            List.map slackMessageBodyEl <|
+                (m :: List.map Tuple.first closeMessages)
+
+
+slackMessageHeaderEl : Time.Zone -> Slack.Message -> Element Msg
+slackMessageHeaderEl tz m =
+    let
+        userNameEl =
+            breakP
+                [ alignLeft
+                , Font.bold
+                , Font.size userNameFontSize
+                ]
+                [ breakT <|
+                    case m.author of
+                        Slack.UserAuthor user ->
+                            Maybe.withDefault user.profile.realName user.profile.displayName
+
+                        Slack.BotAuthor bot ->
+                            Maybe.withDefault bot.name m.username
+
+                        Slack.UserAuthorId (Slack.UserId str) ->
+                            str
+
+                        Slack.BotAuthorId (Slack.BotId str) ->
+                            str
+                ]
+    in
+    row [ width fill, spacing spacingUnit ]
+        [ userNameEl
+        , el [ alignRight, Font.color (timestampFontColor aubergine) ] <|
+            text (TimeExtra.local tz (Slack.getPosix m))
+        ]
+
+
+slackMessageBodyEl : Slack.Message -> Element Msg
+slackMessageBodyEl m =
+    column [ width fill, spacingXY 0 spacingUnit ]
+        [ messageToParagraph m.text
         ]
 
 
