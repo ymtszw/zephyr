@@ -131,7 +131,7 @@ chompUrlLike =
     in
     Parser.succeed parseAsUrl
         |. Parser.token "http"
-        |= Parser.getChompedString (Parser.chompWhile notSpacesOrPipe)
+        |= Parser.getChompedString (Parser.chompWhile nonTerminator)
 
 
 chompNonUrl : Parser String
@@ -139,8 +139,14 @@ chompNonUrl =
     Parser.getChompedString <| Parser.chompUntilEndOr "http"
 
 
-notSpacesOrPipe : Char -> Bool
-notSpacesOrPipe c =
-    -- Pipe (vertical bar) is used in Slack message as a delimiter between link and placeholder text
-    -- Introduced as a temporary measure until we support proper markdown and other formatting
-    not <| List.member c [ ' ', '\t', '\n', '|', '\u{000D}' ]
+nonTerminator : Char -> Bool
+nonTerminator c =
+    not <|
+        List.member c
+            [ ' '
+            , '\t'
+            , '\n'
+            , '\u{000D}'
+            , '|' -- Introduced as a temporary measure until we support proper formatting for Slack
+            , '>' -- Introduced as a temporary measure until we support proper formatting for Slack
+            ]
