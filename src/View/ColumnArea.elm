@@ -2,7 +2,7 @@ module View.ColumnArea exposing (columnAreaEl)
 
 import Array exposing (Array)
 import ArrayExtra
-import Data.ColorTheme exposing (oneDark)
+import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column as Column exposing (ColumnItem(..))
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
@@ -49,14 +49,17 @@ columnAreaEl m =
 columnKeyEl : Model -> FilterAtomMaterial -> Int -> Column.Column -> ( String, Element Msg )
 columnKeyEl m fam index c =
     let
+        theme =
+            columnTheme c.filters
+
         baseAttrs =
             [ width (px columnWidth)
             , height fill
             , clipY
-            , BG.color oneDark.main
+            , BG.color theme.main
             , BD.width columnBorderWidth
-            , BD.color oneDark.bg
-            , Font.color oneDark.text
+            , BD.color theme.bg
+            , Font.color theme.text
             , borderFlash c.recentlyTouched
             , onAnimationEnd (ColumnCtrl c.id Column.Calm)
             , style "transition" "all 0.15s"
@@ -64,12 +67,47 @@ columnKeyEl m fam index c =
     in
     Tuple.pair c.id <|
         column (baseAttrs ++ dragAttributes m.env.clientHeight m.viewState.columnSwapMaybe index c)
-            [ lazy3 columnHeaderEl fam index c
+            [ lazy4 columnHeaderEl theme fam index c
             , lazy4 columnConfigFlyoutEl m.viewState.selectState fam index c
             , newMessageEditorEl m.viewState.selectState fam c
-            , lazy3 itemsEl m.viewState.timezone c.id c.items
+            , lazy4 itemsEl theme m.viewState.timezone c.id c.items
             , fillerEl
             ]
+
+
+columnTheme : Array Filter -> ColorTheme
+columnTheme filters =
+    let
+        findFirstService filter acc =
+            case acc of
+                Just _ ->
+                    acc
+
+                Nothing ->
+                    let
+                        reducer atom innerAcc =
+                            case innerAcc of
+                                Just _ ->
+                                    innerAcc
+
+                                Nothing ->
+                                    if Filter.serviceRelated atom then
+                                        Just atom
+
+                                    else
+                                        Nothing
+                    in
+                    Filter.foldl reducer Nothing filter
+    in
+    case Array.foldl findFirstService Nothing filters of
+        Just (Filter.OfSlackConversation _) ->
+            aubergine
+
+        Just (Filter.OfDiscordChannel _) ->
+            oneDark
+
+        _ ->
+            oneDark
 
 
 dragAttributes : Int -> Maybe ColumnSwap -> Int -> Column.Column -> List (Attribute Msg)
@@ -119,38 +157,38 @@ fillerEl =
     el [ width fill, height (fill |> minimum 0) ] none
 
 
-columnHeaderEl : FilterAtomMaterial -> Int -> Column.Column -> Element Msg
-columnHeaderEl fam index c =
+columnHeaderEl : ColorTheme -> FilterAtomMaterial -> Int -> Column.Column -> Element Msg
+columnHeaderEl theme fam index c =
     row
         [ width fill
         , padding rectElementInnerPadding
         , spacing spacingUnit
-        , BG.color columnHeaderBackground
+        , BG.color (columnHeaderBackground theme)
         ]
-        [ lazy3 grabberEl index c.pinned c.id
+        [ lazy4 grabberEl theme index c.pinned c.id
         , filtersToIconEl [] { size = columnHeaderIconSize, fam = fam, filters = c.filters }
-        , lazy4 columnHeaderTextEl fam c.id (Scroll.scrolled c.items) c.filters
-        , lazy2 columnDismissButtonEl c.pinned index
+        , lazy5 columnHeaderTextEl theme fam c.id (Scroll.scrolled c.items) c.filters
+        , lazy3 columnDismissButtonEl theme c.pinned index
         , lazy2 columnPinButtonEl c.pinned c.id
-        , lazy2 columnConfigToggleButtonEl c.configOpen c.id
+        , lazy3 columnConfigToggleButtonEl theme c.configOpen c.id
         ]
 
 
-columnHeaderBackground : Color
+columnHeaderBackground : ColorTheme -> Color
 columnHeaderBackground =
-    oneDark.sub
+    .sub
 
 
-grabberEl : Int -> Bool -> String -> Element Msg
-grabberEl index pinned cId =
+grabberEl : ColorTheme -> Int -> Bool -> String -> Element Msg
+grabberEl theme index pinned cId =
     let
         attrs =
             [ width (px grabberWidth)
             , height fill
-            , BG.color oneDark.main
+            , BG.color theme.main
             , BD.rounded (grabberWidth // 2)
             , BD.width (grabberWidth // 2)
-            , BD.color oneDark.note
+            , BD.color theme.note
             , style "border-style" "double"
             ]
 
@@ -165,8 +203,8 @@ grabberWidth =
     8
 
 
-columnHeaderTextEl : FilterAtomMaterial -> String -> Bool -> Array Filter -> Element Msg
-columnHeaderTextEl fam cId scrolled filters =
+columnHeaderTextEl : ColorTheme -> FilterAtomMaterial -> String -> Bool -> Array Filter -> Element Msg
+columnHeaderTextEl theme fam cId scrolled filters =
     let
         backToTopAttrs =
             if scrolled then
@@ -179,10 +217,10 @@ columnHeaderTextEl fam cId scrolled filters =
         filtersToTextEl
             [ centerY
             , Font.size baseHeaderTextSize
-            , Font.color baseHeaderTextColor
+            , Font.color (baseHeaderTextColor theme)
             ]
             { fontSize = importantFilterTextSize
-            , color = importantFilterTextColor
+            , color = importantFilterTextColor theme
             , fam = fam
             , filters = filters
             }
@@ -193,9 +231,9 @@ baseHeaderTextSize =
     scale12 1
 
 
-baseHeaderTextColor : Color
+baseHeaderTextColor : ColorTheme -> Color
 baseHeaderTextColor =
-    oneDark.note
+    .note
 
 
 importantFilterTextSize : Int
@@ -203,19 +241,19 @@ importantFilterTextSize =
     scale12 2
 
 
-importantFilterTextColor : Color
+importantFilterTextColor : ColorTheme -> Color
 importantFilterTextColor =
-    oneDark.text
+    .text
 
 
-columnDismissButtonEl : Bool -> Int -> Element Msg
-columnDismissButtonEl pinned index =
+columnDismissButtonEl : ColorTheme -> Bool -> Int -> Element Msg
+columnDismissButtonEl theme pinned index =
     squareButtonEl [ alignRight, visible (not pinned) ]
         { onPress = DismissColumn index
         , enabled = True
         , round = rectElementRound
         , innerElement =
-            octiconEl [ mouseOver [ BG.color oneDark.succ ] ]
+            octiconEl [ mouseOver [ BG.color theme.succ ] ]
                 { size = rightButtonSize
                 , color = defaultOcticonColor
                 , shape = Octicons.check
@@ -258,8 +296,8 @@ rightButtonSize =
     26
 
 
-columnConfigToggleButtonEl : Bool -> String -> Element Msg
-columnConfigToggleButtonEl configOpen id =
+columnConfigToggleButtonEl : ColorTheme -> Bool -> String -> Element Msg
+columnConfigToggleButtonEl theme configOpen id =
     squareButtonEl [ alignRight ]
         { onPress = ColumnCtrl id (Column.ToggleConfig (not configOpen))
         , enabled = True
@@ -269,7 +307,7 @@ columnConfigToggleButtonEl configOpen id =
                 { size = rightButtonSize
                 , color =
                     if configOpen then
-                        oneDark.text
+                        theme.text
 
                     else
                         defaultOcticonColor
@@ -279,10 +317,10 @@ columnConfigToggleButtonEl configOpen id =
         }
 
 
-itemsEl : Time.Zone -> String -> Scroll ColumnItem -> Element Msg
-itemsEl tz cId items =
+itemsEl : ColorTheme -> Time.Zone -> String -> Scroll ColumnItem -> Element Msg
+itemsEl theme tz cId items =
     if Scroll.isEmpty items then
-        waitingForFirstItemEl
+        waitingForFirstItemEl theme
 
     else
         let
@@ -305,14 +343,14 @@ itemsEl tz cId items =
         itemsVisible
             |> ListExtra.groupWhile shouldGroup
             |> List.map (columnItemKeyEl tz)
-            |> (\itemEls -> itemEls ++ [ loadMoreKeyEl cId hasMore ])
+            |> (\itemEls -> itemEls ++ [ loadMoreKeyEl theme cId hasMore ])
             |> Element.Keyed.column columnAttrs
 
 
-waitingForFirstItemEl : Element Msg
-waitingForFirstItemEl =
+waitingForFirstItemEl : ColorTheme -> Element Msg
+waitingForFirstItemEl theme =
     el [ width fill, padding rectElementOuterPadding, alignTop ] <|
-        el [ centerX, centerY, Font.color oneDark.note, Font.size helpTextSize ] <|
+        el [ centerX, centerY, Font.color theme.note, Font.size helpTextSize ] <|
             text "Waiting for messages..."
 
 
@@ -353,8 +391,8 @@ shouldGroupSlackMessage sNewer sOlder =
         && (ms (getPosix sOlder) + groupingIntervalMillis > ms (getPosix sNewer))
 
 
-loadMoreKeyEl : String -> Bool -> ( String, Element Msg )
-loadMoreKeyEl cId hasMore =
+loadMoreKeyEl : ColorTheme -> String -> Bool -> ( String, Element Msg )
+loadMoreKeyEl theme cId hasMore =
     -- This button is rarely visible due to auto adjusting.
     -- But sometimes appears around window resizing, rapid scrolling, or reaching bottom
     Tuple.pair "loadMoreOrBottomToken" <|
@@ -367,13 +405,13 @@ loadMoreKeyEl cId hasMore =
                     , onClick (ColumnCtrl cId (Column.ScrollMsg Scroll.LoadMore))
                     ]
                     { size = helpTextSize + rectElementOuterPadding * 2
-                    , color = oneDark.note
+                    , color = theme.note
                     , shape = Octicons.commentDiscussion
                     }
 
             else
                 octiconEl [ centerX, centerY ]
                     { size = helpTextSize + rectElementOuterPadding * 2
-                    , color = oneDark.note
+                    , color = theme.note
                     , shape = Octicons.thumbsup
                     }
