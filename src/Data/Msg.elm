@@ -388,6 +388,7 @@ producerMsgToEntry pMsg =
 
                             less ->
                                 E.encode 2 (E.list Slack.encodeMessage less)
+                        , E.encode 2 (E.dict identity Slack.encodeUser succ.users)
                         , E.encode 2 (E.dict identity Slack.encodeBot succ.bots)
                         , Iso8601.fromTime succ.posix
                         ]

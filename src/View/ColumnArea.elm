@@ -349,7 +349,7 @@ groupingIntervalMillis =
 shouldGroupSlackMessage : Slack.Message -> Slack.Message -> Bool
 shouldGroupSlackMessage sNewer sOlder =
     (sNewer.conversation == sOlder.conversation)
-        && (sNewer.authorId == sOlder.authorId)
+        && (sNewer.author == sOlder.author)
         && (ms (getPosix sOlder) + groupingIntervalMillis > ms (getPosix sNewer))
 
 

@@ -272,7 +272,7 @@ TODO Support threading nicely
 type alias Message =
     { ts : Ts
     , text : String -- Most likely exists even if empty, but there MIGHT be exceptions.
-    , authorId : AuthorId -- Zephyr local; from `user` or `bot_id`
+    , author : Author -- Zephyr local; resolved from `user` or `bot_id`.
     , username : Maybe String -- Manually selected username for a particular Message. Should supercede names in User or Bot
     , files : List SFile
     , attachments : List Attachment
@@ -299,10 +299,15 @@ Bot info must be lazily acquired from `bots.info` API, which does not have corre
 
 Otherwise use UserId from `user` field with UAuthorId.
 
+Since Slack API does not join author info into messages, we must populate them by ourselves.
+User/Bot info may be unavailable at first so we must come back and fill.
+
 -}
-type AuthorId
-    = UAuthorId UserId
-    | BAuthorId BotId
+type Author
+    = UserAuthor User
+    | UserAuthorId UserId
+    | BotAuthor Bot
+    | BotAuthorId BotId
 
 
 {-| File object. Differentiating from File.File by prefix "S".
@@ -593,7 +598,7 @@ encodeMessage m =
     E.object
         [ ( "ts", encodeTs m.ts )
         , ( "text", E.string m.text )
-        , ( "authorId", encodeAuthorId m.authorId )
+        , ( "author", encodeAuthor m.author )
         , ( "username", E.maybe E.string m.username )
         , ( "files", E.list encodeSFile m.files )
         , ( "attachments", E.list encodeAttachment m.attachments )
@@ -606,14 +611,20 @@ encodeTs (Ts ts posix) =
     E.tagged2 "Ts" (E.string ts) (E.int (Time.posixToMillis posix))
 
 
-encodeAuthorId : AuthorId -> E.Value
-encodeAuthorId aId =
+encodeAuthor : Author -> E.Value
+encodeAuthor aId =
     case aId of
-        UAuthorId userId ->
-            E.tagged "UAuthorId" (encodeUserId userId)
+        UserAuthor user ->
+            E.tagged "UserAuthor" (encodeUser user)
 
-        BAuthorId botId ->
-            E.tagged "BAuthorId" (encodeBotId botId)
+        UserAuthorId userId ->
+            E.tagged "UserAuthorId" (encodeUserId userId)
+
+        BotAuthor bot ->
+            E.tagged "BotAuthor" (encodeBot bot)
+
+        BotAuthorId botId ->
+            E.tagged "BotAuthorId" (encodeBotId botId)
 
 
 encodeSFile : SFile -> E.Value
@@ -1014,7 +1025,7 @@ messageDecoder =
     D.map7 Message
         (D.field "ts" tsDecoder)
         (D.field "text" D.string)
-        authorIdDecoder
+        (D.field "author" authorDecoder)
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.list sFileDecoder) [])
         (D.optionField "attachments" (D.list attachmentDecoder) [])
@@ -1026,11 +1037,13 @@ tsDecoder =
     D.tagged2 "Ts" Ts D.string (D.map Time.millisToPosix D.int)
 
 
-authorIdDecoder : Decoder AuthorId
-authorIdDecoder =
+authorDecoder : Decoder Author
+authorDecoder =
     D.oneOf
-        [ D.field "authorId" <| D.tagged "UAuthorId" UAuthorId userIdDecoder
-        , D.field "authorId" <| D.tagged "BAuthorId" BAuthorId botIdDecoder
+        [ D.tagged "UserAuthor" UserAuthor userDecoder
+        , D.tagged "UserAuthorId" UserAuthorId userIdDecoder
+        , D.tagged "BotAuthor" BotAuthor botDecoder
+        , D.tagged "BotAuthorId" BotAuthorId botIdDecoder
         ]
 
 
@@ -1187,9 +1200,12 @@ attachmentTitleDecoder =
 
 {-| Diverge from messageDecoder; micro-optimization for reducing unnecessary evaluation paths,
 and also preparation for generalizing Message into common data structure (possibly).
+
+Note that BotAuthor must be filled later, since Bot dictionary may require initial fetching.
+
 -}
-apiMessageDecoder : ConversationIdStr -> Decoder Message
-apiMessageDecoder convIdStr =
+apiMessageDecoder : Dict UserIdStr User -> Dict BotIdStr Bot -> ConversationIdStr -> Decoder Message
+apiMessageDecoder users bots convIdStr =
     let
         stringToTsDecoder tsStr =
             case String.toFloat tsStr of
@@ -1200,16 +1216,30 @@ apiMessageDecoder convIdStr =
                 Nothing ->
                     D.fail "Invalid `ts` value"
 
-        apiAuthorIdDecoder =
+        apiAuthorDecoder =
             D.oneOf
-                [ D.field "bot_id" (D.map BAuthorId botIdDecoder)
-                , D.field "user" (D.map UAuthorId userIdDecoder)
+                [ D.do (D.field "bot_id" botIdDecoder) <|
+                    \(BotId botIdStr) ->
+                        case Dict.get botIdStr bots of
+                            Just bot ->
+                                D.succeed (BotAuthor bot)
+
+                            Nothing ->
+                                D.succeed (BotAuthorId (BotId botIdStr))
+                , D.do (D.field "user" userIdDecoder) <|
+                    \(UserId userIdStr) ->
+                        case Dict.get userIdStr users of
+                            Just user ->
+                                D.succeed (UserAuthor user)
+
+                            Nothing ->
+                                D.succeed (UserAuthorId (UserId userIdStr))
                 ]
     in
     D.map7 Message
         (D.field "ts" (D.andThen stringToTsDecoder D.string))
         (D.field "text" D.string)
-        apiAuthorIdDecoder
+        apiAuthorDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.list sFileDecoder) [])
         (D.optionField "attachments" (D.list attachmentDecoder) [])
@@ -1361,7 +1391,7 @@ reloadTeam _ slack sy =
 
         Revisit pov ->
             { sy
-                | cmd = Cmd.batch [ sy.cmd, revisit pov.token pov.user.id pov.team.id ]
+                | cmd = Cmd.batch [ sy.cmd, revisit pov.token pov ]
                 , updateFAM = True
             }
 
@@ -1396,6 +1426,7 @@ type Msg
 type alias FetchSuccess =
     { conversationId : ConversationIdStr
     , messages : List Message
+    , users : Dict UserIdStr User
     , bots : Dict BotIdStr Bot
     , posix : Posix
     }
@@ -1724,12 +1755,12 @@ handleFetchImpl posix conv slack =
     case slack of
         Hydrated t pov ->
             ( Hydrated t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { sYield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
+            , { sYield | cmd = fetchMessagesAndBots pov pov.team.id conv }
             )
 
         Rehydrating t pov ->
             ( Rehydrating t { pov | conversations = Dict.insert (getConversationIdStr conv) newConv pov.conversations }
-            , { sYield | cmd = fetchMessagesAndBots pov.token pov.team.id conv }
+            , { sYield | cmd = fetchMessagesAndBots pov pov.team.id conv }
             )
 
         _ ->
@@ -1785,13 +1816,17 @@ recusrivelyFindConvToFetch posix teamIdStr conversations acc =
 
 
 handleIFetched : FetchSuccess -> Slack -> ( Slack, SubYield )
-handleIFetched { conversationId, messages, bots, posix } slack =
+handleIFetched succ slack =
     let
         handleImpl tagger pov =
-            withConversation tagger conversationId { pov | bots = Dict.union bots pov.bots } (Just Worque.SlackFetch) <|
-                case messages of
+            let
+                newPov =
+                    { pov | users = Dict.union succ.users pov.users, bots = Dict.union succ.bots pov.bots }
+            in
+            withConversation tagger succ.conversationId newPov (Just Worque.SlackFetch) <|
+                case succ.messages of
                     [] ->
-                        updateFetchStatus (FetchStatus.Miss posix)
+                        updateFetchStatus (FetchStatus.Miss succ.posix)
 
                     m :: _ ->
                         let
@@ -1801,7 +1836,7 @@ handleIFetched { conversationId, messages, bots, posix } slack =
                                 -- TODO return `List.reverse ms` when other implementations are ready
                                 ( conv, { cy | persist = True, items = [] } )
                         in
-                        updateFetchStatus (FetchStatus.Hit posix) >> updateConv
+                        updateFetchStatus (FetchStatus.Hit succ.posix) >> updateConv
     in
     case slack of
         Hydrated t pov ->
@@ -1836,10 +1871,10 @@ handleITokenCommit : Slack -> ( Slack, SubYield )
 handleITokenCommit slack =
     case slack of
         Hydrated newToken pov ->
-            ( slack, { sYield | cmd = revisit newToken pov.user.id pov.team.id } )
+            ( slack, { sYield | cmd = revisit newToken pov } )
 
         Expired newToken pov ->
-            ( slack, { sYield | cmd = revisit newToken pov.user.id pov.team.id } )
+            ( slack, { sYield | cmd = revisit newToken pov } )
 
         _ ->
             -- Otherwise not allowed
@@ -2025,22 +2060,31 @@ identify token =
     rpcTry identity UAPIFailure <|
         doT (authTestTask token) <|
             \userId ->
-                Task.map2 Identify (userInfoTask token userId) (teamInfoTask token)
+                Task.map2 Identify (Task.map Tuple.second (userInfoTask token userId)) (teamInfoTask token)
 
 
 {-| Combines identify and hydrate, used on Revisit or Expired. Not requesting to auth.test.
 
 Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload.
+Existing Bot dictionary is kept intact.
 
 -}
-revisit : String -> UserId -> TeamId -> Cmd Msg
-revisit token (UserId userIdStr) (TeamId teamIdStr) =
+revisit : String -> POV -> Cmd Msg
+revisit token pov =
+    let
+        ( UserId userIdStr, TeamId teamIdStr ) =
+            ( pov.user.id, pov.team.id )
+    in
     rpcTry (IRevisit teamIdStr) (IAPIFailure teamIdStr Nothing) <|
         doT (userListTask token) <|
             \users ->
                 case Dict.get userIdStr users of
                     Just user ->
-                        Task.map2 (\team convs -> initPov token user team convs users)
+                        let
+                            updatePov team convs =
+                                { pov | user = user, team = team, users = users, conversations = convs }
+                        in
+                        Task.map2 updatePov
                             (teamInfoTask token)
                             (conversationListTask token users)
 
@@ -2055,10 +2099,10 @@ authTestTask token =
         D.field "user_id" userIdDecoder
 
 
-userInfoTask : String -> UserId -> Task RpcFailure User
-userInfoTask token (UserId userId) =
-    rpcPostFormTask (endpoint "/users.info" Nothing) token [ ( "user", userId ) ] <|
-        D.field "user" userDecoder
+userInfoTask : String -> UserId -> Task RpcFailure ( UserIdStr, User )
+userInfoTask token (UserId userIdStr) =
+    rpcPostFormTask (endpoint "/users.info" Nothing) token [ ( "user", userIdStr ) ] <|
+        D.map (Tuple.pair userIdStr) (D.field "user" userDecoder)
 
 
 teamInfoTask : String -> Task RpcFailure Team
@@ -2097,18 +2141,40 @@ userListTask token =
         |> Task.map (List.foldl (\u accDict -> Dict.insert (toStr u.id) u accDict) Dict.empty)
 
 
-fetchMessagesAndBots : String -> TeamId -> Conversation -> Cmd Msg
-fetchMessagesAndBots token (TeamId teamIdStr) conv =
+fetchMessagesAndBots : POV -> TeamId -> Conversation -> Cmd Msg
+fetchMessagesAndBots pov (TeamId teamIdStr) conv =
     let
         (ConversationId convIdStr) =
             conv.id
     in
     rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr)) <|
-        doT (conversationHistoryTask token convIdStr conv.lastRead Initial) <|
+        doT (conversationHistoryTask pov convIdStr conv.lastRead Initial) <|
             \messages ->
-                doT (collectBotsTask token messages) <|
-                    \bots ->
-                        Task.map (FetchSuccess convIdStr messages bots) Time.now
+                doT (collectMissingInfoTask pov.token messages) <|
+                    \( users, bots ) ->
+                        let
+                            fillAuthor m =
+                                case m.author of
+                                    BotAuthorId (BotId botIdStr) ->
+                                        case Dict.get botIdStr bots of
+                                            Just bot ->
+                                                { m | author = BotAuthor bot }
+
+                                            Nothing ->
+                                                m
+
+                                    UserAuthorId (UserId userIdStr) ->
+                                        case Dict.get userIdStr users of
+                                            Just user ->
+                                                { m | author = UserAuthor user }
+
+                                            Nothing ->
+                                                m
+
+                                    _ ->
+                                        m
+                        in
+                        Task.map (FetchSuccess convIdStr (List.map fillAuthor messages) users bots) Time.now
 
 
 type CursorIn a
@@ -2156,27 +2222,27 @@ scrollableDecoder dec =
             ]
 
 
-conversationHistoryTask : String -> ConversationIdStr -> Maybe LastRead -> CursorIn Message -> Task RpcFailure (List Message)
-conversationHistoryTask token convIdStr lrMaybe cursorIn =
+conversationHistoryTask : POV -> ConversationIdStr -> Maybe LastRead -> CursorIn Message -> Task RpcFailure (List Message)
+conversationHistoryTask pov convIdStr lrMaybe cursorIn =
     let
         baseParams =
             -- Recommended to be no more than 200; https://api.slack.com/methods/conversations.history
             [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
-            D.field "messages" (D.leakyList (apiMessageDecoder convIdStr))
+            D.field "messages" (D.leakyList (apiMessageDecoder pov.users pov.bots convIdStr))
 
         url =
             endpoint "/conversations.history" Nothing
     in
     case lrMaybe of
         Just (LastRead (Ts lastReadTs _)) ->
-            forwardScrollingPostFormTask url token (( "oldest", lastReadTs ) :: baseParams) baseDecoder Initial
+            forwardScrollingPostFormTask url pov.token (( "oldest", lastReadTs ) :: baseParams) baseDecoder Initial
 
         Nothing ->
             -- Means never fetched. Without `latest`, it fetches up to current time,
             -- and the first segment returned IS the latest one. (No need to scrolling backward)
-            rpcPostFormTask url token baseParams baseDecoder
+            rpcPostFormTask url pov.token baseParams baseDecoder
 
 
 botInfoTask : String -> BotId -> Task RpcFailure ( BotIdStr, Bot )
@@ -2185,34 +2251,40 @@ botInfoTask token (BotId botIdStr) =
         D.map (Tuple.pair botIdStr) (D.field "bot" botDecoder)
 
 
-collectBotsTask : String -> List Message -> Task RpcFailure (Dict BotIdStr Bot)
-collectBotsTask token messages =
-    case collectBotIds messages of
-        [] ->
-            Task.succeed Dict.empty
-
-        botIds ->
-            List.map (botInfoTask token) botIds
-                |> Task.sequence
-                |> Task.map Dict.fromList
-
-
-collectBotIds : List Message -> List BotId
-collectBotIds messages =
+collectMissingInfoTask : String -> List Message -> Task RpcFailure ( Dict UserIdStr User, Dict BotIdStr Bot )
+collectMissingInfoTask token messages =
     let
-        reducer m acc =
-            case m.authorId of
-                UAuthorId _ ->
-                    acc
+        ( userIds, botIds ) =
+            collectMissingAuthorIds messages
+    in
+    Task.map2 (\users bots -> ( Dict.fromList users, Dict.fromList bots ))
+        (Task.sequence (List.map (userInfoTask token) userIds))
+        (Task.sequence (List.map (botInfoTask token) botIds))
 
-                BAuthorId botId ->
-                    if List.member botId acc then
+
+collectMissingAuthorIds : List Message -> ( List UserId, List BotId )
+collectMissingAuthorIds messages =
+    let
+        reducer m ( accUserIds, accBotIds ) =
+            let
+                uniqCons x acc =
+                    if List.member x acc then
                         acc
 
                     else
-                        botId :: acc
+                        x :: acc
+            in
+            case m.author of
+                UserAuthorId userId ->
+                    ( uniqCons userId accUserIds, accBotIds )
+
+                BotAuthorId botId ->
+                    ( accUserIds, uniqCons botId accBotIds )
+
+                _ ->
+                    ( accUserIds, accBotIds )
     in
-    List.foldl reducer [] messages
+    List.foldl reducer ( [], [] ) messages
 
 
 
