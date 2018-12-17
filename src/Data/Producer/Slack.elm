@@ -1828,13 +1828,13 @@ handleIFetched succ slack =
                     [] ->
                         updateFetchStatus (FetchStatus.Miss succ.posix)
 
-                    m :: _ ->
+                    (m :: _) as ms ->
                         let
                             updateConv ( conv, cy ) =
                                 -- Expects messages to be sorted from latest to oldest
-                                -- TODO update lastRead of conv
-                                -- TODO return `List.reverse ms` when other implementations are ready
-                                ( conv, { cy | persist = True, items = [] } )
+                                ( { conv | lastRead = Just (LastRead m.ts) }
+                                , { cy | persist = True, items = List.reverse ms }
+                                )
                         in
                         updateFetchStatus (FetchStatus.Hit succ.posix) >> updateConv
     in
