@@ -310,43 +310,6 @@ embedTitleEl theme urlMaybe title =
         ]
 
 
-discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
-discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
-    newTabLink []
-        { url = Url.toString (Maybe.withDefault embedImage.url linkUrlMaybe)
-        , label =
-            image [ width (shrink |> maximum maxWidth) ]
-                { src =
-                    embedImage.proxyUrl
-                        |> Maybe.withDefault embedImage.url
-                        |> addDimensionQuery maxWidth embedImage.width embedImage.height
-                        |> Url.toString
-                , description = "Thumbnail"
-                }
-        }
-
-
-addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
-addDimensionQuery maxWidth widthMaybe heightMaybe =
-    Maybe.map2 (fitDimensionToWidth maxWidth) widthMaybe heightMaybe
-        |> Maybe.map urlWithDimensionQuery
-        |> Maybe.withDefault identity
-
-
-fitDimensionToWidth : Int -> Int -> Int -> ( Int, Int )
-fitDimensionToWidth maxWidth w h =
-    if w <= maxWidth then
-        ( w, h )
-
-    else
-        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
-
-
-urlWithDimensionQuery : ( Int, Int ) -> Url.Url -> Url.Url
-urlWithDimensionQuery ( queryWidth, queryHeight ) src =
-    { src | query = Just ("width=" ++ String.fromInt queryWidth ++ "&height=" ++ String.fromInt queryHeight) }
-
-
 discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
 discordSmartThumbnailEl embed element =
     let
@@ -417,6 +380,47 @@ iconLike widthMaybe heightMaybe =
 maxThumbnailSize : Int
 maxThumbnailSize =
     60
+
+
+discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
+discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
+    let
+        imageUrl =
+            embedImage.proxyUrl
+                |> Maybe.withDefault embedImage.url
+                |> addDimensionQuery maxWidth embedImage.width embedImage.height
+    in
+    embedImageEl maxWidth linkUrlMaybe imageUrl
+
+
+embedImageEl : Int -> Maybe Url.Url -> Url.Url -> Element Msg
+embedImageEl maxWidth linkMaybe imageUrl =
+    wrapWithLink linkMaybe <|
+        image [ width (shrink |> maximum maxWidth) ]
+            { src = Url.toString imageUrl
+            , description = "Embedded Image"
+            }
+
+
+addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
+addDimensionQuery maxWidth widthMaybe heightMaybe =
+    Maybe.map2 (fitDimensionToWidth maxWidth) widthMaybe heightMaybe
+        |> Maybe.map urlWithDimensionQuery
+        |> Maybe.withDefault identity
+
+
+fitDimensionToWidth : Int -> Int -> Int -> ( Int, Int )
+fitDimensionToWidth maxWidth w h =
+    if w <= maxWidth then
+        ( w, h )
+
+    else
+        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
+
+
+urlWithDimensionQuery : ( Int, Int ) -> Url.Url -> Url.Url
+urlWithDimensionQuery ( queryWidth, queryHeight ) src =
+    { src | query = Just ("width=" ++ String.fromInt queryWidth ++ "&height=" ++ String.fromInt queryHeight) }
 
 
 discordAttachmentEl : Discord.Attachment -> Element Msg
@@ -553,21 +557,41 @@ slackAttachmentBodyEl a =
                   else
                     Just (nonEmptyParagraph aubergine a.text)
                 ]
+
+        withImage upperContents =
+            case a.imageUrl of
+                Just imageUrl ->
+                    column outerAttrs
+                        [ row [ width fill, spacing spacingUnit ] upperContents
+                        , embedImageEl maxEmbeddedMediaWidth a.imageUrl imageUrl
+                        ]
+
+                Nothing ->
+                    row outerAttrs upperContents
+
+        outerAttrs =
+            [ width fill
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
+            , BD.color (Maybe.withDefault aubergine.bd a.color)
+            , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
+            , BD.rounded embedRound
+            ]
     in
-    row
-        [ width fill
-        , padding rectElementInnerPadding
-        , BD.color (Maybe.withDefault aubergine.bd a.color)
-        , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
-        , BD.rounded embedRound
-        ]
-        [ column [ width fill, spacingXY 0 spacingUnit ] <|
+    withImage
+        [ column [ width fill, spacingXY 0 spacingUnit, alignTop ] <|
             case richContents of
                 [] ->
                     [ collapsingParagraph aubergine a.fallback ]
 
                 _ ->
                     richContents
+        , case a.thumbUrl of
+            Just thumbUrl ->
+                el [ alignTop ] <| embedImageEl maxThumbnailSize (Maybe.andThen .link a.title) thumbUrl
+
+            Nothing ->
+                none
         ]
 
 
