@@ -1,6 +1,7 @@
 module View.ConfigPane.SlackConfig exposing (slackConfigEl)
 
 import Data.ColorTheme exposing (aubergine)
+import Data.Filter exposing (FilterAtom(..))
 import Data.Model exposing (ViewState)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.FetchStatus as FetchStatus
@@ -288,22 +289,22 @@ subbedConversationRowKeyEl tz teamIdStr ( convIdStr, conv ) =
             [ slackConversationEl [ width fill ] { fontSize = smallFontSize, conversation = conv, team = Nothing }
             , el [ width fill ] <| fetchStatusTextEl tz <| conv.fetchStatus
             , row [ width fill, spacing spacingUnit ]
-                [ unsubscribeButtonEl teamIdStr conv
+                [ createColumnButtonEl conv
+                , unsubscribeButtonEl teamIdStr conv
                 ]
             ]
 
 
-
--- createColumnButtonEl : Channel -> Element Msg
--- createColumnButtonEl c =
---     thinButtonEl []
---         { onPress = AddSimpleColumn (OfDiscordChannel c.id)
---         , width = fill
---         , enabledColor = oneDark.prim
---         , enabledFontColor = oneDark.text
---         , enabled = FetchStatus.subscribed c.fetchStatus
---         , innerElement = text "Create Column"
---         }
+createColumnButtonEl : Conversation -> Element Msg
+createColumnButtonEl c =
+    thinButtonEl []
+        { onPress = AddSimpleColumn (OfSlackConversation (Slack.getConversationIdStr c))
+        , width = fill
+        , enabledColor = aubergine.prim
+        , enabledFontColor = aubergine.text
+        , enabled = FetchStatus.subscribed c.fetchStatus
+        , innerElement = text "Create Column"
+        }
 
 
 unsubscribeButtonEl : String -> Conversation -> Element Msg
