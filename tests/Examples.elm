@@ -427,9 +427,9 @@ seqGenImpl prefix howMany ( lastResult, accGenerator ) =
 textParserSuite : Test
 textParserSuite =
     describe "TextParser"
-        [ testParse "" [ BlankLine "" ]
-        , testParse "plain text" [ Paragraph "" [ Text "plain text" ] ]
-        , testParse "*marked* __up__ `plain` ~text~"
+        [ testDefaultParse "" [ BlankLine "" ]
+        , testDefaultParse "plain text" [ Paragraph "" [ Text "plain text" ] ]
+        , testDefaultParse "*marked* __up__ `plain` ~text~"
             [ Paragraph ""
                 [ Emphasis 1 [ Text "marked" ]
                 , Text " "
@@ -439,7 +439,7 @@ textParserSuite =
                 , Text " ~text~"
                 ]
             ]
-        , testParse """
+        , testDefaultParse """
 # Heading 1
 Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 ```lang
@@ -461,7 +461,7 @@ Soft line break and [Link](https://example.com "example.com").
                 ]
             , BlankLine ""
             ]
-        , testParse "Plain link without markup. https://example.com"
+        , testDefaultParse "Plain link without markup. https://example.com"
             [ Paragraph ""
                 [ Text "Plain link without markup. "
                 , Link "https://example.com" Nothing [ Text "example.com" ]
@@ -470,8 +470,8 @@ Soft line break and [Link](https://example.com "example.com").
         ]
 
 
-testParse : String -> List (Block () ()) -> Test
-testParse initial expected =
+testDefaultParse : String -> List (Block () ()) -> Test
+testDefaultParse initial expected =
     test ("should parse: " ++ initial ++ "") <|
         \_ ->
             TextParser.parse TextParser.defaultOptions initial
