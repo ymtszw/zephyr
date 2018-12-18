@@ -3,7 +3,7 @@ module View.ColumnItem exposing (columnItemKeyEl)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..), extIsImage, extIsVideo)
+import Data.Item exposing (Item(..), extIsImage, extIsVideo, mimeIsImage, mimeIsVideo)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -454,32 +454,37 @@ discordAttachmentEl attachment =
         lazy2 videoEl (Just posterUrl) attachment.proxyUrl
 
     else
-        download [ width fill ]
-            { url = Url.toString attachment.proxyUrl
-            , label =
-                row
-                    [ width fill
-                    , padding rectElementInnerPadding
-                    , spacing spacingUnit
-                    , BG.color (brightness -1 oneDark.main)
-                    , BD.rounded rectElementRound
-                    ]
-                    [ breakP
-                        [ Font.size attachmentFilenameFontSize
-                        , Font.color oneDark.link
-                        ]
-                        [ breakT attachment.filename ]
-                    , octiconEl [ alignRight ]
-                        { size = downloadIconSize
-                        , color = defaultOcticonColor
-                        , shape = Octicons.cloudDownload
-                        }
-                    ]
-            }
+        downloadFileEl oneDark attachment.filename attachment.proxyUrl
 
 
-attachmentFilenameFontSize : Int
-attachmentFilenameFontSize =
+downloadFileEl : ColorTheme -> String -> Url.Url -> Element Msg
+downloadFileEl theme filename url =
+    download [ width fill ]
+        { url = Url.toString url
+        , label =
+            row
+                [ width fill
+                , padding rectElementInnerPadding
+                , spacing spacingUnit
+                , BG.color (brightness -1 theme.main)
+                , BD.rounded rectElementRound
+                ]
+                [ breakP
+                    [ Font.size filenameFontSize
+                    , Font.color theme.link
+                    ]
+                    [ breakT filename ]
+                , octiconEl [ alignRight ]
+                    { size = downloadIconSize
+                    , color = theme.note
+                    , shape = Octicons.cloudDownload
+                    }
+                ]
+        }
+
+
+filenameFontSize : Int
+filenameFontSize =
     scale12 2
 
 
