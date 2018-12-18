@@ -537,6 +537,7 @@ slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
         [ collapsingParagraph aubergine m.text
         , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
+        , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackFileEl m.files
         ]
 
 
@@ -598,6 +599,57 @@ slackAttachmentBodyEl a =
             Nothing ->
                 none
         ]
+
+
+slackFileEl : Slack.SFile -> Element Msg
+slackFileEl sf =
+    let
+        thumb360Url ( url, _, _ ) =
+            url
+    in
+    if mimeIsImage sf.mimetype then
+        newTabLink []
+            { url = Url.toString sf.url_
+            , label = imageEl sf.name (Maybe.withDefault sf.url_ (Maybe.map thumb360Url sf.thumb360))
+            }
+
+    else if mimeIsVideo sf.mimetype then
+        lazy2 videoEl (Maybe.map thumb360Url sf.thumb360) sf.url_
+
+    else if sf.mode == Slack.Snippet || sf.mode == Slack.Post then
+        -- XXX we show preview of Slack Post, but Post is preformatted HTML so we actually have to render it
+        column [ width fill, spacing spacingUnit ]
+            [ case sf.preview of
+                Just preview ->
+                    slackSnippetEl preview
+
+                Nothing ->
+                    none
+            , newTabLink [ Font.color aubergine.link ] { url = Url.toString sf.url_, label = text "View source" }
+            ]
+
+    else
+        downloadFileEl aubergine sf.name sf.url_
+
+
+slackSnippetEl : String -> Element Msg
+slackSnippetEl preview =
+    breakP
+        [ width fill
+        , height (shrink |> maximum maxSnippetHeight)
+        , padding rectElementInnerPadding
+        , scrollbarY
+        , BD.rounded rectElementRound
+        , BG.color aubergine.sub
+        , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+        ]
+        [ breakT preview
+        ]
+
+
+maxSnippetHeight : Int
+maxSnippetHeight =
+    300
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
