@@ -28,7 +28,6 @@ import Test exposing (..)
 import TextParser exposing (Parsed(..))
 import Time exposing (Posix)
 import TimeExtra exposing (po)
-import Url
 
 
 suite : Test
@@ -40,7 +39,6 @@ suite =
         , arraySuite
         , uniqueIdSuite
         , textParserSuite
-        , textRendererSuite
         , filterSuite
         , fetchStatusSuite
         , discordSuite
@@ -427,6 +425,14 @@ seqGenImpl prefix howMany ( lastResult, accGenerator ) =
 textParserSuite : Test
 textParserSuite =
     describe "TextParser"
+        [ defaultParseSuite
+        , autoLinkerSuite
+        ]
+
+
+defaultParseSuite : Test
+defaultParseSuite =
+    describe "parse"
         [ testDefaultParse "" [ BlankLine "" ]
         , testDefaultParse "plain text" [ Paragraph "" [ Text "plain text" ] ]
         , testDefaultParse "*marked* __up__ `plain` ~text~"
@@ -478,59 +484,63 @@ testDefaultParse initial expected =
                 |> Expect.equal (Parsed expected)
 
 
+autoLinkerSuite : Test
+autoLinkerSuite =
+    let
+        s =
+            Text
 
--- Data.TextRenderer
-
-
-textRendererSuite : Test
-textRendererSuite =
-    describe "Data.TextRenderer"
-        [ describe "parseIntoStringOrUrlList"
-            [ testParseIntoStringOrUrlList "" []
-            , testParseIntoStringOrUrlList " " [ S " " ]
-            , testParseIntoStringOrUrlList "foobar" [ S "foobar" ]
-            , testParseIntoStringOrUrlList " very long text with\t\n spaces in it " [ S " very long text with\t\n spaces in it " ]
-            , testParseIntoStringOrUrlList "text with unparsable http" [ S "text with unparsable http" ]
-            , testParseIntoStringOrUrlList "text with unparsable http http" [ S "text with unparsable http http" ]
-            , testParseIntoStringOrUrlList "http://example.com" [ U exampleCom ]
-            , testParseIntoStringOrUrlList "http://example.com http://example.com" [ U exampleCom, S " ", U exampleCom ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com" [ S "text with parsable ", U exampleCom ]
-            , testParseIntoStringOrUrlList "textdirectlyfollowedbyhttp://example.com" [ S "textdirectlyfollowedby", U exampleCom ]
-            , testParseIntoStringOrUrlList "textdirectlyfollowedbyhttp://example.comandnotdelimittedproperly"
-                [ S "textdirectlyfollowedby"
-                , U { exampleCom | host = "example.comandnotdelimittedproperly" }
-                ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com !" [ S "text with parsable ", U exampleCom, S " !" ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com http://example.com !" [ S "text with parsable ", U exampleCom, S " ", U exampleCom, S " !" ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com and unparsable http !" [ S "text with parsable ", U exampleCom, S " and unparsable http !" ]
-            , testParseIntoStringOrUrlList "マルチバイト文字及びマルチバイトURLを含む http://example.com http://マルチバイト.jp"
-                [ S "マルチバイト文字及びマルチバイトURLを含む "
-                , U exampleCom
-                , S " "
-                , U { exampleCom | host = "マルチバイト.jp" }
-                ]
+        l urlStr title =
+            Link urlStr Nothing [ Text title ]
+    in
+    describe "autoLinker"
+        [ testAutoLinker "" []
+        , testAutoLinker " " [ s " " ]
+        , testAutoLinker "foobar" [ s "foobar" ]
+        , testAutoLinker " very long text with\t\n spaces in it " [ s " very long text with\t\n spaces in it " ]
+        , testAutoLinker "text with unparsable http" [ s "text with unparsable http" ]
+        , testAutoLinker "text with unparsable http http" [ s "text with unparsable http http" ]
+        , testAutoLinker "http://example.com" [ l "http://example.com" "example.com" ]
+        , testAutoLinker "http://example.com http://example.com"
+            [ l "http://example.com" "example.com", s " ", l "http://example.com" "example.com" ]
+        , testAutoLinker "text with parsable http://example.com"
+            [ s "text with parsable ", l "http://example.com" "example.com" ]
+        , testAutoLinker "textdirectlyfollowedbyhttp://example.com"
+            [ s "textdirectlyfollowedby", l "http://example.com" "example.com" ]
+        , testAutoLinker "textdirectlyfollowedbyhttp://example.comandnotdelimittedproperly"
+            [ s "textdirectlyfollowedby"
+            , l "http://example.comandnotdelimittedproperly" "example.comandnotdelimittedproperly"
+            ]
+        , testAutoLinker "text with parsable http://example.com !"
+            [ s "text with parsable ", l "http://example.com" "example.com", s " !" ]
+        , testAutoLinker "text with parsable http://example.com http://example.com !"
+            [ s "text with parsable "
+            , l "http://example.com" "example.com"
+            , s " "
+            , l "http://example.com" "example.com"
+            , s " !"
+            ]
+        , testAutoLinker "text with parsable http://example.com and unparsable http !"
+            [ s "text with parsable ", l "http://example.com" "example.com", s " and unparsable http !" ]
+        , testAutoLinker "マルチバイト文字及びマルチバイトURLを含む http://example.com http://マルチバイト.jp"
+            [ s "マルチバイト文字及びマルチバイトURLを含む "
+            , l "http://example.com" "example.com"
+            , s " "
+            , l "http://マルチバイト.jp" "マルチバイト.jp"
             ]
         ]
 
 
-testParseIntoStringOrUrlList : String -> List StringOrUrl -> Test
-testParseIntoStringOrUrlList string expect =
-    test ("should work for text: '" ++ string ++ "'") <|
+testAutoLinker : String -> List (Inline ()) -> Test
+testAutoLinker initial expected =
+    test ("should work for text: '" ++ initial ++ "'") <|
         \_ ->
-            string
-                |> Parser.run Data.TextRenderer.parseIntoStringOrUrlList
-                |> Expect.equal (Ok expect)
-
-
-exampleCom : Url.Url
-exampleCom =
-    { protocol = Url.Http
-    , host = "example.com"
-    , port_ = Nothing
-    , path = "/"
-    , fragment = Nothing
-    , query = Nothing
-    }
+            let
+                onlyAutoLink =
+                    { markdown = False, autoLink = True, preFormat = Nothing, customInlineFormat = Nothing }
+            in
+            TextParser.parse onlyAutoLink initial
+                |> Expect.equal (Parsed [ Paragraph "" expected ])
 
 
 
