@@ -535,13 +535,25 @@ slackAttachmentEl : Slack.Attachment -> Element Msg
 slackAttachmentEl a =
     column [ width fill, spacingXY 0 spacingUnit ] <|
         List.filterMap identity <|
-            [ Maybe.map (messageToParagraph aubergine) a.pretext
+            [ Maybe.map (collapsingParagraph aubergine) a.pretext
             , Just (slackAttachmentBodyEl a)
             ]
 
 
 slackAttachmentBodyEl : Slack.Attachment -> Element Msg
 slackAttachmentBodyEl a =
+    let
+        richContents =
+            List.filterMap identity <|
+                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
+                , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
+                , if String.isEmpty a.text then
+                    Nothing
+
+                  else
+                    Just (nonEmptyParagraph aubergine a.text)
+                ]
+    in
     row
         [ width fill
         , padding rectElementInnerPadding
@@ -550,11 +562,12 @@ slackAttachmentBodyEl a =
         , BD.rounded embedRound
         ]
         [ column [ width fill, spacingXY 0 spacingUnit ] <|
-            List.filterMap identity <|
-                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
-                , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
-                , Just (messageToParagraph aubergine a.text)
-                ]
+            case richContents of
+                [] ->
+                    [ collapsingParagraph aubergine a.fallback ]
+
+                _ ->
+                    richContents
         ]
 
 
