@@ -5,7 +5,7 @@ module View.Parts exposing
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
-    , filtersToIconEl, filtersToTextEl, fetchStatusTextEl
+    , filtersToIconEl, filtersToTextEl, filtersToTheme, fetchStatusTextEl
     , discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackLogoClippedEl, slackConversationEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
     , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
@@ -28,7 +28,7 @@ module View.Parts exposing
 @docs octiconEl, squareIconOrHeadEl, iconWithBadgeEl
 @docs textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
 @docs primaryButtonEl, successButtonEl, dangerButtonEl
-@docs filtersToIconEl, filtersToTextEl, fetchStatusTextEl
+@docs filtersToIconEl, filtersToTextEl, filtersToTheme, fetchStatusTextEl
 @docs discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackLogoClippedEl, slackConversationEl
 
 
@@ -953,6 +953,41 @@ filterAtomTextEl fontSize color fam fa =
 
         RemoveMe ->
             none
+
+
+filtersToTheme : Array Filter -> ColorTheme
+filtersToTheme filters =
+    let
+        findFirstService filter acc =
+            case acc of
+                Just _ ->
+                    acc
+
+                Nothing ->
+                    let
+                        reducer atom innerAcc =
+                            case innerAcc of
+                                Just _ ->
+                                    innerAcc
+
+                                Nothing ->
+                                    if Filter.serviceRelated atom then
+                                        Just atom
+
+                                    else
+                                        Nothing
+                    in
+                    Filter.foldl reducer Nothing filter
+    in
+    case Array.foldl findFirstService Nothing filters of
+        Just (OfSlackConversation _) ->
+            aubergine
+
+        Just (OfDiscordChannel _) ->
+            oneDark
+
+        _ ->
+            oneDark
 
 
 fetchStatusTextEl : Time.Zone -> FetchStatus -> Element msg

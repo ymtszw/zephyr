@@ -50,7 +50,7 @@ columnKeyEl : Model -> FilterAtomMaterial -> Int -> Column.Column -> ( String, E
 columnKeyEl m fam index c =
     let
         theme =
-            columnTheme c.filters
+            filtersToTheme c.filters
 
         baseAttrs =
             [ width (px columnWidth)
@@ -73,41 +73,6 @@ columnKeyEl m fam index c =
             , lazy4 itemsEl theme m.viewState.timezone c.id c.items
             , fillerEl
             ]
-
-
-columnTheme : Array Filter -> ColorTheme
-columnTheme filters =
-    let
-        findFirstService filter acc =
-            case acc of
-                Just _ ->
-                    acc
-
-                Nothing ->
-                    let
-                        reducer atom innerAcc =
-                            case innerAcc of
-                                Just _ ->
-                                    innerAcc
-
-                                Nothing ->
-                                    if Filter.serviceRelated atom then
-                                        Just atom
-
-                                    else
-                                        Nothing
-                    in
-                    Filter.foldl reducer Nothing filter
-    in
-    case Array.foldl findFirstService Nothing filters of
-        Just (Filter.OfSlackConversation _) ->
-            aubergine
-
-        Just (Filter.OfDiscordChannel _) ->
-            oneDark
-
-        _ ->
-            oneDark
 
 
 dragAttributes : Int -> Maybe ColumnSwap -> Int -> Column.Column -> List (Attribute Msg)
