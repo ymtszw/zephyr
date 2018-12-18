@@ -17,12 +17,15 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode as E exposing (Value)
 import Json.EncodeExtra as E
 import ListExtra
+import Markdown.Block exposing (Block(..))
+import Markdown.Inline exposing (Inline(..))
 import Parser
 import SelectArray
 import SlackTestData
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
+import TextParser exposing (Parsed(..))
 import Time exposing (Posix)
 import TimeExtra exposing (po)
 import Url
@@ -36,6 +39,7 @@ suite =
         , stringSuite
         , arraySuite
         , uniqueIdSuite
+        , textParserSuite
         , textRendererSuite
         , filterSuite
         , fetchStatusSuite
@@ -414,6 +418,36 @@ seqGenImpl prefix howMany ( lastResult, accGenerator ) =
 
     else
         seqGenImpl prefix (howMany - 1) (Data.UniqueIdGen.gen prefix accGenerator)
+
+
+
+-- TextParser
+
+
+textParserSuite : Test
+textParserSuite =
+    describe "TextParser"
+        [ testParse "" [ BlankLine "" ]
+        , testParse "plain text" [ Paragraph "plain text" [ Text "plain text" ] ]
+        , testParse "*marked* __up__ `plain` ~text~"
+            [ Paragraph "*marked* __up__ `plain` ~text~"
+                [ Emphasis 1 [ Text "marked" ]
+                , Text " "
+                , Emphasis 2 [ Text "up" ]
+                , Text " "
+                , CodeInline "plain"
+                , Text " ~text~"
+                ]
+            ]
+        ]
+
+
+testParse : String -> List (Block () ()) -> Test
+testParse initial expected =
+    test ("should parse " ++ initial) <|
+        \_ ->
+            TextParser.parse TextParser.defaultOptions initial
+                |> Expect.equal (Parsed expected)
 
 
 
