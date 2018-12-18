@@ -7,6 +7,7 @@ module Data.Producer.Slack exposing
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
+    , preFormat
     )
 
 {-| Producer for Slack workspaces.
@@ -22,6 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
+@docs preFormat
 
 -}
 
@@ -39,7 +41,9 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import ListExtra
+import Regex exposing (Regex)
 import Task exposing (Task)
+import TextParser
 import Time exposing (Posix)
 import Url exposing (Url)
 import Worque
@@ -2451,3 +2455,89 @@ teamUrl team =
 dummyConversationId : ConversationId
 dummyConversationId =
     ConversationId "CDUMMYID"
+
+
+
+-- Message formatting
+
+
+{-| Convert special message formatting syntax into proper markdown.
+
+  - Converts `<...>` special syntax into markdown
+  - Resolves User/Channel ID to readable names
+
+-}
+preFormat : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
+preFormat convs users raw =
+    Regex.replace angleSyntaxPattern (replaceAngleSyntax convs users) raw
+
+
+angleSyntaxPattern : Regex
+angleSyntaxPattern =
+    Maybe.withDefault Regex.never (Regex.fromString "<([@#!])?([^@#!|]+)(\\|[^>]*)?>")
+
+
+replaceAngleSyntax : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Regex.Match -> String
+replaceAngleSyntax convs users { match, submatches } =
+    let
+        placeholderOr prefix ph func =
+            case ph of
+                Just str ->
+                    -- Drop "|"
+                    prefix ++ String.dropLeft 1 str
+
+                Nothing ->
+                    prefix ++ func ()
+    in
+    case submatches of
+        [ Just "@", Just userIdStr, ph ] ->
+            -- XXX Link?
+            placeholderOr "@" ph <|
+                \() ->
+                    case Dict.get userIdStr users of
+                        Just user ->
+                            Maybe.withDefault user.profile.realName user.profile.displayName
+
+                        Nothing ->
+                            userIdStr
+
+        [ Just "#", Just convIdStr, ph ] ->
+            -- XXX Link?
+            placeholderOr "#" ph <|
+                \() ->
+                    case Dict.get convIdStr convs of
+                        Just conv ->
+                            conv.name
+
+                        Nothing ->
+                            convIdStr
+
+        [ Just "!", Just "everyone", _ ] ->
+            "@everyone"
+
+        [ Just "!", Just "here", _ ] ->
+            "@here"
+
+        [ Just "!", Just "channel", _ ] ->
+            "@channel"
+
+        [ Just "!", Just str, ph ] ->
+            -- XXX e.g. Date syntax
+            placeholderOr "" ph <| \() -> str
+
+        [ Nothing, Just urlStr, ph ] ->
+            case Url.fromString urlStr of
+                Just url ->
+                    "[" ++ (placeholderOr "" ph <| \() -> TextParser.shortenUrl url) ++ "](" ++ urlStr ++ ")"
+
+                Nothing ->
+                    placeholderOr "" ph <| \() -> urlStr
+
+        [ _, Just str, Nothing ] ->
+            str
+
+        [ _, _, Just str ] ->
+            str
+
+        _ ->
+            match

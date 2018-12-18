@@ -1,4 +1,7 @@
-module TextParser exposing (Parsed(..), ParseOptions, parse, defaultOptions)
+module TextParser exposing
+    ( Parsed(..), ParseOptions, parse, defaultOptions
+    , shortenUrl
+    )
 
 {-| Parses various marked-up texts into intermediate representaitons (IR)
 which can then be fed into TextRenderer for actual rendering.
@@ -11,6 +14,7 @@ Therefore it is slower than other Markdown parser solutions,
 so you should consider parsing only once and storing `Parsed` IR for later uses.
 
 @docs Parsed, ParseOptions, parse, defaultOptions
+@docs shortenUrl
 
 -}
 
@@ -61,13 +65,18 @@ defaultOptions =
 
 parse : ParseOptions -> String -> Parsed
 parse opts raw =
-    Parsed <|
-        List.map (Block.walk (afterWalkBlock opts)) <|
+    let
+        parseAsMarkdown text =
             if opts.markdown then
-                Block.parse Nothing raw
+                Block.parse Nothing text
 
             else
-                [ Paragraph "" [ Text raw ] ]
+                [ Paragraph "" [ Text text ] ]
+    in
+    Parsed <|
+        List.map (Block.walk (afterWalkBlock opts)) <|
+            parseAsMarkdown <|
+                Maybe.withDefault raw (Maybe.map ((|>) raw) opts.preFormat)
 
 
 afterWalkBlock : ParseOptions -> Block () () -> Block () ()
@@ -194,16 +203,7 @@ chompUrlLike =
             in
             case Url.fromString urlCandidate of
                 Just url ->
-                    let
-                        shortUrl =
-                            url.host ++ url.path
-                    in
-                    Link urlCandidate Nothing <|
-                        if String.endsWith "/" shortUrl then
-                            [ Text (String.dropRight 1 shortUrl) ]
-
-                        else
-                            [ Text shortUrl ]
+                    Link urlCandidate Nothing [ Text (shortenUrl url) ]
 
                 Nothing ->
                     -- Restoring original text which started with "http" but not a valid URL
@@ -212,6 +212,19 @@ chompUrlLike =
     Parser.succeed parseAsUrl
         |. Parser.token "http"
         |= Parser.getChompedString (Parser.chompWhile nonTerminator)
+
+
+shortenUrl : Url -> String
+shortenUrl url =
+    let
+        shortUrl =
+            url.host ++ url.path
+    in
+    if String.endsWith "/" shortUrl then
+        String.dropRight 1 shortUrl
+
+    else
+        shortUrl
 
 
 chompNonUrl : Parser String
