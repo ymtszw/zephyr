@@ -250,7 +250,7 @@ timestampFontColor =
 discordMessageBodyEl : Discord.Message -> Element Msg
 discordMessageBodyEl discordMessage =
     column [ spacingXY 0 5, width fill ]
-        [ messageToParagraph oneDark discordMessage.content
+        [ collapsingParagraph oneDark discordMessage.content
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordAttachmentEl discordMessage.attachments
         ]
@@ -260,7 +260,7 @@ discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
     [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
     , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
-    , embed.description |> Maybe.map (messageToParagraph oneDark)
+    , embed.description |> Maybe.map (collapsingParagraph oneDark)
     ]
         |> List.filterMap identity
         |> breakTColumn
@@ -526,7 +526,7 @@ slackMessageHeaderEl tz m =
 slackMessageBodyEl : Slack.Message -> Element Msg
 slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
-        [ messageToParagraph aubergine m.text
+        [ collapsingParagraph aubergine m.text
         , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
         ]
 
@@ -563,25 +563,30 @@ defaultItemEl message mediaMaybe =
     case mediaMaybe of
         Just media ->
             textColumn [ spacingXY 0 10, width fill, alignTop ]
-                [ messageToParagraph oneDark message
+                [ collapsingParagraph oneDark message
                 , mediaEl media
                 ]
 
         Nothing ->
-            el [ width fill, alignTop ] (messageToParagraph oneDark message)
+            el [ width fill, alignTop ] (collapsingParagraph oneDark message)
 
 
-messageToParagraph : ColorTheme -> String -> Element Msg
-messageToParagraph theme message =
+collapsingParagraph : ColorTheme -> String -> Element Msg
+collapsingParagraph theme message =
     if String.isEmpty message then
         none
 
     else
-        -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
-        message
-            |> Data.TextRenderer.default theme
-            |> List.map html
-            |> breakP []
+        nonEmptyParagraph theme message
+
+
+nonEmptyParagraph : ColorTheme -> String -> Element Msg
+nonEmptyParagraph theme message =
+    -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
+    message
+        |> Data.TextRenderer.default theme
+        |> List.map html
+        |> breakP []
 
 
 mediaEl : Media -> Element Msg
