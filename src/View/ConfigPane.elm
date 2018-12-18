@@ -260,12 +260,16 @@ shadowColumnsEl fam slotsAvailable shadowColumns =
 
 shadowColumnKeyEl : FilterAtomMaterial -> Bool -> Column.Column -> ( String, Element Msg )
 shadowColumnKeyEl fam slotsAvailable c =
+    let
+        theme =
+            filtersToTheme c.filters
+    in
     Tuple.pair c.id <|
         row [ width fill, spacing spacingUnit ]
             [ filtersToIconEl [] { size = shadowColumnIconSize, fam = fam, filters = c.filters }
             , filtersToTextEl [ Font.size descFontSize, Font.color oneDark.note ]
                 { fontSize = descFontSize, color = oneDark.text, fam = fam, filters = c.filters }
-            , showColumnButtonEl slotsAvailable c.id
+            , showColumnButtonEl theme slotsAvailable c.id
             , deleteColumnButtonEl c.id
             ]
 
@@ -280,17 +284,17 @@ iconSizeCompensation =
     4
 
 
-showColumnButtonEl : Bool -> String -> Element Msg
-showColumnButtonEl slotsAvailable cId =
+showColumnButtonEl : ColorTheme -> Bool -> String -> Element Msg
+showColumnButtonEl theme slotsAvailable cId =
     thinButtonEl [ alignRight ]
         { onPress = ShowColumn cId
         , width = px showColumnButtonWidth
-        , enabledColor = oneDark.prim
-        , enabledFontColor = oneDark.text
+        , enabledColor = theme.prim
+        , enabledFontColor = theme.text
         , enabled = slotsAvailable
         , innerElement =
             row [ Font.size descFontSize, spacing spacingUnit ]
-                [ octiconEl [] { size = descFontSize, color = oneDark.text, shape = Octicons.arrowRight }
+                [ octiconEl [] { size = descFontSize, color = theme.text, shape = Octicons.arrowRight }
                 , text "Show"
                 ]
         }
