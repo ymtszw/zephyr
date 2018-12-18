@@ -4,10 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="theme-color" content="#36393f" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="Controllable, fast, and multi-service frontend for feed/chat/messaging."
-    />
+    <meta name="description" content="Controllable, fast, and multi-service frontend for feed/chat/messaging." />
     <title>Zephyr</title>
     <link rel="icon" href="favicon.ico" />
     <link rel="manifest" href="manifest.json" />
@@ -23,7 +20,10 @@
       const serviceWorkerAvailable =
         "serviceWorker" in window.navigator && !isLocalDevelopment;
       const indexedDBAvailable = "indexedDB" in window;
-      const { clientHeight, clientWidth } = window.document.documentElement;
+      const {
+        clientHeight,
+        clientWidth
+      } = window.document.documentElement;
 
       if (serviceWorkerAvailable) {
         window.navigator.serviceWorker
@@ -111,13 +111,13 @@
             .transaction(STATE)
             .objectStore(STATE)
             .get(id).onsuccess = event => {
-            const result = event.target.result;
-            if (id !== "pref" || result !== undefined) {
-              app.ports.loadFromJs.send(result);
-            } else {
-              // Pref is not found; do nothing and let it fallback
-            }
-          });
+              const result = event.target.result;
+              if (id !== "pref" || result !== undefined) {
+                app.ports.loadFromJs.send(result);
+              } else {
+                // Pref is not found; do nothing and let it fallback
+              }
+            });
           getReq.onerror = event =>
             err(
               `Failed to retrieve state from IndexedDB! ${event.target.error}`
@@ -129,14 +129,14 @@
             .transaction(STATE)
             .objectStore(STATE)
             .count(id).onsuccess = event => {
-            if (event.target.result > 0) {
-              thenDo();
-            } else {
-              if (elseDo) {
-                elseDo();
+              if (event.target.result > 0) {
+                thenDo();
+              } else {
+                if (elseDo) {
+                  elseDo();
+                }
               }
-            }
-          };
+            };
         }
       }
 
@@ -155,6 +155,7 @@
         event => event.dataTransfer.setData("text/plain", ""),
         true
       );
+
     </script>
     <noscript>
       <p>
