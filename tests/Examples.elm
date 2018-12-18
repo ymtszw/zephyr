@@ -428,9 +428,9 @@ textParserSuite : Test
 textParserSuite =
     describe "TextParser"
         [ testParse "" [ BlankLine "" ]
-        , testParse "plain text" [ Paragraph "plain text" [ Text "plain text" ] ]
+        , testParse "plain text" [ Paragraph "" [ Text "plain text" ] ]
         , testParse "*marked* __up__ `plain` ~text~"
-            [ Paragraph "*marked* __up__ `plain` ~text~"
+            [ Paragraph ""
                 [ Emphasis 1 [ Text "marked" ]
                 , Text " "
                 , Emphasis 2 [ Text "up" ]
@@ -447,14 +447,18 @@ type Fenced = Fenced Code
 ```
 
 After blank line.
+Soft line break and [Link](https://example.com "example.com").
 """
             [ BlankLine ""
-            , Heading "Heading 1" 1 [ Text "Heading 1" ]
-            , Paragraph "Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-                [ Text "Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." ]
+            , Heading "" 1 [ Text "Heading 1" ]
+            , Paragraph "" [ Text "Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." ]
             , CodeBlock (Fenced False { fenceChar = "`", fenceLength = 3, indentLength = 0, language = Just "lang" }) "type Fenced = Fenced Code\n"
             , BlankLine ""
-            , Paragraph "After blank line." [ Text "After blank line." ]
+            , Paragraph ""
+                [ Text "After blank line.\nSoft line break and "
+                , Link "https://example.com" (Just "example.com") [ Text "Link" ]
+                , Text "."
+                ]
             , BlankLine ""
             ]
         ]
