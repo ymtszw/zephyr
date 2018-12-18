@@ -3,7 +3,7 @@ module View.ColumnItem exposing (columnItemKeyEl)
 import Broker exposing (Offset)
 import Data.ColorTheme exposing (ColorTheme, aubergine, oneDark)
 import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..), extIsImage, extIsVideo)
+import Data.Item exposing (Item(..), extIsImage, extIsVideo, mimeIsImage, mimeIsVideo)
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -454,32 +454,37 @@ discordAttachmentEl attachment =
         lazy2 videoEl (Just posterUrl) attachment.proxyUrl
 
     else
-        download [ width fill ]
-            { url = Url.toString attachment.proxyUrl
-            , label =
-                row
-                    [ width fill
-                    , padding rectElementInnerPadding
-                    , spacing spacingUnit
-                    , BG.color (brightness -1 oneDark.main)
-                    , BD.rounded rectElementRound
-                    ]
-                    [ breakP
-                        [ Font.size attachmentFilenameFontSize
-                        , Font.color oneDark.link
-                        ]
-                        [ breakT attachment.filename ]
-                    , octiconEl [ alignRight ]
-                        { size = downloadIconSize
-                        , color = defaultOcticonColor
-                        , shape = Octicons.cloudDownload
-                        }
-                    ]
-            }
+        downloadFileEl oneDark attachment.filename attachment.proxyUrl
 
 
-attachmentFilenameFontSize : Int
-attachmentFilenameFontSize =
+downloadFileEl : ColorTheme -> String -> Url.Url -> Element Msg
+downloadFileEl theme filename url =
+    download [ width fill ]
+        { url = Url.toString url
+        , label =
+            row
+                [ width fill
+                , padding rectElementInnerPadding
+                , spacing spacingUnit
+                , BG.color (brightness -1 theme.main)
+                , BD.rounded rectElementRound
+                ]
+                [ breakP
+                    [ Font.size filenameFontSize
+                    , Font.color theme.link
+                    ]
+                    [ breakT filename ]
+                , octiconEl [ alignRight ]
+                    { size = downloadIconSize
+                    , color = theme.note
+                    , shape = Octicons.cloudDownload
+                    }
+                ]
+        }
+
+
+filenameFontSize : Int
+filenameFontSize =
     scale12 2
 
 
@@ -532,6 +537,7 @@ slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
         [ collapsingParagraph aubergine m.text
         , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
+        , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackFileEl m.files
         ]
 
 
@@ -593,6 +599,57 @@ slackAttachmentBodyEl a =
             Nothing ->
                 none
         ]
+
+
+slackFileEl : Slack.SFile -> Element Msg
+slackFileEl sf =
+    let
+        thumb360Url ( url, _, _ ) =
+            url
+    in
+    if mimeIsImage sf.mimetype then
+        newTabLink []
+            { url = Url.toString sf.url_
+            , label = imageEl sf.name (Maybe.withDefault sf.url_ (Maybe.map thumb360Url sf.thumb360))
+            }
+
+    else if mimeIsVideo sf.mimetype then
+        lazy2 videoEl (Maybe.map thumb360Url sf.thumb360) sf.url_
+
+    else if sf.mode == Slack.Snippet || sf.mode == Slack.Post then
+        -- XXX we show preview of Slack Post, but Post is preformatted HTML so we actually have to render it
+        column [ width fill, spacing spacingUnit ]
+            [ case sf.preview of
+                Just preview ->
+                    slackSnippetEl preview
+
+                Nothing ->
+                    none
+            , newTabLink [ Font.color aubergine.link ] { url = Url.toString sf.url_, label = text "View source" }
+            ]
+
+    else
+        downloadFileEl aubergine sf.name sf.url_
+
+
+slackSnippetEl : String -> Element Msg
+slackSnippetEl preview =
+    breakP
+        [ width fill
+        , height (shrink |> maximum maxSnippetHeight)
+        , padding rectElementInnerPadding
+        , scrollbarY
+        , BD.rounded rectElementRound
+        , BG.color aubergine.sub
+        , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+        ]
+        [ breakT preview
+        ]
+
+
+maxSnippetHeight : Int
+maxSnippetHeight =
+    300
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg
