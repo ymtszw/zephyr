@@ -1,4 +1,4 @@
-module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, matchFilter)
+module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, matchFilter, mimeIsImage, mimeIsVideo)
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
@@ -67,6 +67,7 @@ matchAtom item filterAtom =
         ( ByMessage text, SlackItem m ) ->
             StringExtra.containsCaseIgnored text m.text
                 || List.any (slackAttachmentHasText text) m.attachments
+                || List.any (slackFileHasText text) m.files
 
         ( ByMedia filter, DiscordItem discordMessage ) ->
             discordMessageHasMedia filter discordMessage
@@ -174,6 +175,16 @@ slackAttachmentHasText text a =
         || checkMaybeField text (Maybe.map .name a.title)
         || StringExtra.containsCaseIgnored text a.text
         || StringExtra.containsCaseIgnored text a.fallback
+
+
+slackFileHasText : String -> Slack.SFile -> Bool
+slackFileHasText text sf =
+    case sf.preview of
+        Just preview ->
+            StringExtra.containsCaseIgnored text preview
+
+        Nothing ->
+            False
 
 
 slackMessageHasMedia : MediaFilter -> Slack.Message -> Bool
