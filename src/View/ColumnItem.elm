@@ -250,7 +250,7 @@ timestampFontColor =
 discordMessageBodyEl : Discord.Message -> Element Msg
 discordMessageBodyEl discordMessage =
     column [ spacingXY 0 5, width fill ]
-        [ messageToParagraph oneDark discordMessage.content
+        [ collapsingParagraph oneDark discordMessage.content
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
         , collapsingColumn [ width fill, spacing 5 ] <| List.map discordAttachmentEl discordMessage.attachments
         ]
@@ -258,9 +258,9 @@ discordMessageBodyEl discordMessage =
 
 discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
-    [ embed.author |> Maybe.map discordEmbedAuthorEl
-    , embed.title |> Maybe.map (discordEmbedTitleEl embed.url)
-    , embed.description |> Maybe.map (messageToParagraph oneDark)
+    [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
+    , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
+    , embed.description |> Maybe.map (collapsingParagraph oneDark)
     ]
         |> List.filterMap identity
         |> breakTColumn
@@ -275,87 +275,51 @@ maxEmbeddedMediaWidth =
     maxMediaWidth - 15
 
 
-discordEmbedAuthorEl : Discord.EmbedAuthor -> Element Msg
-discordEmbedAuthorEl author =
-    let
-        wrapWithLink element =
-            case author.url of
-                Just url ->
-                    newTabLink [] { url = Url.toString url, label = element }
-
-                Nothing ->
-                    element
-    in
-    row [ spacing 5, Font.bold ]
-        [ wrapWithLink <|
+embedAuthorEl : Maybe Url.Url -> String -> Maybe Url.Url -> Element Msg
+embedAuthorEl link name icon =
+    row [ spacing spacingUnit, Font.bold ]
+        [ wrapWithLink link <|
             squareIconOrHeadEl []
                 { size = columnItemAvatarSize // 2
-                , name = author.name
-                , url = Maybe.map Url.toString author.proxyIconUrl
+                , name = name
+                , url = Maybe.map Url.toString icon
                 }
-        , paragraph [] [ wrapWithLink <| text author.name ]
+        , paragraph [] [ wrapWithLink link <| text name ]
         ]
 
 
-discordEmbedTitleEl : Maybe Url.Url -> String -> Element Msg
-discordEmbedTitleEl urlMaybe title =
-    paragraph [ Font.color oneDark.link ]
+wrapWithLink : Maybe Url.Url -> Element Msg -> Element Msg
+wrapWithLink link e =
+    case link of
+        Just url ->
+            newTabLink [] { url = Url.toString url, label = e }
+
+        Nothing ->
+            e
+
+
+embedTitleEl : ColorTheme -> Maybe Url.Url -> String -> Element Msg
+embedTitleEl theme urlMaybe title =
+    paragraph [ Font.bold ]
         [ case urlMaybe of
             Just url ->
-                newTabLink [] { url = Url.toString url, label = text title }
+                newTabLink [ Font.color theme.link ] { url = Url.toString url, label = text title }
 
             Nothing ->
                 text title
         ]
 
 
-discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
-discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
-    newTabLink []
-        { url = Url.toString (Maybe.withDefault embedImage.url linkUrlMaybe)
-        , label =
-            image [ width (shrink |> maximum maxWidth) ]
-                { src =
-                    embedImage.proxyUrl
-                        |> Maybe.withDefault embedImage.url
-                        |> addDimensionQuery maxWidth embedImage.width embedImage.height
-                        |> Url.toString
-                , description = "Thumbnail"
-                }
-        }
-
-
-addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
-addDimensionQuery maxWidth widthMaybe heightMaybe =
-    Maybe.map2 (fitDimensionToWidth maxWidth) widthMaybe heightMaybe
-        |> Maybe.map urlWithDimensionQuery
-        |> Maybe.withDefault identity
-
-
-fitDimensionToWidth : Int -> Int -> Int -> ( Int, Int )
-fitDimensionToWidth maxWidth w h =
-    if w <= maxWidth then
-        ( w, h )
-
-    else
-        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
-
-
-urlWithDimensionQuery : ( Int, Int ) -> Url.Url -> Url.Url
-urlWithDimensionQuery ( queryWidth, queryHeight ) src =
-    { src | query = Just ("width=" ++ String.fromInt queryWidth ++ "&height=" ++ String.fromInt queryHeight) }
-
-
 discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
 discordSmartThumbnailEl embed element =
     let
         wrapperAttrs =
-            [ padding 5
-            , spacing 5
+            [ padding rectElementInnerPadding
+            , spacing spacingUnit
             , BG.color (brightness -1 oneDark.main)
             , BD.color (Maybe.withDefault oneDark.bg embed.color)
-            , BD.widthEach { left = 4, top = 0, right = 0, bottom = 0 }
-            , BD.rounded 3
+            , BD.widthEach { left = gutterWidth, top = 0, right = 0, bottom = 0 }
+            , BD.rounded embedRound
             ]
 
         linkUrlMaybe =
@@ -393,6 +357,16 @@ discordSmartThumbnailEl embed element =
                 ]
 
 
+gutterWidth : Int
+gutterWidth =
+    4
+
+
+embedRound : Int
+embedRound =
+    3
+
+
 iconLike : Maybe Int -> Maybe Int -> Bool
 iconLike widthMaybe heightMaybe =
     let
@@ -406,6 +380,47 @@ iconLike widthMaybe heightMaybe =
 maxThumbnailSize : Int
 maxThumbnailSize =
     60
+
+
+discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
+discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
+    let
+        imageUrl =
+            embedImage.proxyUrl
+                |> Maybe.withDefault embedImage.url
+                |> addDimensionQuery maxWidth embedImage.width embedImage.height
+    in
+    embedImageEl maxWidth linkUrlMaybe imageUrl
+
+
+embedImageEl : Int -> Maybe Url.Url -> Url.Url -> Element Msg
+embedImageEl maxWidth linkMaybe imageUrl =
+    wrapWithLink linkMaybe <|
+        image [ width (shrink |> maximum maxWidth) ]
+            { src = Url.toString imageUrl
+            , description = "Embedded Image"
+            }
+
+
+addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
+addDimensionQuery maxWidth widthMaybe heightMaybe =
+    Maybe.map2 (fitDimensionToWidth maxWidth) widthMaybe heightMaybe
+        |> Maybe.map urlWithDimensionQuery
+        |> Maybe.withDefault identity
+
+
+fitDimensionToWidth : Int -> Int -> Int -> ( Int, Int )
+fitDimensionToWidth maxWidth w h =
+    if w <= maxWidth then
+        ( w, h )
+
+    else
+        ( maxWidth, round <| toFloat h * (toFloat maxWidth / toFloat w) )
+
+
+urlWithDimensionQuery : ( Int, Int ) -> Url.Url -> Url.Url
+urlWithDimensionQuery ( queryWidth, queryHeight ) src =
+    { src | query = Just ("width=" ++ String.fromInt queryWidth ++ "&height=" ++ String.fromInt queryHeight) }
 
 
 discordAttachmentEl : Discord.Attachment -> Element Msg
@@ -515,7 +530,68 @@ slackMessageHeaderEl tz m =
 slackMessageBodyEl : Slack.Message -> Element Msg
 slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
-        [ messageToParagraph aubergine m.text
+        [ collapsingParagraph aubergine m.text
+        , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
+        ]
+
+
+slackAttachmentEl : Slack.Attachment -> Element Msg
+slackAttachmentEl a =
+    column [ width fill, spacingXY 0 spacingUnit ] <|
+        List.filterMap identity <|
+            [ Maybe.map (collapsingParagraph aubergine) a.pretext
+            , Just (slackAttachmentBodyEl a)
+            ]
+
+
+slackAttachmentBodyEl : Slack.Attachment -> Element Msg
+slackAttachmentBodyEl a =
+    let
+        richContents =
+            List.filterMap identity <|
+                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
+                , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
+                , if String.isEmpty a.text then
+                    Nothing
+
+                  else
+                    Just (nonEmptyParagraph aubergine a.text)
+                ]
+
+        withImage upperContents =
+            case a.imageUrl of
+                Just imageUrl ->
+                    column outerAttrs
+                        [ row [ width fill, spacing spacingUnit ] upperContents
+                        , embedImageEl maxEmbeddedMediaWidth a.imageUrl imageUrl
+                        ]
+
+                Nothing ->
+                    row outerAttrs upperContents
+
+        outerAttrs =
+            [ width fill
+            , padding rectElementInnerPadding
+            , spacing spacingUnit
+            , BD.color (Maybe.withDefault aubergine.bd a.color)
+            , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
+            , BD.rounded embedRound
+            ]
+    in
+    withImage
+        [ column [ width fill, spacingXY 0 spacingUnit, alignTop ] <|
+            case richContents of
+                [] ->
+                    [ collapsingParagraph aubergine a.fallback ]
+
+                _ ->
+                    richContents
+        , case a.thumbUrl of
+            Just thumbUrl ->
+                el [ alignTop ] <| embedImageEl maxThumbnailSize (Maybe.andThen .link a.title) thumbUrl
+
+            Nothing ->
+                none
         ]
 
 
@@ -524,25 +600,30 @@ defaultItemEl message mediaMaybe =
     case mediaMaybe of
         Just media ->
             textColumn [ spacingXY 0 10, width fill, alignTop ]
-                [ messageToParagraph oneDark message
+                [ collapsingParagraph oneDark message
                 , mediaEl media
                 ]
 
         Nothing ->
-            el [ width fill, alignTop ] (messageToParagraph oneDark message)
+            el [ width fill, alignTop ] (collapsingParagraph oneDark message)
 
 
-messageToParagraph : ColorTheme -> String -> Element Msg
-messageToParagraph theme message =
+collapsingParagraph : ColorTheme -> String -> Element Msg
+collapsingParagraph theme message =
     if String.isEmpty message then
         none
 
     else
-        -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
-        message
-            |> Data.TextRenderer.default theme
-            |> List.map html
-            |> breakP []
+        nonEmptyParagraph theme message
+
+
+nonEmptyParagraph : ColorTheme -> String -> Element Msg
+nonEmptyParagraph theme message =
+    -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
+    message
+        |> Data.TextRenderer.default theme
+        |> List.map html
+        |> breakP []
 
 
 mediaEl : Media -> Element Msg

@@ -177,7 +177,6 @@ squareIconOrHeadEl userAttrs { size, name, url } =
             [ width (px size)
             , height (px size)
             , clip
-            , BG.color iconBackground
             , BD.rounded (iconRounding size)
             , Font.size (size // 2)
             , Font.bold
@@ -197,11 +196,6 @@ squareIconOrHeadEl userAttrs { size, name, url } =
 
             Nothing ->
                 el [ centerX, centerY ] (text (String.left 1 name))
-
-
-iconBackground : Color
-iconBackground =
-    oneDark.sub
 
 
 iconRounding : Int -> Int
@@ -246,7 +240,14 @@ iconWithBadgeEl userAttrs opts =
             max 1 (opts.size // 20)
     in
     el (bottomRightBadgeAttrs ++ userAttrs) <|
-        squareIconOrHeadEl [ BG.color opts.theme.prim ]
+        squareIconOrHeadEl
+            [ case opts.url of
+                Just _ ->
+                    noneAttr
+
+                Nothing ->
+                    BG.color opts.theme.prim
+            ]
             { size = opts.size - (innerIconPadding * 2), name = opts.fallback, url = opts.url }
 
 

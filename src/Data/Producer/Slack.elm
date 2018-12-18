@@ -5,7 +5,7 @@ module Data.Producer.Slack exposing
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix
+    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     )
 
@@ -20,7 +20,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix
+@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 
 -}
@@ -1137,7 +1137,8 @@ attachmentDecoder =
         (D.maybeField "color" colorDecoder)
         (D.maybe attachmentAuthorDecoder)
         (D.maybe attachmentTitleDecoder)
-        (D.field "text" D.string)
+        -- `text` can be absent!!
+        (D.optionField "text" D.string "")
         (D.maybeField "image_url" D.url)
         (D.maybeField "thumb_url" D.url)
         (D.field "fallback" D.string)
@@ -1241,8 +1242,8 @@ apiMessageDecoder users bots convIdStr =
         (D.field "text" D.string)
         apiAuthorDecoder
         (D.maybeField "username" D.string)
-        (D.optionField "files" (D.list sFileDecoder) [])
-        (D.optionField "attachments" (D.list attachmentDecoder) [])
+        (D.optionField "files" (D.leakyList sFileDecoder) [])
+        (D.optionField "attachments" (D.leakyList attachmentDecoder) [])
         (D.succeed convIdStr)
 
 
@@ -2404,6 +2405,15 @@ getPosix { ts } =
             ts
     in
     posix
+
+
+getTs : { x | ts : Ts } -> String
+getTs { ts } =
+    let
+        (Ts ts_ _) =
+            ts
+    in
+    ts_
 
 
 defaultIconUrl : Maybe Int -> String
