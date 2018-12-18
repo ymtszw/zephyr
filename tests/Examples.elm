@@ -17,7 +17,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode as E exposing (Value)
 import Json.EncodeExtra as E
 import ListExtra
-import Markdown.Block exposing (Block(..))
+import Markdown.Block exposing (Block(..), CodeBlock(..))
 import Markdown.Inline exposing (Inline(..))
 import Parser
 import SelectArray
@@ -438,6 +438,24 @@ textParserSuite =
                 , CodeInline "plain"
                 , Text " ~text~"
                 ]
+            ]
+        , testParse """
+# Heading 1
+Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+```lang
+type Fenced = Fenced Code
+```
+
+After blank line.
+"""
+            [ BlankLine ""
+            , Heading "Heading 1" 1 [ Text "Heading 1" ]
+            , Paragraph "Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+                [ Text "Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." ]
+            , CodeBlock (Fenced False { fenceChar = "`", fenceLength = 3, indentLength = 0, language = Just "lang" }) "type Fenced = Fenced Code\n"
+            , BlankLine ""
+            , Paragraph "After blank line." [ Text "After blank line." ]
+            , BlankLine ""
             ]
         ]
 
