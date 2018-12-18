@@ -461,12 +461,18 @@ Soft line break and [Link](https://example.com "example.com").
                 ]
             , BlankLine ""
             ]
+        , testParse "Plain link without markup. https://example.com"
+            [ Paragraph ""
+                [ Text "Plain link without markup. "
+                , Link "https://example.com" Nothing [ Text "example.com" ]
+                ]
+            ]
         ]
 
 
 testParse : String -> List (Block () ()) -> Test
 testParse initial expected =
-    test ("should parse " ++ initial) <|
+    test ("should parse: " ++ initial ++ "") <|
         \_ ->
             TextParser.parse TextParser.defaultOptions initial
                 |> Expect.equal (Parsed expected)
