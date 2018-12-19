@@ -8,14 +8,18 @@ import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Data.TextRenderer
+import Dict
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
-import Element.Lazy exposing (lazy2)
+import Element.Lazy exposing (lazy, lazy2)
 import Html
 import Html.Attributes exposing (title)
+import Markdown.Block as Block exposing (Block, ListBlock, ListType(..))
+import Markdown.Inline as Inline exposing (Inline)
 import Octicons
+import TextParser exposing (Parsed(..))
 import Time
 import TimeExtra
 import Url
@@ -535,17 +539,87 @@ slackMessageHeaderEl tz m =
 slackMessageBodyEl : Slack.Message -> Element Msg
 slackMessageBodyEl m =
     column [ width fill, spacingXY 0 spacingUnit ]
-        [ collapsingParagraph aubergine m.text
+        [ lazy slackParagraph m.text
         , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
         , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackFileEl m.files
         ]
+
+
+slackParagraph : String -> Element Msg
+slackParagraph raw =
+    let
+        slackOptions =
+            { markdown = True
+            , autoLink = False
+            , preFormat = Just (Slack.preFormat Dict.empty Dict.empty)
+            , customInlineFormat = Nothing
+            }
+
+        (Parsed blocks) =
+            TextParser.parse slackOptions raw
+    in
+    collapsingColumn [ width fill ] <|
+        List.map blockToEl blocks
+
+
+blockToEl : Block () () -> Element Msg
+blockToEl block =
+    case block of
+        Block.BlankLine _ ->
+            none
+
+        Block.ThematicBreak ->
+            html (Html.hr [] [])
+
+        Block.Heading _ level inlines ->
+            -- TODO level
+            breakP [] <| List.map inlineToEl inlines
+
+        Block.CodeBlock codeOpts text ->
+            slackSnippetEl text
+
+        Block.Paragraph _ inlines ->
+            breakP [] <| List.map inlineToEl inlines
+
+        Block.BlockQuote blocks ->
+            column (gutteredConteinerAttrs aubergine Nothing) <|
+                List.map blockToEl blocks
+
+        Block.List listOpts items ->
+            column [ width fill, padding rectElementInnerPadding ] <|
+                List.map (listItemEl listOpts) items
+
+        Block.PlainInlines inlines ->
+            breakP [] <| List.map inlineToEl inlines
+
+        Block.Custom _ _ ->
+            none
+
+
+listItemEl : ListBlock -> List (Block () ()) -> Element Msg
+listItemEl listOpts blocks =
+    let
+        pointSize =
+            20
+    in
+    row [ width fill ]
+        [ octiconEl [ width (px pointSize), alignLeft ]
+            { size = pointSize, color = aubergine.bd, shape = Octicons.chevronRight }
+        , column [ width fill ] <|
+            List.map blockToEl blocks
+        ]
+
+
+inlineToEl : Inline () -> Element Msg
+inlineToEl =
+    Inline.toHtml >> html
 
 
 slackAttachmentEl : Slack.Attachment -> Element Msg
 slackAttachmentEl a =
     column [ width fill, spacingXY 0 spacingUnit ] <|
         List.filterMap identity <|
-            [ Maybe.map (collapsingParagraph aubergine) a.pretext
+            [ Maybe.map slackParagraph a.pretext
             , Just (slackAttachmentBodyEl a)
             ]
 
@@ -561,28 +635,19 @@ slackAttachmentBodyEl a =
                     Nothing
 
                   else
-                    Just (nonEmptyParagraph aubergine a.text)
+                    Just (slackParagraph a.text)
                 ]
 
         withImage upperContents =
             case a.imageUrl of
                 Just imageUrl ->
-                    column outerAttrs
+                    column (gutteredConteinerAttrs aubergine a.color)
                         [ row [ width fill, spacing spacingUnit ] upperContents
                         , embedImageEl maxEmbeddedMediaWidth a.imageUrl imageUrl
                         ]
 
                 Nothing ->
-                    row outerAttrs upperContents
-
-        outerAttrs =
-            [ width fill
-            , padding rectElementInnerPadding
-            , spacing spacingUnit
-            , BD.color (Maybe.withDefault aubergine.bd a.color)
-            , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
-            , BD.rounded embedRound
-            ]
+                    row (gutteredConteinerAttrs aubergine a.color) upperContents
     in
     withImage
         [ column [ width fill, spacingXY 0 spacingUnit, alignTop ] <|
@@ -599,6 +664,17 @@ slackAttachmentBodyEl a =
             Nothing ->
                 none
         ]
+
+
+gutteredConteinerAttrs : ColorTheme -> Maybe Color -> List (Attribute Msg)
+gutteredConteinerAttrs theme gutterColor =
+    [ width fill
+    , padding rectElementInnerPadding
+    , spacing spacingUnit
+    , BD.color (Maybe.withDefault theme.bd gutterColor)
+    , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
+    , BD.rounded embedRound
+    ]
 
 
 slackFileEl : Slack.SFile -> Element Msg
