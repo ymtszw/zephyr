@@ -551,7 +551,7 @@ slackParagraph raw =
         (Parsed blocks) =
             TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) raw
     in
-    collapsingColumn [ width fill ] <|
+    collapsingColumn [ width fill, spacing spacingUnit ] <|
         List.map blockToEl blocks
 
 
@@ -562,37 +562,29 @@ blockToEl block =
             none
 
         Block.ThematicBreak ->
-            el
-                [ width fill
-                , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                , BD.color aubergine.note
-                ]
-                none
+            el [ width fill, BD.widthXY 0 1, BD.color aubergine.bd ] none
 
         Block.Heading _ level inlines ->
             -- Headings in feeds would interfere overall visual, so not enlarging
             breakP [] <|
-                [ el [ Font.bold ] <| text (String.repeat level "#")
-                , text " "
-                ]
-                    ++ List.map inlineToEl inlines
+                [ el [ Font.bold ] (text (String.repeat level "#")), text " " ]
+                    ++ List.concatMap inlineToEls inlines
 
         Block.CodeBlock codeOpts text ->
             codeBlock [] { theme = aubergine, maxHeight = maxCodeBlockHeight, code = text }
 
         Block.Paragraph _ inlines ->
-            breakP [] <| List.map inlineToEl inlines
+            breakP [] <| List.concatMap inlineToEls inlines
 
         Block.BlockQuote blocks ->
-            column (gutteredConteinerAttrs aubergine Nothing) <|
-                List.map blockToEl blocks
+            column (gutteredConteinerAttrs aubergine Nothing) (List.map blockToEl blocks)
 
         Block.List listOpts items ->
             column [ width fill ] <|
                 List.indexedMap (listItemEl listOpts) items
 
         Block.PlainInlines inlines ->
-            breakP [] <| List.map inlineToEl inlines
+            breakP [] <| List.concatMap inlineToEls inlines
 
         Block.Custom _ _ ->
             none
@@ -657,9 +649,68 @@ listMarkerSize =
     scale12 -2
 
 
-inlineToEl : Inline () -> Element Msg
-inlineToEl =
-    Inline.toHtml >> html
+inlineToEls : Inline () -> List (Element Msg)
+inlineToEls inline =
+    case inline of
+        Inline.Text s ->
+            [ breakT s ]
+
+        Inline.HardLineBreak ->
+            [ html (Html.br [] []) ]
+
+        Inline.CodeInline c ->
+            [ codeInline [] { theme = aubergine, code = c } ]
+
+        Inline.Link urlStr titleMaybe inlines ->
+            let
+                linkify i =
+                    newTabLink
+                        [ Font.color aubergine.link
+                        , style "display" "inline"
+                        , forceBreak
+                        , case titleMaybe of
+                            Just title ->
+                                htmlAttribute (Html.Attributes.title title)
+
+                            Nothing ->
+                                noneAttr
+                        ]
+                        { url = urlStr
+                        , label = i
+                        }
+            in
+            List.map linkify <| List.concatMap inlineToEls inlines
+
+        Inline.Image srcStr titleMaybe inlines ->
+            [ image [ width (shrink |> maximum maxEmbeddedMediaWidth) ]
+                { src = srcStr
+                , description =
+                    case titleMaybe of
+                        Just title ->
+                            title
+
+                        Nothing ->
+                            Inline.extractText inlines
+                }
+            ]
+
+        Inline.HtmlInline "code" _ inlines ->
+            [ codeInline [] { theme = aubergine, code = Inline.extractText inlines } ]
+
+        Inline.HtmlInline tag attrs inlines ->
+            -- For now we ignore other HtmlInline and just dump them as inline texts
+            -- XXX Possibly support `<pre>` and lift them into CodeBlock?
+            [ text (Inline.extractText inlines) ]
+
+        Inline.Emphasis level inlines ->
+            if level < 2 then
+                List.map (el [ forceBreak, Font.italic ]) <| List.concatMap inlineToEls inlines
+
+            else
+                List.map (el [ forceBreak, Font.bold ]) <| List.concatMap inlineToEls inlines
+
+        Inline.Custom () _ ->
+            []
 
 
 slackAttachmentEl : Slack.Attachment -> Element Msg
