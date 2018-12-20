@@ -205,40 +205,42 @@ prefTitleEl =
 prefEl : Pref -> ColumnStore -> Element Msg
 prefEl pref columnStore =
     column [ width fill, padding rectElementInnerPadding, spacing (spacingUnit * 2) ]
-        [ row [ width fill, spacing spacingUnit ]
-            [ textColumn [ width fill, spacing spacingUnit, alignTop ]
-                [ text "Zephyr Mode"
-                , description
-                    [ text "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner."
-                    ]
-                ]
-            , textColumn [ width fill, spacing spacingUnit, alignTop ]
+        [ prefRowEl "Zephyr Mode" [ "When enabled, columns are automatically dismissed by LRU (least-recently-updated) manner." ] <|
+            textColumn [ width fill, spacing spacingUnit, alignTop ]
                 [ toggleInputEl []
-                    { onChange = ZephyrMode
+                    { onChange = PrefCtrl << Pref.ZephyrMode
                     , height = sectionBaseFontSize
                     , checked = pref.zephyrMode
                     }
                 , paragraph [] [ text ("Max columns: " ++ String.fromInt pref.evictThreshold) ]
-                , description [ text "Automatically calculated based on your screen width. If you pinned columns more than this limit, shadow columns do not automatically reappear." ]
+                , descriptionEl
+                    [ text <|
+                        "Automatically calculated based on your screen width. "
+                            ++ "If you pinned columns more than this limit, shadow columns do not automatically reappear."
+                    ]
                 ]
-            ]
-        , row [ width fill, spacing spacingUnit ]
-            [ textColumn [ width fill, spacing spacingUnit, alignTop ]
-                [ text "Shadow Columns"
-                , description [ text "Currently not displayed columns. Automatically reappear when new messages arrived." ]
-                ]
-            , let
+        , prefRowEl "Shadow Columns" [ "Columns currently aren't displayed. Automatically reappear when new messages arrived." ] <|
+            let
                 slotsAvailable =
                     not pref.zephyrMode || ColumnStore.sizePinned columnStore < pref.evictThreshold
-              in
-              shadowColumnsEl columnStore.fam slotsAvailable <|
-                ColumnStore.listShadow columnStore
-            ]
+            in
+            shadowColumnsEl columnStore.fam slotsAvailable <| ColumnStore.listShadow columnStore
         ]
 
 
-description : List (Element Msg) -> Element Msg
-description texts =
+prefRowEl : String -> List String -> Element Msg -> Element Msg
+prefRowEl title descriptions contents =
+    row [ width fill, spacing spacingUnit ]
+        [ textColumn [ width fill, spacing spacingUnit, alignTop ]
+            [ text title
+            , descriptionEl <| List.map text descriptions
+            ]
+        , contents
+        ]
+
+
+descriptionEl : List (Element Msg) -> Element Msg
+descriptionEl texts =
     paragraph [ Font.size descFontSize, Font.color oneDark.note ] texts
 
 
@@ -252,7 +254,7 @@ shadowColumnsEl fam slotsAvailable shadowColumns =
     Element.Keyed.column [ width fill, spacing spacingUnit, alignTop ] <|
         case shadowColumns of
             [] ->
-                [ ( "shadowColumnEmpty", description [ text "(Empty)" ] ) ]
+                [ ( "shadowColumnEmpty", descriptionEl [ text "(Empty)" ] ) ]
 
             _ ->
                 List.map (shadowColumnKeyEl fam slotsAvailable) shadowColumns
