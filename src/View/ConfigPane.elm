@@ -225,6 +225,13 @@ prefEl pref columnStore =
                     not pref.zephyrMode || ColumnStore.sizePinned columnStore < pref.evictThreshold
             in
             shadowColumnsEl columnStore.fam slotsAvailable <| ColumnStore.listShadow columnStore
+        , prefRowEl "Logging" [ "Enables Elm events inspector at the bottom of this pane. This will SIGNIFICANTLY degrade application performance!" ] <|
+            el [ width fill, alignTop ] <|
+                toggleInputEl []
+                    { onChange = PrefCtrl << Pref.Logging
+                    , height = sectionBaseFontSize
+                    , checked = pref.logging
+                    }
         ]
 
 
