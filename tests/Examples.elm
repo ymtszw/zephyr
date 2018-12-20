@@ -490,7 +490,7 @@ slackParseSuite =
     describe "parse with Slack options"
         [ testSlackParse "*<https://github.com/ymtsze/zephyr/commit/sha01234|1 new commit> pushed to <https://github.com/ymtsze/zephyr/tree/master|`master`>*\n<https://github.com/ymtsze/zephyr/commit/sha01234|`sha01234`> - Commit message here"
             [ Paragraph ""
-                [ Emphasis 1
+                [ Emphasis 2
                     [ Link "https://github.com/ymtsze/zephyr/commit/sha01234" Nothing [ Text "1 new commit" ]
                     , Text " pushed to "
                     , Link "https://github.com/ymtsze/zephyr/tree/master" Nothing [ CodeInline "master" ]
@@ -509,7 +509,7 @@ slackParseSuite =
 <https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366|`086b224b`> - [#45] Rename messageToParagraph =&gt; collapsingParagraph since it
 <https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b|`8ced322c`> - [#45] Use fallback in attachment when other contents are unavailable"""
             [ Paragraph ""
-                [ Emphasis 1
+                [ Emphasis 2
                     [ Link "https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba" Nothing [ Text "10 new commits" ]
                     , Text " pushed to "
                     , Link "https://github.com/ymtszw/zephyr/tree/master" Nothing [ CodeInline "master" ]
@@ -531,11 +531,9 @@ slackParseSuite =
                 , Text " - [#45] Use fallback in attachment when other contents are unavailable"
                 ]
             ]
-        , testSlackParse "&lt;pre&gt;This is code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;this is inline code&lt;/code&gt;&lt;/p&gt;"
-            [ Paragraph ""
-                [ HtmlInline "pre" [] [ Text "This is code block" ]
-                , HtmlInline "p" [] [ HtmlInline "code" [] [ Text "this is inline code" ] ]
-                ]
+        , testSlackParse "&lt;pre&gt;Escaped code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;Escaped inline code&lt;/code&gt;&lt;/p&gt;"
+            [ -- Currently we do not unescape HTML before markdown parser
+              Paragraph "" [ Text "<pre>Escaped code block</pre><p><code>Escaped inline code</code></p>" ]
             ]
         ]
 
