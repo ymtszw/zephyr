@@ -98,7 +98,7 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
 update msg m_ =
     let
         ({ viewState, env, pref } as m) =
-            if m_.env.isLocalDevelopment then
+            if m_.env.isLocalDevelopment && m_.pref.logging then
                 Logger.push m_.idGen (Data.Msg.logEntry msg) m_.log
                     |> (\( newLog, idGen ) -> { m_ | log = newLog, idGen = idGen })
 
@@ -253,8 +253,8 @@ update msg m_ =
         DomOp (Err e) ->
             pure m
 
-        ZephyrMode bool ->
-            case Pref.update bool pref of
+        PrefCtrl pMsg ->
+            case Pref.update pMsg pref of
                 ( newPref, True ) ->
                     ( { m | pref = newPref }, Cmd.none, savePref changeSet )
 

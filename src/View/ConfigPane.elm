@@ -75,7 +75,7 @@ configInnerEl m =
         , configSectionWrapper oneDark discordConfigTitleEl <|
             discordConfigEl m.viewState m.producerRegistry.discord
         , configSectionWrapper oneDark statusTitleEl <| statusEl m
-        , if m.env.isLocalDevelopment then
+        , if m.env.isLocalDevelopment && m.pref.logging then
             el [ width fill, alignBottom, height shrink ] <|
                 map LoggerCtrl <|
                     Logger.historyEl m.log

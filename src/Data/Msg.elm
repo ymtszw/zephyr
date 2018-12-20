@@ -8,7 +8,7 @@ import Data.Column as Column
 import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
-import Data.Pref exposing (Pref)
+import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
@@ -56,7 +56,7 @@ type Msg
     | ProducerCtrl ProducerRegistry.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
-    | ZephyrMode Bool
+    | PrefCtrl Pref.Msg
     | Tick Posix
 
 
@@ -158,8 +158,11 @@ logEntry msg =
         DomOp (Err (Browser.Dom.NotFound id)) ->
             Entry "DomOp.Err.NotFound" [ id ]
 
-        ZephyrMode bool ->
-            Entry "ZephyrMode" [ boolStr bool ]
+        PrefCtrl (Pref.ZephyrMode bool) ->
+            Entry "PrefCtrl.ZephyrMode" [ boolStr bool ]
+
+        PrefCtrl (Pref.Logging bool) ->
+            Entry "PrefCtrl.Logging" [ boolStr bool ]
 
         Tick posix ->
             Entry "Tick" [ Iso8601.fromTime posix ]
