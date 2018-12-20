@@ -7,7 +7,7 @@ module Data.Producer.Slack exposing
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-    , preFormat
+    , parseOptions
     )
 
 {-| Producer for Slack workspaces.
@@ -23,7 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-@docs preFormat
+@docs parseOptions
 
 -}
 
@@ -41,6 +41,7 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import ListExtra
+import Markdown.Inline exposing (Inline(..))
 import Regex exposing (Regex)
 import Task exposing (Task)
 import TextParser
@@ -2459,6 +2460,28 @@ dummyConversationId =
 
 
 -- Message formatting
+
+
+parseOptions : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> TextParser.ParseOptions
+parseOptions convs users =
+    { markdown = True
+    , autoLink = False
+    , unescapeTags = False
+    , preFormat = Just (preFormat convs users)
+    , customInlineFormat = Just alterEmphasis
+    }
+
+
+alterEmphasis : Inline () -> Inline ()
+alterEmphasis inline =
+    case inline of
+        Emphasis _ inlines ->
+            -- In Slack `*` is treated as level 2 and `_` as level 1, but this does not conform with CommonMark spec.
+            -- `*` is more commonly used, so forcing level 2 in order to keep visuals in-line with official Slack app.
+            Emphasis 2 inlines
+
+        _ ->
+            inline
 
 
 {-| Convert special message formatting syntax into proper markdown.

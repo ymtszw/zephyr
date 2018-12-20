@@ -531,6 +531,12 @@ slackParseSuite =
                 , Text " - [#45] Use fallback in attachment when other contents are unavailable"
                 ]
             ]
+        , testSlackParse "&lt;pre&gt;This is code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;this is inline code&lt;/code&gt;&lt;/p&gt;"
+            [ Paragraph ""
+                [ HtmlInline "pre" [] [ Text "This is code block" ]
+                , HtmlInline "p" [] [ HtmlInline "code" [] [ Text "this is inline code" ] ]
+                ]
+            ]
         ]
 
 
@@ -538,15 +544,7 @@ testSlackParse : String -> List (Block () ()) -> Test
 testSlackParse initial expected =
     test ("should parse: " ++ initial ++ "") <|
         \_ ->
-            let
-                slackOptions =
-                    { markdown = True
-                    , autoLink = False
-                    , preFormat = Just (Slack.preFormat Dict.empty Dict.empty)
-                    , customInlineFormat = Nothing
-                    }
-            in
-            TextParser.parse slackOptions initial
+            TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) initial
                 |> Expect.equal (Parsed expected)
 
 
@@ -603,7 +601,12 @@ testAutoLinker initial expected =
         \_ ->
             let
                 onlyAutoLink =
-                    { markdown = False, autoLink = True, preFormat = Nothing, customInlineFormat = Nothing }
+                    { markdown = False
+                    , autoLink = True
+                    , unescapeTags = False
+                    , preFormat = Nothing
+                    , customInlineFormat = Nothing
+                    }
             in
             TextParser.parse onlyAutoLink initial
                 |> Expect.equal (Parsed [ Paragraph "" expected ])

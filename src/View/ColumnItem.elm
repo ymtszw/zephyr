@@ -548,15 +548,8 @@ slackMessageBodyEl m =
 slackParagraph : String -> Element Msg
 slackParagraph raw =
     let
-        slackOptions =
-            { markdown = True
-            , autoLink = False
-            , preFormat = Just (Slack.preFormat Dict.empty Dict.empty)
-            , customInlineFormat = Nothing
-            }
-
         (Parsed blocks) =
-            TextParser.parse slackOptions raw
+            TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) raw
     in
     collapsingColumn [ width fill ] <|
         List.map blockToEl blocks

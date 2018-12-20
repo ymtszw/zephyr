@@ -19,8 +19,10 @@ so you should consider parsing only once and storing `Parsed` IR for later uses.
 -}
 
 import Markdown.Block as Block exposing (Block(..))
+import Markdown.Config
 import Markdown.Inline as Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser, Step(..))
+import Regex
 import Url exposing (Url)
 
 
@@ -36,19 +38,19 @@ type Parsed
 
 {-| Parse options.
 
-Use `preFormat` function when your texts need to be pre-processed
-before parsed by markdown parser or autoLinker.
-E.g. Resolve Slack's message formatting into proper Markdowns.
-
-Use `customInlineFormat` function when you need to apply additional funciton to once-parsed Inline nodes.
-
-Use `autoLink` to apply autoLinker at the end of the process.
-It linkifies not-yet-linkified URLs appearing in Text nodes.
+  - `markdown` : Parse text as Markdown. Parser applied AFTER `preFormat` funciton
+  - `autoLink` : Apply `autoLinker` at the END of the process, linkifying not-yet-linkified URLs appearing in `Text` nodes.
+  - `unescapeTags` : Unescape `&lt;` and `&gt;` to `<` and `>`, allowing them to be parsed by Markdown parser (as HTML tags.)
+    Even though they are unescaped, potentially unsafe tags such as `<script>` are not parsed by subsequent parsers.
+  - `preFormat` : A function when your texts need to be pre-processed before parsed by markdown parser or `autoLinker`.
+    E.g. Resolve Slack's message formatting into proper Markdowns.
+  - `customInlineFormat` : A function when you need to apply additional funciton to once-parsed Inline nodes.
 
 -}
 type alias ParseOptions =
     { markdown : Bool
     , autoLink : Bool
+    , unescapeTags : Bool
     , preFormat : Maybe (String -> String)
     , customInlineFormat : Maybe (Inline () -> Inline ())
     }
@@ -58,6 +60,7 @@ defaultOptions : ParseOptions
 defaultOptions =
     { markdown = True
     , autoLink = True
+    , unescapeTags = False
     , preFormat = Nothing
     , customInlineFormat = Nothing
     }
@@ -66,9 +69,16 @@ defaultOptions =
 parse : ParseOptions -> String -> Parsed
 parse opts raw =
     let
+        unescapeTags =
+            if opts.unescapeTags then
+                Regex.replace escapedAnglesPattern replaceEscapedAngles
+
+            else
+                identity
+
         parseAsMarkdown text =
             if opts.markdown then
-                Block.parse Nothing text
+                Block.parse blockParseOptions text
 
             else
                 [ Paragraph "" [ Text text ] ]
@@ -76,7 +86,35 @@ parse opts raw =
     Parsed <|
         List.map (Block.walk (afterWalkBlock opts)) <|
             parseAsMarkdown <|
-                Maybe.withDefault raw (Maybe.map ((|>) raw) opts.preFormat)
+                unescapeTags <|
+                    Maybe.withDefault raw (Maybe.map ((|>) raw) opts.preFormat)
+
+
+blockParseOptions : Maybe Markdown.Config.Options
+blockParseOptions =
+    let
+        default =
+            Markdown.Config.defaultOptions
+    in
+    Just { default | softAsHardLineBreak = True }
+
+
+escapedAnglesPattern : Regex.Regex
+escapedAnglesPattern =
+    Maybe.withDefault Regex.never (Regex.fromString "&[lg]t;")
+
+
+replaceEscapedAngles : Regex.Match -> String
+replaceEscapedAngles { match } =
+    case match of
+        "&lt;" ->
+            "<"
+
+        "&gt;" ->
+            ">"
+
+        _ ->
+            match
 
 
 afterWalkBlock : ParseOptions -> Block () () -> Block () ()
