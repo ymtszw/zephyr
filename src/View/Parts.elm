@@ -1,6 +1,6 @@
 module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
-    , breakP, breakT, breakTColumn, collapsingColumn, codeBlock, inputScreen, dragHandle
+    , breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
@@ -19,7 +19,7 @@ module View.Parts exposing
 ## Helpers
 
 @docs noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
-@docs breakP, breakT, breakTColumn, collapsingColumn, codeBlock, inputScreen, dragHandle
+@docs breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
 @docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
@@ -696,7 +696,12 @@ Suitable for user-generated texts. Use with `breakT`.
 -}
 breakP : List (Attribute msg) -> List (Element msg) -> Element msg
 breakP attrs =
-    paragraph <| attrs ++ [ htmlAttribute (Html.Attributes.class breakClassName) ]
+    paragraph (forceBreak :: attrs)
+
+
+forceBreak : Attribute msg
+forceBreak =
+    htmlAttribute (Html.Attributes.class breakClassName)
 
 
 breakClassName : String
@@ -738,6 +743,28 @@ codeBlock attrs opts =
             ]
     in
     breakP (baseAttrs ++ attrs) [ breakT opts.code ]
+
+
+codeInline : List (Attribute msg) -> { theme : ColorTheme, code : String } -> Element msg
+codeInline attrs opts =
+    let
+        baseAttrs =
+            [ width shrink
+            , paddingXY inlinePadding 0
+            , BD.rounded inlinePadding
+            , BG.color opts.theme.text
+            , Font.color opts.theme.err
+            , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+            , style "display" "inline"
+            , forceBreak
+            ]
+    in
+    el (baseAttrs ++ attrs) (breakT opts.code)
+
+
+inlinePadding : Int
+inlinePadding =
+    2
 
 
 
