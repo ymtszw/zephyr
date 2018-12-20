@@ -93,10 +93,11 @@ parse opts raw =
 blockParseOptions : Maybe Markdown.Config.Options
 blockParseOptions =
     let
+        -- Apply custom HTML sanitization here
         default =
             Markdown.Config.defaultOptions
     in
-    Just { default | softAsHardLineBreak = True }
+    Just default
 
 
 escapedAnglesPattern : Regex.Regex
