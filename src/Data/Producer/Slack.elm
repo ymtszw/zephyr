@@ -42,7 +42,7 @@ import Json.Encode as E
 import Json.EncodeExtra as E
 import ListExtra
 import Markdown.Inline exposing (Inline(..))
-import Regex exposing (Regex)
+import Parser exposing ((|.), (|=), Parser)
 import Task exposing (Task)
 import TextParser
 import Time exposing (Posix)
@@ -2486,34 +2486,118 @@ alterEmphasis inline =
 
 {-| Convert special message formatting syntax into proper markdown.
 
-  - Converts `<...>` special syntax into markdown
+  - Converts `<...>` special syntax into markdown (or plain text)
   - Resolves User/Channel ID to readable names
 
 -}
 preFormat : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
 preFormat convs users raw =
-    Regex.replace angleSyntaxPattern (replaceAngleSyntax convs users) raw
+    case Parser.run (angleSyntaxParser convs users) raw of
+        Ok replaced ->
+            replaced
+
+        Err _ ->
+            -- Debug here
+            raw
 
 
-angleSyntaxPattern : Regex
-angleSyntaxPattern =
-    Maybe.withDefault Regex.never (Regex.fromString "<([@#!])?([^|]+)(\\|[^>]*)?>")
+angleSyntaxParser : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Parser String
+angleSyntaxParser convs users =
+    Parser.loop [] <|
+        \acc ->
+            let
+                goNext str =
+                    Parser.Loop (str :: acc)
+            in
+            Parser.oneOf
+                [ Parser.end |> Parser.map (\() -> Parser.Done (List.foldl (++) "" acc))
+                , angleCmdParser |> Parser.map (convertAngleCmd convs users) |> Parser.map goNext
+                , Parser.chompUntilEndOr "<" |> Parser.getChompedString |> Parser.map goNext
+                ]
 
 
-replaceAngleSyntax : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Regex.Match -> String
-replaceAngleSyntax convs users { match, submatches } =
+type AngleCmd
+    = AtUser UserIdStr (Maybe String)
+    | AtEveryone
+    | AtHere
+    | AtChannel
+    | OtherSpecial String (Maybe String)
+    | ToChannel ConversationIdStr (Maybe String)
+    | Link Url (Maybe String)
+
+
+angleCmdParser : Parser AngleCmd
+angleCmdParser =
+    let
+        urlParser str =
+            case Url.fromString str of
+                Just url ->
+                    Parser.succeed url
+
+                Nothing ->
+                    Parser.problem ("Not a valid URL: " ++ str)
+    in
+    Parser.succeed identity
+        |. Parser.symbol "<"
+        |= Parser.oneOf
+            [ Parser.succeed AtUser
+                |. Parser.symbol "@"
+                |= rawKeywordParser
+                |= remainderParser
+            , Parser.succeed AtEveryone
+                |. Parser.keyword "!everyone"
+                |. remainderParser
+            , Parser.succeed AtHere
+                |. Parser.keyword "!here"
+                |. remainderParser
+            , Parser.succeed AtChannel
+                |. Parser.keyword "!channel"
+                |. remainderParser
+            , -- XXX e.g. Date syntax
+              Parser.succeed OtherSpecial
+                |. Parser.symbol "!"
+                |= rawKeywordParser
+                |= remainderParser
+            , Parser.succeed ToChannel
+                |. Parser.symbol "#"
+                |= rawKeywordParser
+                |= remainderParser
+            , Parser.succeed Link
+                |= (rawKeywordParser |> Parser.andThen urlParser)
+                |= remainderParser
+            ]
+        |. Parser.symbol ">"
+
+
+rawKeywordParser : Parser String
+rawKeywordParser =
+    Parser.chompWhile (\c -> c /= '|' && c /= '>')
+        |> Parser.getChompedString
+
+
+remainderParser : Parser (Maybe String)
+remainderParser =
+    Parser.oneOf
+        [ Parser.succeed Just
+            |. Parser.chompIf ((==) '|')
+            |= Parser.getChompedString (Parser.chompWhile ((/=) '>'))
+        , Parser.succeed Nothing
+        ]
+
+
+convertAngleCmd : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> AngleCmd -> String
+convertAngleCmd convs users angleCmd =
     let
         placeholderOr prefix ph func =
             case ph of
                 Just str ->
-                    -- Drop "|"
-                    prefix ++ String.dropLeft 1 str
+                    prefix ++ str
 
                 Nothing ->
                     prefix ++ func ()
     in
-    case submatches of
-        [ Just "@", Just userIdStr, ph ] ->
+    case angleCmd of
+        AtUser userIdStr ph ->
             -- XXX Link?
             placeholderOr "@" ph <|
                 \() ->
@@ -2524,7 +2608,19 @@ replaceAngleSyntax convs users { match, submatches } =
                         Nothing ->
                             userIdStr
 
-        [ Just "#", Just convIdStr, ph ] ->
+        AtEveryone ->
+            " **@everyone** "
+
+        AtHere ->
+            " **@here** "
+
+        AtChannel ->
+            " **@channel** "
+
+        OtherSpecial str ph ->
+            Maybe.withDefault str ph
+
+        ToChannel convIdStr ph ->
             -- XXX Link?
             placeholderOr "#" ph <|
                 \() ->
@@ -2535,32 +2631,5 @@ replaceAngleSyntax convs users { match, submatches } =
                         Nothing ->
                             convIdStr
 
-        [ Just "!", Just "everyone", _ ] ->
-            "@everyone"
-
-        [ Just "!", Just "here", _ ] ->
-            "@here"
-
-        [ Just "!", Just "channel", _ ] ->
-            "@channel"
-
-        [ Just "!", Just str, ph ] ->
-            -- XXX e.g. Date syntax
-            placeholderOr "" ph <| \() -> str
-
-        [ Nothing, Just urlStr, ph ] ->
-            case Url.fromString urlStr of
-                Just url ->
-                    "[" ++ (placeholderOr "" ph <| \() -> TextParser.shortenUrl url) ++ "](" ++ urlStr ++ ")"
-
-                Nothing ->
-                    placeholderOr "" ph <| \() -> urlStr
-
-        [ _, Just str, Nothing ] ->
-            str
-
-        [ _, _, Just str ] ->
-            str
-
-        _ ->
-            match
+        Link url ph ->
+            "[" ++ (placeholderOr "" ph <| \() -> TextParser.shortenUrl url) ++ "](" ++ Url.toString url ++ ")"

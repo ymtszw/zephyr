@@ -545,6 +545,9 @@ slackParseSuite =
             [ -- Currently we do not unescape HTML before markdown parser
               Paragraph "" [ Text "<pre>Escaped code block</pre><p><code>Escaped inline code</code></p>" ]
             ]
+        , testSlackParse "<@USLACKBOT> Hi!\n<!here> <!channel> Yo!\n<#CDUMMYID> You go here. A.k.a <#CDUMMYID|hell>."
+            [ Paragraph "" [ Text "@USLACKBOT Hi!\n@here @channel Yo!\n#CDUMMYID You go here. A.k.a #hell." ]
+            ]
         ]
 
 
