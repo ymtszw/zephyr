@@ -576,7 +576,7 @@ blockToEl block =
             breakP [] <| List.map inlineToEl inlines
 
         Block.CodeBlock codeOpts text ->
-            slackSnippetEl text
+            codeBlock [] { theme = aubergine, maxHeight = maxCodeBlockHeight, code = text }
 
         Block.Paragraph _ inlines ->
             breakP [] <| List.map inlineToEl inlines
@@ -594,6 +594,11 @@ blockToEl block =
 
         Block.Custom _ _ ->
             none
+
+
+maxCodeBlockHeight : Int
+maxCodeBlockHeight =
+    300
 
 
 listItemEl : ListBlock -> List (Block () ()) -> Element Msg
@@ -697,7 +702,7 @@ slackFileEl sf =
         column [ width fill, spacing spacingUnit ]
             [ case sf.preview of
                 Just preview ->
-                    slackSnippetEl preview
+                    codeBlock [] { theme = aubergine, maxHeight = maxCodeBlockHeight, code = preview }
 
                 Nothing ->
                     none
@@ -706,26 +711,6 @@ slackFileEl sf =
 
     else
         downloadFileEl aubergine sf.name sf.url_
-
-
-slackSnippetEl : String -> Element Msg
-slackSnippetEl preview =
-    breakP
-        [ width fill
-        , height (shrink |> maximum maxSnippetHeight)
-        , padding rectElementInnerPadding
-        , scrollbarY
-        , BD.rounded rectElementRound
-        , BG.color aubergine.sub
-        , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
-        ]
-        [ breakT preview
-        ]
-
-
-maxSnippetHeight : Int
-maxSnippetHeight =
-    300
 
 
 defaultItemEl : String -> Maybe Media -> Element Msg

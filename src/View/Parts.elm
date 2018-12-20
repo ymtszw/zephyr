@@ -1,6 +1,6 @@
 module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
-    , breakP, breakT, breakTColumn, collapsingColumn, inputScreen, dragHandle
+    , breakP, breakT, breakTColumn, collapsingColumn, codeBlock, inputScreen, dragHandle
     , scale12, cssRgba, brightness, setAlpha, manualStyle
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
@@ -19,7 +19,7 @@ module View.Parts exposing
 ## Helpers
 
 @docs noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
-@docs breakP, breakT, breakTColumn, collapsingColumn, inputScreen, dragHandle
+@docs breakP, breakT, breakTColumn, collapsingColumn, codeBlock, inputScreen, dragHandle
 @docs scale12, cssRgba, brightness, setAlpha, manualStyle
 
 
@@ -719,6 +719,25 @@ collapsingColumn attrs elements =
 
         _ ->
             column attrs elements
+
+
+codeBlock :
+    List (Attribute msg)
+    -> { theme : ColorTheme, maxHeight : Int, code : String }
+    -> Element msg
+codeBlock attrs opts =
+    let
+        baseAttrs =
+            [ width fill
+            , height (shrink |> maximum opts.maxHeight)
+            , padding rectElementInnerPadding
+            , scrollbarY
+            , BD.rounded rectElementRound
+            , BG.color opts.theme.sub
+            , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+            ]
+    in
+    breakP (baseAttrs ++ attrs) [ breakT opts.code ]
 
 
 

@@ -323,16 +323,14 @@ payloadCellsEl entry =
 
 payloadCellEl : String -> Element Msg
 payloadCellEl raw =
-    breakP
-        [ width fill
-        , height (shrink |> maximum payloadCellMaxHeight)
-        , padding rectElementInnerPadding
-        , scrollbarY
-        , BG.color payloadCellBackground
-        , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+    codeBlock
+        [ BG.color payloadCellBackground
         , style "user-select" "all"
         ]
-        [ breakT raw ]
+        { theme = oneDark
+        , maxHeight = payloadCellMaxHeight
+        , code = raw
+        }
 
 
 payloadCellBackground : Color
