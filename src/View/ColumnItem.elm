@@ -562,11 +562,20 @@ blockToEl block =
             none
 
         Block.ThematicBreak ->
-            html (Html.hr [] [])
+            el
+                [ width fill
+                , BD.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                , BD.color aubergine.note
+                ]
+                none
 
         Block.Heading _ level inlines ->
-            -- TODO level
-            breakP [] <| List.map inlineToEl inlines
+            -- Headings in feeds would interfere overall visual, so not enlarging
+            breakP [] <|
+                [ el [ Font.bold ] <| text (String.repeat level "#")
+                , text " "
+                ]
+                    ++ List.map inlineToEl inlines
 
         Block.CodeBlock codeOpts text ->
             codeBlock [] { theme = aubergine, maxHeight = maxCodeBlockHeight, code = text }
@@ -579,8 +588,8 @@ blockToEl block =
                 List.map blockToEl blocks
 
         Block.List listOpts items ->
-            column [ width fill, padding rectElementInnerPadding ] <|
-                List.map (listItemEl listOpts) items
+            column [ width fill ] <|
+                List.indexedMap (listItemEl listOpts) items
 
         Block.PlainInlines inlines ->
             breakP [] <| List.map inlineToEl inlines
@@ -594,18 +603,58 @@ maxCodeBlockHeight =
     300
 
 
-listItemEl : ListBlock -> List (Block () ()) -> Element Msg
-listItemEl listOpts blocks =
+listItemEl : ListBlock -> Int -> List (Block () ()) -> Element Msg
+listItemEl listOpts index blocks =
     let
         pointSize =
             20
     in
-    row [ width fill ]
-        [ octiconEl [ width (px pointSize), alignLeft ]
-            { size = pointSize, color = aubergine.bd, shape = Octicons.chevronRight }
-        , column [ width fill ] <|
+    row [ width fill, spacing spacingUnit ]
+        [ listMarker listOpts index
+        , column [ width fill, alignTop ] <|
             List.map blockToEl blocks
         ]
+
+
+listMarker : ListBlock -> Int -> Element msg
+listMarker listOpts index =
+    let
+        listMarkerPaddingTop =
+            (baseFontSize - listMarkerSize) // 2
+    in
+    case listOpts.type_ of
+        Block.Unordered ->
+            el [ alignTop, paddingXY 0 listMarkerPaddingTop ] <|
+                case modBy 3 listOpts.indentLength of
+                    2 ->
+                        octiconEl [] { size = listMarkerSize, color = aubergine.text, shape = Octicons.primitiveDot }
+
+                    1 ->
+                        octiconEl [] { size = listMarkerSize, color = aubergine.text, shape = Octicons.primitiveSquare }
+
+                    zero ->
+                        octiconEl [] { size = listMarkerSize, color = aubergine.text, shape = Octicons.triangleRight }
+
+        Block.Ordered originIndex ->
+            let
+                displayedIndex =
+                    originIndex + index
+            in
+            el [ alignTop, paddingXY 0 listMarkerPaddingTop, style "user-select" "none" ] <|
+                case modBy 3 listOpts.indentLength of
+                    2 ->
+                        text (String.fromInt displayedIndex ++ ">")
+
+                    1 ->
+                        text (String.fromInt displayedIndex ++ ")")
+
+                    zero ->
+                        text (String.fromInt displayedIndex ++ ".")
+
+
+listMarkerSize : Int
+listMarkerSize =
+    scale12 -2
 
 
 inlineToEl : Inline () -> Element Msg
@@ -615,11 +664,16 @@ inlineToEl =
 
 slackAttachmentEl : Slack.Attachment -> Element Msg
 slackAttachmentEl a =
-    column [ width fill, spacingXY 0 spacingUnit ] <|
+    column [ width fill, height (shrink |> maximum maxSlackAttachmentHeight), spacingXY 0 spacingUnit, scrollbarY ] <|
         List.filterMap identity <|
             [ Maybe.map slackParagraph a.pretext
             , Just (slackAttachmentBodyEl a)
             ]
+
+
+maxSlackAttachmentHeight : Int
+maxSlackAttachmentHeight =
+    300
 
 
 slackAttachmentBodyEl : Slack.Attachment -> Element Msg
