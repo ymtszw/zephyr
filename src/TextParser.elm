@@ -150,6 +150,10 @@ applyCustomFormat customFormat inlines =
 
 
 {-| Convert URLs appearing in not-yet-linkified Text nodes.
+
+NOTE Tests had shown this function is not so performant ;<
+Better not use with Markdown.
+
 -}
 autoLinker : Bool -> List (Inline ()) -> List (Inline ())
 autoLinker enabled inlines =
