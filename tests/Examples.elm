@@ -500,6 +500,16 @@ slackParseSuite =
                 , Text " - Commit message here"
                 ]
             ]
+        , testSlackParse "*<https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55|8 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns|`#10_parse_markdowns`>*\n"
+            [ Paragraph ""
+                [ Emphasis 2
+                    [ Link "https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55" Nothing [ Text "8 new commits" ]
+                    , Text " pushed to "
+                    , Link "https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns" Nothing [ CodeInline "#10_parse_markdowns" ]
+                    ]
+                ]
+            , BlankLine ""
+            ]
         , testSlackParse """*<https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba|10 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/master|`master`>*
 <https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0|`0b5178c7`> - [#45] Slack Attachment texts
 <https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987|`528060db`> - [#45] Add suspicious data

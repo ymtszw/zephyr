@@ -2497,7 +2497,7 @@ preFormat convs users raw =
 
 angleSyntaxPattern : Regex
 angleSyntaxPattern =
-    Maybe.withDefault Regex.never (Regex.fromString "<([@#!])?([^@#!|]+)(\\|[^>]*)?>")
+    Maybe.withDefault Regex.never (Regex.fromString "<([@#!])?([^|]+)(\\|[^>]*)?>")
 
 
 replaceAngleSyntax : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Regex.Match -> String
