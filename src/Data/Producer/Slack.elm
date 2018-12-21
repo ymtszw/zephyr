@@ -1253,8 +1253,22 @@ apiMessageDecoder users bots convs convIdStr =
         apiAuthorDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.leakyList sFileDecoder) [])
-        (D.optionField "attachments" (D.leakyList attachmentDecoder) [])
+        (D.optionField "attachments" (D.leakyList (apiAttachmentDecoder convs users)) [])
         (D.succeed convIdStr)
+
+
+apiAttachmentDecoder : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Decoder Attachment
+apiAttachmentDecoder convs users =
+    D.map8 Attachment
+        (D.maybeField "pretext" (D.map (resolveAngleCmd convs users) D.string))
+        (D.maybeField "color" colorDecoder)
+        (D.maybe attachmentAuthorDecoder)
+        (D.maybe attachmentTitleDecoder)
+        -- `text` can be absent!!
+        (D.optionField "text" (D.map (resolveAngleCmd convs users) D.string) "")
+        (D.maybeField "image_url" D.url)
+        (D.maybeField "thumb_url" D.url)
+        (D.field "fallback" D.string)
 
 
 famDecoder : Decoder FAM
