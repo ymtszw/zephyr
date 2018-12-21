@@ -2,6 +2,7 @@ module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
     , breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
     , scale12, scaleByQuarter, cssRgba, brightness, setAlpha, manualStyle, gutteredConteinerAttrs
+    , strictContainer, fluidContainer
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
@@ -21,6 +22,7 @@ module View.Parts exposing
 @docs noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
 @docs breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
 @docs scale12, scaleByQuarter, cssRgba, brightness, setAlpha, manualStyle, gutteredConteinerAttrs
+@docs strictContainer, fluidContainer
 
 
 ## Elements
@@ -108,6 +110,26 @@ switchCursor enabled =
 
     else
         style "cursor" "default"
+
+
+strictContainer : Attribute msg
+strictContainer =
+    htmlAttribute (Html.Attributes.class strictContainerClassName)
+
+
+strictContainerClassName : String
+strictContainerClassName =
+    "strictContainer"
+
+
+fluidContainer : Attribute msg
+fluidContainer =
+    htmlAttribute (Html.Attributes.class fluidContainerClassName)
+
+
+fluidContainerClassName : String
+fluidContainerClassName =
+    "fluidContainer"
 
 
 borderFlash : Bool -> Attribute msg
@@ -1207,6 +1229,8 @@ manualStyle =
         , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
         , Html.text <| "@keyframes " ++ rotatingKeyframesName ++ "{from{transform:rotate(0turn);}to{transform:rotate(1turn);}}"
         , Html.text <| "@keyframes " ++ wiggleKeyframesName ++ "{" ++ wiggleKeyframes ++ "}"
+        , Html.text <| "." ++ strictContainerClassName ++ "{contain:paint style layout size;}"
+        , Html.text <| "." ++ fluidContainerClassName ++ "{contain:paint style layout;}"
         ]
 
 

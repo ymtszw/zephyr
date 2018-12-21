@@ -295,6 +295,7 @@ itemsEl theme tz cId items =
                 , paddingXY rectElementInnerPadding 0
                 , alignTop
                 , scrollbarY
+                , fluidContainer
                 ]
                     ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
 
