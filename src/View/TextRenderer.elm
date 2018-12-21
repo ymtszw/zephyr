@@ -118,7 +118,7 @@ listItemEl : RenderOptions -> ListBlock -> Int -> List (Block () ()) -> Element 
 listItemEl opts listOpts index blocks =
     row [ width fill, spacing spacingUnit, forceBreak ]
         [ lazy3 listMarker opts listOpts index
-        , column [ width fill, alignTop, forceBreak ] (renderImpl opts blocks [])
+        , breakP [ width fill, alignTop ] (renderImpl opts blocks [])
         ]
 
 
@@ -200,6 +200,7 @@ inlineToEls opts inline =
                         , label = i
                         }
             in
+            -- This is really ugly workaround; but elm-ui does not have inline <span>-equivalent
             List.map linkify <| List.concatMap (inlineToEls opts) inlines
 
         Image srcStr titleMaybe inlines ->

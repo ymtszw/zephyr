@@ -576,15 +576,19 @@ incrementTier (Scroll s) =
 
 scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
 scrollAttrs tagger (Scroll s) =
+    let
+        scrollHandler =
+            Html.Events.on "scroll" (D.succeed (tagger ScrollStart))
+    in
     case s.viewportStatus of
         Initial ->
-            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+            [ id s.id, scrollHandler ]
 
         AtTop _ ->
-            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+            [ id s.id, scrollHandler ]
 
         OffTheTop _ ->
-            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+            [ id s.id, scrollHandler ]
 
         Scrolling _ ->
             [ id s.id ]
