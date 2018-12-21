@@ -97,8 +97,8 @@ decoder : InitOptions -> Decoder a -> Decoder ( Scroll a, Cmd Msg )
 decoder opts itemDecoder =
     D.do (D.list itemDecoder) <|
         \list ->
-            -- Immediately requestAdjust, retrieving scene height from actually rendered node
-            D.succeed ( Scroll (initImpl opts list), requestAdjust opts.id opts.boundingHeight )
+            -- Immediately adjustParams, retrieving scene height from actually rendered node
+            D.succeed ( Scroll (initImpl opts list), adjustParams opts.id opts.boundingHeight )
 
 
 ratioToAmount : Float -> Float -> Int
@@ -106,8 +106,8 @@ ratioToAmount fillAmountF ratio =
     round (fillAmountF * ratio)
 
 
-requestAdjust : String -> Int -> Cmd Msg
-requestAdjust id boundingHeight =
+adjustParams : String -> Int -> Cmd Msg
+adjustParams id boundingHeight =
     Task.attempt
         (\res ->
             case res of
@@ -470,12 +470,12 @@ update msg (Scroll s) =
             )
 
         NewItem ->
-            ( Scroll s, requestAdjust s.id s.lastBoundingHeight )
+            ( Scroll s, adjustParams s.id s.lastBoundingHeight )
 
         LoadMore ->
             -- LoadMore is manually requested when auto adjusting is somewhat stopped/caught up
             -- Force adjusting and incrementing Tier
-            ( incrementTier (Scroll s), requestAdjust s.id s.lastBoundingHeight )
+            ( incrementTier (Scroll s), adjustParams s.id s.lastBoundingHeight )
 
         AdjustReq boundingHeight ->
             case s.viewportStatus of
@@ -484,7 +484,7 @@ update msg (Scroll s) =
 
                 _ ->
                     if boundingHeight /= s.lastBoundingHeight then
-                        ( Scroll s, requestAdjust s.id boundingHeight )
+                        ( Scroll s, adjustParams s.id boundingHeight )
 
                     else
                         ( Scroll s, Cmd.none )
