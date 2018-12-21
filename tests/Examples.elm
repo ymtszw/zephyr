@@ -6,7 +6,6 @@ import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.Producer.Slack as Slack exposing (ConversationType(..))
-import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import Dict
 import Element exposing (rgb255)
