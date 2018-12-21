@@ -42,6 +42,7 @@ columnAreaEl m =
         , Font.regular
         , htmlAttribute (Html.Attributes.id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
+        , fluidContainer
         ]
         (ColumnStore.mapForView (columnKeyEl m) m.columnStore)
 

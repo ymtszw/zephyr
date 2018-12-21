@@ -42,6 +42,7 @@ columnItemKeyEl theme tz closeItems =
                 , BD.widthEach { top = 0, bottom = columnItemBorderBottom, left = 0, right = 0 }
                 , BD.color theme.bd
                 , Font.size baseFontSize
+                , fluidContainer
                 ]
                 [ itemAvatarEl theme item
                 , itemContentsEl theme tz item items
