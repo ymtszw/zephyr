@@ -162,7 +162,7 @@ rotatingKeyframesName =
 
 wiggle : Attribute msg
 wiggle =
-    style "animation" <| "1s ease-in-out 0s 3 " ++ wiggleKeyframesName
+    style "animation" <| "1s ease-in-out 0s 10 " ++ wiggleKeyframesName
 
 
 wiggleKeyframesName : String
@@ -1221,6 +1221,7 @@ manualStyle =
     Html.node "style"
         []
         [ Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
+        , Html.text "*{scroll-behavior:smooth;}"
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}" -- Breakable inline texts
         , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}" -- Drag handle cursor
         , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style

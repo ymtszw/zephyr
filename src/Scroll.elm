@@ -558,7 +558,7 @@ calculateTierImpl vp (Scroll s) =
         viewportBottom =
             vp.viewport.y + vp.viewport.height
     in
-    if viewportBottom / vp.scene.height >= s.config.ascendThreshold then
+    if viewportBottom >= vp.scene.height then
         incrementTier (Scroll s)
 
     else
