@@ -2609,13 +2609,13 @@ convertAngleCmd convs users angleCmd =
                             userIdStr
 
         AtEveryone ->
-            " **@everyone** "
+            "@everyone"
 
         AtHere ->
-            " **@here** "
+            "@here"
 
         AtChannel ->
-            " **@channel** "
+            "@channel"
 
         OtherSpecial str ph ->
             Maybe.withDefault str ph
