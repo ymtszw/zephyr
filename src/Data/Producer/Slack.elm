@@ -2467,7 +2467,7 @@ parseOptions convs users =
     { markdown = True
     , autoLink = False
     , unescapeTags = True
-    , preFormat = Just (preFormat convs users)
+    , preFormat = Nothing
     , customInlineFormat = Just alterEmphasis
     }
 
@@ -2475,10 +2475,14 @@ parseOptions convs users =
 alterEmphasis : Inline () -> Inline ()
 alterEmphasis inline =
     case inline of
-        Emphasis _ inlines ->
+        Emphasis level inlines ->
             -- In Slack `*` is treated as level 2 and `_` as level 1, but this does not conform with CommonMark spec.
-            -- `*` is more commonly used, so forcing level 2 in order to keep visuals in-line with official Slack app.
-            Emphasis 2 inlines
+            -- Since `*` is more commonly used, we force level 2 in order to keep visuals in-line with official Slack app.
+            if level < 2 then
+                Emphasis 2 inlines
+
+            else
+                Emphasis level inlines
 
         _ ->
             inline
@@ -2489,9 +2493,12 @@ alterEmphasis inline =
   - Converts `<...>` special syntax into markdown (or plain text)
   - Resolves User/Channel ID to readable names
 
+At first this was meant to be executed as preFormat of TextParser,
+but instead, it should be used on message fetches.
+
 -}
-preFormat : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
-preFormat convs users raw =
+resolveAngleCmd : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
+resolveAngleCmd convs users raw =
     case Parser.run (angleSyntaxParser convs users) raw of
         Ok replaced ->
             replaced
