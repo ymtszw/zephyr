@@ -425,7 +425,6 @@ textParserSuite : Test
 textParserSuite =
     describe "TextParser"
         [ defaultParseSuite
-        , slackParseSuite
         , autoLinkerSuite
         , unescapeTagsSuite
         ]
@@ -483,76 +482,6 @@ testDefaultParse initial expected =
         \_ ->
             TextParser.parse TextParser.defaultOptions initial
                 |> Expect.equal (Parsed expected)
-
-
-slackParseSuite : Test
-slackParseSuite =
-    describe "parse with Slack options"
-        [ testSlackParse "*<https://github.com/ymtsze/zephyr/commit/sha01234|1 new commit> pushed to <https://github.com/ymtsze/zephyr/tree/master|`master`>*\n<https://github.com/ymtsze/zephyr/commit/sha01234|`sha01234`> - Commit message here"
-            [ Paragraph ""
-                [ Emphasis 2
-                    [ Link "https://github.com/ymtsze/zephyr/commit/sha01234" Nothing [ Text "1 new commit" ]
-                    , Text " pushed to "
-                    , Link "https://github.com/ymtsze/zephyr/tree/master" Nothing [ CodeInline "master" ]
-                    ]
-                , Text "\n"
-                , Link "https://github.com/ymtsze/zephyr/commit/sha01234" Nothing [ CodeInline "sha01234" ]
-                , Text " - Commit message here"
-                ]
-            ]
-        , testSlackParse "*<https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55|8 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns|`#10_parse_markdowns`>*\n"
-            [ Paragraph ""
-                [ Emphasis 2
-                    [ Link "https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55" Nothing [ Text "8 new commits" ]
-                    , Text " pushed to "
-                    , Link "https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns" Nothing [ CodeInline "#10_parse_markdowns" ]
-                    ]
-                ]
-            , BlankLine ""
-            ]
-        , testSlackParse """*<https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba|10 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/master|`master`>*
-<https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0|`0b5178c7`> - [#45] Slack Attachment texts
-<https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987|`528060db`> - [#45] Add suspicious data
-<https://github.com/ymtszw/zephyr/commit/2897572a41a9353ff311c0bd73aa6a40a4c66006|`2897572a`> - [#45] Fix: handle attachment without text
-<https://github.com/ymtszw/zephyr/commit/6c424d41e3087567fc5187c3f98d27d67522805e|`6c424d41`> - [#45] Introduce debug entry point in leakyList
-<https://github.com/ymtszw/zephyr/commit/d69ae4c785e1795a95b55e6bdc3a58b4f3bf6684|`d69ae4c7`> - [#45] Style: remove static icon background, only set if not URL is given
-<https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366|`086b224b`> - [#45] Rename messageToParagraph =&gt; collapsingParagraph since it
-<https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b|`8ced322c`> - [#45] Use fallback in attachment when other contents are unavailable"""
-            [ Paragraph ""
-                [ Emphasis 2
-                    [ Link "https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba" Nothing [ Text "10 new commits" ]
-                    , Text " pushed to "
-                    , Link "https://github.com/ymtszw/zephyr/tree/master" Nothing [ CodeInline "master" ]
-                    ]
-                , Text "\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0" Nothing [ CodeInline "0b5178c7" ]
-                , Text " - [#45] Slack Attachment texts\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987" Nothing [ CodeInline "528060db" ]
-                , Text " - [#45] Add suspicious data\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/2897572a41a9353ff311c0bd73aa6a40a4c66006" Nothing [ CodeInline "2897572a" ]
-                , Text " - [#45] Fix: handle attachment without text\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/6c424d41e3087567fc5187c3f98d27d67522805e" Nothing [ CodeInline "6c424d41" ]
-                , Text " - [#45] Introduce debug entry point in leakyList\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/d69ae4c785e1795a95b55e6bdc3a58b4f3bf6684" Nothing [ CodeInline "d69ae4c7" ]
-                , Text " - [#45] Style: remove static icon background, only set if not URL is given\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366" Nothing [ CodeInline "086b224b" ]
-                , Text " - [#45] Rename messageToParagraph => collapsingParagraph since it\n"
-                , Link "https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b" Nothing [ CodeInline "8ced322c" ]
-                , Text " - [#45] Use fallback in attachment when other contents are unavailable"
-                ]
-            ]
-        , testSlackParse "&lt;pre&gt;Escaped code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;Escaped |&gt; inline |&gt; code&lt;/code&gt;&lt;/p&gt;"
-            [ -- Currently we only support limited inline elements
-              Paragraph ""
-                [ Text "<pre>Escaped code block</pre><p>"
-                , HtmlInline "code" [] [ Text "Escaped |> inline |> code" ]
-                , Text "</p>"
-                ]
-            ]
-        , testSlackParse "<@USLACKBOT> Hi!\n<!here> <!channel> Yo!\n<#CDUMMYID> You go here. A.k.a <#CDUMMYID|hell>."
-            [ Paragraph "" [ Text "@USLACKBOT Hi!\n@here @channel Yo!\n#CDUMMYID You go here. A.k.a #hell." ]
-            ]
-        ]
 
 
 testSlackParse : String -> List (Block () ()) -> Test
@@ -833,7 +762,7 @@ slackSuite =
             (D.list (Slack.conversationDecoder Dict.empty))
         , testCodec "should decode/encode Message list"
             SlackTestData.conversationHistoryJson
-            (D.field "messages" (D.list (Slack.apiMessageDecoder Dict.empty Dict.empty "CDUMMYID")))
+            (D.field "messages" (D.list (Slack.apiMessageDecoder Dict.empty Dict.empty Dict.empty "CDUMMYID")))
             (E.list Slack.encodeMessage)
             (D.list Slack.messageDecoder)
         , testCodec "should decode/encode Bot"
@@ -892,6 +821,48 @@ slackSuite =
             , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel False)) EQ
             , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel False)) LT
             ]
+        , describe "resolveAngleCmd"
+            [ testAngleCmd
+                (String.join "\n"
+                    [ "*<https://github.com/ymtsze/zephyr/commit/sha01234|1 new commit> pushed to <https://github.com/ymtsze/zephyr/tree/master|`master`>*"
+                    , "<https://github.com/ymtsze/zephyr/commit/sha01234|`sha01234`> - Commit message here"
+                    ]
+                )
+                (String.join "\n"
+                    [ "*[1 new commit](https://github.com/ymtsze/zephyr/commit/sha01234) pushed to [`master`](https://github.com/ymtsze/zephyr/tree/master)*"
+                    , "[`sha01234`](https://github.com/ymtsze/zephyr/commit/sha01234) - Commit message here"
+                    ]
+                )
+            , testAngleCmd
+                "*<https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55|8 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns|`#10_parse_markdowns`>*\n"
+                "*[8 new commits](https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55) pushed to [`#10_parse_markdowns`](https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns)*\n"
+            , testAngleCmd
+                (String.join "\n"
+                    [ "*<https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba|10 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/master|`master`>*"
+                    , "<https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0|`0b5178c7`> - [#45] Slack Attachment texts"
+                    , "<https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987|`528060db`> - [#45] Add suspicious data"
+                    , "<https://github.com/ymtszw/zephyr/commit/2897572a41a9353ff311c0bd73aa6a40a4c66006|`2897572a`> - [#45] Fix: handle attachment without text"
+                    , "<https://github.com/ymtszw/zephyr/commit/6c424d41e3087567fc5187c3f98d27d67522805e|`6c424d41`> - [#45] Introduce debug entry point in leakyList"
+                    , "<https://github.com/ymtszw/zephyr/commit/d69ae4c785e1795a95b55e6bdc3a58b4f3bf6684|`d69ae4c7`> - [#45] Style: remove static icon background, only set if not URL is given"
+                    , "<https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366|`086b224b`> - [#45] Rename messageToParagraph =&gt; collapsingParagraph since it"
+                    , "<https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b|`8ced322c`> - [#45] Use fallback in attachment when other contents are unavailable"
+                    ]
+                )
+                (String.join "\n"
+                    [ "*[10 new commits](https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba) pushed to [`master`](https://github.com/ymtszw/zephyr/tree/master)*"
+                    , "[`0b5178c7`](https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0) - [#45] Slack Attachment texts"
+                    , "[`528060db`](https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987) - [#45] Add suspicious data"
+                    , "[`2897572a`](https://github.com/ymtszw/zephyr/commit/2897572a41a9353ff311c0bd73aa6a40a4c66006) - [#45] Fix: handle attachment without text"
+                    , "[`6c424d41`](https://github.com/ymtszw/zephyr/commit/6c424d41e3087567fc5187c3f98d27d67522805e) - [#45] Introduce debug entry point in leakyList"
+                    , "[`d69ae4c7`](https://github.com/ymtszw/zephyr/commit/d69ae4c785e1795a95b55e6bdc3a58b4f3bf6684) - [#45] Style: remove static icon background, only set if not URL is given"
+                    , "[`086b224b`](https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366) - [#45] Rename messageToParagraph =&gt; collapsingParagraph since it"
+                    , "[`8ced322c`](https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b) - [#45] Use fallback in attachment when other contents are unavailable"
+                    ]
+                )
+            , testAngleCmd
+                "<@USLACKBOT> Hi!\n<!here> <!channel> Yo!\n<#CDUMMYID> You go here. A.k.a <#CDUMMYID|hell>."
+                "@USLACKBOT Hi!\n@here @channel Yo!\n#CDUMMYID You go here. A.k.a #hell."
+            ]
         ]
 
 
@@ -917,3 +888,11 @@ testCompareConversation a b order =
     test ("'" ++ Debug.toString a ++ "' " ++ Debug.toString order ++ " '" ++ Debug.toString b ++ "'") <|
         \_ ->
             Slack.compareByMembersipThenName a b |> Expect.equal order
+
+
+testAngleCmd : String -> String -> Test
+testAngleCmd initial expected =
+    test ("should resolve angle cmds in: " ++ initial) <|
+        \_ ->
+            Slack.resolveAngleCmd Dict.empty Dict.empty initial
+                |> Expect.equal expected

@@ -7,7 +7,7 @@ module Data.Producer.Slack exposing
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-    , parseOptions
+    , parseOptions, resolveAngleCmd
     )
 
 {-| Producer for Slack workspaces.
@@ -23,7 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-@docs parseOptions
+@docs parseOptions, resolveAngleCmd
 
 -}
 
@@ -1210,8 +1210,13 @@ and also preparation for generalizing Message into common data structure (possib
 Note that BotAuthor must be filled later, since Bot dictionary may require initial fetching.
 
 -}
-apiMessageDecoder : POV -> ConversationIdStr -> Decoder Message
-apiMessageDecoder pov convIdStr =
+apiMessageDecoder :
+    Dict UserIdStr User
+    -> Dict BotIdStr Bot
+    -> Dict ConversationIdStr Conversation
+    -> ConversationIdStr
+    -> Decoder Message
+apiMessageDecoder users bots convs convIdStr =
     let
         stringToTsDecoder tsStr =
             case String.toFloat tsStr of
@@ -1226,7 +1231,7 @@ apiMessageDecoder pov convIdStr =
             D.oneOf
                 [ D.do (D.field "bot_id" botIdDecoder) <|
                     \(BotId botIdStr) ->
-                        case Dict.get botIdStr pov.bots of
+                        case Dict.get botIdStr bots of
                             Just bot ->
                                 D.succeed (BotAuthor bot)
 
@@ -1234,7 +1239,7 @@ apiMessageDecoder pov convIdStr =
                                 D.succeed (BotAuthorId (BotId botIdStr))
                 , D.do (D.field "user" userIdDecoder) <|
                     \(UserId userIdStr) ->
-                        case Dict.get userIdStr pov.users of
+                        case Dict.get userIdStr users of
                             Just user ->
                                 D.succeed (UserAuthor user)
 
@@ -1244,7 +1249,7 @@ apiMessageDecoder pov convIdStr =
     in
     D.map7 Message
         (D.field "ts" (D.andThen stringToTsDecoder D.string))
-        (D.field "text" (D.map (resolveAngleCmd pov.conversations pov.users) D.string))
+        (D.field "text" (D.map (resolveAngleCmd convs users) D.string))
         apiAuthorDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.leakyList sFileDecoder) [])
@@ -2236,7 +2241,7 @@ conversationHistoryTask pov convIdStr lrMaybe cursorIn =
             [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
-            D.field "messages" (D.leakyList (apiMessageDecoder pov convIdStr))
+            D.field "messages" (D.leakyList (apiMessageDecoder pov.users pov.bots pov.conversations convIdStr))
 
         url =
             endpoint "/conversations.history" Nothing
