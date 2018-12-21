@@ -1210,8 +1210,8 @@ and also preparation for generalizing Message into common data structure (possib
 Note that BotAuthor must be filled later, since Bot dictionary may require initial fetching.
 
 -}
-apiMessageDecoder : Dict UserIdStr User -> Dict BotIdStr Bot -> ConversationIdStr -> Decoder Message
-apiMessageDecoder users bots convIdStr =
+apiMessageDecoder : POV -> ConversationIdStr -> Decoder Message
+apiMessageDecoder pov convIdStr =
     let
         stringToTsDecoder tsStr =
             case String.toFloat tsStr of
@@ -1226,7 +1226,7 @@ apiMessageDecoder users bots convIdStr =
             D.oneOf
                 [ D.do (D.field "bot_id" botIdDecoder) <|
                     \(BotId botIdStr) ->
-                        case Dict.get botIdStr bots of
+                        case Dict.get botIdStr pov.bots of
                             Just bot ->
                                 D.succeed (BotAuthor bot)
 
@@ -1234,7 +1234,7 @@ apiMessageDecoder users bots convIdStr =
                                 D.succeed (BotAuthorId (BotId botIdStr))
                 , D.do (D.field "user" userIdDecoder) <|
                     \(UserId userIdStr) ->
-                        case Dict.get userIdStr users of
+                        case Dict.get userIdStr pov.users of
                             Just user ->
                                 D.succeed (UserAuthor user)
 
@@ -1244,7 +1244,7 @@ apiMessageDecoder users bots convIdStr =
     in
     D.map7 Message
         (D.field "ts" (D.andThen stringToTsDecoder D.string))
-        (D.field "text" D.string)
+        (D.field "text" (D.map (resolveAngleCmd pov.conversations pov.users) D.string))
         apiAuthorDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.leakyList sFileDecoder) [])
@@ -2236,7 +2236,7 @@ conversationHistoryTask pov convIdStr lrMaybe cursorIn =
             [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
-            D.field "messages" (D.leakyList (apiMessageDecoder pov.users pov.bots convIdStr))
+            D.field "messages" (D.leakyList (apiMessageDecoder pov convIdStr))
 
         url =
             endpoint "/conversations.history" Nothing
