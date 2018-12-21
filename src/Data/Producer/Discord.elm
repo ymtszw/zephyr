@@ -6,6 +6,7 @@ module Data.Producer.Discord exposing
     , Msg(..), reload, update
     , defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
     , getPov, compareByFetchStatus, compareByNames, channelFilter
+    , parseOptions
     )
 
 {-| Polling Producer for Discord.
@@ -24,6 +25,7 @@ full-privilege personal token for a Discord user. Discuss in private.
 @docs Msg, reload, update
 @docs defaultIconUrl, guildIconOrDefaultUrl, imageUrlWithFallback, imageUrlNoFallback
 @docs getPov, compareByFetchStatus, compareByNames, channelFilter
+@docs parseOptions
 
 -}
 
@@ -44,6 +46,7 @@ import Json.EncodeExtra as E
 import String
 import StringExtra
 import Task exposing (Task)
+import TextParser
 import Time exposing (Posix)
 import Url exposing (Url)
 import Worque
@@ -1640,3 +1643,17 @@ channelFilter filter c =
                 Nothing ->
                     False
            )
+
+
+
+-- Text Parser
+
+
+parseOptions : TextParser.ParseOptions
+parseOptions =
+    { markdown = True
+    , autoLink = True
+    , unescapeTags = False
+    , preFormat = Nothing
+    , customInlineFormat = Nothing
+    }
