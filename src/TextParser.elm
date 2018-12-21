@@ -22,7 +22,6 @@ import Markdown.Block as Block exposing (Block(..))
 import Markdown.Config
 import Markdown.Inline as Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser, Step(..))
-import Regex
 import Url exposing (Url)
 
 
