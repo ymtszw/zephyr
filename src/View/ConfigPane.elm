@@ -38,6 +38,7 @@ configPaneEl m =
             , BG.color (setAlpha 0.8 oneDark.bg)
             , Font.color oneDark.text
             , style "transition" "all 0.15s"
+            , strictContainer
             ]
 
         toggleAttrs =

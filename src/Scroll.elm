@@ -101,11 +101,6 @@ decoder opts itemDecoder =
             D.succeed ( Scroll (initImpl opts list), adjustParams opts.id opts.boundingHeight )
 
 
-ratioToAmount : Float -> Float -> Int
-ratioToAmount fillAmountF ratio =
-    round (fillAmountF * ratio)
-
-
 adjustParams : String -> Int -> Cmd Msg
 adjustParams id boundingHeight =
     Task.attempt
@@ -155,6 +150,11 @@ initImpl opts list =
         , minimumItemHeight = minimumItemHeightF
         }
     }
+
+
+ratioToAmount : Float -> Float -> Int
+ratioToAmount fillAmountF ratio =
+    round (fillAmountF * ratio)
 
 
 defaultOptions : { id : String, boundingHeight : Int, minimumItemHeight : Int } -> InitOptions
@@ -500,29 +500,15 @@ update msg (Scroll s) =
 
                 approxFillAmountF =
                     toFloat boundingHeight / approxAverageItemHeightF
-
-                targetBaseAmount =
-                    ratioToAmount approxFillAmountF s.config.baseRatio
-
-                ( nextBaseAmount, nextCmd ) =
-                    if targetBaseAmount >= s.baseAmount then
-                        ( targetBaseAmount, queryViewportWithDelay s.id )
-
-                    else
-                        -- In order to prevent baseAmount from becoming too low,
-                        -- we "creep" toward target amount by gradually reducing parameters (by a half of the diff at one time)
-                        ( s.baseAmount - max 1 ((s.baseAmount - targetBaseAmount) // 2)
-                        , adjustParams s.id boundingHeight
-                        )
             in
             ( Scroll
                 { s
                     | viewportStatus = AtTop vp
                     , lastBoundingHeight = boundingHeight
-                    , baseAmount = nextBaseAmount
+                    , baseAmount = ratioToAmount approxFillAmountF s.config.baseRatio
                     , tierAmount = ratioToAmount approxFillAmountF s.config.tierRatio
                 }
-            , nextCmd
+            , queryViewportWithDelay s.id
             )
 
 
@@ -558,7 +544,7 @@ calculateTierImpl vp (Scroll s) =
         viewportBottom =
             vp.viewport.y + vp.viewport.height
     in
-    if viewportBottom / vp.scene.height >= s.config.ascendThreshold then
+    if viewportBottom >= vp.scene.height then
         incrementTier (Scroll s)
 
     else
@@ -576,15 +562,19 @@ incrementTier (Scroll s) =
 
 scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
 scrollAttrs tagger (Scroll s) =
+    let
+        scrollHandler =
+            Html.Events.on "scroll" (D.succeed (tagger ScrollStart))
+    in
     case s.viewportStatus of
         Initial ->
-            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+            [ id s.id, scrollHandler ]
 
         AtTop _ ->
-            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+            [ id s.id, scrollHandler ]
 
         OffTheTop _ ->
-            [ id s.id, Html.Events.on "scroll" (D.succeed (tagger ScrollStart)) ]
+            [ id s.id, scrollHandler ]
 
         Scrolling _ ->
             [ id s.id ]

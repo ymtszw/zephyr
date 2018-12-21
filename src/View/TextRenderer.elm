@@ -8,6 +8,7 @@ import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
+import Element.Lazy exposing (..)
 import Html
 import Html.Attributes
 import Markdown.Block as Block exposing (Block(..), ListBlock)
@@ -92,7 +93,7 @@ renderImpl opts blocks acc =
         (List listOpts items) :: xs ->
             let
                 listItems =
-                    List.indexedMap (listItemEl opts listOpts) items
+                    List.indexedMap (lazy4 listItemEl opts listOpts) items
             in
             renderImpl opts xs (List.reverse listItems ++ acc)
 
@@ -116,8 +117,8 @@ renderImpl opts blocks acc =
 listItemEl : RenderOptions -> ListBlock -> Int -> List (Block () ()) -> Element msg
 listItemEl opts listOpts index blocks =
     row [ width fill, spacing spacingUnit, forceBreak ]
-        [ listMarker opts listOpts index
-        , column [ width fill, alignTop, forceBreak ] (renderImpl opts blocks [])
+        [ lazy3 listMarker opts listOpts index
+        , breakP [ width fill, alignTop ] (renderImpl opts blocks [])
         ]
 
 
@@ -199,6 +200,7 @@ inlineToEls opts inline =
                         , label = i
                         }
             in
+            -- This is really ugly workaround; but elm-ui does not have inline <span>-equivalent
             List.map linkify <| List.concatMap (inlineToEls opts) inlines
 
         Image srcStr titleMaybe inlines ->

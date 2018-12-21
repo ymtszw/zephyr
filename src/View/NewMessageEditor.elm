@@ -36,6 +36,7 @@ newMessageEditorEl theme ss fam c =
         , spacing spacingUnit
         , BD.color theme.bd
         , BD.widthEach { bottom = 2, left = 0, right = 0, top = 0 }
+        , fluidContainer
         ]
         [ row [ width fill, spacing spacingUnit, centerY, visible c.editorActive ]
             [ octiconEl [] { size = editorHeaderIconSize, color = defaultOcticonColor, shape = Octicons.pencil }
@@ -210,7 +211,7 @@ messageInputBaseEl attrs opts { buffer } =
                 editorFontSize * 16
 
         baseAttrs =
-            [ height (px heightPx)
+            [ style "height" (String.fromInt heightPx ++ "px") -- Improve performance by avoiding style recalculation
             , Font.size editorFontSize
             , Font.color fontColor
             , BG.color bgColor
@@ -220,6 +221,7 @@ messageInputBaseEl attrs opts { buffer } =
               else
                 onFocus (msgTagger (Column.EditorToggle True))
             , style "resize" "none"
+            , strictContainer
             ]
     in
     multilineInputEl (baseAttrs ++ attrs)

@@ -42,6 +42,7 @@ columnAreaEl m =
         , Font.regular
         , htmlAttribute (Html.Attributes.id columnAreaParentId)
         , htmlAttribute (Html.Events.on "dragend" (D.succeed DragEnd))
+        , fluidContainer
         ]
         (ColumnStore.mapForView (columnKeyEl m) m.columnStore)
 
@@ -295,6 +296,7 @@ itemsEl theme tz cId items =
                 , paddingXY rectElementInnerPadding 0
                 , alignTop
                 , scrollbarY
+                , fluidContainer
                 ]
                     ++ List.map htmlAttribute (Scroll.scrollAttrs (ColumnCtrl cId << Column.ScrollMsg) items)
 

@@ -2,6 +2,7 @@ module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
     , breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
     , scale12, scaleByQuarter, cssRgba, brightness, setAlpha, manualStyle, gutteredConteinerAttrs
+    , strictContainer, fluidContainer
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
@@ -21,6 +22,7 @@ module View.Parts exposing
 @docs noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
 @docs breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
 @docs scale12, scaleByQuarter, cssRgba, brightness, setAlpha, manualStyle, gutteredConteinerAttrs
+@docs strictContainer, fluidContainer
 
 
 ## Elements
@@ -110,6 +112,26 @@ switchCursor enabled =
         style "cursor" "default"
 
 
+strictContainer : Attribute msg
+strictContainer =
+    htmlAttribute (Html.Attributes.class strictContainerClassName)
+
+
+strictContainerClassName : String
+strictContainerClassName =
+    "strictContainer"
+
+
+fluidContainer : Attribute msg
+fluidContainer =
+    htmlAttribute (Html.Attributes.class fluidContainerClassName)
+
+
+fluidContainerClassName : String
+fluidContainerClassName =
+    "fluidContainer"
+
+
 borderFlash : Bool -> Attribute msg
 borderFlash doFlash =
     if doFlash then
@@ -140,7 +162,7 @@ rotatingKeyframesName =
 
 wiggle : Attribute msg
 wiggle =
-    style "animation" <| "1s ease-in-out 0s 3 " ++ wiggleKeyframesName
+    style "animation" <| "1s ease-in-out 0s 10 " ++ wiggleKeyframesName
 
 
 wiggleKeyframesName : String
@@ -1199,6 +1221,7 @@ manualStyle =
     Html.node "style"
         []
         [ Html.text "::-webkit-scrollbar{display:none;}" -- Hidden scrollbars
+        , Html.text "*{scroll-behavior:smooth;}"
         , Html.text <| "." ++ breakClassName ++ "{white-space:pre-wrap!important;word-break:break-all!important;}" -- Breakable inline texts
         , Html.text <| "." ++ dragHandleClassName ++ "{cursor:all-scroll;}" -- Drag handle cursor
         , Html.text ":focus{box-shadow:0px 0px 3px 3px rgb(103,123,196);outline:none;}" -- Manual focus style
@@ -1207,6 +1230,8 @@ manualStyle =
         , Html.text <| "@keyframes " ++ borderFlashKeyframesName ++ "{from{border-color:rgb(220,221,222);}to{border-color:inherit;}}"
         , Html.text <| "@keyframes " ++ rotatingKeyframesName ++ "{from{transform:rotate(0turn);}to{transform:rotate(1turn);}}"
         , Html.text <| "@keyframes " ++ wiggleKeyframesName ++ "{" ++ wiggleKeyframes ++ "}"
+        , Html.text <| "." ++ strictContainerClassName ++ "{contain:paint style layout size;}"
+        , Html.text <| "." ++ fluidContainerClassName ++ "{contain:paint style layout;}"
         ]
 
 
