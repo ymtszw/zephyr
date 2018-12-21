@@ -7,7 +7,6 @@ import Data.Item exposing (Item(..), extIsImage, extIsVideo, mimeIsImage, mimeIs
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Data.TextRenderer
 import Dict
 import Element exposing (..)
 import Element.Background as BG
@@ -24,6 +23,7 @@ import Time
 import TimeExtra
 import Url
 import View.Parts exposing (..)
+import View.TextRenderer as TextRenderer
 
 
 columnItemKeyEl : ColorTheme -> Time.Zone -> List ColumnItem -> ( String, Element Msg )
@@ -44,7 +44,7 @@ columnItemKeyEl theme tz closeItems =
                 , Font.size baseFontSize
                 ]
                 [ itemAvatarEl theme item
-                , itemContentsEl tz item items
+                , itemContentsEl theme tz item items
                 ]
                 |> Tuple.pair (columnItemKey reversed)
 
@@ -169,8 +169,8 @@ octiconAvatarEl theme shape =
         }
 
 
-itemContentsEl : Time.Zone -> ColumnItem -> List ColumnItem -> Element Msg
-itemContentsEl tz item closeItems =
+itemContentsEl : ColorTheme -> Time.Zone -> ColumnItem -> List ColumnItem -> Element Msg
+itemContentsEl theme tz item closeItems =
     case item of
         Product offset (DiscordItem discordMessage) ->
             let
@@ -201,10 +201,10 @@ itemContentsEl tz item closeItems =
                 |> slackMessageEl tz ( slackMessage, offset )
 
         System _ { message, mediaMaybe } ->
-            defaultItemEl message mediaMaybe
+            defaultItemEl theme message mediaMaybe
 
         LocalMessage _ { message } ->
-            defaultItemEl message Nothing
+            defaultItemEl theme message Nothing
 
 
 discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
@@ -252,26 +252,47 @@ timestampFontColor =
 
 
 discordMessageBodyEl : Discord.Message -> Element Msg
-discordMessageBodyEl discordMessage =
-    column [ spacingXY 0 5, width fill ]
-        [ collapsingParagraph oneDark discordMessage.content
-        , collapsingColumn [ width fill, spacing 5 ] <| List.map discordEmbedEl discordMessage.embeds
-        , collapsingColumn [ width fill, spacing 5 ] <| List.map discordAttachmentEl discordMessage.attachments
-        ]
+discordMessageBodyEl m =
+    let
+        embeds =
+            [ collapsingColumn [ width fill, spacing spacingUnit ] <| List.map discordEmbedEl m.embeds
+            , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map discordAttachmentEl m.attachments
+            ]
+    in
+    column [ width fill, spacing spacingUnit ] (discordParagraphs maxMediaWidth m.content ++ embeds)
+
+
+discordParagraphs : Int -> String -> List (Element Msg)
+discordParagraphs mediaWidth text =
+    -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
+    TextRenderer.render
+        { theme = oneDark
+        , fontSize = baseFontSize
+        , maxMediaWidth = mediaWidth
+        , parsed = TextParser.parse Discord.parseOptions text
+        }
 
 
 discordEmbedEl : Discord.Embed -> Element Msg
 discordEmbedEl embed =
-    [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
-    , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
-    , embed.description |> Maybe.map (collapsingParagraph oneDark)
-    ]
-        |> List.filterMap identity
-        |> breakTColumn
-            [ width fill
-            , spacing 5
-            ]
-        |> discordSmartThumbnailEl embed
+    let
+        embedDescParagraphs =
+            case embed.description of
+                Just desc ->
+                    discordParagraphs maxEmbeddedMediaWidth desc
+
+                Nothing ->
+                    []
+
+        embedHeaders =
+            List.filterMap identity
+                [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
+                , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
+                ]
+    in
+    discordSmartThumbnailEl embed <|
+        breakTColumn [ width fill, spacing spacingUnit ] <|
+            (embedHeaders ++ embedDescParagraphs)
 
 
 maxEmbeddedMediaWidth : Int
@@ -317,15 +338,6 @@ embedTitleEl theme urlMaybe title =
 discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
 discordSmartThumbnailEl embed element =
     let
-        wrapperAttrs =
-            [ padding rectElementInnerPadding
-            , spacing spacingUnit
-            , BG.color (brightness -1 oneDark.main)
-            , BD.color (Maybe.withDefault oneDark.bg embed.color)
-            , BD.widthEach { left = gutterWidth, top = 0, right = 0, bottom = 0 }
-            , BD.rounded embedRound
-            ]
-
         linkUrlMaybe =
             case ( embed.video, embed.url ) of
                 ( Just ev, _ ) ->
@@ -339,7 +351,7 @@ discordSmartThumbnailEl embed element =
             -- Assuming embed.video always comes with embed.thumbnail
             -- TODO load embedded players on click
             if iconLike embedImage.width embedImage.height then
-                column wrapperAttrs
+                column (gutteredEmbedAttrs oneDark embed.color)
                     [ row [ width fill, spacing 5 ]
                         [ element
                         , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailSize linkUrlMaybe embedImage
@@ -348,27 +360,17 @@ discordSmartThumbnailEl embed element =
                     ]
 
             else
-                column wrapperAttrs
+                column (gutteredEmbedAttrs oneDark embed.color)
                     [ element
                     , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe embedImage
                     , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
                     ]
 
         Nothing ->
-            column wrapperAttrs
+            column (gutteredEmbedAttrs oneDark embed.color)
                 [ element
                 , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
                 ]
-
-
-gutterWidth : Int
-gutterWidth =
-    4
-
-
-embedRound : Int
-embedRound =
-    3
 
 
 iconLike : Maybe Int -> Maybe Int -> Bool
@@ -384,6 +386,19 @@ iconLike widthMaybe heightMaybe =
 maxThumbnailSize : Int
 maxThumbnailSize =
     60
+
+
+gutteredEmbedAttrs : ColorTheme -> Maybe Color -> List (Attribute msg)
+gutteredEmbedAttrs theme color =
+    gutteredConteinerAttrs theme color
+        ++ [ height (shrink |> maximum maxEmbedBlockHeight)
+           , scrollbarY
+           ]
+
+
+maxEmbedBlockHeight : Int
+maxEmbedBlockHeight =
+    400
 
 
 discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
@@ -430,11 +445,11 @@ urlWithDimensionQuery ( queryWidth, queryHeight ) src =
 discordAttachmentEl : Discord.Attachment -> Element Msg
 discordAttachmentEl attachment =
     if extIsImage attachment.proxyUrl.path then
-        newTabLink []
-            { url = Url.toString attachment.url
-            , label =
-                imageEl attachment.filename <|
-                    addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
+        imageEl
+            { src = addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
+            , description = attachment.filename
+            , link = Just attachment.url
+            , maxWidth = maxMediaWidth
             }
 
     else if extIsVideo attachment.proxyUrl.path then
@@ -500,8 +515,8 @@ downloadIconSize =
 slackMessageEl : Time.Zone -> ( Slack.Message, Offset ) -> List ( Slack.Message, Offset ) -> Element Msg
 slackMessageEl tz ( m, _ ) closeMessages =
     column [ width fill, spacing spacingUnit, alignTop ] <|
-        (::) (slackMessageHeaderEl tz m) <|
-            List.map slackMessageBodyEl <|
+        (::) (lazy2 slackMessageHeaderEl tz m) <|
+            List.map (lazy slackMessageBodyEl) <|
                 (m :: List.map Tuple.first closeMessages)
 
 
@@ -538,246 +553,28 @@ slackMessageHeaderEl tz m =
 
 slackMessageBodyEl : Slack.Message -> Element Msg
 slackMessageBodyEl m =
-    column [ width fill, spacingXY 0 spacingUnit ]
-        [ lazy slackParagraph m.text
-        , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackAttachmentEl m.attachments
-        , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map slackFileEl m.files
-        ]
-
-
-slackParagraph : String -> Element Msg
-slackParagraph raw =
     let
-        (Parsed blocks) =
-            TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) raw
+        mainParagraphs =
+            slackParagraphs maxMediaWidth m.text
+
+        attachments =
+            List.concatMap slackAttachmentEls m.attachments
+
+        sFiles =
+            List.map slackFileEl m.files
     in
-    collapsingColumn [ width fill, spacing spacingUnit ] <|
-        List.map blockToEl blocks
+    collapsingColumn [ width fill, spacing spacingUnit ] (mainParagraphs ++ attachments ++ sFiles)
 
 
-blockToEl : Block () () -> Element Msg
-blockToEl block =
-    case block of
-        Block.BlankLine _ ->
-            none
-
-        Block.ThematicBreak ->
-            el [ width fill, BD.widthXY 0 1, BD.color aubergine.bd ] none
-
-        Block.Heading _ level inlines ->
-            -- Headings in feeds would interfere overall visual, so not enlarging
-            breakP [] <|
-                [ el [ Font.bold ] (text (String.repeat level "#")), text " " ]
-                    ++ List.concatMap inlineToEls inlines
-
-        Block.CodeBlock codeOpts text ->
-            codeBlock [] { theme = aubergine, maxHeight = maxCodeBlockHeight, code = text }
-
-        Block.Paragraph _ inlines ->
-            breakP [] <| List.concatMap inlineToEls inlines
-
-        Block.BlockQuote blocks ->
-            column (gutteredConteinerAttrs aubergine Nothing) (List.map blockToEl blocks)
-
-        Block.List listOpts items ->
-            column [ width fill ] <|
-                List.indexedMap (listItemEl listOpts) items
-
-        Block.PlainInlines inlines ->
-            breakP [] <| List.concatMap inlineToEls inlines
-
-        Block.Custom _ _ ->
-            none
-
-
-maxCodeBlockHeight : Int
-maxCodeBlockHeight =
-    300
-
-
-listItemEl : ListBlock -> Int -> List (Block () ()) -> Element Msg
-listItemEl listOpts index blocks =
-    let
-        pointSize =
-            20
-    in
-    row [ width fill, spacing spacingUnit ]
-        [ listMarker listOpts index
-        , column [ width fill, alignTop ] <|
-            List.map blockToEl blocks
-        ]
-
-
-listMarker : ListBlock -> Int -> Element msg
-listMarker listOpts index =
-    let
-        listMarkerPaddingTop =
-            (baseFontSize - listMarkerSize) // 2
-    in
-    case listOpts.type_ of
-        Block.Unordered ->
-            el [ alignTop, paddingXY 0 listMarkerPaddingTop ] <|
-                case modBy 3 listOpts.indentLength of
-                    2 ->
-                        octiconEl [] { size = listMarkerSize, color = aubergine.text, shape = Octicons.primitiveDot }
-
-                    1 ->
-                        octiconEl [] { size = listMarkerSize, color = aubergine.text, shape = Octicons.primitiveSquare }
-
-                    zero ->
-                        octiconEl [] { size = listMarkerSize, color = aubergine.text, shape = Octicons.triangleRight }
-
-        Block.Ordered originIndex ->
-            let
-                displayedIndex =
-                    originIndex + index
-            in
-            el [ alignTop, paddingXY 0 listMarkerPaddingTop, style "user-select" "none" ] <|
-                case modBy 3 listOpts.indentLength of
-                    2 ->
-                        text (String.fromInt displayedIndex ++ ">")
-
-                    1 ->
-                        text (String.fromInt displayedIndex ++ ")")
-
-                    zero ->
-                        text (String.fromInt displayedIndex ++ ".")
-
-
-listMarkerSize : Int
-listMarkerSize =
-    scale12 -2
-
-
-inlineToEls : Inline () -> List (Element Msg)
-inlineToEls inline =
-    case inline of
-        Inline.Text s ->
-            [ breakT s ]
-
-        Inline.HardLineBreak ->
-            [ html (Html.br [] []) ]
-
-        Inline.CodeInline c ->
-            [ codeInline [] { theme = aubergine, code = c } ]
-
-        Inline.Link urlStr titleMaybe inlines ->
-            let
-                linkify i =
-                    newTabLink
-                        [ Font.color aubergine.link
-                        , style "display" "inline"
-                        , forceBreak
-                        , case titleMaybe of
-                            Just title ->
-                                htmlAttribute (Html.Attributes.title title)
-
-                            Nothing ->
-                                noneAttr
-                        ]
-                        { url = urlStr
-                        , label = i
-                        }
-            in
-            List.map linkify <| List.concatMap inlineToEls inlines
-
-        Inline.Image srcStr titleMaybe inlines ->
-            [ image [ width (shrink |> maximum maxEmbeddedMediaWidth) ]
-                { src = srcStr
-                , description =
-                    case titleMaybe of
-                        Just title ->
-                            title
-
-                        Nothing ->
-                            Inline.extractText inlines
-                }
-            ]
-
-        Inline.HtmlInline "code" _ inlines ->
-            [ codeInline [] { theme = aubergine, code = Inline.extractText inlines } ]
-
-        Inline.HtmlInline tag attrs inlines ->
-            -- For now we ignore other HtmlInline and just dump them as inline texts
-            -- XXX Possibly support `<pre>` and lift them into CodeBlock?
-            [ text (Inline.extractText inlines) ]
-
-        Inline.Emphasis level inlines ->
-            if level < 2 then
-                List.map (el [ forceBreak, Font.italic ]) <| List.concatMap inlineToEls inlines
-
-            else
-                List.map (el [ forceBreak, Font.bold ]) <| List.concatMap inlineToEls inlines
-
-        Inline.Custom () _ ->
-            []
-
-
-slackAttachmentEl : Slack.Attachment -> Element Msg
-slackAttachmentEl a =
-    column [ width fill, height (shrink |> maximum maxSlackAttachmentHeight), spacingXY 0 spacingUnit, scrollbarY ] <|
-        List.filterMap identity <|
-            [ Maybe.map slackParagraph a.pretext
-            , Just (slackAttachmentBodyEl a)
-            ]
-
-
-maxSlackAttachmentHeight : Int
-maxSlackAttachmentHeight =
-    300
-
-
-slackAttachmentBodyEl : Slack.Attachment -> Element Msg
-slackAttachmentBodyEl a =
-    let
-        richContents =
-            List.filterMap identity <|
-                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
-                , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
-                , if String.isEmpty a.text then
-                    Nothing
-
-                  else
-                    Just (slackParagraph a.text)
-                ]
-
-        withImage upperContents =
-            case a.imageUrl of
-                Just imageUrl ->
-                    column (gutteredConteinerAttrs aubergine a.color)
-                        [ row [ width fill, spacing spacingUnit ] upperContents
-                        , embedImageEl maxEmbeddedMediaWidth a.imageUrl imageUrl
-                        ]
-
-                Nothing ->
-                    row (gutteredConteinerAttrs aubergine a.color) upperContents
-    in
-    withImage
-        [ column [ width fill, spacingXY 0 spacingUnit, alignTop ] <|
-            case richContents of
-                [] ->
-                    [ collapsingParagraph aubergine a.fallback ]
-
-                _ ->
-                    richContents
-        , case a.thumbUrl of
-            Just thumbUrl ->
-                el [ alignTop ] <| embedImageEl maxThumbnailSize (Maybe.andThen .link a.title) thumbUrl
-
-            Nothing ->
-                none
-        ]
-
-
-gutteredConteinerAttrs : ColorTheme -> Maybe Color -> List (Attribute Msg)
-gutteredConteinerAttrs theme gutterColor =
-    [ width fill
-    , padding rectElementInnerPadding
-    , spacing spacingUnit
-    , BD.color (Maybe.withDefault theme.bd gutterColor)
-    , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
-    , BD.rounded embedRound
-    ]
+slackParagraphs : Int -> String -> List (Element Msg)
+slackParagraphs mediaWidth raw =
+    -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
+    TextRenderer.render
+        { theme = aubergine
+        , fontSize = baseFontSize
+        , maxMediaWidth = mediaWidth
+        , parsed = TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) raw
+        }
 
 
 slackFileEl : Slack.SFile -> Element Msg
@@ -787,20 +584,22 @@ slackFileEl sf =
             url
     in
     if mimeIsImage sf.mimetype then
-        newTabLink []
-            { url = Url.toString sf.url_
-            , label = imageEl sf.name (Maybe.withDefault sf.url_ (Maybe.map thumb360Url sf.thumb360))
+        imageEl
+            { src = Maybe.withDefault sf.url_ (Maybe.map thumb360Url sf.thumb360)
+            , description = sf.name
+            , maxWidth = maxMediaWidth
+            , link = Just sf.url_
             }
 
     else if mimeIsVideo sf.mimetype then
-        lazy2 videoEl (Maybe.map thumb360Url sf.thumb360) sf.url_
+        videoEl (Maybe.map thumb360Url sf.thumb360) sf.url_
 
     else if sf.mode == Slack.Snippet || sf.mode == Slack.Post then
         -- XXX we show preview of Slack Post, but Post is preformatted HTML so we actually have to render it
         column [ width fill, spacing spacingUnit ]
             [ case sf.preview of
                 Just preview ->
-                    codeBlock [] { theme = aubergine, maxHeight = maxCodeBlockHeight, code = preview }
+                    codeBlock [] { theme = aubergine, maxHeight = columnCodeBlockMaxHeight, code = preview }
 
                 Nothing ->
                     none
@@ -811,50 +610,107 @@ slackFileEl sf =
         downloadFileEl aubergine sf.name sf.url_
 
 
-defaultItemEl : String -> Maybe Media -> Element Msg
-defaultItemEl message mediaMaybe =
-    case mediaMaybe of
-        Just media ->
-            textColumn [ spacingXY 0 10, width fill, alignTop ]
-                [ collapsingParagraph oneDark message
-                , mediaEl media
-                ]
+slackAttachmentEls : Slack.Attachment -> List (Element Msg)
+slackAttachmentEls a =
+    case a.pretext of
+        Just pretext ->
+            slackParagraphs maxMediaWidth pretext ++ [ slackAttachmentBodyEl a ]
 
         Nothing ->
-            el [ width fill, alignTop ] (collapsingParagraph oneDark message)
+            [ slackAttachmentBodyEl a ]
 
 
-collapsingParagraph : ColorTheme -> String -> Element Msg
-collapsingParagraph theme message =
+slackAttachmentBodyEl : Slack.Attachment -> Element Msg
+slackAttachmentBodyEl a =
+    let
+        headers =
+            List.filterMap identity <|
+                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
+                , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
+                ]
+
+        mainTexts =
+            if String.isEmpty a.text then
+                []
+
+            else
+                slackParagraphs maxEmbeddedMediaWidth a.text
+
+        withImageAndGutter upperContents =
+            case a.imageUrl of
+                Just imageUrl ->
+                    column (gutteredEmbedAttrs aubergine a.color)
+                        [ row [ width fill, spacing spacingUnit ] upperContents
+                        , embedImageEl maxEmbeddedMediaWidth a.imageUrl imageUrl
+                        ]
+
+                Nothing ->
+                    row (gutteredEmbedAttrs aubergine a.color) upperContents
+    in
+    withImageAndGutter
+        [ column [ width fill, spacing spacingUnit, alignTop ] <|
+            case headers ++ mainTexts of
+                [] ->
+                    -- XXX fallback should not have formatted text so it is technically better not to parse at all
+                    defaultParagraphs aubergine a.fallback
+
+                formatted ->
+                    formatted
+        , case a.thumbUrl of
+            Just thumbUrl ->
+                el [ alignTop ] <| embedImageEl maxThumbnailSize (Maybe.andThen .link a.title) thumbUrl
+
+            Nothing ->
+                none
+        ]
+
+
+defaultItemEl : ColorTheme -> String -> Maybe Media -> Element Msg
+defaultItemEl theme message mediaMaybe =
+    column [ width fill, spacing spacingUnit, alignTop ] <|
+        case mediaMaybe of
+            Just media ->
+                defaultParagraphs theme message ++ [ mediaEl media ]
+
+            Nothing ->
+                defaultParagraphs theme message
+
+
+defaultParagraphs : ColorTheme -> String -> List (Element Msg)
+defaultParagraphs theme message =
     if String.isEmpty message then
-        none
+        []
 
     else
-        nonEmptyParagraph theme message
-
-
-nonEmptyParagraph : ColorTheme -> String -> Element Msg
-nonEmptyParagraph theme message =
-    -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
-    message
-        |> Data.TextRenderer.default theme
-        |> List.map html
-        |> breakP []
+        -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
+        TextRenderer.render
+            { theme = theme
+            , fontSize = baseFontSize
+            , maxMediaWidth = maxMediaWidth
+            , parsed = TextParser.parse TextParser.defaultOptions message
+            }
 
 
 mediaEl : Media -> Element Msg
 mediaEl media =
     case media of
         Image url ->
-            imageEl "Image" url
+            imageEl
+                { description = "Image"
+                , src = url
+                , maxWidth = maxMediaWidth
+                , link = Just url
+                }
 
         Video url ->
             videoEl Nothing url
 
 
-imageEl : String -> Url.Url -> Element Msg
-imageEl desc url =
-    image [ width (fill |> maximum maxMediaWidth) ] { src = Url.toString url, description = desc }
+imageEl : { description : String, src : Url.Url, maxWidth : Int, link : Maybe Url.Url } -> Element Msg
+imageEl opts =
+    wrapWithLink opts.link <|
+        image [ width (fill |> maximum opts.maxWidth) ]
+            { src = Url.toString opts.src, description = opts.description }
 
 
 maxMediaWidth : Int
