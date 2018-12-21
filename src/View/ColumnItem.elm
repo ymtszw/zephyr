@@ -12,7 +12,7 @@ import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
 import Element.Font as Font
-import Element.Lazy exposing (lazy, lazy2)
+import Element.Lazy exposing (..)
 import Html
 import Html.Attributes exposing (title)
 import Markdown.Block as Block exposing (Block, ListBlock, ListType(..))
@@ -201,17 +201,17 @@ itemContentsEl theme tz item closeItems =
                 |> slackMessageEl tz ( slackMessage, offset )
 
         System _ { message, mediaMaybe } ->
-            defaultItemEl theme message mediaMaybe
+            lazy3 defaultItemEl theme message mediaMaybe
 
         LocalMessage _ { message } ->
-            defaultItemEl theme message Nothing
+            lazy3 defaultItemEl theme message Nothing
 
 
 discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
 discordMessageEl tz ( discordMessage, _ ) closeMessages =
     column [ width fill, spacing 5, alignTop ] <|
-        (::) (discordMessageHeaderEl tz discordMessage) <|
-            List.map discordMessageBodyEl <|
+        (::) (lazy2 discordMessageHeaderEl tz discordMessage) <|
+            List.map (lazy discordMessageBodyEl) <|
                 (::) discordMessage <|
                     List.map Tuple.first closeMessages
 
