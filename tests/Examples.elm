@@ -25,7 +25,7 @@ import SlackTestData
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
-import TextParser exposing (Parsed(..))
+import TextParser exposing (Parsed(..), parseOptions)
 import Time exposing (Posix)
 import TimeExtra exposing (po)
 
@@ -428,6 +428,7 @@ textParserSuite =
         [ defaultParseSuite
         , slackParseSuite
         , autoLinkerSuite
+        , unescapeTagsSuite
         ]
 
 
@@ -573,7 +574,7 @@ autoLinkerSuite =
             Link urlStr Nothing [ Text title ]
     in
     describe "autoLinker"
-        [ testAutoLinker "" []
+        [ testAutoLinker "" [ s "" ]
         , testAutoLinker " " [ s " " ]
         , testAutoLinker "foobar" [ s "foobar" ]
         , testAutoLinker " very long text with\t\n spaces in it " [ s " very long text with\t\n spaces in it " ]
@@ -614,16 +615,38 @@ testAutoLinker : String -> List (Inline ()) -> Test
 testAutoLinker initial expected =
     test ("should work for text: '" ++ initial ++ "'") <|
         \_ ->
-            let
-                onlyAutoLink =
-                    { markdown = False
-                    , autoLink = True
-                    , unescapeTags = False
-                    , preFormat = Nothing
-                    , customInlineFormat = Nothing
-                    }
-            in
-            TextParser.parse onlyAutoLink initial
+            TextParser.parse { parseOptions | autoLink = True } initial
+                |> Expect.equal (Parsed [ Paragraph "" expected ])
+
+
+unescapeTagsSuite : Test
+unescapeTagsSuite =
+    describe "unescapeTags"
+        [ testUnescapeTags "" [ Text "" ]
+        , testUnescapeTags "a" [ Text "a" ]
+        , testUnescapeTags "aa" [ Text "aa" ]
+        , testUnescapeTags "a&" [ Text "a&" ]
+        , testUnescapeTags "&a" [ Text "&a" ]
+        , testUnescapeTags "&&" [ Text "&&" ]
+        , testUnescapeTags "&gt;" [ Text ">" ]
+        , testUnescapeTags "&lt;" [ Text "<" ]
+        , testUnescapeTags "&amp;" [ Text "&amp;" ]
+        , testUnescapeTags "a&gt;" [ Text "a>" ]
+        , testUnescapeTags "&gt;a" [ Text ">a" ]
+        , testUnescapeTags "a&gt;a" [ Text "a>a" ]
+        , testUnescapeTags "&gta;" [ Text "&gta;" ]
+        , testUnescapeTags "&agt;" [ Text "&agt;" ]
+        , testUnescapeTags "&&gt;" [ Text "&>" ]
+        , testUnescapeTags "&gt;&" [ Text ">&" ]
+        , testUnescapeTags "&gt;&gt;" [ Text ">>" ]
+        ]
+
+
+testUnescapeTags : String -> List (Inline ()) -> Test
+testUnescapeTags initial expected =
+    test ("should work for text: '" ++ initial ++ "'") <|
+        \_ ->
+            TextParser.parse { parseOptions | unescapeTags = True } initial
                 |> Expect.equal (Parsed [ Paragraph "" expected ])
 
 

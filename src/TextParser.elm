@@ -1,5 +1,5 @@
 module TextParser exposing
-    ( Parsed(..), ParseOptions, parse, defaultOptions
+    ( Parsed(..), ParseOptions, parse, parseOptions, defaultOptions
     , shortenUrl
     )
 
@@ -13,7 +13,7 @@ Using pure-Elm Markdown parser: <https://package.elm-lang.org/packages/pablohira
 Therefore it is slower than other Markdown parser solutions,
 so you should consider parsing only once and storing `Parsed` IR for later uses.
 
-@docs Parsed, ParseOptions, parse, defaultOptions
+@docs Parsed, ParseOptions, parse, parseOptions, defaultOptions
 @docs shortenUrl
 
 -}
@@ -56,14 +56,19 @@ type alias ParseOptions =
     }
 
 
-defaultOptions : ParseOptions
-defaultOptions =
-    { markdown = True
-    , autoLink = True
+parseOptions : ParseOptions
+parseOptions =
+    { markdown = False
+    , autoLink = False
     , unescapeTags = False
     , preFormat = Nothing
     , customInlineFormat = Nothing
     }
+
+
+defaultOptions : ParseOptions
+defaultOptions =
+    { parseOptions | markdown = True, autoLink = True }
 
 
 parse : ParseOptions -> String -> Parsed
@@ -71,7 +76,7 @@ parse opts raw =
     let
         unescapeTags =
             if opts.unescapeTags then
-                Regex.replace escapedAnglesPattern replaceEscapedAngles
+                unescapeAngles
 
             else
                 identity
@@ -83,11 +88,11 @@ parse opts raw =
             else
                 [ Paragraph "" [ Text text ] ]
     in
-    Parsed <|
-        List.map (Block.walk (afterWalkBlock opts)) <|
-            parseAsMarkdown <|
-                unescapeTags <|
-                    Maybe.withDefault raw (Maybe.map ((|>) raw) opts.preFormat)
+    Maybe.withDefault raw (Maybe.map ((|>) raw) opts.preFormat)
+        |> unescapeTags
+        |> parseAsMarkdown
+        |> List.map (Block.walk (afterWalkBlock opts))
+        |> Parsed
 
 
 blockParseOptions : Maybe Markdown.Config.Options
@@ -105,22 +110,32 @@ blockParseOptions =
     Just { default | rawHtml = Markdown.Config.Sanitize sanitizeOpions }
 
 
-escapedAnglesPattern : Regex.Regex
-escapedAnglesPattern =
-    Maybe.withDefault Regex.never (Regex.fromString "&[lg]t;")
+
+-- Angles Unescaper
 
 
-replaceEscapedAngles : Regex.Match -> String
-replaceEscapedAngles { match } =
-    case match of
-        "&lt;" ->
-            "<"
+unescapeAngles : String -> String
+unescapeAngles raw =
+    let
+        parser =
+            Parser.loop [] <|
+                \acc ->
+                    Parser.oneOf
+                        [ Parser.end |> Parser.map (\() -> Parser.Done (List.foldl (++) "" acc))
+                        , ampedStringParser |> Parser.map (\s -> Parser.Loop (s :: acc))
+                        , Parser.chompUntilEndOr "&" |> Parser.mapChompedString (\chomped () -> Parser.Loop (chomped :: acc))
+                        ]
 
-        "&gt;" ->
-            ">"
-
-        _ ->
-            match
+        ampedStringParser =
+            Parser.oneOf
+                [ Parser.token "&gt;" |> Parser.map (always ">")
+                , Parser.token "&lt;" |> Parser.map (always "<")
+                , Parser.chompIf ((==) '&')
+                    |. Parser.chompUntilEndOr "&"
+                    |> Parser.mapChompedString (\chomped () -> chomped)
+                ]
+    in
+    Parser.run parser raw |> Result.withDefault raw
 
 
 afterWalkBlock : ParseOptions -> Block () () -> Block () ()
@@ -137,7 +152,6 @@ afterWalkBlock opts block =
             PlainInlines <| autoLinker opts.autoLink <| applyCustomFormat opts.customInlineFormat inlines
 
         _ ->
-            -- XXX check if walk reaches child nodes; doc says Block.walk "recursively" applies a function to blocks
             block
 
 
@@ -175,6 +189,9 @@ autoLinkerImpl inlines acc =
     case inlines of
         [] ->
             List.foldl compactify [] acc
+
+        (Text "") :: is ->
+            autoLinkerImpl is (Text "" :: acc)
 
         (Text raw) :: is ->
             case Parser.run parseIntoTextOrLinks raw of
