@@ -211,7 +211,7 @@ messageInputBaseEl attrs opts { buffer } =
                 editorFontSize * 16
 
         baseAttrs =
-            [ height (px heightPx)
+            [ style "height" (String.fromInt heightPx ++ "px") -- Improve performance by avoiding style recalculation
             , Font.size editorFontSize
             , Font.color fontColor
             , BG.color bgColor
