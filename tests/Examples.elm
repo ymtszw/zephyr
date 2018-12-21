@@ -541,9 +541,13 @@ slackParseSuite =
                 , Text " - [#45] Use fallback in attachment when other contents are unavailable"
                 ]
             ]
-        , testSlackParse "&lt;pre&gt;Escaped code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;Escaped inline code&lt;/code&gt;&lt;/p&gt;"
-            [ -- Currently we do not unescape HTML before markdown parser
-              Paragraph "" [ Text "<pre>Escaped code block</pre><p><code>Escaped inline code</code></p>" ]
+        , testSlackParse "&lt;pre&gt;Escaped code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;Escaped |&gt; inline |&gt; code&lt;/code&gt;&lt;/p&gt;"
+            [ -- Currently we only support limited inline elements
+              Paragraph ""
+                [ Text "<pre>Escaped code block</pre><p>"
+                , HtmlInline "code" [] [ Text "Escaped |> inline |> code" ]
+                , Text "</p>"
+                ]
             ]
         , testSlackParse "<@USLACKBOT> Hi!\n<!here> <!channel> Yo!\n<#CDUMMYID> You go here. A.k.a <#CDUMMYID|hell>."
             [ Paragraph "" [ Text "@USLACKBOT Hi!\n@here @channel Yo!\n#CDUMMYID You go here. A.k.a #hell." ]

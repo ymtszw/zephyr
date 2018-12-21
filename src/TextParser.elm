@@ -96,8 +96,13 @@ blockParseOptions =
         -- Apply custom HTML sanitization here
         default =
             Markdown.Config.defaultOptions
+
+        sanitizeOpions =
+            { allowedHtmlElements = [ "code" ]
+            , allowedHtmlAttributes = []
+            }
     in
-    Just default
+    Just { default | rawHtml = Markdown.Config.Sanitize sanitizeOpions }
 
 
 escapedAnglesPattern : Regex.Regex

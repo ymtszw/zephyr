@@ -2466,7 +2466,7 @@ parseOptions : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Tex
 parseOptions convs users =
     { markdown = True
     , autoLink = False
-    , unescapeTags = False
+    , unescapeTags = True
     , preFormat = Just (preFormat convs users)
     , customInlineFormat = Just alterEmphasis
     }
