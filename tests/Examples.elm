@@ -6,7 +6,6 @@ import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.Producer.Slack as Slack exposing (ConversationType(..))
-import Data.TextRenderer exposing (StringOrUrl(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import Dict
 import Element exposing (rgb255)
@@ -17,15 +16,17 @@ import Json.Decode as D exposing (Decoder)
 import Json.Encode as E exposing (Value)
 import Json.EncodeExtra as E
 import ListExtra
+import Markdown.Block exposing (Block(..), CodeBlock(..))
+import Markdown.Inline exposing (Inline(..))
 import Parser
 import SelectArray
 import SlackTestData
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
+import TextParser exposing (Parsed(..), parseOptions)
 import Time exposing (Posix)
 import TimeExtra exposing (po)
-import Url
 
 
 suite : Test
@@ -36,7 +37,7 @@ suite =
         , stringSuite
         , arraySuite
         , uniqueIdSuite
-        , textRendererSuite
+        , textParserSuite
         , filterSuite
         , fetchStatusSuite
         , discordSuite
@@ -417,58 +418,235 @@ seqGenImpl prefix howMany ( lastResult, accGenerator ) =
 
 
 
--- Data.TextRenderer
+-- TextParser
 
 
-textRendererSuite : Test
-textRendererSuite =
-    describe "Data.TextRenderer"
-        [ describe "parseIntoStringOrUrlList"
-            [ testParseIntoStringOrUrlList "" []
-            , testParseIntoStringOrUrlList " " [ S " " ]
-            , testParseIntoStringOrUrlList "foobar" [ S "foobar" ]
-            , testParseIntoStringOrUrlList " very long text with\t\n spaces in it " [ S " very long text with\t\n spaces in it " ]
-            , testParseIntoStringOrUrlList "text with unparsable http" [ S "text with unparsable http" ]
-            , testParseIntoStringOrUrlList "text with unparsable http http" [ S "text with unparsable http http" ]
-            , testParseIntoStringOrUrlList "http://example.com" [ U exampleCom ]
-            , testParseIntoStringOrUrlList "http://example.com http://example.com" [ U exampleCom, S " ", U exampleCom ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com" [ S "text with parsable ", U exampleCom ]
-            , testParseIntoStringOrUrlList "textdirectlyfollowedbyhttp://example.com" [ S "textdirectlyfollowedby", U exampleCom ]
-            , testParseIntoStringOrUrlList "textdirectlyfollowedbyhttp://example.comandnotdelimittedproperly"
-                [ S "textdirectlyfollowedby"
-                , U { exampleCom | host = "example.comandnotdelimittedproperly" }
+textParserSuite : Test
+textParserSuite =
+    describe "TextParser"
+        [ defaultParseSuite
+        , slackParseSuite
+        , autoLinkerSuite
+        , unescapeTagsSuite
+        ]
+
+
+defaultParseSuite : Test
+defaultParseSuite =
+    describe "parse"
+        [ testDefaultParse "" [ BlankLine "" ]
+        , testDefaultParse "plain text" [ Paragraph "" [ Text "plain text" ] ]
+        , testDefaultParse "*marked* __up__ `plain` ~text~"
+            [ Paragraph ""
+                [ Emphasis 1 [ Text "marked" ]
+                , Text " "
+                , Emphasis 2 [ Text "up" ]
+                , Text " "
+                , CodeInline "plain"
+                , Text " ~text~"
                 ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com !" [ S "text with parsable ", U exampleCom, S " !" ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com http://example.com !" [ S "text with parsable ", U exampleCom, S " ", U exampleCom, S " !" ]
-            , testParseIntoStringOrUrlList "text with parsable http://example.com and unparsable http !" [ S "text with parsable ", U exampleCom, S " and unparsable http !" ]
-            , testParseIntoStringOrUrlList "マルチバイト文字及びマルチバイトURLを含む http://example.com http://マルチバイト.jp"
-                [ S "マルチバイト文字及びマルチバイトURLを含む "
-                , U exampleCom
-                , S " "
-                , U { exampleCom | host = "マルチバイト.jp" }
+            ]
+        , testDefaultParse """
+# Heading 1
+Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+```lang
+type Fenced = Fenced Code
+```
+
+After blank line.
+Soft line break and [Link](https://example.com "example.com").
+"""
+            [ BlankLine ""
+            , Heading "" 1 [ Text "Heading 1" ]
+            , Paragraph "" [ Text "Some texts. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." ]
+            , CodeBlock (Fenced False { fenceChar = "`", fenceLength = 3, indentLength = 0, language = Just "lang" }) "type Fenced = Fenced Code\n"
+            , BlankLine ""
+            , Paragraph ""
+                [ Text "After blank line.\nSoft line break and "
+                , Link "https://example.com" (Just "example.com") [ Text "Link" ]
+                , Text "."
+                ]
+            , BlankLine ""
+            ]
+        , testDefaultParse "Plain link without markup. https://example.com"
+            [ Paragraph ""
+                [ Text "Plain link without markup. "
+                , Link "https://example.com" Nothing [ Text "example.com" ]
                 ]
             ]
         ]
 
 
-testParseIntoStringOrUrlList : String -> List StringOrUrl -> Test
-testParseIntoStringOrUrlList string expect =
-    test ("should work for text: '" ++ string ++ "'") <|
+testDefaultParse : String -> List (Block () ()) -> Test
+testDefaultParse initial expected =
+    test ("should parse: " ++ initial ++ "") <|
         \_ ->
-            string
-                |> Parser.run Data.TextRenderer.parseIntoStringOrUrlList
-                |> Expect.equal (Ok expect)
+            TextParser.parse TextParser.defaultOptions initial
+                |> Expect.equal (Parsed expected)
 
 
-exampleCom : Url.Url
-exampleCom =
-    { protocol = Url.Http
-    , host = "example.com"
-    , port_ = Nothing
-    , path = "/"
-    , fragment = Nothing
-    , query = Nothing
-    }
+slackParseSuite : Test
+slackParseSuite =
+    describe "parse with Slack options"
+        [ testSlackParse "*<https://github.com/ymtsze/zephyr/commit/sha01234|1 new commit> pushed to <https://github.com/ymtsze/zephyr/tree/master|`master`>*\n<https://github.com/ymtsze/zephyr/commit/sha01234|`sha01234`> - Commit message here"
+            [ Paragraph ""
+                [ Emphasis 2
+                    [ Link "https://github.com/ymtsze/zephyr/commit/sha01234" Nothing [ Text "1 new commit" ]
+                    , Text " pushed to "
+                    , Link "https://github.com/ymtsze/zephyr/tree/master" Nothing [ CodeInline "master" ]
+                    ]
+                , Text "\n"
+                , Link "https://github.com/ymtsze/zephyr/commit/sha01234" Nothing [ CodeInline "sha01234" ]
+                , Text " - Commit message here"
+                ]
+            ]
+        , testSlackParse "*<https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55|8 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns|`#10_parse_markdowns`>*\n"
+            [ Paragraph ""
+                [ Emphasis 2
+                    [ Link "https://github.com/ymtszw/zephyr/compare/a6d8e0918188...86e82fd07d55" Nothing [ Text "8 new commits" ]
+                    , Text " pushed to "
+                    , Link "https://github.com/ymtszw/zephyr/tree/#10_parse_markdowns" Nothing [ CodeInline "#10_parse_markdowns" ]
+                    ]
+                ]
+            , BlankLine ""
+            ]
+        , testSlackParse """*<https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba|10 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/master|`master`>*
+<https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0|`0b5178c7`> - [#45] Slack Attachment texts
+<https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987|`528060db`> - [#45] Add suspicious data
+<https://github.com/ymtszw/zephyr/commit/2897572a41a9353ff311c0bd73aa6a40a4c66006|`2897572a`> - [#45] Fix: handle attachment without text
+<https://github.com/ymtszw/zephyr/commit/6c424d41e3087567fc5187c3f98d27d67522805e|`6c424d41`> - [#45] Introduce debug entry point in leakyList
+<https://github.com/ymtszw/zephyr/commit/d69ae4c785e1795a95b55e6bdc3a58b4f3bf6684|`d69ae4c7`> - [#45] Style: remove static icon background, only set if not URL is given
+<https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366|`086b224b`> - [#45] Rename messageToParagraph =&gt; collapsingParagraph since it
+<https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b|`8ced322c`> - [#45] Use fallback in attachment when other contents are unavailable"""
+            [ Paragraph ""
+                [ Emphasis 2
+                    [ Link "https://github.com/ymtszw/zephyr/compare/03298394604b...16bc78e06fba" Nothing [ Text "10 new commits" ]
+                    , Text " pushed to "
+                    , Link "https://github.com/ymtszw/zephyr/tree/master" Nothing [ CodeInline "master" ]
+                    ]
+                , Text "\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/0b5178c7e80d8e7cc36041fd74f34eff7ce289d0" Nothing [ CodeInline "0b5178c7" ]
+                , Text " - [#45] Slack Attachment texts\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/528060db6c041bd16f160a39e8ca4e86a0e81987" Nothing [ CodeInline "528060db" ]
+                , Text " - [#45] Add suspicious data\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/2897572a41a9353ff311c0bd73aa6a40a4c66006" Nothing [ CodeInline "2897572a" ]
+                , Text " - [#45] Fix: handle attachment without text\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/6c424d41e3087567fc5187c3f98d27d67522805e" Nothing [ CodeInline "6c424d41" ]
+                , Text " - [#45] Introduce debug entry point in leakyList\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/d69ae4c785e1795a95b55e6bdc3a58b4f3bf6684" Nothing [ CodeInline "d69ae4c7" ]
+                , Text " - [#45] Style: remove static icon background, only set if not URL is given\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/086b224beed236487722c4d6748e9a3017b75366" Nothing [ CodeInline "086b224b" ]
+                , Text " - [#45] Rename messageToParagraph => collapsingParagraph since it\n"
+                , Link "https://github.com/ymtszw/zephyr/commit/8ced322c0e026e8f8fb0863c2a105df57701300b" Nothing [ CodeInline "8ced322c" ]
+                , Text " - [#45] Use fallback in attachment when other contents are unavailable"
+                ]
+            ]
+        , testSlackParse "&lt;pre&gt;Escaped code block&lt;/pre&gt;&lt;p&gt;&lt;code&gt;Escaped |&gt; inline |&gt; code&lt;/code&gt;&lt;/p&gt;"
+            [ -- Currently we only support limited inline elements
+              Paragraph ""
+                [ Text "<pre>Escaped code block</pre><p>"
+                , HtmlInline "code" [] [ Text "Escaped |> inline |> code" ]
+                , Text "</p>"
+                ]
+            ]
+        , testSlackParse "<@USLACKBOT> Hi!\n<!here> <!channel> Yo!\n<#CDUMMYID> You go here. A.k.a <#CDUMMYID|hell>."
+            [ Paragraph "" [ Text "@USLACKBOT Hi!\n@here @channel Yo!\n#CDUMMYID You go here. A.k.a #hell." ]
+            ]
+        ]
+
+
+testSlackParse : String -> List (Block () ()) -> Test
+testSlackParse initial expected =
+    test ("should parse: " ++ initial ++ "") <|
+        \_ ->
+            TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) initial
+                |> Expect.equal (Parsed expected)
+
+
+autoLinkerSuite : Test
+autoLinkerSuite =
+    let
+        s =
+            Text
+
+        l urlStr title =
+            Link urlStr Nothing [ Text title ]
+    in
+    describe "autoLinker"
+        [ testAutoLinker "" [ s "" ]
+        , testAutoLinker " " [ s " " ]
+        , testAutoLinker "foobar" [ s "foobar" ]
+        , testAutoLinker " very long text with\t\n spaces in it " [ s " very long text with\t\n spaces in it " ]
+        , testAutoLinker "text with unparsable http" [ s "text with unparsable http" ]
+        , testAutoLinker "text with unparsable http http" [ s "text with unparsable http http" ]
+        , testAutoLinker "http://example.com" [ l "http://example.com" "example.com" ]
+        , testAutoLinker "http://example.com http://example.com"
+            [ l "http://example.com" "example.com", s " ", l "http://example.com" "example.com" ]
+        , testAutoLinker "text with parsable http://example.com"
+            [ s "text with parsable ", l "http://example.com" "example.com" ]
+        , testAutoLinker "textdirectlyfollowedbyhttp://example.com"
+            [ s "textdirectlyfollowedby", l "http://example.com" "example.com" ]
+        , testAutoLinker "textdirectlyfollowedbyhttp://example.comandnotdelimittedproperly"
+            [ s "textdirectlyfollowedby"
+            , l "http://example.comandnotdelimittedproperly" "example.comandnotdelimittedproperly"
+            ]
+        , testAutoLinker "text with parsable http://example.com !"
+            [ s "text with parsable ", l "http://example.com" "example.com", s " !" ]
+        , testAutoLinker "text with parsable http://example.com http://example.com !"
+            [ s "text with parsable "
+            , l "http://example.com" "example.com"
+            , s " "
+            , l "http://example.com" "example.com"
+            , s " !"
+            ]
+        , testAutoLinker "text with parsable http://example.com and unparsable http !"
+            [ s "text with parsable ", l "http://example.com" "example.com", s " and unparsable http !" ]
+        , testAutoLinker "マルチバイト文字及びマルチバイトURLを含む http://example.com http://マルチバイト.jp"
+            [ s "マルチバイト文字及びマルチバイトURLを含む "
+            , l "http://example.com" "example.com"
+            , s " "
+            , l "http://マルチバイト.jp" "マルチバイト.jp"
+            ]
+        ]
+
+
+testAutoLinker : String -> List (Inline ()) -> Test
+testAutoLinker initial expected =
+    test ("should work for text: '" ++ initial ++ "'") <|
+        \_ ->
+            TextParser.parse { parseOptions | autoLink = True } initial
+                |> Expect.equal (Parsed [ Paragraph "" expected ])
+
+
+unescapeTagsSuite : Test
+unescapeTagsSuite =
+    describe "unescapeTags"
+        [ testUnescapeTags "" [ Text "" ]
+        , testUnescapeTags "a" [ Text "a" ]
+        , testUnescapeTags "aa" [ Text "aa" ]
+        , testUnescapeTags "a&" [ Text "a&" ]
+        , testUnescapeTags "&a" [ Text "&a" ]
+        , testUnescapeTags "&&" [ Text "&&" ]
+        , testUnescapeTags "&gt;" [ Text ">" ]
+        , testUnescapeTags "&lt;" [ Text "<" ]
+        , testUnescapeTags "&amp;" [ Text "&amp;" ]
+        , testUnescapeTags "a&gt;" [ Text "a>" ]
+        , testUnescapeTags "&gt;a" [ Text ">a" ]
+        , testUnescapeTags "a&gt;a" [ Text "a>a" ]
+        , testUnescapeTags "&gta;" [ Text "&gta;" ]
+        , testUnescapeTags "&agt;" [ Text "&agt;" ]
+        , testUnescapeTags "&&gt;" [ Text "&>" ]
+        , testUnescapeTags "&gt;&" [ Text ">&" ]
+        , testUnescapeTags "&gt;&gt;" [ Text ">>" ]
+        ]
+
+
+testUnescapeTags : String -> List (Inline ()) -> Test
+testUnescapeTags initial expected =
+    test ("should work for text: '" ++ initial ++ "'") <|
+        \_ ->
+            TextParser.parse { parseOptions | unescapeTags = True } initial
+                |> Expect.equal (Parsed [ Paragraph "" expected ])
 
 
 

@@ -1,14 +1,14 @@
 module View.Parts exposing
     ( noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
-    , breakP, breakT, breakTColumn, collapsingColumn, inputScreen, dragHandle
-    , scale12, cssRgba, brightness, setAlpha, manualStyle
+    , breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
+    , scale12, scaleByQuarter, cssRgba, brightness, setAlpha, manualStyle, gutteredConteinerAttrs
     , octiconEl, squareIconOrHeadEl, iconWithBadgeEl
     , textInputEl, multilineInputEl, toggleInputEl, squareButtonEl, roundButtonEl, rectButtonEl, thinButtonEl
     , primaryButtonEl, successButtonEl, dangerButtonEl
     , filtersToIconEl, filtersToTextEl, filtersToTheme, fetchStatusTextEl
     , discordGuildIconEl, discordChannelEl, slackTeamIconEl, slackLogoClippedEl, slackConversationEl
     , columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
-    , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
+    , columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize, columnCodeBlockMaxHeight
     , spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
     , defaultOcticonColor, trashcanPaddingAdjust
     )
@@ -19,8 +19,8 @@ module View.Parts exposing
 ## Helpers
 
 @docs noneAttr, style, visible, switchCursor, borderFlash, rotating, wiggle, onAnimationEnd
-@docs breakP, breakT, breakTColumn, collapsingColumn, inputScreen, dragHandle
-@docs scale12, cssRgba, brightness, setAlpha, manualStyle
+@docs breakP, breakT, breakTColumn, forceBreak, collapsingColumn, codeBlock, codeInline, inputScreen, dragHandle
+@docs scale12, scaleByQuarter, cssRgba, brightness, setAlpha, manualStyle, gutteredConteinerAttrs
 
 
 ## Elements
@@ -35,7 +35,7 @@ module View.Parts exposing
 ## Constants
 
 @docs columnWidth, columnHeaderHeight, columnHeaderIconSize, columnPinColor, columnBorderWidth, columnAreaParentId
-@docs columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize
+@docs columnItemMinimumHeight, columnItemBorderBottom, columnItemAvatarSize, columnCodeBlockMaxHeight
 @docs spacingUnit, rectElementRound, rectElementOuterPadding, rectElementInnerPadding
 @docs defaultOcticonColor, trashcanPaddingAdjust
 
@@ -696,7 +696,12 @@ Suitable for user-generated texts. Use with `breakT`.
 -}
 breakP : List (Attribute msg) -> List (Element msg) -> Element msg
 breakP attrs =
-    paragraph <| attrs ++ [ htmlAttribute (Html.Attributes.class breakClassName) ]
+    paragraph (forceBreak :: attrs)
+
+
+forceBreak : Attribute msg
+forceBreak =
+    htmlAttribute (Html.Attributes.class breakClassName)
 
 
 breakClassName : String
@@ -721,6 +726,47 @@ collapsingColumn attrs elements =
             column attrs elements
 
 
+codeBlock :
+    List (Attribute msg)
+    -> { theme : ColorTheme, maxHeight : Int, code : String }
+    -> Element msg
+codeBlock attrs opts =
+    let
+        baseAttrs =
+            [ width fill
+            , height (shrink |> maximum opts.maxHeight)
+            , padding rectElementInnerPadding
+            , scrollbarY
+            , BD.rounded rectElementRound
+            , BG.color opts.theme.sub
+            , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+            ]
+    in
+    breakP (baseAttrs ++ attrs) [ breakT opts.code ]
+
+
+codeInline : List (Attribute msg) -> { theme : ColorTheme, code : String } -> Element msg
+codeInline attrs opts =
+    let
+        baseAttrs =
+            [ width shrink
+            , paddingXY inlinePadding 0
+            , BD.rounded inlinePadding
+            , BG.color opts.theme.text
+            , Font.color opts.theme.err
+            , Font.family [ Font.typeface "Lucida Console", Font.typeface "Monaco", Font.monospace ]
+            , style "display" "inline"
+            , forceBreak
+            ]
+    in
+    el (baseAttrs ++ attrs) (breakT opts.code)
+
+
+inlinePadding : Int
+inlinePadding =
+    2
+
+
 
 -- STYLE HELPER
 
@@ -729,7 +775,12 @@ collapsingColumn attrs elements =
 -}
 scale12 : Int -> Int
 scale12 =
-    modular 12 1.25 >> round
+    scaleByQuarter 12
+
+
+scaleByQuarter : Int -> Int -> Int
+scaleByQuarter base factor =
+    round (modular (toFloat base) 1.25 factor)
 
 
 {-| Shift brightness of a Color (RGB) by a power of 1.15, without altering alpha.
@@ -790,6 +841,26 @@ dragHandle onDragstart =
 dragHandleClassName : String
 dragHandleClassName =
     "dragHandle"
+
+
+gutteredConteinerAttrs : ColorTheme -> Maybe Color -> List (Attribute msg)
+gutteredConteinerAttrs theme gutterColor =
+    [ width fill
+    , padding rectElementInnerPadding
+    , spacing spacingUnit
+    , BD.color (Maybe.withDefault theme.bd gutterColor)
+    , BD.widthEach { bottom = 0, left = gutterWidth, right = 0, top = 0 }
+    , BD.roundEach { topLeft = gutterWidth, topRight = 0, bottomLeft = gutterWidth, bottomRight = 0 }
+    ]
+
+
+gutterWidth : Int
+gutterWidth =
+    3
+
+
+
+-- Service related
 
 
 filtersToIconEl : List (Attribute msg) -> { size : Int, fam : FilterAtomMaterial, filters : Array Filter } -> Element msg
@@ -1154,21 +1225,6 @@ wiggleKeyframes =
 -- CONSTANTS
 
 
-columnWidth : Int
-columnWidth =
-    350
-
-
-columnHeaderHeight : Int
-columnHeaderHeight =
-    columnHeaderIconSize + rectElementInnerPadding
-
-
-columnHeaderIconSize : Int
-columnHeaderIconSize =
-    32
-
-
 spacingUnit : Int
 spacingUnit =
     5
@@ -1189,14 +1245,40 @@ rectElementInnerPadding =
     spacingUnit
 
 
+defaultOcticonColor : Color
+defaultOcticonColor =
+    oneDark.note
+
+
+{-| Octicons.trashcan is slllllightly leaning right. Adjusting with this paddingEach.
+-}
+trashcanPaddingAdjust : { top : Int, right : Int, bottom : Int, left : Int }
+trashcanPaddingAdjust =
+    { top = 0, right = 2, bottom = 0, left = 0 }
+
+
+
+-- Column related
+
+
 columnAreaParentId : String
 columnAreaParentId =
     "columnAreaParent"
 
 
-defaultOcticonColor : Color
-defaultOcticonColor =
-    oneDark.note
+columnWidth : Int
+columnWidth =
+    350
+
+
+columnHeaderHeight : Int
+columnHeaderHeight =
+    columnHeaderIconSize + rectElementInnerPadding
+
+
+columnHeaderIconSize : Int
+columnHeaderIconSize =
+    32
 
 
 columnItemMinimumHeight : Int
@@ -1224,8 +1306,6 @@ columnBorderWidth =
     2
 
 
-{-| Octicons.trashcan is slllllightly leaning right. Adjusting with this paddingEach.
--}
-trashcanPaddingAdjust : { top : Int, right : Int, bottom : Int, left : Int }
-trashcanPaddingAdjust =
-    { top = 0, right = 2, bottom = 0, left = 0 }
+columnCodeBlockMaxHeight : Int
+columnCodeBlockMaxHeight =
+    300

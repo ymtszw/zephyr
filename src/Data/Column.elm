@@ -217,7 +217,7 @@ scrollInitOptions id clientHeight =
                 , minimumItemHeight = columnItemMinimumHeight
                 }
     in
-    { opts | limit = columnItemLimit, baseRatio = baseRatio }
+    { opts | limit = columnItemLimit, baseRatio = baseRatio, tierRatio = tierRatio }
 
 
 boundingHeight : Int -> Int
@@ -232,7 +232,12 @@ columnItemLimit =
 
 baseRatio : Float
 baseRatio =
-    1.4
+    2.0
+
+
+tierRatio : Float
+tierRatio =
+    4.0
 
 
 systemMessage : String -> String -> ColumnItem

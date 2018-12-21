@@ -1,7 +1,8 @@
-module Data.Pref exposing (Pref, adjustEvictThreashold, decoder, encode, init, storeId, update)
+module Data.Pref exposing (Msg(..), Pref, adjustEvictThreashold, decoder, encode, init, storeId, update)
 
 import Data.Storable exposing (Storable)
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import View.Parts exposing (columnWidth)
 
@@ -16,6 +17,7 @@ This value is automatically adjusted according to clientWidth.
 type alias Pref =
     { zephyrMode : Bool
     , evictThreshold : Int
+    , logging : Bool
     }
 
 
@@ -23,6 +25,7 @@ init : Int -> Pref
 init clientWidth =
     { zephyrMode = True
     , evictThreshold = adjustEvictThreashold clientWidth
+    , logging = False
     }
 
 
@@ -35,6 +38,7 @@ encode : Pref -> Storable
 encode pref =
     Data.Storable.encode storeId
         [ ( "zephyrMode", E.bool pref.zephyrMode )
+        , ( "logging", E.bool pref.logging )
         ]
 
 
@@ -46,17 +50,32 @@ storeId =
 decoder : Int -> Decoder Pref
 decoder clientWidth =
     D.oneOf
-        [ D.map2 Pref
+        [ D.map3 Pref
             (D.field "zephyrMode" D.bool)
             (D.succeed (adjustEvictThreashold clientWidth))
+            (D.optionField "logging" D.bool False)
         , D.succeed (init clientWidth) -- Casually provide the default, rather than fail on Pref load
         ]
 
 
-update : Bool -> Pref -> ( Pref, Bool )
-update zephyrMode pref =
-    if pref.zephyrMode == zephyrMode then
-        ( pref, False )
+type Msg
+    = ZephyrMode Bool
+    | Logging Bool
 
-    else
-        ( { pref | zephyrMode = zephyrMode }, True )
+
+update : Msg -> Pref -> ( Pref, Bool )
+update msg pref =
+    let
+        saveOrPure prev new updater =
+            if prev == new then
+                ( pref, False )
+
+            else
+                ( updater new, True )
+    in
+    case msg of
+        ZephyrMode bool ->
+            saveOrPure pref.zephyrMode bool <| \new -> { pref | zephyrMode = new }
+
+        Logging bool ->
+            saveOrPure pref.logging bool <| \new -> { pref | logging = new }

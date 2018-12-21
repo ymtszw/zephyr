@@ -7,6 +7,7 @@ module Data.Producer.Slack exposing
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
+    , parseOptions
     )
 
 {-| Producer for Slack workspaces.
@@ -22,6 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
+@docs parseOptions
 
 -}
 
@@ -39,7 +41,10 @@ import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import ListExtra
+import Markdown.Inline exposing (Inline(..))
+import Parser exposing ((|.), (|=), Parser)
 import Task exposing (Task)
+import TextParser
 import Time exposing (Posix)
 import Url exposing (Url)
 import Worque
@@ -2451,3 +2456,180 @@ teamUrl team =
 dummyConversationId : ConversationId
 dummyConversationId =
     ConversationId "CDUMMYID"
+
+
+
+-- Message formatting
+
+
+parseOptions : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> TextParser.ParseOptions
+parseOptions convs users =
+    { markdown = True
+    , autoLink = False
+    , unescapeTags = True
+    , preFormat = Just (preFormat convs users)
+    , customInlineFormat = Just alterEmphasis
+    }
+
+
+alterEmphasis : Inline () -> Inline ()
+alterEmphasis inline =
+    case inline of
+        Emphasis _ inlines ->
+            -- In Slack `*` is treated as level 2 and `_` as level 1, but this does not conform with CommonMark spec.
+            -- `*` is more commonly used, so forcing level 2 in order to keep visuals in-line with official Slack app.
+            Emphasis 2 inlines
+
+        _ ->
+            inline
+
+
+{-| Convert special message formatting syntax into proper markdown.
+
+  - Converts `<...>` special syntax into markdown (or plain text)
+  - Resolves User/Channel ID to readable names
+
+-}
+preFormat : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
+preFormat convs users raw =
+    case Parser.run (angleSyntaxParser convs users) raw of
+        Ok replaced ->
+            replaced
+
+        Err _ ->
+            -- Debug here
+            raw
+
+
+angleSyntaxParser : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Parser String
+angleSyntaxParser convs users =
+    Parser.loop [] <|
+        \acc ->
+            let
+                goNext str =
+                    Parser.Loop (str :: acc)
+            in
+            Parser.oneOf
+                [ Parser.end |> Parser.map (\() -> Parser.Done (List.foldl (++) "" acc))
+                , angleCmdParser |> Parser.map (convertAngleCmd convs users) |> Parser.map goNext
+                , Parser.chompUntilEndOr "<" |> Parser.getChompedString |> Parser.map goNext
+                ]
+
+
+type AngleCmd
+    = AtUser UserIdStr (Maybe String)
+    | AtEveryone
+    | AtHere
+    | AtChannel
+    | OtherSpecial String (Maybe String)
+    | ToChannel ConversationIdStr (Maybe String)
+    | Link Url (Maybe String)
+
+
+angleCmdParser : Parser AngleCmd
+angleCmdParser =
+    let
+        urlParser str =
+            case Url.fromString str of
+                Just url ->
+                    Parser.succeed url
+
+                Nothing ->
+                    Parser.problem ("Not a valid URL: " ++ str)
+    in
+    Parser.succeed identity
+        |. Parser.symbol "<"
+        |= Parser.oneOf
+            [ Parser.succeed AtUser
+                |. Parser.symbol "@"
+                |= rawKeywordParser
+                |= remainderParser
+            , Parser.succeed AtEveryone
+                |. Parser.keyword "!everyone"
+                |. remainderParser
+            , Parser.succeed AtHere
+                |. Parser.keyword "!here"
+                |. remainderParser
+            , Parser.succeed AtChannel
+                |. Parser.keyword "!channel"
+                |. remainderParser
+            , -- XXX e.g. Date syntax
+              Parser.succeed OtherSpecial
+                |. Parser.symbol "!"
+                |= rawKeywordParser
+                |= remainderParser
+            , Parser.succeed ToChannel
+                |. Parser.symbol "#"
+                |= rawKeywordParser
+                |= remainderParser
+            , Parser.succeed Link
+                |= (rawKeywordParser |> Parser.andThen urlParser)
+                |= remainderParser
+            ]
+        |. Parser.symbol ">"
+
+
+rawKeywordParser : Parser String
+rawKeywordParser =
+    Parser.chompWhile (\c -> c /= '|' && c /= '>')
+        |> Parser.getChompedString
+
+
+remainderParser : Parser (Maybe String)
+remainderParser =
+    Parser.oneOf
+        [ Parser.succeed Just
+            |. Parser.chompIf ((==) '|')
+            |= Parser.getChompedString (Parser.chompWhile ((/=) '>'))
+        , Parser.succeed Nothing
+        ]
+
+
+convertAngleCmd : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> AngleCmd -> String
+convertAngleCmd convs users angleCmd =
+    let
+        placeholderOr prefix ph func =
+            case ph of
+                Just str ->
+                    prefix ++ str
+
+                Nothing ->
+                    prefix ++ func ()
+    in
+    case angleCmd of
+        AtUser userIdStr ph ->
+            -- XXX Link?
+            placeholderOr "@" ph <|
+                \() ->
+                    case Dict.get userIdStr users of
+                        Just user ->
+                            Maybe.withDefault user.profile.realName user.profile.displayName
+
+                        Nothing ->
+                            userIdStr
+
+        AtEveryone ->
+            "@everyone"
+
+        AtHere ->
+            "@here"
+
+        AtChannel ->
+            "@channel"
+
+        OtherSpecial str ph ->
+            Maybe.withDefault str ph
+
+        ToChannel convIdStr ph ->
+            -- XXX Link?
+            placeholderOr "#" ph <|
+                \() ->
+                    case Dict.get convIdStr convs of
+                        Just conv ->
+                            conv.name
+
+                        Nothing ->
+                            convIdStr
+
+        Link url ph ->
+            "[" ++ (placeholderOr "" ph <| \() -> TextParser.shortenUrl url) ++ "](" ++ Url.toString url ++ ")"

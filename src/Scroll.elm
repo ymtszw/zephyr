@@ -97,8 +97,8 @@ decoder : InitOptions -> Decoder a -> Decoder ( Scroll a, Cmd Msg )
 decoder opts itemDecoder =
     D.do (D.list itemDecoder) <|
         \list ->
-            -- Immediately requestAdjust, retrieving scene height from actually rendered node
-            D.succeed ( Scroll (initImpl opts list), requestAdjust opts.id opts.boundingHeight )
+            -- Immediately adjustParams, retrieving scene height from actually rendered node
+            D.succeed ( Scroll (initImpl opts list), adjustParams opts.id opts.boundingHeight )
 
 
 ratioToAmount : Float -> Float -> Int
@@ -106,8 +106,8 @@ ratioToAmount fillAmountF ratio =
     round (fillAmountF * ratio)
 
 
-requestAdjust : String -> Int -> Cmd Msg
-requestAdjust id boundingHeight =
+adjustParams : String -> Int -> Cmd Msg
+adjustParams id boundingHeight =
     Task.attempt
         (\res ->
             case res of
@@ -445,7 +445,7 @@ update msg (Scroll s) =
                             ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
 
                         else
-                            ( Scroll { s | viewportStatus = Scrolling newVp }, queryViewportWithDelay s.id )
+                            ( Scroll { s | viewportStatus = Scrolling newVp } |> calculateTier, queryViewportWithDelay s.id )
 
                     _ ->
                         ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
@@ -470,12 +470,13 @@ update msg (Scroll s) =
             )
 
         NewItem ->
-            ( Scroll s, requestAdjust s.id s.lastBoundingHeight )
+            ( Scroll s, adjustParams s.id s.lastBoundingHeight )
 
         LoadMore ->
             -- LoadMore is manually requested when auto adjusting is somewhat stopped/caught up
-            -- Force adjusting and incrementing Tier
-            ( incrementTier (Scroll s), requestAdjust s.id s.lastBoundingHeight )
+            -- NOT adjusting params here since depending on contents,
+            -- it can go in circle of adjust => scan => adjust again loop
+            ( incrementTier (Scroll s), Cmd.none )
 
         AdjustReq boundingHeight ->
             case s.viewportStatus of
@@ -484,7 +485,7 @@ update msg (Scroll s) =
 
                 _ ->
                     if boundingHeight /= s.lastBoundingHeight then
-                        ( Scroll s, requestAdjust s.id boundingHeight )
+                        ( Scroll s, adjustParams s.id boundingHeight )
 
                     else
                         ( Scroll s, Cmd.none )
@@ -499,15 +500,29 @@ update msg (Scroll s) =
 
                 approxFillAmountF =
                     toFloat boundingHeight / approxAverageItemHeightF
+
+                targetBaseAmount =
+                    ratioToAmount approxFillAmountF s.config.baseRatio
+
+                ( nextBaseAmount, nextCmd ) =
+                    if targetBaseAmount >= s.baseAmount then
+                        ( targetBaseAmount, queryViewportWithDelay s.id )
+
+                    else
+                        -- In order to prevent baseAmount from becoming too low,
+                        -- we "creep" toward target amount by gradually reducing parameters (by a half of the diff at one time)
+                        ( s.baseAmount - max 1 ((s.baseAmount - targetBaseAmount) // 2)
+                        , adjustParams s.id boundingHeight
+                        )
             in
             ( Scroll
                 { s
                     | viewportStatus = AtTop vp
                     , lastBoundingHeight = boundingHeight
-                    , baseAmount = ratioToAmount approxFillAmountF s.config.baseRatio
+                    , baseAmount = nextBaseAmount
                     , tierAmount = ratioToAmount approxFillAmountF s.config.tierRatio
                 }
-            , queryViewportWithDelay s.id
+            , nextCmd
             )
 
 
