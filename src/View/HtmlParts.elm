@@ -33,6 +33,7 @@ module View.HtmlParts exposing
     , px
     , row
     , sanSerif
+    , scrollbarX
     , scrollbarY
     , squareIconOrHead
     , underline
@@ -84,7 +85,6 @@ paragraph attrs children =
                 baseAttrs =
                     [ forceBreak
                     , style "line-height" "1.3em"
-                    , style "margin" "0"
                     ]
             in
             p (baseAttrs ++ attrs) children
@@ -116,11 +116,11 @@ codeBlock attrs opts =
             [ widthFill
             , maxHeight opts.maxHeight
             , padding rectElementInnerPadding
+            , scrollbarX
             , scrollbarY
             , bdRounded rectElementRound
             , bgColor opts.theme.sub
             , monospace
-            , style "width" "100%"
             ]
     in
     pre (baseAttrs ++ attrs) [ text opts.code ]
@@ -139,6 +139,11 @@ px i =
 padding : Int -> Attribute msg
 padding pa =
     style "padding" (px pa)
+
+
+scrollbarX : Attribute msg
+scrollbarX =
+    style "overflow-x" "auto"
 
 
 scrollbarY : Attribute msg

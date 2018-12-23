@@ -1232,6 +1232,7 @@ manualStyle =
         , Html.text <| "@keyframes " ++ wiggleKeyframesName ++ "{" ++ wiggleKeyframes ++ "}"
         , Html.text <| "." ++ strictContainerClassName ++ "{contain:paint style layout size;}"
         , Html.text <| "." ++ fluidContainerClassName ++ "{contain:paint style layout;}"
+        , Html.text "p,pre{margin:0;}"
         ]
 
 
