@@ -260,7 +260,12 @@ discordMessageBodyEl m =
             , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map discordAttachmentEl m.attachments
             ]
     in
-    column [ width fill, spacing spacingUnit ] (discordParagraphs maxMediaWidth m.content ++ embeds)
+    column
+        [ width fill
+        , spacing spacingUnit
+        , mouseOver [ BG.color oneDark.sub ]
+        ]
+        (discordParagraphs maxMediaWidth m.content ++ embeds)
 
 
 discordParagraphs : Int -> String -> List (Element Msg)
@@ -564,7 +569,12 @@ slackMessageBodyEl m =
         sFiles =
             List.map slackFileEl m.files
     in
-    collapsingColumn [ width fill, spacing spacingUnit ] (mainParagraphs ++ attachments ++ sFiles)
+    collapsingColumn
+        [ width fill
+        , spacing spacingUnit
+        , mouseOver [ BG.color aubergine.sub ]
+        ]
+        (mainParagraphs ++ attachments ++ sFiles)
 
 
 slackParagraphs : Int -> String -> List (Element Msg)
@@ -668,7 +678,7 @@ slackAttachmentBodyEl a =
 
 defaultItemEl : ColorTheme -> String -> Maybe Media -> Element Msg
 defaultItemEl theme message mediaMaybe =
-    column [ width fill, spacing spacingUnit, alignTop ] <|
+    column [ width fill, spacing spacingUnit, alignTop, mouseOver [ BG.color theme.sub ] ] <|
         case mediaMaybe of
             Just media ->
                 defaultParagraphs theme message ++ [ mediaEl media ]

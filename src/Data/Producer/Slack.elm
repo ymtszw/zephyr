@@ -7,7 +7,7 @@ module Data.Producer.Slack exposing
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-    , parseOptions
+    , parseOptions, resolveAngleCmd
     )
 
 {-| Producer for Slack workspaces.
@@ -23,7 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-@docs parseOptions
+@docs parseOptions, resolveAngleCmd
 
 -}
 
@@ -1210,8 +1210,13 @@ and also preparation for generalizing Message into common data structure (possib
 Note that BotAuthor must be filled later, since Bot dictionary may require initial fetching.
 
 -}
-apiMessageDecoder : Dict UserIdStr User -> Dict BotIdStr Bot -> ConversationIdStr -> Decoder Message
-apiMessageDecoder users bots convIdStr =
+apiMessageDecoder :
+    Dict UserIdStr User
+    -> Dict BotIdStr Bot
+    -> Dict ConversationIdStr Conversation
+    -> ConversationIdStr
+    -> Decoder Message
+apiMessageDecoder users bots convs convIdStr =
     let
         stringToTsDecoder tsStr =
             case String.toFloat tsStr of
@@ -1244,12 +1249,26 @@ apiMessageDecoder users bots convIdStr =
     in
     D.map7 Message
         (D.field "ts" (D.andThen stringToTsDecoder D.string))
-        (D.field "text" D.string)
+        (D.field "text" (D.map (resolveAngleCmd convs users) D.string))
         apiAuthorDecoder
         (D.maybeField "username" D.string)
         (D.optionField "files" (D.leakyList sFileDecoder) [])
-        (D.optionField "attachments" (D.leakyList attachmentDecoder) [])
+        (D.optionField "attachments" (D.leakyList (apiAttachmentDecoder convs users)) [])
         (D.succeed convIdStr)
+
+
+apiAttachmentDecoder : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Decoder Attachment
+apiAttachmentDecoder convs users =
+    D.map8 Attachment
+        (D.maybeField "pretext" (D.map (resolveAngleCmd convs users) D.string))
+        (D.maybeField "color" colorDecoder)
+        (D.maybe attachmentAuthorDecoder)
+        (D.maybe attachmentTitleDecoder)
+        -- `text` can be absent!!
+        (D.optionField "text" (D.map (resolveAngleCmd convs users) D.string) "")
+        (D.maybeField "image_url" D.url)
+        (D.maybeField "thumb_url" D.url)
+        (D.field "fallback" D.string)
 
 
 famDecoder : Decoder FAM
@@ -2236,7 +2255,7 @@ conversationHistoryTask pov convIdStr lrMaybe cursorIn =
             [ ( "channel", convIdStr ), ( "limit", "200" ) ]
 
         baseDecoder =
-            D.field "messages" (D.leakyList (apiMessageDecoder pov.users pov.bots convIdStr))
+            D.field "messages" (D.leakyList (apiMessageDecoder pov.users pov.bots pov.conversations convIdStr))
 
         url =
             endpoint "/conversations.history" Nothing
@@ -2467,7 +2486,7 @@ parseOptions convs users =
     { markdown = True
     , autoLink = False
     , unescapeTags = True
-    , preFormat = Just (preFormat convs users)
+    , preFormat = Nothing
     , customInlineFormat = Just alterEmphasis
     }
 
@@ -2475,10 +2494,14 @@ parseOptions convs users =
 alterEmphasis : Inline () -> Inline ()
 alterEmphasis inline =
     case inline of
-        Emphasis _ inlines ->
+        Emphasis level inlines ->
             -- In Slack `*` is treated as level 2 and `_` as level 1, but this does not conform with CommonMark spec.
-            -- `*` is more commonly used, so forcing level 2 in order to keep visuals in-line with official Slack app.
-            Emphasis 2 inlines
+            -- Since `*` is more commonly used, we force level 2 in order to keep visuals in-line with official Slack app.
+            if level < 2 then
+                Emphasis 2 inlines
+
+            else
+                Emphasis level inlines
 
         _ ->
             inline
@@ -2489,9 +2512,12 @@ alterEmphasis inline =
   - Converts `<...>` special syntax into markdown (or plain text)
   - Resolves User/Channel ID to readable names
 
+At first this was meant to be executed as preFormat of TextParser,
+but instead, it should be used on message fetches.
+
 -}
-preFormat : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
-preFormat convs users raw =
+resolveAngleCmd : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
+resolveAngleCmd convs users raw =
     case Parser.run (angleSyntaxParser convs users) raw of
         Ok replaced ->
             replaced

@@ -338,7 +338,7 @@ amountToTake (Scroll s) =
         (Tier t) =
             s.tier
     in
-    s.baseAmount + s.tierAmount * t
+    max 5 (s.baseAmount + s.tierAmount * t)
 
 
 {-| `toList` with filtering.

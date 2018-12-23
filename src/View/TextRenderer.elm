@@ -226,11 +226,22 @@ inlineToEls opts inline =
             [ text (Inline.extractText inlines) ]
 
         Emphasis level inlines ->
-            if level < 2 then
-                List.map (el [ forceBreak, Font.italic ]) <| List.concatMap (inlineToEls opts) inlines
+            let
+                decoAttrs =
+                    case level of
+                        1 ->
+                            [ Font.italic ]
 
-            else
-                List.map (el [ forceBreak, Font.bold ]) <| List.concatMap (inlineToEls opts) inlines
+                        2 ->
+                            [ Font.bold ]
+
+                        3 ->
+                            [ Font.bold, Font.underline ]
+
+                        _ ->
+                            [ Font.extraBold, Font.underline ]
+            in
+            List.map (el (forceBreak :: decoAttrs)) <| List.concatMap (inlineToEls opts) inlines
 
         Inline.Custom () _ ->
             []
