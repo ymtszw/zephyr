@@ -8,13 +8,10 @@ import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Dict
-import Element exposing (..)
-import Element.Background as BG
-import Element.Border as BD
-import Element.Font as Font
-import Element.Lazy exposing (..)
-import Html
-import Html.Attributes exposing (title)
+import Element exposing (Color, Element)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Lazy exposing (..)
 import Markdown.Block as Block exposing (Block, ListBlock, ListType(..))
 import Markdown.Inline as Inline exposing (Inline)
 import Octicons
@@ -22,7 +19,8 @@ import TextParser exposing (Parsed(..))
 import Time
 import TimeExtra
 import Url
-import View.Parts exposing (..)
+import View.HtmlParts exposing (..)
+import View.Parts exposing (brightness, columnCodeBlockMaxHeight, columnItemAvatarSize, columnItemBorderBottom, columnWidth, cssRgba, rectElementInnerPadding, rectElementRound, scale12)
 import View.TextRenderer as TextRenderer
 
 
@@ -32,21 +30,23 @@ columnItemKeyEl theme tz closeItems =
     case List.reverse closeItems of
         [] ->
             -- Should not happen
-            ( "", none )
+            ( "", Element.none )
 
         (item :: items) as reversed ->
             row
-                [ width fill
+                [ widthFill
+                , flex
+                , grow
                 , paddingXY 0 rectElementInnerPadding
-                , spacing spacingUnit
-                , BD.widthEach { top = 0, bottom = columnItemBorderBottom, left = 0, right = 0 }
-                , BD.color theme.bd
-                , Font.size baseFontSize
+                , style "border-bottom" <|
+                    String.join " " [ "solid", px columnItemBorderBottom, cssRgba theme.bd ]
+                , fontSize baseFontSize
                 , fluidContainer
                 ]
                 [ itemAvatarEl theme item
                 , itemContentsEl theme tz item items
                 ]
+                |> Element.html
                 |> Tuple.pair (columnItemKey reversed)
 
 
@@ -73,7 +73,7 @@ columnItemKey closeItems =
         |> String.join "-"
 
 
-itemAvatarEl : ColorTheme -> ColumnItem -> Element Msg
+itemAvatarEl : ColorTheme -> ColumnItem -> Html Msg
 itemAvatarEl theme item =
     case item of
         Product _ (DiscordItem { author }) ->
@@ -86,7 +86,7 @@ itemAvatarEl theme item =
                         Discord.WebhookAuthor u ->
                             ( u, Just (botIconEl oneDark) )
             in
-            iconWithBadgeEl [ alignTop ]
+            iconWithBadge [ alignTop ]
                 { badge = badge
                 , theme = theme
                 , fallback = user.username
@@ -114,7 +114,7 @@ itemAvatarEl theme item =
                         Slack.BotAuthorId (Slack.BotId str) ->
                             ( str, Nothing, Just (botIconEl aubergine) )
             in
-            iconWithBadgeEl [ alignTop ]
+            iconWithBadge [ alignTop ]
                 { badge = badge
                 , theme = aubergine
                 , fallback = name
@@ -129,9 +129,9 @@ itemAvatarEl theme item =
             octiconAvatarEl theme Octicons.note
 
 
-botIconEl : ColorTheme -> Int -> Element Msg
+botIconEl : ColorTheme -> Int -> Html Msg
 botIconEl theme badgeSize =
-    octiconEl [ BG.color (botIconBackground theme), htmlAttribute (title "BOT") ]
+    octicon [ bgColor (botIconBackground theme), title "BOT" ]
         { size = badgeSize, color = avatarIconFillColor theme, shape = Octicons.zap }
 
 
@@ -145,7 +145,7 @@ botIconBackground =
     .succ
 
 
-octiconAvatarEl : ColorTheme -> (Octicons.Options -> Html.Html msg) -> Element msg
+octiconAvatarEl : ColorTheme -> (Octicons.Options -> Html.Html msg) -> Html msg
 octiconAvatarEl theme shape =
     let
         octiconAvatarPadding =
@@ -154,15 +154,13 @@ octiconAvatarEl theme shape =
         octiconSize =
             columnItemAvatarSize - octiconAvatarPadding * 2
     in
-    octiconEl
-        [ width (px columnItemAvatarSize)
-        , height (px columnItemAvatarSize)
+    octicon
+        [ width columnItemAvatarSize
+        , height columnItemAvatarSize
         , padding octiconAvatarPadding
         , alignTop
-        , BD.color theme.note
-        , BD.dashed
-        , BD.width 1
-        , BD.rounded rectElementRound
+        , style "border" (String.join " " [ cssRgba theme.note, "dashed", "1px" ])
+        , bdRounded rectElementRound
         ]
         { size = octiconSize
         , color = avatarIconFillColor theme
@@ -170,7 +168,7 @@ octiconAvatarEl theme shape =
         }
 
 
-itemContentsEl : ColorTheme -> Time.Zone -> ColumnItem -> List ColumnItem -> Element Msg
+itemContentsEl : ColorTheme -> Time.Zone -> ColumnItem -> List ColumnItem -> Html Msg
 itemContentsEl theme tz item closeItems =
     case item of
         Product offset (DiscordItem discordMessage) ->
@@ -208,37 +206,33 @@ itemContentsEl theme tz item closeItems =
             lazy3 defaultItemEl theme message Nothing
 
 
-discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Element Msg
+discordMessageEl : Time.Zone -> ( Discord.Message, Offset ) -> List ( Discord.Message, Offset ) -> Html Msg
 discordMessageEl tz ( discordMessage, _ ) closeMessages =
-    column [ width fill, spacing 5, alignTop ] <|
+    column [ flex, grow, alignTop ] <|
         (::) (lazy2 discordMessageHeaderEl tz discordMessage) <|
             List.map (lazy discordMessageBodyEl) <|
                 (::) discordMessage <|
                     List.map Tuple.first closeMessages
 
 
-discordMessageHeaderEl : Time.Zone -> Discord.Message -> Element Msg
+discordMessageHeaderEl : Time.Zone -> Discord.Message -> Html Msg
 discordMessageHeaderEl tz { author, timestamp, channelId } =
-    let
-        userNameEl =
-            breakP
-                [ alignLeft
-                , Font.bold
-                , Font.size userNameFontSize
-                ]
-                [ breakT <|
-                    case author of
-                        Discord.UserAuthor user ->
-                            user.username
+    row [ flex ]
+        [ paragraph [ flex, grow, bold, fontSize userNameFontSize ]
+            [ text <|
+                case author of
+                    Discord.UserAuthor user ->
+                        user.username
 
-                        Discord.WebhookAuthor user ->
-                            user.username
-                ]
-    in
-    row [ width fill, spacing 5 ]
-        [ userNameEl
-        , el [ alignRight, Font.color (timestampFontColor oneDark) ] <|
-            text (TimeExtra.local tz timestamp)
+                    Discord.WebhookAuthor user ->
+                        user.username
+            ]
+        , div
+            [ flex
+            , fontColor (timestampFontColor oneDark)
+            , fontSize baseFontSize
+            ]
+            [ text (TimeExtra.local tz timestamp) ]
         ]
 
 
@@ -252,23 +246,19 @@ timestampFontColor =
     .note
 
 
-discordMessageBodyEl : Discord.Message -> Element Msg
+discordMessageBodyEl : Discord.Message -> Html Msg
 discordMessageBodyEl m =
     let
         embeds =
-            [ collapsingColumn [ width fill, spacing spacingUnit ] <| List.map discordEmbedEl m.embeds
-            , collapsingColumn [ width fill, spacing spacingUnit ] <| List.map discordAttachmentEl m.attachments
+            [ column [ flex, grow ] <| List.map discordEmbedEl m.embeds
+            , column [ flex, grow ] <| List.map discordAttachmentEl m.attachments
             ]
     in
-    column
-        [ width fill
-        , spacing spacingUnit
-        , mouseOver [ BG.color oneDark.sub ]
-        ]
+    column [ flex, grow ]
         (discordParagraphs maxMediaWidth m.content ++ embeds)
 
 
-discordParagraphs : Int -> String -> List (Element Msg)
+discordParagraphs : Int -> String -> List (Html Msg)
 discordParagraphs mediaWidth text =
     -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
     TextRenderer.render
@@ -279,7 +269,7 @@ discordParagraphs mediaWidth text =
         }
 
 
-discordEmbedEl : Discord.Embed -> Element Msg
+discordEmbedEl : Discord.Embed -> Html Msg
 discordEmbedEl embed =
     let
         embedDescParagraphs =
@@ -295,55 +285,26 @@ discordEmbedEl embed =
                 [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
                 , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
                 ]
-    in
-    discordSmartThumbnailEl embed <|
-        breakTColumn [ width fill, spacing spacingUnit ] <|
-            (embedHeaders ++ embedDescParagraphs)
 
+        embedTexts =
+            column [ flex, grow ] (embedHeaders ++ embedDescParagraphs)
 
-maxEmbeddedMediaWidth : Int
-maxEmbeddedMediaWidth =
-    maxMediaWidth - 15
+        ( imagesBelowTexts, iconLikeThumb ) =
+            let
+                embedImageInList =
+                    Maybe.withDefault [] (Maybe.map List.singleton embed.image)
+            in
+            case embed.thumbnail of
+                Just thumb ->
+                    if iconLike thumb.width thumb.height then
+                        ( embedImageInList, Just thumb )
 
+                    else
+                        ( thumb :: embedImageInList, Nothing )
 
-embedAuthorEl : Maybe Url.Url -> String -> Maybe Url.Url -> Element Msg
-embedAuthorEl link name icon =
-    row [ spacing spacingUnit, Font.bold ]
-        [ wrapWithLink link <|
-            squareIconOrHeadEl []
-                { size = columnItemAvatarSize // 2
-                , name = name
-                , url = Maybe.map Url.toString icon
-                }
-        , paragraph [] [ wrapWithLink link <| text name ]
-        ]
+                Nothing ->
+                    ( embedImageInList, Nothing )
 
-
-wrapWithLink : Maybe Url.Url -> Element Msg -> Element Msg
-wrapWithLink link e =
-    case link of
-        Just url ->
-            newTabLink [] { url = Url.toString url, label = e }
-
-        Nothing ->
-            e
-
-
-embedTitleEl : ColorTheme -> Maybe Url.Url -> String -> Element Msg
-embedTitleEl theme urlMaybe title =
-    paragraph [ Font.bold ]
-        [ case urlMaybe of
-            Just url ->
-                newTabLink [ Font.color theme.link ] { url = Url.toString url, label = text title }
-
-            Nothing ->
-                text title
-        ]
-
-
-discordSmartThumbnailEl : Discord.Embed -> Element Msg -> Element Msg
-discordSmartThumbnailEl embed element =
-    let
         linkUrlMaybe =
             case ( embed.video, embed.url ) of
                 ( Just ev, _ ) ->
@@ -352,31 +313,60 @@ discordSmartThumbnailEl embed element =
                 ( _, eu ) ->
                     eu
     in
-    case embed.thumbnail of
-        Just embedImage ->
-            -- Assuming embed.video always comes with embed.thumbnail
-            -- TODO load embedded players on click
-            if iconLike embedImage.width embedImage.height then
-                column (gutteredEmbedAttrs oneDark embed.color)
-                    [ row [ width fill, spacing 5 ]
-                        [ element
-                        , el [ alignTop, alignRight ] <| discordEmbedImageEl maxThumbnailSize linkUrlMaybe embedImage
-                        ]
-                    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
+    case iconLikeThumb of
+        Just thumb ->
+            column (gutteredEmbedAttrs oneDark embed.color) <|
+                [ row [ flex ]
+                    [ embedTexts
+                    , div [ flex, alignTop ] [ discordEmbedImageEl maxThumbnailSize linkUrlMaybe thumb ]
                     ]
-
-            else
-                column (gutteredEmbedAttrs oneDark embed.color)
-                    [ element
-                    , el [ alignLeft ] <| discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe embedImage
-                    , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
-                    ]
+                ]
+                    ++ List.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) imagesBelowTexts
 
         Nothing ->
-            column (gutteredEmbedAttrs oneDark embed.color)
-                [ element
-                , embed.image |> Maybe.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) |> Maybe.withDefault none
-                ]
+            column (gutteredEmbedAttrs oneDark embed.color) <|
+                embedTexts
+                    :: List.map (discordEmbedImageEl maxEmbeddedMediaWidth linkUrlMaybe) imagesBelowTexts
+
+
+maxEmbeddedMediaWidth : Int
+maxEmbeddedMediaWidth =
+    maxMediaWidth - 15
+
+
+embedAuthorEl : Maybe Url.Url -> String -> Maybe Url.Url -> Html Msg
+embedAuthorEl link name icon =
+    row [ bold ]
+        [ wrapWithLink link <|
+            squareIconOrHead []
+                { size = columnItemAvatarSize // 2
+                , name = name
+                , url = Maybe.map Url.toString icon
+                }
+        , paragraph [] [ wrapWithLink link <| text name ]
+        ]
+
+
+wrapWithLink : Maybe Url.Url -> Html Msg -> Html Msg
+wrapWithLink link e =
+    case link of
+        Just url ->
+            newTabLink [] { url = Url.toString url, children = [ e ] }
+
+        Nothing ->
+            e
+
+
+embedTitleEl : ColorTheme -> Maybe Url.Url -> String -> Html Msg
+embedTitleEl theme urlMaybe title =
+    paragraph [ bold ]
+        [ case urlMaybe of
+            Just url ->
+                newTabLink [ fontColor theme.link ] { url = Url.toString url, children = [ text title ] }
+
+            Nothing ->
+                text title
+        ]
 
 
 iconLike : Maybe Int -> Maybe Int -> Bool
@@ -397,7 +387,7 @@ maxThumbnailSize =
 gutteredEmbedAttrs : ColorTheme -> Maybe Color -> List (Attribute msg)
 gutteredEmbedAttrs theme color =
     gutteredConteinerAttrs theme color
-        ++ [ height (shrink |> maximum maxEmbedBlockHeight)
+        ++ [ maxHeight maxEmbedBlockHeight
            , scrollbarY
            ]
 
@@ -407,7 +397,7 @@ maxEmbedBlockHeight =
     400
 
 
-discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Element Msg
+discordEmbedImageEl : Int -> Maybe Url.Url -> Discord.EmbedImage -> Html Msg
 discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
     let
         imageUrl =
@@ -418,13 +408,16 @@ discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
     embedImageEl maxWidth linkUrlMaybe imageUrl
 
 
-embedImageEl : Int -> Maybe Url.Url -> Url.Url -> Element Msg
-embedImageEl maxWidth linkMaybe imageUrl =
+embedImageEl : Int -> Maybe Url.Url -> Url.Url -> Html Msg
+embedImageEl maxWidth_ linkMaybe imageUrl =
     wrapWithLink linkMaybe <|
-        image [ width (shrink |> maximum maxWidth) ]
-            { src = Url.toString imageUrl
-            , description = "Embedded Image"
-            }
+        img
+            [ maxWidth maxWidth_
+            , flex
+            , src (Url.toString imageUrl)
+            , alt "Embedded Image"
+            ]
+            []
 
 
 addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
@@ -448,7 +441,7 @@ urlWithDimensionQuery ( queryWidth, queryHeight ) src =
     { src | query = Just ("width=" ++ String.fromInt queryWidth ++ "&height=" ++ String.fromInt queryHeight) }
 
 
-discordAttachmentEl : Discord.Attachment -> Element Msg
+discordAttachmentEl : Discord.Attachment -> Html Msg
 discordAttachmentEl attachment =
     if extIsImage attachment.proxyUrl.path then
         imageEl
@@ -482,29 +475,30 @@ discordAttachmentEl attachment =
         downloadFileEl oneDark attachment.filename attachment.proxyUrl
 
 
-downloadFileEl : ColorTheme -> String -> Url.Url -> Element Msg
+downloadFileEl : ColorTheme -> String -> Url.Url -> Html Msg
 downloadFileEl theme filename url =
-    download [ width fill ]
+    downloadLink [ flex, grow ]
         { url = Url.toString url
-        , label =
-            row
-                [ width fill
-                , padding rectElementInnerPadding
-                , spacing spacingUnit
-                , BG.color (brightness -1 theme.main)
-                , BD.rounded rectElementRound
+        , children =
+            [ row
+                [ padding rectElementInnerPadding
+                , bgColor (brightness -1 theme.main)
+                , bdRounded rectElementRound
                 ]
-                [ breakP
-                    [ Font.size filenameFontSize
-                    , Font.color theme.link
+                [ paragraph
+                    [ flex
+                    , grow
+                    , fontSize filenameFontSize
+                    , fontColor theme.link
                     ]
-                    [ breakT filename ]
-                , octiconEl [ alignRight ]
+                    [ text filename ]
+                , octicon []
                     { size = downloadIconSize
                     , color = theme.note
                     , shape = Octicons.cloudDownload
                     }
                 ]
+            ]
         }
 
 
@@ -518,46 +512,38 @@ downloadIconSize =
     20
 
 
-slackMessageEl : Time.Zone -> ( Slack.Message, Offset ) -> List ( Slack.Message, Offset ) -> Element Msg
+slackMessageEl : Time.Zone -> ( Slack.Message, Offset ) -> List ( Slack.Message, Offset ) -> Html Msg
 slackMessageEl tz ( m, _ ) closeMessages =
-    column [ width fill, spacing spacingUnit, alignTop ] <|
+    column [ flex, grow, alignTop ] <|
         (::) (lazy2 slackMessageHeaderEl tz m) <|
             List.map (lazy slackMessageBodyEl) <|
                 (m :: List.map Tuple.first closeMessages)
 
 
-slackMessageHeaderEl : Time.Zone -> Slack.Message -> Element Msg
+slackMessageHeaderEl : Time.Zone -> Slack.Message -> Html Msg
 slackMessageHeaderEl tz m =
-    let
-        userNameEl =
-            breakP
-                [ alignLeft
-                , Font.bold
-                , Font.size userNameFontSize
-                ]
-                [ breakT <|
-                    case m.author of
-                        Slack.UserAuthor user ->
-                            Maybe.withDefault user.profile.realName user.profile.displayName
+    row [ flex ]
+        [ paragraph [ flex, grow, bold, fontSize userNameFontSize ]
+            [ text <|
+                case m.author of
+                    Slack.UserAuthor user ->
+                        Maybe.withDefault user.profile.realName user.profile.displayName
 
-                        Slack.BotAuthor bot ->
-                            Maybe.withDefault bot.name m.username
+                    Slack.BotAuthor bot ->
+                        Maybe.withDefault bot.name m.username
 
-                        Slack.UserAuthorId (Slack.UserId str) ->
-                            str
+                    Slack.UserAuthorId (Slack.UserId str) ->
+                        str
 
-                        Slack.BotAuthorId (Slack.BotId str) ->
-                            str
-                ]
-    in
-    row [ width fill, spacing spacingUnit ]
-        [ userNameEl
-        , el [ alignRight, Font.color (timestampFontColor aubergine) ] <|
-            text (TimeExtra.local tz (Slack.getPosix m))
+                    Slack.BotAuthorId (Slack.BotId str) ->
+                        str
+            ]
+        , div [ flex, fontColor (timestampFontColor aubergine) ]
+            [ text (TimeExtra.local tz (Slack.getPosix m)) ]
         ]
 
 
-slackMessageBodyEl : Slack.Message -> Element Msg
+slackMessageBodyEl : Slack.Message -> Html Msg
 slackMessageBodyEl m =
     let
         mainParagraphs =
@@ -569,15 +555,11 @@ slackMessageBodyEl m =
         sFiles =
             List.map slackFileEl m.files
     in
-    collapsingColumn
-        [ width fill
-        , spacing spacingUnit
-        , mouseOver [ BG.color aubergine.sub ]
-        ]
+    column [ flex, grow ]
         (mainParagraphs ++ attachments ++ sFiles)
 
 
-slackParagraphs : Int -> String -> List (Element Msg)
+slackParagraphs : Int -> String -> List (Html Msg)
 slackParagraphs mediaWidth raw =
     -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
     TextRenderer.render
@@ -588,7 +570,7 @@ slackParagraphs mediaWidth raw =
         }
 
 
-slackFileEl : Slack.SFile -> Element Msg
+slackFileEl : Slack.SFile -> Html Msg
 slackFileEl sf =
     let
         thumb360Url ( url, _, _ ) =
@@ -607,21 +589,24 @@ slackFileEl sf =
 
     else if sf.mode == Slack.Snippet || sf.mode == Slack.Post then
         -- XXX we show preview of Slack Post, but Post is preformatted HTML so we actually have to render it
-        column [ width fill, spacing spacingUnit ]
+        column [ flex, grow ]
             [ case sf.preview of
                 Just preview ->
                     codeBlock [] { theme = aubergine, maxHeight = columnCodeBlockMaxHeight, code = preview }
 
                 Nothing ->
                     none
-            , newTabLink [ Font.color aubergine.link ] { url = Url.toString sf.url_, label = text "View source" }
+            , newTabLink [ fontColor aubergine.link ]
+                { url = Url.toString sf.url_
+                , children = [ text "View source" ]
+                }
             ]
 
     else
         downloadFileEl aubergine sf.name sf.url_
 
 
-slackAttachmentEls : Slack.Attachment -> List (Element Msg)
+slackAttachmentEls : Slack.Attachment -> List (Html Msg)
 slackAttachmentEls a =
     case a.pretext of
         Just pretext ->
@@ -631,7 +616,7 @@ slackAttachmentEls a =
             [ slackAttachmentBodyEl a ]
 
 
-slackAttachmentBodyEl : Slack.Attachment -> Element Msg
+slackAttachmentBodyEl : Slack.Attachment -> Html Msg
 slackAttachmentBodyEl a =
     let
         headers =
@@ -651,7 +636,7 @@ slackAttachmentBodyEl a =
             case a.imageUrl of
                 Just imageUrl ->
                     column (gutteredEmbedAttrs aubergine a.color)
-                        [ row [ width fill, spacing spacingUnit ] upperContents
+                        [ row [ flex, grow ] upperContents
                         , embedImageEl maxEmbeddedMediaWidth a.imageUrl imageUrl
                         ]
 
@@ -659,7 +644,7 @@ slackAttachmentBodyEl a =
                     row (gutteredEmbedAttrs aubergine a.color) upperContents
     in
     withImageAndGutter
-        [ column [ width fill, spacing spacingUnit, alignTop ] <|
+        [ column [ flex, grow, alignTop ] <|
             case headers ++ mainTexts of
                 [] ->
                     -- XXX fallback should not have formatted text so it is technically better not to parse at all
@@ -669,16 +654,16 @@ slackAttachmentBodyEl a =
                     formatted
         , case a.thumbUrl of
             Just thumbUrl ->
-                el [ alignTop ] <| embedImageEl maxThumbnailSize (Maybe.andThen .link a.title) thumbUrl
+                div [ alignTop ] [ embedImageEl maxThumbnailSize (Maybe.andThen .link a.title) thumbUrl ]
 
             Nothing ->
                 none
         ]
 
 
-defaultItemEl : ColorTheme -> String -> Maybe Media -> Element Msg
+defaultItemEl : ColorTheme -> String -> Maybe Media -> Html Msg
 defaultItemEl theme message mediaMaybe =
-    column [ width fill, spacing spacingUnit, alignTop, mouseOver [ BG.color theme.sub ] ] <|
+    column [ flex, grow, alignTop ] <|
         case mediaMaybe of
             Just media ->
                 defaultParagraphs theme message ++ [ mediaEl media ]
@@ -687,7 +672,7 @@ defaultItemEl theme message mediaMaybe =
                 defaultParagraphs theme message
 
 
-defaultParagraphs : ColorTheme -> String -> List (Element Msg)
+defaultParagraphs : ColorTheme -> String -> List (Html Msg)
 defaultParagraphs theme message =
     if String.isEmpty message then
         []
@@ -702,7 +687,7 @@ defaultParagraphs theme message =
             }
 
 
-mediaEl : Media -> Element Msg
+mediaEl : Media -> Html Msg
 mediaEl media =
     case media of
         Image url ->
@@ -717,11 +702,15 @@ mediaEl media =
             videoEl Nothing url
 
 
-imageEl : { description : String, src : Url.Url, maxWidth : Int, link : Maybe Url.Url } -> Element Msg
+imageEl : { description : String, src : Url.Url, maxWidth : Int, link : Maybe Url.Url } -> Html Msg
 imageEl opts =
     wrapWithLink opts.link <|
-        image [ width (fill |> maximum opts.maxWidth) ]
-            { src = Url.toString opts.src, description = opts.description }
+        img
+            [ src (Url.toString opts.src)
+            , alt opts.description
+            , maxWidth opts.maxWidth
+            ]
+            []
 
 
 maxMediaWidth : Int
@@ -729,21 +718,19 @@ maxMediaWidth =
     columnWidth - columnItemAvatarSize - 20
 
 
-videoEl : Maybe Url.Url -> Url.Url -> Element Msg
+videoEl : Maybe Url.Url -> Url.Url -> Html Msg
 videoEl posterMaybe url =
-    el [ width fill, centerX ] <|
-        html <|
-            Html.video
-                [ Html.Attributes.controls True
-                , Html.Attributes.width maxMediaWidth
-                , Html.Attributes.src (Url.toString url)
-                , Html.Attributes.poster (posterMaybe |> Maybe.map Url.toString |> Maybe.withDefault "")
-                ]
-                [ Html.text "Embedded video not supported."
-                , Html.a
-                    [ Html.Attributes.href (Url.toString url)
-                    , Html.Attributes.target "_blank"
-                    , Html.Attributes.rel "noreferrer noopener"
-                    ]
-                    [ Html.text "[Source]" ]
-                ]
+    video
+        [ controls True
+        , width maxMediaWidth
+        , src (Url.toString url)
+        , poster (posterMaybe |> Maybe.map Url.toString |> Maybe.withDefault "")
+        ]
+        [ text "Embedded video not supported."
+        , a
+            [ href (Url.toString url)
+            , target "_blank"
+            , rel "noreferrer noopener"
+            ]
+            [ text "[Source]" ]
+        ]

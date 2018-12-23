@@ -7,18 +7,24 @@ module View.HtmlParts exposing
     , codeBlock
     , codeInline
     , column
+    , downloadLink
     , extraBold
+    , flex
+    , fluidContainer
     , fontColor
     , fontSize
     , forceBreak
+    , grow
     , gutterWidth
     , gutteredConteinerAttrs
+    , iconWithBadge
     , inlinePadding
     , italic
     , maxHeight
     , maxWidth
     , monospace
     , newTabLink
+    , none
     , noneAttr
     , octicon
     , padding
@@ -26,7 +32,9 @@ module View.HtmlParts exposing
     , paragraph
     , px
     , row
+    , sanSerif
     , scrollbarY
+    , squareIconOrHead
     , underline
     , widthFill
     )
@@ -40,23 +48,55 @@ import Octicons
 import View.Parts exposing (cssRgba, rectElementInnerPadding, rectElementRound)
 
 
+none : Html msg
+none =
+    text ""
+
+
+flex : Attribute msg
+flex =
+    style "flex" "1 0"
+
+
+grow : Attribute msg
+grow =
+    style "flex-grow" "10000"
+
+
+fluidContainer : Attribute msg
+fluidContainer =
+    class fluidContainerClassName
+
+
+fluidContainerClassName : String
+fluidContainerClassName =
+    "fluidContainer"
+
+
 paragraph : List (Attribute msg) -> List (Html msg) -> Html msg
 paragraph attrs children =
-    let
-        baseAttrs =
-            [ forceBreak
-            , style "line-height" "1.3em"
-            , style "margin" "0"
-            ]
-    in
-    p (baseAttrs ++ attrs) children
+    case children of
+        [] ->
+            none
+
+        _ ->
+            let
+                baseAttrs =
+                    [ forceBreak
+                    , style "line-height" "1.3em"
+                    , style "margin" "0"
+                    ]
+            in
+            p (baseAttrs ++ attrs) children
 
 
 gutteredConteinerAttrs : ColorTheme -> Maybe Color -> List (Attribute msg)
 gutteredConteinerAttrs theme gutterColor =
     [ widthFill
     , padding rectElementInnerPadding
-    , style "border-left" (cssRgba (Maybe.withDefault theme.bd gutterColor) ++ " " ++ px gutterWidth)
+    , style "border-left" <|
+        String.join " "
+            [ px gutterWidth, "solid", cssRgba (Maybe.withDefault theme.bd gutterColor) ]
     , style "border-radius" (String.join " " [ px gutterWidth, "0", "0", px gutterWidth ])
     ]
 
@@ -108,28 +148,43 @@ scrollbarY =
 
 row : List (Attribute msg) -> List (Html msg) -> Html msg
 row attrs children =
-    div
-        [ style "display" "flex"
-        , style "flex-direction" "row"
-        , style "justify-content" "flex-start"
-        ]
-        children
+    case children of
+        [] ->
+            none
+
+        _ ->
+            let
+                flexAttrs =
+                    [ style "display" "flex"
+                    , style "flex-direction" "row"
+                    , style "justify-content" "flex-start"
+                    , style "box-sizing" "border-box"
+                    ]
+            in
+            div (flexAttrs ++ attrs) children
 
 
 column : List (Attribute msg) -> List (Html msg) -> Html msg
 column attrs children =
-    div
-        [ style "display" "flex"
-        , style "flex-direction" "column"
-        , style "justify-content" "flex-start"
-        ]
-        children
+    case children of
+        [] ->
+            none
+
+        _ ->
+            let
+                flexAttrs =
+                    [ style "display" "flex"
+                    , style "flex-direction" "column"
+                    , style "justify-content" "flex-start"
+                    , style "box-sizing" "border-box"
+                    ]
+            in
+            div (flexAttrs ++ attrs) children
 
 
 widthFill : Attribute msg
 widthFill =
-    -- style "width" "100%"
-    noneAttr
+    style "width" "100%"
 
 
 octicon : List (Attribute msg) -> { size : Int, color : Color, shape : Octicons.Options -> Html msg } -> Html msg
@@ -164,9 +219,20 @@ newTabLink attrs opts =
     a (linkAttrs ++ attrs) opts.children
 
 
+downloadLink : List (Attribute msg) -> { url : String, children : List (Html msg) } -> Html msg
+downloadLink attrs opts =
+    let
+        linkAttrs =
+            [ href opts.url
+            , download ""
+            ]
+    in
+    a (linkAttrs ++ attrs) opts.children
+
+
 maxWidth : Int -> Attribute msg
 maxWidth mh =
-    style "max-width" (px mh ++ "px")
+    style "max-width" (px mh)
 
 
 italic : Attribute msg
@@ -247,3 +313,95 @@ forceBreak =
 breakClassName : String
 breakClassName =
     "breakEl"
+
+
+squareIconOrHead : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Html msg
+squareIconOrHead userAttrs { size, name, url } =
+    let
+        baseAttrs =
+            [ width size
+            , height size
+            , bdRounded (iconRounding size)
+            , fontSize (size // 2)
+            , bold
+            , sanSerif
+            , style "display" "flex"
+            , style "align-items" "center"
+            ]
+    in
+    div (baseAttrs ++ userAttrs)
+        [ case url of
+            Just url_ ->
+                img [ width size, height size, src url_, alt name ] []
+
+            Nothing ->
+                text (String.left 1 name)
+        ]
+
+
+iconRounding : Int -> Int
+iconRounding size =
+    Basics.max 2 (size // 10)
+
+
+sanSerif : Attribute msg
+sanSerif =
+    style "font-family" <|
+        String.join ","
+            [ "Tahoma"
+            , "Verdana"
+            , "Arial"
+            , "Helvetica"
+            , "sans-serif"
+            ]
+
+
+iconWithBadge :
+    List (Attribute msg)
+    ->
+        { size : Int
+        , theme : ColorTheme
+        , badge : Maybe (Int -> Html msg)
+        , fallback : String
+        , url : Maybe String
+        }
+    -> Html msg
+iconWithBadge userAttrs opts =
+    let
+        outerAttrs =
+            [ padding innerIconPadding
+            , style "display" "flex"
+            , alignTop
+            ]
+
+        innerIconPadding =
+            Basics.max 1 (opts.size // 20)
+    in
+    div (outerAttrs ++ userAttrs)
+        [ squareIconOrHead
+            [ case opts.url of
+                Just _ ->
+                    noneAttr
+
+                Nothing ->
+                    bgColor opts.theme.prim
+            ]
+            { size = opts.size - (innerIconPadding * 2)
+            , name = opts.fallback
+            , url = opts.url
+            }
+        , case opts.badge of
+            Just badge ->
+                let
+                    badgeSize =
+                        opts.size // 3
+                in
+                div
+                    [ style "align-self" "flex-end end right"
+                    , bdRounded (iconRounding badgeSize)
+                    ]
+                    [ badge badgeSize ]
+
+            Nothing ->
+                none
+        ]

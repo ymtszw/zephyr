@@ -4,7 +4,7 @@ module View.TextRenderer exposing (render)
 -}
 
 import Data.ColorTheme exposing (ColorTheme)
-import Element exposing (Color, Element)
+import Element exposing (Color)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Lazy exposing (..)
@@ -25,21 +25,20 @@ type alias RenderOptions =
     }
 
 
-render : RenderOptions -> List (Element msg)
+render : RenderOptions -> List (Html msg)
 render opts =
     let
         (Parsed blocks) =
             opts.parsed
     in
     renderImpl opts blocks []
-        |> List.foldl (\h hs -> Element.html h :: hs) []
 
 
 renderImpl : RenderOptions -> List (Block () ()) -> List (Html msg) -> List (Html msg)
 renderImpl opts blocks acc =
     case blocks of
         [] ->
-            acc
+            List.reverse acc
 
         (BlankLine _) :: xs ->
             renderImpl opts xs acc
