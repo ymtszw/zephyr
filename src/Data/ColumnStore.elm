@@ -242,8 +242,11 @@ updateById limitMaybe cId cMsg columnStore =
     case Dict.get cId columnStore.dict of
         Just c ->
             let
+                isVisible =
+                    Array.member c.id columnStore.order
+
                 ( newC, pp ) =
-                    Column.update cMsg c
+                    Column.update isVisible cMsg c
 
                 newDict =
                     Dict.insert cId newC columnStore.dict
@@ -254,9 +257,9 @@ updateById limitMaybe cId cMsg columnStore =
                             autoArrange limitMaybe newDict columnStore.order
 
                         Bump ->
-                            if Array.member c.id columnStore.order then
+                            if isVisible then
                                 -- Already visible columns should not be reordered abruptly, either pinned/loose.
-                                -- Rather we should notify users via e.g. badge on sidebar
+                                -- Rather we should notify users via e.g. badge on sidebar?
                                 columnStore.order
 
                             else

@@ -360,8 +360,8 @@ postProcess =
     }
 
 
-update : Msg -> Column -> ( Column, PostProcess )
-update msg c =
+update : Bool -> Msg -> Column -> ( Column, PostProcess )
+update isVisible msg c =
     case msg of
         ToggleConfig open ->
             pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
@@ -458,14 +458,18 @@ update msg c =
             )
 
         ScanBroker opts ->
-            scanBroker opts c
+            scanBroker isVisible opts c
 
         ScrollMsg sMsg ->
-            let
-                ( items, sCmd ) =
-                    Scroll.update sMsg c.items
-            in
-            ( { c | items = items }, { postProcess | cmd = Cmd.map ScrollMsg sCmd } )
+            if isVisible then
+                let
+                    ( items, sCmd ) =
+                        Scroll.update sMsg c.items
+                in
+                ( { c | items = items }, { postProcess | cmd = Cmd.map ScrollMsg sCmd } )
+
+            else
+                pure c
 
 
 pure : Column -> ( Column, PostProcess )
@@ -474,13 +478,18 @@ pure c =
 
 
 scanBroker :
-    { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    Bool
+    -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     -> Column
     -> ( Column, PostProcess )
-scanBroker { broker, maxCount, clientHeight, catchUp } c_ =
+scanBroker isVisible { broker, maxCount, clientHeight, catchUp } c_ =
+    let
+        adjustOpts =
+            { isVisible = isVisible, clientHeight = clientHeight, hasNewItem = False }
+    in
     case ItemBroker.bulkRead maxCount c_.offset broker of
         [] ->
-            adjustScroll clientHeight False ( c_, postProcess )
+            adjustScroll adjustOpts ( c_, postProcess )
 
         (( _, newOffset ) :: _) as items ->
             let
@@ -492,20 +501,20 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c_ =
             in
             case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
                 ( True, [] ) ->
-                    adjustScroll clientHeight False ( c, { ppBase | catchUpId = Just c.id } )
+                    adjustScroll adjustOpts ( c, { ppBase | catchUpId = Just c.id } )
 
                 ( True, newItems ) ->
-                    adjustScroll clientHeight True <|
+                    adjustScroll { adjustOpts | hasNewItem = True } <|
                         -- Do not bump, nor flash Column during catchUp
                         ( { c | items = Scroll.prependList newItems c.items }
                         , { ppBase | catchUpId = Just c.id }
                         )
 
                 ( False, [] ) ->
-                    adjustScroll clientHeight False ( c, ppBase )
+                    adjustScroll adjustOpts ( c, ppBase )
 
                 ( False, newItems ) ->
-                    adjustScroll clientHeight True <|
+                    adjustScroll { adjustOpts | hasNewItem = True } <|
                         ( { c | items = Scroll.prependList newItems c.items, recentlyTouched = True }
                         , if c.pinned then
                             -- Do not bump Pinned Column
@@ -516,15 +525,21 @@ scanBroker { broker, maxCount, clientHeight, catchUp } c_ =
                         )
 
 
-adjustScroll : Int -> Bool -> ( Column, PostProcess ) -> ( Column, PostProcess )
-adjustScroll clientHeight hasNewItem ( c, pp ) =
+adjustScroll :
+    { isVisible : Bool, clientHeight : Int, hasNewItem : Bool }
+    -> ( Column, PostProcess )
+    -> ( Column, PostProcess )
+adjustScroll { isVisible, clientHeight, hasNewItem } ( c, pp ) =
     let
         ( items, sCmd ) =
             if hasNewItem then
                 Scroll.update Scroll.NewItem c.items
 
-            else
+            else if isVisible then
                 Scroll.update (Scroll.AdjustReq (boundingHeight clientHeight)) c.items
+
+            else
+                ( c.items, Cmd.none )
     in
     ( { c | items = items }, { pp | cmd = Cmd.map ScrollMsg sCmd } )
 
