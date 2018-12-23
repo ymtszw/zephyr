@@ -131,7 +131,7 @@ itemAvatarEl theme item =
 
 botIconEl : ColorTheme -> Int -> Html Msg
 botIconEl theme badgeSize =
-    octicon [ bgColor (botIconBackground theme), title "BOT" ]
+    octicon [ style "width" (px badgeSize), style "height" (px badgeSize), bgColor (botIconBackground theme), title "BOT" ]
         { size = badgeSize, color = avatarIconFillColor theme, shape = Octicons.zap }
 
 
@@ -154,12 +154,12 @@ octiconAvatarEl theme shape =
         octiconSize =
             columnItemAvatarSize - octiconAvatarPadding * 2
     in
+    -- Assuming Octicons are squared; which is NOT true for some shapes
     octicon
-        [ width columnItemAvatarSize
-        , height columnItemAvatarSize
-        , padding octiconAvatarPadding
+        [ padding octiconAvatarPadding
         , alignTop
         , style "border" (String.join " " [ cssRgba theme.note, "dashed", "1px" ])
+        , style "box-sizing" "border-box"
         , bdRounded rectElementRound
         ]
         { size = octiconSize
@@ -336,10 +336,11 @@ maxEmbeddedMediaWidth =
 
 embedAuthorEl : ColorTheme -> Maybe Url.Url -> String -> Maybe Url.Url -> Html Msg
 embedAuthorEl theme link name icon =
-    row [ bold ]
+    row [ indicator "embedAuthor", bold ]
         [ wrapWithLink theme link <|
-            squareIconOrHead [ flex ]
-                { size = columnItemAvatarSize // 2
+            squareIconOrHead []
+                { theme = theme
+                , size = columnItemAvatarSize // 2
                 , name = name
                 , url = Maybe.map Url.toString icon
                 }
@@ -359,7 +360,7 @@ wrapWithLink theme link e =
 
 embedTitleEl : ColorTheme -> Maybe Url.Url -> String -> Html Msg
 embedTitleEl theme urlMaybe title =
-    paragraph [ bold ]
+    paragraph [ indicator "embedAuthor", bold ]
         [ case urlMaybe of
             Just url ->
                 newTabLink [ fontColor theme.link ] { url = Url.toString url, children = [ text title ] }
@@ -389,6 +390,7 @@ gutteredEmbedAttrs theme color =
     gutteredConteinerAttrs theme color
         ++ [ maxHeight maxEmbedBlockHeight
            , scrollbarY
+           , bgColor theme.sub
            ]
 
 

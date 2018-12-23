@@ -18,6 +18,7 @@ module View.HtmlParts exposing
     , gutterWidth
     , gutteredConteinerAttrs
     , iconWithBadge
+    , indicator
     , inlinePadding
     , italic
     , maxHeight
@@ -320,28 +321,38 @@ breakClassName =
     "breakEl"
 
 
-squareIconOrHead : List (Attribute msg) -> { size : Int, name : String, url : Maybe String } -> Html msg
-squareIconOrHead userAttrs { size, name, url } =
-    let
-        baseAttrs =
-            [ width size
-            , height size
-            , bdRounded (iconRounding size)
-            , fontSize (size // 2)
-            , bold
-            , sanSerif
-            , style "display" "flex"
-            , style "align-items" "center"
-            ]
-    in
-    div (baseAttrs ++ userAttrs)
-        [ case url of
-            Just url_ ->
-                img [ width size, height size, src url_, alt name ] []
+squareIconOrHead : List (Attribute msg) -> { theme : ColorTheme, size : Int, name : String, url : Maybe String } -> Html msg
+squareIconOrHead userAttrs { theme, size, name, url } =
+    case url of
+        Just url_ ->
+            let
+                imgAttrs =
+                    [ width size
+                    , height size
+                    , src url_
+                    , alt name
+                    , bdRounded (iconRounding size)
+                    , style "overflow" "hidden"
+                    ]
+            in
+            img (imgAttrs ++ userAttrs) []
 
-            Nothing ->
-                text (String.left 1 name)
-        ]
+        Nothing ->
+            let
+                baseAttrs =
+                    [ style "width" (px size)
+                    , style "height" (px size)
+                    , fontSize (size // 2)
+                    , bdRounded (iconRounding size)
+                    , bgColor theme.bg
+                    , bold
+                    , sanSerif
+                    , style "display" "flex"
+                    , style "align-items" "center"
+                    , style "justify-content" "center"
+                    ]
+            in
+            div (baseAttrs ++ userAttrs) [ text (String.left 1 name) ]
 
 
 iconRounding : Int -> Int
@@ -374,8 +385,9 @@ iconWithBadge :
 iconWithBadge userAttrs opts =
     let
         outerAttrs =
-            [ padding innerIconPadding
+            [ flex
             , style "display" "flex"
+            , style "flex-direction" "row-reverse" -- HACK!
             , alignTop
             ]
 
@@ -383,30 +395,43 @@ iconWithBadge userAttrs opts =
             Basics.max 1 (opts.size // 20)
     in
     div (outerAttrs ++ userAttrs)
-        [ squareIconOrHead
-            [ case opts.url of
-                Just _ ->
-                    noneAttr
+        [ div [ padding innerIconPadding ]
+            [ squareIconOrHead
+                [ case opts.url of
+                    Just _ ->
+                        noneAttr
 
-                Nothing ->
-                    bgColor opts.theme.prim
+                    Nothing ->
+                        bgColor opts.theme.prim
+                ]
+                { theme = opts.theme
+                , size = opts.size - (innerIconPadding * 2)
+                , name = opts.fallback
+                , url = opts.url
+                }
             ]
-            { size = opts.size - (innerIconPadding * 2)
-            , name = opts.fallback
-            , url = opts.url
-            }
         , case opts.badge of
             Just badge ->
                 let
                     badgeSize =
                         opts.size // 3
+
+                    badgePadding =
+                        opts.size - badgeSize
                 in
                 div
-                    [ style "align-self" "flex-end end right"
-                    , bdRounded (iconRounding badgeSize)
+                    [ bdRounded (iconRounding badgeSize)
+                    , style "align-self" "flex-end"
+                    , style "position" "absolute"
+                    , style "overflow" "hidden"
                     ]
                     [ badge badgeSize ]
 
             Nothing ->
                 none
         ]
+
+
+indicator : String -> Attribute msg
+indicator d =
+    attribute "data-indicator" d
