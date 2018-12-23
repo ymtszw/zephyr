@@ -286,6 +286,7 @@ codeBlock attrs opts =
             , bdRounded rectElementRound
             , bgColor opts.theme.sub
             , monospace
+            , style "width" "100%"
             ]
     in
     pre (baseAttrs ++ attrs) [ text opts.code ]
@@ -411,7 +412,7 @@ codeInline attrs opts =
 
 paddingXY : Int -> Int -> Attribute msg
 paddingXY x y =
-    style "padding" (String.join " " [ px x, px y, px x, px y ])
+    style "padding" (String.join " " [ px y, px x, px y, px x ])
 
 
 inlinePadding : Int
