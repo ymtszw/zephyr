@@ -282,7 +282,7 @@ discordEmbedEl embed =
 
         embedHeaders =
             List.filterMap identity
-                [ embed.author |> Maybe.map (\author -> embedAuthorEl author.url author.name author.proxyIconUrl)
+                [ embed.author |> Maybe.map (\author -> embedAuthorEl oneDark author.url author.name author.proxyIconUrl)
                 , embed.title |> Maybe.map (embedTitleEl oneDark embed.url)
                 ]
 
@@ -334,24 +334,24 @@ maxEmbeddedMediaWidth =
     maxMediaWidth - 15
 
 
-embedAuthorEl : Maybe Url.Url -> String -> Maybe Url.Url -> Html Msg
-embedAuthorEl link name icon =
+embedAuthorEl : ColorTheme -> Maybe Url.Url -> String -> Maybe Url.Url -> Html Msg
+embedAuthorEl theme link name icon =
     row [ bold ]
-        [ wrapWithLink link <|
-            squareIconOrHead []
+        [ wrapWithLink theme link <|
+            squareIconOrHead [ flex ]
                 { size = columnItemAvatarSize // 2
                 , name = name
                 , url = Maybe.map Url.toString icon
                 }
-        , paragraph [] [ wrapWithLink link <| text name ]
+        , paragraph [ flex, grow ] [ wrapWithLink theme link <| text name ]
         ]
 
 
-wrapWithLink : Maybe Url.Url -> Html Msg -> Html Msg
-wrapWithLink link e =
+wrapWithLink : ColorTheme -> Maybe Url.Url -> Html Msg -> Html Msg
+wrapWithLink theme link e =
     case link of
         Just url ->
-            newTabLink [] { url = Url.toString url, children = [ e ] }
+            newTabLink [ fontColor theme.link ] { url = Url.toString url, children = [ e ] }
 
         Nothing ->
             e
@@ -405,19 +405,17 @@ discordEmbedImageEl maxWidth linkUrlMaybe embedImage =
                 |> Maybe.withDefault embedImage.url
                 |> addDimensionQuery maxWidth embedImage.width embedImage.height
     in
-    embedImageEl maxWidth linkUrlMaybe imageUrl
+    embedImageEl maxEmbeddedMediaWidth linkUrlMaybe imageUrl
 
 
 embedImageEl : Int -> Maybe Url.Url -> Url.Url -> Html Msg
-embedImageEl maxWidth_ linkMaybe imageUrl =
-    wrapWithLink linkMaybe <|
-        img
-            [ maxWidth maxWidth_
-            , flex
-            , src (Url.toString imageUrl)
-            , alt "Embedded Image"
-            ]
-            []
+embedImageEl maxWidth_ link url =
+    imageEl [ flex ]
+        { description = "Embed Image"
+        , src = url
+        , maxWidth = maxWidth_
+        , link = link
+        }
 
 
 addDimensionQuery : Int -> Maybe Int -> Maybe Int -> Url.Url -> Url.Url
@@ -444,7 +442,7 @@ urlWithDimensionQuery ( queryWidth, queryHeight ) src =
 discordAttachmentEl : Discord.Attachment -> Html Msg
 discordAttachmentEl attachment =
     if extIsImage attachment.proxyUrl.path then
-        imageEl
+        imageEl []
             { src = addDimensionQuery maxMediaWidth attachment.width attachment.height attachment.proxyUrl
             , description = attachment.filename
             , link = Just attachment.url
@@ -577,7 +575,7 @@ slackFileEl sf =
             url
     in
     if mimeIsImage sf.mimetype then
-        imageEl
+        imageEl []
             { src = Maybe.withDefault sf.url_ (Maybe.map thumb360Url sf.thumb360)
             , description = sf.name
             , maxWidth = maxMediaWidth
@@ -621,7 +619,7 @@ slackAttachmentBodyEl a =
     let
         headers =
             List.filterMap identity <|
-                [ a.author |> Maybe.map (\author -> embedAuthorEl author.link author.name author.icon)
+                [ a.author |> Maybe.map (\author -> embedAuthorEl aubergine author.link author.name author.icon)
                 , a.title |> Maybe.map (\title -> embedTitleEl aubergine title.link title.name)
                 ]
 
@@ -691,7 +689,7 @@ mediaEl : Media -> Html Msg
 mediaEl media =
     case media of
         Image url ->
-            imageEl
+            imageEl []
                 { description = "Image"
                 , src = url
                 , maxWidth = maxMediaWidth
@@ -702,15 +700,24 @@ mediaEl media =
             videoEl Nothing url
 
 
-imageEl : { description : String, src : Url.Url, maxWidth : Int, link : Maybe Url.Url } -> Html Msg
-imageEl opts =
-    wrapWithLink opts.link <|
-        img
+imageEl :
+    List (Attribute Msg)
+    -> { description : String, src : Url.Url, maxWidth : Int, link : Maybe Url.Url }
+    -> Html Msg
+imageEl attrs opts =
+    let
+        imgAttrs =
             [ src (Url.toString opts.src)
             , alt opts.description
             , maxWidth opts.maxWidth
             ]
-            []
+    in
+    case opts.link of
+        Just url ->
+            newTabLink [] { url = Url.toString url, children = [ img (imgAttrs ++ attrs) [] ] }
+
+        Nothing ->
+            img (imgAttrs ++ attrs) []
 
 
 maxMediaWidth : Int
