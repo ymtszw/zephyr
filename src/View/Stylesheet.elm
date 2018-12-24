@@ -1,7 +1,7 @@
 module View.Stylesheet exposing (render)
 
 import Html
-import View.Style exposing (Style, s)
+import View.Style exposing (Style, px, s, scale12)
 
 
 {-| Dumps all required stylesheet in the app.
@@ -52,14 +52,16 @@ resetUserAgentStyles =
         [ ( "margin", "0" )
         , ( "padding", "0" )
         , ( "border", "0" )
-        , ( "font-size", "100%" )
+        , ( "font-size", px (scale12 0) ) -- Global default font-size is 12px
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
         ]
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
     , s "body"
-        [ ( "line-height", "1" ) ]
+        [ ( "line-height", "1" )
+        , ( "font-size", px (scale12 0) )
+        ]
     , s "ol,ul"
         [ ( "list-style", "none" ) ]
     , s "blockquote,q"

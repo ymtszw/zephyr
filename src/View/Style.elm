@@ -1,4 +1,4 @@
-module View.Style exposing (Style, kf, s, toString)
+module View.Style exposing (Style, c, kf, px, s, scale12, toString)
 
 
 type Style
@@ -14,11 +14,36 @@ type Raw
     = Raw String (List ( String, String ))
 
 
+{-| Produces a CSS entry for a selector.
+
+    s "p" [ ( "color", "red" ) ]
+    --> "p{color:red;}"
+
+-}
 s : String -> List ( String, String ) -> Style
 s selector props =
     RawStyle (Raw selector props)
 
 
+{-| Produces a CSS entry for a class.
+
+    c "foo" [ ( "color", "red" ) ] --> ".foo{color:red;}"
+
+-}
+c : String -> List ( String, String ) -> Style
+c className props =
+    RawStyle (Raw ("." ++ className) props)
+
+
+{-| Produces a `@keyframes` entry.
+
+    kf "rotating"
+        [ ( "from", [ ("transform", "rotate(0turn)" ) ] )
+        , ( "to", [ ("transform", "rotate(1turn)" ) ] )
+        ]
+    --> "@keyframes rotating{from{transform:rotate(0turn);}to{transform:rotate(1turn);}}"
+
+-}
 kf : String -> List ( String, List ( String, String ) ) -> Style
 kf animationName frameBlocks =
     KeyFrames <|
@@ -50,3 +75,29 @@ rawToString (Raw selector props) =
         , String.join "" (List.map (\( name, value ) -> name ++ ":" ++ value ++ ";") props)
         , "}"
         ]
+
+
+
+-- HELPERS
+
+
+px : Int -> String
+px i =
+    String.fromInt i ++ "px"
+
+
+scale12 : Int -> Int
+scale12 =
+    scaleByQuarter 12
+
+
+scaleByQuarter : Int -> Int -> Int
+scaleByQuarter base factor =
+    if factor == 0 then
+        base
+
+    else if factor < 0 then
+        round (toFloat base * 1.25 ^ toFloat factor)
+
+    else
+        round (toFloat base * 1.25 ^ (toFloat factor - 1))

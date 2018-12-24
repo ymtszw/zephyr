@@ -26,3 +26,7 @@ dist/zephyr.js:
 	@# Taken from https://github.com/rtfeldman/elm-spa-example/blob/master/README.md
 	uglifyjs dist/zephyr-optimized.js --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters=true,keep_fargs=false,unsafe_comps=true,unsafe=true,passes=2' --output=dist/zephyr-compressed.js && rm -v dist/zephyr-optimized.js
 	uglifyjs dist/zephyr-compressed.js --mangle --output=dist/zephyr.js && rm -v dist/zephyr-compressed.js
+
+.PHONY: lab
+lab:
+	elm-live src/View/PatternLab.elm --pushstate --port=8001 --start-page=index.html -- --output=index.html
