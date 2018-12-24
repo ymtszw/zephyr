@@ -1,6 +1,7 @@
 module View.Stylesheet exposing (render)
 
 import Html
+import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
 import View.Style exposing (Style, inject, px, s, scale12)
@@ -15,6 +16,7 @@ render =
             preamble
                 ++ Typography.styles
                 ++ TextBlock.styles
+                ++ Layout.styles
 
 
 preamble : List Style
