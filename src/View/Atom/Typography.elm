@@ -2,7 +2,7 @@ module View.Atom.Typography exposing
     ( t
     , baseFontSize, detailFontSize, headlineFontSize, titleFontSize, impactFontSize
     , sansSerif, serif, monospace
-    , styles
+    , styles, monospaceStyle
     )
 
 {-| Typography Atoms.
@@ -21,7 +21,7 @@ module View.Atom.Typography exposing
 
 ## Style Entries
 
-@docs styles
+@docs styles, monospaceStyle
 
 -}
 

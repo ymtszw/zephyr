@@ -22,27 +22,63 @@ view =
     { title = "Zephyr: Pattern Lab"
     , body =
         [ View.Stylesheet.render
-        , atomsView
+        , introduction
+        , typography
+        , textBlock
         ]
     }
 
 
-atomsView : Html.Html ()
-atomsView =
-    Html.div []
-        [ h1 [ titleFontSize ] [ t "[h1.titleFontSize] Pattern Lab" ]
+introduction : Html ()
+introduction =
+    div []
+        [ h1 [ impactFontSize ] [ t "Pattern Lab" ]
         , p []
-            [ t "[p] ... is a catalogue of UI Atoms/Molecules in Zephyr app. "
-            , t "These are bare texts in a paragraph, and it should be 12px in font-size."
+            [ t "... is a catalogue of Atomic Design in Zephyr app.\n"
+            , t "I am bare texts in a paragraph, and I should be 12px in font-size (global default).\n"
             ]
-        , h1 [ titleFontSize ] [ t "[h1.titleFontSize] Here's available font-families" ]
-        , p [ sansSerif ] [ t "This paragraph uses a sans-serif font. あいうえお水兵リーベ" ]
+        ]
+
+
+typography : Html ()
+typography =
+    div []
+        [ h1 [ titleFontSize ] [ t "Typography" ]
+        , h2 [ headlineFontSize ] [ t "Font families" ]
+        , fontFamilies
+        , h2 [ headlineFontSize ] [ t "Font sizes" ]
+        , fontSizes
+        ]
+
+
+fontFamilies : Html.Html ()
+fontFamilies =
+    div []
+        [ p [ sansSerif ] [ t "This paragraph uses a sans-serif font. あいうえお水兵リーベ" ]
         , p [ serif ] [ t "[p.serif] This paragraph uses a serif font. あいうえお水兵リーベ" ]
         , p [ monospace ] [ t "[p.monospace] This paragraph uses a monospace font. あいうえお水兵リーベ" ]
-        , h1 [ titleFontSize ] [ t "[h1.titleFontSize] Font size comparisons" ]
-        , p [ baseFontSize ] [ t "[p.baseFontSize] baseFontSize" ]
-        , p [ detailFontSize ] [ t "[p.detailFontSize] detailFontSize" ]
-        , p [ headlineFontSize ] [ t "[p.headlineFontSize] headlineFontSize" ]
-        , p [ titleFontSize ] [ t "[p.titleFontSize] titleFontSize" ]
-        , p [ impactFontSize ] [ t "[p.impactFontSize] impactFontSize" ]
+        ]
+
+
+fontSizes : Html.Html ()
+fontSizes =
+    div []
+        [ p [ baseFontSize ] [ t "baseFontSize" ]
+        , p [ detailFontSize ] [ t "detailFontSize" ]
+        , p [ headlineFontSize ] [ t "headlineFontSize" ]
+        , p [ titleFontSize ] [ t "titleFontSize" ]
+        , p [ impactFontSize ] [ t "impactFontSize" ]
+        ]
+
+
+textBlock : Html.Html ()
+textBlock =
+    div []
+        [ h1 [ titleFontSize ] [ t "Text Blocks" ]
+        , p []
+            [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\n"
+            , t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\n"
+            , t "and as you can see, respects literal line breaks.\n"
+            ]
+        , pre [] [ t "[pre] in pre tag, texts have monospace font." ]
         ]

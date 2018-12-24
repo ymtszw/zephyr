@@ -1,9 +1,13 @@
-module View.Style exposing (Style, c, kf, px, s, scale12, toString)
+module View.Style exposing (Style, c, derive, inject, kf, pure, px, s, scale12, toString)
+
+import Dict exposing (Dict)
 
 
+{-| An entry in stylesheet.
+-}
 type Style
-    = KeyFrames KF
-    | RawStyle Raw
+    = RawStyle Raw
+    | KeyFrames KF
 
 
 type KF
@@ -11,33 +15,44 @@ type KF
 
 
 type Raw
-    = Raw String (List ( String, String ))
+    = Raw String (Dict String String)
 
 
 {-| Produces a CSS entry for a selector.
 
-    s "p" [ ( "color", "red" ) ]
+    toString (s "p" [ ( "color", "red" ) ])
     --> "p{color:red;}"
 
 -}
 s : String -> List ( String, String ) -> Style
 s selector props =
-    RawStyle (Raw selector props)
+    RawStyle (Raw selector (Dict.fromList props))
+
+
+{-| Creates an empty CSS entry for a selector.
+
+You will use this with `inject`.
+
+-}
+pure : String -> Style
+pure selector =
+    RawStyle (Raw selector Dict.empty)
 
 
 {-| Produces a CSS entry for a class.
 
-    c "foo" [ ( "color", "red" ) ] --> ".foo{color:red;}"
+    toString (c "foo" [ ( "color", "red" ) ])
+    --> ".foo{color:red;}"
 
 -}
 c : String -> List ( String, String ) -> Style
 c className props =
-    RawStyle (Raw ("." ++ className) props)
+    RawStyle (Raw ("." ++ className) (Dict.fromList props))
 
 
 {-| Produces a `@keyframes` entry.
 
-    kf "rotating"
+    toString <| kf "rotating"
         [ ( "from", [ ("transform", "rotate(0turn)" ) ] )
         , ( "to", [ ("transform", "rotate(1turn)" ) ] )
         ]
@@ -48,12 +63,46 @@ kf : String -> List ( String, List ( String, String ) ) -> Style
 kf animationName frameBlocks =
     KeyFrames <|
         KF animationName <|
-            List.map (\( frameSelector, props ) -> Raw frameSelector props) frameBlocks
+            List.map (\( frameSelector, props ) -> Raw frameSelector (Dict.fromList props)) frameBlocks
+
+
+{-| Derives a new Style from another.
+-}
+derive : String -> Style -> Style
+derive selector base =
+    inject base (pure selector)
+
+
+{-| Injects properties in a Style (first one) into another (second) one,
+effectively combining styles into one.
+
+The second one is considered "base", and the first one is a "mixin".
+If properties collide, ones in the first Style ("new" one) take effect.
+
+You can only combine RawStyles currently. KeyFrames are kept intact.
+
+-}
+inject : Style -> Style -> Style
+inject new base =
+    case base of
+        RawStyle (Raw selector baseProps) ->
+            case new of
+                KeyFrames _ ->
+                    base
+
+                RawStyle (Raw _ newProps) ->
+                    RawStyle (Raw selector (Dict.union newProps baseProps))
+
+        KeyFrames _ ->
+            base
 
 
 toString : Style -> String
 toString style =
     case style of
+        RawStyle raw ->
+            rawToString raw
+
         KeyFrames (KF animationName frameBlocks) ->
             String.join ""
                 [ "@keyframes "
@@ -63,16 +112,13 @@ toString style =
                 , "}"
                 ]
 
-        RawStyle raw ->
-            rawToString raw
-
 
 rawToString : Raw -> String
 rawToString (Raw selector props) =
     String.join ""
         [ selector
         , "{"
-        , String.join "" (List.map (\( name, value ) -> name ++ ":" ++ value ++ ";") props)
+        , Dict.foldl (\name value acc -> acc ++ name ++ ":" ++ value ++ ";") "" props
         , "}"
         ]
 
