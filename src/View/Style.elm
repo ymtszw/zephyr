@@ -1,9 +1,25 @@
-module View.Style exposing (Style, c, derive, inject, kf, pure, px, s, scale12, toString)
+module View.Style exposing
+    ( Style, toString, s, c, kf, pure, derive, inject
+    , px, scaleByQuarter, scale12
+    )
+
+{-| Style entry type and its manipulations.
+
+Provides necessary types and helper functions.
+
+@docs Style, toString, s, c, kf, pure, derive, inject
+@docs px, scaleByQuarter, scale12
+
+-}
 
 import Dict exposing (Dict)
 
 
 {-| An entry in stylesheet.
+
+Currently only supports raw style entries and `@keyframes`.
+But it is possible to also support `@media` queries.
+
 -}
 type Style
     = RawStyle Raw
@@ -18,7 +34,7 @@ type Raw
     = Raw String (Dict String String)
 
 
-{-| Produces a CSS entry for a selector.
+{-| Produces a `RawStyle` entry for a selector.
 
     toString (s "p" [ ( "color", "red" ) ])
     --> "p{color:red;}"
@@ -29,7 +45,7 @@ s selector props =
     RawStyle (Raw selector (Dict.fromList props))
 
 
-{-| Creates an empty CSS entry for a selector.
+{-| Creates an empty `RawStyle` entry for a selector.
 
 You will use this with `inject`.
 
@@ -39,7 +55,7 @@ pure selector =
     RawStyle (Raw selector Dict.empty)
 
 
-{-| Produces a CSS entry for a class.
+{-| Produces a `RawStyle` entry for a class.
 
     toString (c "foo" [ ( "color", "red" ) ])
     --> ".foo{color:red;}"
@@ -66,20 +82,29 @@ kf animationName frameBlocks =
             List.map (\( frameSelector, props ) -> Raw frameSelector (Dict.fromList props)) frameBlocks
 
 
-{-| Derives a new Style from another.
+{-| Derives a new Style from another, by copying its properties.
 -}
 derive : String -> Style -> Style
 derive selector base =
     inject base (pure selector)
 
 
-{-| Injects properties in a Style (first one) into another (second) one,
-effectively combining styles into one.
+{-| Injects properties in a `Style` (first one) into another (second) one.
 
-The second one is considered "base", and the first one is a "mixin".
-If properties collide, ones in the first Style ("new" one) take effect.
+Can be used for creating a `Style` value by combining existing `Style`s together.
 
-You can only combine RawStyles currently. KeyFrames are kept intact.
+The second `Style` is considered a "base", and the first one is a "mixin".
+If properties collide, ones in the first `Style` ("new" one) take effect.
+
+You can only combine `RawStyle`s currently.
+"Base" `KeyFrame`s are kept intact and "mixin" `KeyFrame`s are just ignored.
+
+    pure ".someClass"
+        |> inject Typography.sansSerif
+        |> inject Typography.bold
+        |> inject myLuckyColor
+        |> toString
+    --> ".someClass{font-family:Tahoma,Verdana,Arial,Helvetica,sans-serif;font-weight:700;color:#00cc99;}"
 
 -}
 inject : Style -> Style -> Style
@@ -97,6 +122,8 @@ inject new base =
             base
 
 
+{-| Renders a `Style` into bare string.
+-}
 toString : Style -> String
 toString style =
     case style of

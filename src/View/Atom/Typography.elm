@@ -8,21 +8,10 @@ module View.Atom.Typography exposing
 
 {-| Typography Atoms.
 
-
-## Html Renderers
-
 @docs t
-
-
-## Class Attributes
-
 @docs baseFontSize, detailFontSize, headlineFontSize, titleFontSize, sectionFontSize, impactFontSize
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
-
-
-## Style Entries
-
 @docs styles, baseFontSizeStyle, sansSerifStyle, monospaceStyle
 
 -}
