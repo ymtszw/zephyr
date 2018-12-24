@@ -4,18 +4,17 @@ module View.TextRenderer exposing (render)
 -}
 
 import Data.ColorTheme exposing (ColorTheme)
-import Element exposing (..)
-import Element.Background as BG
-import Element.Border as BD
-import Element.Font as Font
-import Element.Lazy exposing (..)
-import Html
-import Html.Attributes
+import Element exposing (Color)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Lazy exposing (..)
+import Json.Encode
 import Markdown.Block as Block exposing (Block(..), ListBlock)
 import Markdown.Inline as Inline exposing (Inline(..))
 import Octicons
 import TextParser exposing (Parsed(..))
-import View.Parts exposing (..)
+import View.HtmlParts exposing (..)
+import View.Parts exposing (columnCodeBlockMaxHeight, scale12, scaleByQuarter)
 
 
 type alias RenderOptions =
@@ -26,7 +25,7 @@ type alias RenderOptions =
     }
 
 
-render : RenderOptions -> List (Element msg)
+render : RenderOptions -> List (Html msg)
 render opts =
     let
         (Parsed blocks) =
@@ -35,7 +34,7 @@ render opts =
     renderImpl opts blocks []
 
 
-renderImpl : RenderOptions -> List (Block () ()) -> List (Element msg) -> List (Element msg)
+renderImpl : RenderOptions -> List (Block () ()) -> List (Html msg) -> List (Html msg)
 renderImpl opts blocks acc =
     case blocks of
         [] ->
@@ -45,9 +44,7 @@ renderImpl opts blocks acc =
             renderImpl opts xs acc
 
         ThematicBreak :: xs ->
-            renderImpl opts xs <|
-                el [ width fill, BD.widthXY 0 1, BD.color opts.theme.bd ] none
-                    :: acc
+            renderImpl opts xs <| hr [] [] :: acc
 
         (Heading _ level inlines) :: xs ->
             -- Headings in feeds would interfere overall visual, so not enlarging
@@ -55,21 +52,21 @@ renderImpl opts blocks acc =
                 heading =
                     let
                         headingMarker =
-                            [ el [ Font.bold ] (text (String.repeat level "#"))
+                            [ span [ bold ] [ text (String.repeat level "#") ]
                             , text " "
                             ]
 
                         headingTexts =
                             List.concatMap (inlineToEls opts) inlines
                     in
-                    breakP [ width fill ] (headingMarker ++ headingTexts)
+                    paragraph [] (headingMarker ++ headingTexts)
             in
             renderImpl opts xs (heading :: acc)
 
         (CodeBlock codeOpts text) :: xs ->
             let
                 codeBlock_ =
-                    codeBlock [ Font.size (scaleByQuarter opts.fontSize -2) ]
+                    codeBlock [ fontSize (scaleByQuarter opts.fontSize -2) ]
                         { theme = opts.theme, maxHeight = columnCodeBlockMaxHeight, code = text }
             in
             renderImpl opts xs (codeBlock_ :: acc)
@@ -83,7 +80,7 @@ renderImpl opts blocks acc =
         (Paragraph _ inlines) :: xs ->
             let
                 para =
-                    breakP [] (List.concatMap (inlineToEls opts) inlines)
+                    paragraph [] (List.concatMap (inlineToEls opts) inlines)
             in
             renderImpl opts xs (para :: acc)
 
@@ -114,15 +111,15 @@ renderImpl opts blocks acc =
             renderImpl opts xs acc
 
 
-listItemEl : RenderOptions -> ListBlock -> Int -> List (Block () ()) -> Element msg
+listItemEl : RenderOptions -> ListBlock -> Int -> List (Block () ()) -> Html msg
 listItemEl opts listOpts index blocks =
-    row [ width fill, spacing spacingUnit, forceBreak ]
+    row [ widthFill, forceBreak ]
         [ lazy3 listMarker opts listOpts index
-        , breakP [ width fill, alignTop ] (renderImpl opts blocks [])
+        , column [ alignTop ] (renderImpl opts blocks [])
         ]
 
 
-listMarker : RenderOptions -> ListBlock -> Int -> Element msg
+listMarker : RenderOptions -> ListBlock -> Int -> Html msg
 listMarker opts listOpts index =
     let
         listMarkerPaddingTop =
@@ -130,7 +127,7 @@ listMarker opts listOpts index =
     in
     case listOpts.type_ of
         Block.Unordered ->
-            octiconEl [ alignTop, paddingXY 0 listMarkerPaddingTop ]
+            octicon [ alignTop, paddingXY 0 listMarkerPaddingTop ]
                 { size = listMarkerSize
                 , color = opts.theme.text
                 , shape =
@@ -150,16 +147,17 @@ listMarker opts listOpts index =
                 displayedIndex =
                     originIndex + index
             in
-            el [ alignTop, paddingXY 0 listMarkerPaddingTop, style "user-select" "none" ] <|
+            div [ alignTop, paddingXY 0 listMarkerPaddingTop, style "user-select" "none" ] <|
+                -- Use css content
                 case modBy 3 listOpts.indentLength of
                     2 ->
-                        text (String.fromInt displayedIndex ++ ">")
+                        [ text (String.fromInt displayedIndex ++ ">") ]
 
                     1 ->
-                        text (String.fromInt displayedIndex ++ ")")
+                        [ text (String.fromInt displayedIndex ++ ")") ]
 
                     zero ->
-                        text (String.fromInt displayedIndex ++ ".")
+                        [ text (String.fromInt displayedIndex ++ ".") ]
 
 
 listMarkerSize : Int
@@ -167,54 +165,51 @@ listMarkerSize =
     scale12 -2
 
 
-inlineToEls : RenderOptions -> Inline () -> List (Element msg)
+inlineToEls : RenderOptions -> Inline () -> List (Html msg)
 inlineToEls opts inline =
     case inline of
         Text "" ->
             []
 
         Text s ->
-            [ breakT s ]
+            [ text s ]
 
         HardLineBreak ->
-            [ html (Html.br [] []) ]
+            [ br [] [] ]
 
         CodeInline c ->
             [ codeInline [] { theme = opts.theme, code = c } ]
 
         Link urlStr titleMaybe inlines ->
-            let
-                linkify i =
-                    newTabLink
-                        [ Font.color opts.theme.link
-                        , style "display" "inline"
-                        , forceBreak
-                        , case titleMaybe of
-                            Just title ->
-                                htmlAttribute (Html.Attributes.title title)
+            [ newTabLink
+                [ fontColor opts.theme.link
+                , forceBreak
+                , case titleMaybe of
+                    Just t ->
+                        title t
 
-                            Nothing ->
-                                noneAttr
-                        ]
-                        { url = urlStr
-                        , label = i
-                        }
-            in
-            -- This is really ugly workaround; but elm-ui does not have inline <span>-equivalent
-            List.map linkify <| List.concatMap (inlineToEls opts) inlines
+                    Nothing ->
+                        noneAttr
+                ]
+                { url = urlStr
+                , children = List.concatMap (inlineToEls opts) inlines
+                }
+            ]
 
         Image srcStr titleMaybe inlines ->
             -- XXX may need to force break?
-            [ image [ width (shrink |> maximum opts.maxMediaWidth) ]
-                { src = srcStr
-                , description =
+            [ img
+                [ src srcStr
+                , alt <|
                     case titleMaybe of
                         Just title ->
                             title
 
                         Nothing ->
                             Inline.extractText inlines
-                }
+                , maxWidth opts.maxMediaWidth
+                ]
+                []
             ]
 
         HtmlInline "code" _ inlines ->
@@ -227,21 +222,21 @@ inlineToEls opts inline =
 
         Emphasis level inlines ->
             let
-                decoAttrs =
+                decorated =
                     case level of
                         1 ->
-                            [ Font.italic ]
+                            span [ italic ]
 
                         2 ->
-                            [ Font.bold ]
+                            span [ bold ]
 
                         3 ->
-                            [ Font.bold, Font.underline ]
+                            span [ bold, underline ]
 
                         _ ->
-                            [ Font.extraBold, Font.underline ]
+                            span [ extraBold, underline ]
             in
-            List.map (el (forceBreak :: decoAttrs)) <| List.concatMap (inlineToEls opts) inlines
+            [ decorated <| List.concatMap (inlineToEls opts) inlines ]
 
         Inline.Custom () _ ->
             []

@@ -1232,6 +1232,9 @@ manualStyle =
         , Html.text <| "@keyframes " ++ wiggleKeyframesName ++ "{" ++ wiggleKeyframes ++ "}"
         , Html.text <| "." ++ strictContainerClassName ++ "{contain:paint style layout size;}"
         , Html.text <| "." ++ fluidContainerClassName ++ "{contain:paint style layout;}"
+        , Html.text "p,pre{margin:0;}" -- Default margin must die!
+        , Html.text "*{box-sizing:border-box;}" -- Really, WHO needs other than border-box??? JK
+        , Html.text "img{display:block;}" -- When we use images as a cosmetic tokens, we almost always need them to be rendered as blocks. Override when inlining is explicitly needed
         ]
 
 
