@@ -32,7 +32,13 @@ view =
 introduction : Html ()
 introduction =
     div []
-        [ h1 [ impactFontSize ] [ t "Pattern Lab" ]
+        [ h1 [ impactFontSize ]
+            [ span [ serif, bold ] [ t "Zephyr:" ]
+            , t " "
+            , span [ sansSerif, italic ] [ t "Pattern" ]
+            , t " "
+            , span [ monospace, underline, bold ] [ t "Lab" ]
+            ]
         , p []
             [ t "... is a catalogue of Atomic Design in Zephyr app.\n"
             , t "I am bare texts in a paragraph, and I should be 12px in font-size (global default).\n"
@@ -43,11 +49,13 @@ introduction =
 typography : Html ()
 typography =
     div []
-        [ h1 [ titleFontSize ] [ t "Typography" ]
-        , h2 [ headlineFontSize ] [ t "Font families" ]
+        [ h1 [ sectionFontSize ] [ t "Typography" ]
+        , h2 [ titleFontSize ] [ t "Font families" ]
         , fontFamilies
-        , h2 [ headlineFontSize ] [ t "Font sizes" ]
+        , h2 [ titleFontSize ] [ t "Font sizes" ]
         , fontSizes
+        , h2 [ titleFontSize ] [ t "Font decorations" ]
+        , fontDecorations
         ]
 
 
@@ -55,30 +63,41 @@ fontFamilies : Html.Html ()
 fontFamilies =
     div []
         [ p [ sansSerif ] [ t "This paragraph uses a sans-serif font. あいうえお水兵リーベ" ]
-        , p [ serif ] [ t "[p.serif] This paragraph uses a serif font. あいうえお水兵リーベ" ]
-        , p [ monospace ] [ t "[p.monospace] This paragraph uses a monospace font. あいうえお水兵リーベ" ]
+        , p [ serif ] [ t "This paragraph uses a serif font. あいうえお水兵リーベ" ]
+        , p [ monospace ] [ t "This paragraph uses a monospace font. あいうえお水兵リーベ" ]
         ]
 
 
 fontSizes : Html.Html ()
 fontSizes =
     div []
-        [ p [ baseFontSize ] [ t "baseFontSize" ]
-        , p [ detailFontSize ] [ t "detailFontSize" ]
-        , p [ headlineFontSize ] [ t "headlineFontSize" ]
+        [ p [ impactFontSize ] [ t "impactFontSize" ]
+        , p [ sectionFontSize ] [ t "sectionFontSize" ]
         , p [ titleFontSize ] [ t "titleFontSize" ]
-        , p [ impactFontSize ] [ t "impactFontSize" ]
+        , p [ headlineFontSize ] [ t "headlineFontSize" ]
+        , p [ baseFontSize ] [ t "baseFontSize" ]
+        , p [ detailFontSize ] [ t "detailFontSize" ]
+        ]
+
+
+fontDecorations : Html.Html ()
+fontDecorations =
+    div []
+        [ p [] [ t "This is normal text, あいうえお水兵リーベ" ]
+        , p [ italic ] [ t "This is italic text, あいうえお水兵リーベ" ]
+        , p [ bold ] [ t "This is bold text, あいうえお水兵リーベ" ]
+        , p [ underline ] [ t "This is underline text, あいうえお水兵リーベ" ]
         ]
 
 
 textBlock : Html.Html ()
 textBlock =
     div []
-        [ h1 [ titleFontSize ] [ t "Text Blocks" ]
+        [ h1 [ sectionFontSize ] [ t "Text Blocks" ]
         , p []
             [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\n"
             , t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\n"
             , t "and as you can see, respects literal line breaks.\n"
             ]
-        , pre [] [ t "[pre] in pre tag, texts have monospace font." ]
+        , pre [] [ t "In pre tag, texts have monospace font." ]
         ]

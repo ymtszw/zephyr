@@ -3,10 +3,10 @@ module View.Stylesheet exposing (render)
 import Html
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
-import View.Style exposing (Style, px, s, scale12)
+import View.Style exposing (Style, inject, px, s, scale12)
 
 
-{-| Dumps all required stylesheet in the app.
+{-| Dumps all required stylesheet of the app as a single `<style>` node.
 -}
 render : Html.Html msg
 render =
@@ -22,9 +22,12 @@ preamble =
     resetUserAgentStyles ++ globalStyles
 
 
-{-| <http://meyerweb.com/eric/tools/css/reset/>
+{-| Resets CSS, and apply some global defaults.
+
+<http://meyerweb.com/eric/tools/css/reset/>
 v2.0 | 20110126
 License: none (public domain)
+
 -}
 resetUserAgentStyles : List Style
 resetUserAgentStyles =
@@ -50,16 +53,15 @@ resetUserAgentStyles =
         [ ( "margin", "0" )
         , ( "padding", "0" )
         , ( "border", "0" )
-        , ( "font-size", px (scale12 0) ) -- Global default font-size is 12px
+        , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading parents' font settings to children
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
         ]
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
-    , s "body"
-        [ ( "line-height", "1" )
-        , ( "font-size", px (scale12 0) )
-        ]
+    , s "body" [ ( "line-height", "1" ) ]
+        |> inject Typography.baseFontSizeStyle
+        |> inject Typography.sansSerifStyle
     , s "ol,ul"
         [ ( "list-style", "none" ) ]
     , s "blockquote,q"

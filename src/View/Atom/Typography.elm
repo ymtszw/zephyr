@@ -1,8 +1,9 @@
 module View.Atom.Typography exposing
     ( t
-    , baseFontSize, detailFontSize, headlineFontSize, titleFontSize, impactFontSize
+    , baseFontSize, detailFontSize, headlineFontSize, titleFontSize, sectionFontSize, impactFontSize
     , sansSerif, serif, monospace
-    , styles, monospaceStyle
+    , italic, bold, underline
+    , styles, baseFontSizeStyle, sansSerifStyle, monospaceStyle
     )
 
 {-| Typography Atoms.
@@ -15,13 +16,14 @@ module View.Atom.Typography exposing
 
 ## Class Attributes
 
-@docs baseFontSize, detailFontSize, headlineFontSize, titleFontSize, impactFontSize
+@docs baseFontSize, detailFontSize, headlineFontSize, titleFontSize, sectionFontSize, impactFontSize
 @docs sansSerif, serif, monospace
+@docs italic, bold, underline
 
 
 ## Style Entries
 
-@docs styles, monospaceStyle
+@docs styles, baseFontSizeStyle, sansSerifStyle, monospaceStyle
 
 -}
 
@@ -43,35 +45,61 @@ t =
 
 
 -- CLASS
+-- Font sizes
 
 
-{-| Class that explicitly enforce `baseFontSize`.
+{-| Scale 0 (12px)
+
+This equals to the global default, so you do not need this in an element
+where global default is not overridden.
+
 -}
 baseFontSize : Attribute msg
 baseFontSize =
     Attributes.class baseFontSizeClass
 
 
+{-| Scale -1 (9px)
+-}
 detailFontSize : Attribute msg
 detailFontSize =
     Attributes.class detailFontSizeClass
 
 
+{-| Scale 1 (15px)
+-}
 headlineFontSize : Attribute msg
 headlineFontSize =
     Attributes.class headlineFontSizeClass
 
 
+{-| Scale 2 (18px)
+-}
 titleFontSize : Attribute msg
 titleFontSize =
     Attributes.class titleFontSizeClass
 
 
+{-| Scale 4 (30px)
+-}
+sectionFontSize : Attribute msg
+sectionFontSize =
+    Attributes.class sectionFontSizeClass
+
+
+{-| Scale 12 (174px). Used for background logo, and that's all.
+-}
 impactFontSize : Attribute msg
 impactFontSize =
     Attributes.class impactFontSizeClass
 
 
+
+-- Font families
+
+
+{-| Sans-serif fonts. Used as the global default.
+-}
 sansSerif : Attribute msg
 sansSerif =
     Attributes.class sansSerifClass
@@ -87,6 +115,21 @@ monospace =
     Attributes.class monospaceClass
 
 
+italic : Attribute msg
+italic =
+    Attributes.class italicClass
+
+
+bold : Attribute msg
+bold =
+    Attributes.class boldClass
+
+
+underline : Attribute msg
+underline =
+    Attributes.class underlineClass
+
+
 
 -- STYLE
 
@@ -95,23 +138,22 @@ styles : List Style
 styles =
     [ -- Font sizes
       baseFontSizeStyle
-    , detailFontSizeStyle
-    , headlineFontSizeStyle
-    , titleFontSizeStyle
-    , impactFontSizeStyle
+    , c detailFontSizeClass [ ( "font-size", px (scale12 -1) ) ]
+    , c headlineFontSizeClass [ ( "font-size", px (scale12 1) ) ]
+    , c titleFontSizeClass [ ( "font-size", px (scale12 2) ) ]
+    , c sectionFontSizeClass [ ( "font-size", px (scale12 4) ) ]
+    , c impactFontSizeClass [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
       sansSerifStyle
-    , serifStyle
+    , c serifClass [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "sans-serif" ] ]
     , monospaceStyle
+    , -- Font decorations
+      c italicClass [ ( "font-style", "italic" ) ]
+    , c boldClass [ ( "font-weight", "700" ) ]
+    , c underlineClass [ ( "text-decoration", "underline" ) ]
     ]
 
 
-{-| Scale 0 from 12px.
-
-This equals to the global default, so you do not need this in an element
-where global default is not overridden.
-
--}
 baseFontSizeStyle : Style
 baseFontSizeStyle =
     c baseFontSizeClass [ ( "font-size", px (scale12 0) ) ]
@@ -122,23 +164,9 @@ baseFontSizeClass =
     "bfs"
 
 
-{-| Scale -1 (9px)
--}
-detailFontSizeStyle : Style
-detailFontSizeStyle =
-    c detailFontSizeClass [ ( "font-size", px (scale12 -1) ) ]
-
-
 detailFontSizeClass : String
 detailFontSizeClass =
     "dfs"
-
-
-{-| Scale 1 (15px)
--}
-headlineFontSizeStyle : Style
-headlineFontSizeStyle =
-    c headlineFontSizeClass [ ( "font-size", px (scale12 1) ) ]
 
 
 headlineFontSizeClass : String
@@ -146,23 +174,14 @@ headlineFontSizeClass =
     "hfs"
 
 
-{-| Scale 2 (18px)
--}
-titleFontSizeStyle : Style
-titleFontSizeStyle =
-    c titleFontSizeClass [ ( "font-size", px (scale12 2) ) ]
-
-
 titleFontSizeClass : String
 titleFontSizeClass =
     "tfs"
 
 
-{-| Scale 12 (174px). Used for background logo, and that's all.
--}
-impactFontSizeStyle : Style
-impactFontSizeStyle =
-    c impactFontSizeClass [ ( "font-size", px (scale12 12) ) ]
+sectionFontSizeClass : String
+sectionFontSizeClass =
+    "sfs"
 
 
 impactFontSizeClass : String
@@ -172,16 +191,7 @@ impactFontSizeClass =
 
 sansSerifStyle : Style
 sansSerifStyle =
-    c sansSerifClass
-        [ Tuple.pair "font-family" <|
-            String.join ","
-                [ "Tahoma"
-                , "Verdana"
-                , "Arial"
-                , "Helvetica"
-                , "sans-serif"
-                ]
-        ]
+    c sansSerifClass [ fontFamily [ "Tahoma", "Verdana", "Arial", "Helvetica", "sans-serif" ] ]
 
 
 sansSerifClass : String
@@ -189,17 +199,9 @@ sansSerifClass =
     "sansserif"
 
 
-serifStyle : Style
-serifStyle =
-    c serifClass
-        [ Tuple.pair "font-family" <|
-            String.join ","
-                [ "Georgia"
-                , "Palatino Linotype"
-                , "Times New Roman"
-                , "sans-serif"
-                ]
-        ]
+fontFamily : List String -> ( String, String )
+fontFamily fonts =
+    ( "font-family", String.join "," fonts )
 
 
 serifClass : String
@@ -209,17 +211,24 @@ serifClass =
 
 monospaceStyle : Style
 monospaceStyle =
-    c monospaceClass
-        [ Tuple.pair "font-family" <|
-            String.join ","
-                [ "Lucida Console"
-                , "Monaco"
-                , "Courier New"
-                , "monospace"
-                ]
-        ]
+    c monospaceClass [ fontFamily [ "Lucida Console", "Monaco", "Courier New", "monospace" ] ]
 
 
 monospaceClass : String
 monospaceClass =
     "monospace"
+
+
+italicClass : String
+italicClass =
+    "ita"
+
+
+boldClass : String
+boldClass =
+    "bold"
+
+
+underlineClass : String
+underlineClass =
+    "u"
