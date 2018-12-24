@@ -96,8 +96,5 @@ scaleByQuarter base factor =
     if factor == 0 then
         base
 
-    else if factor < 0 then
-        round (toFloat base * 1.25 ^ toFloat factor)
-
     else
-        round (toFloat base * 1.25 ^ (toFloat factor - 1))
+        floor (toFloat base * 1.25 ^ toFloat factor)

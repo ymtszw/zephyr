@@ -1,6 +1,7 @@
 module View.Stylesheet exposing (render)
 
 import Html
+import View.Atom.Typography as Typography
 import View.Style exposing (Style, px, s, scale12)
 
 
@@ -10,13 +11,7 @@ render : Html.Html msg
 render =
     Html.node "style" [] <|
         List.map (View.Style.toString >> Html.text) <|
-            (preamble ++ atoms)
-
-
-atoms : List Style
-atoms =
-    [-- Put styles here
-    ]
+            (preamble ++ Typography.styles)
 
 
 preamble : List Style
