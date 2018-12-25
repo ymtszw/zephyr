@@ -1,4 +1,4 @@
-module Data.Color exposing
+module Color exposing
     ( Color, encode, decoder, hexDecoder
     , setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
     )

@@ -12,7 +12,7 @@ module View.Atom.Theme exposing
 
 -}
 
-import Data.Color exposing (Color, fromHexUnsafe)
+import Color exposing (Color, fromHexUnsafe)
 import Html exposing (Attribute)
 import Html.Attributes exposing (class)
 import View.Style exposing (Style)

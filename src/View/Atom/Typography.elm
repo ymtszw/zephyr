@@ -18,7 +18,7 @@ module View.Atom.Typography exposing
 
 -}
 
-import Data.Color exposing (Color, cssRgba)
+import Color exposing (Color, cssRgba)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
 import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
