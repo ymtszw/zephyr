@@ -351,7 +351,9 @@ flexBox =
 padding : Html ()
 padding =
     section []
-        [ withSource """div [ padding2, Border.solid, Border.rect ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
+        [ withSource """div [ Border.solid, Border.rect ] [ t "No padding. ", t lorem ]""" <|
+            div [ Border.solid, Border.rect ] [ t "No padding. ", t lorem ]
+        , withSource """div [ padding2, Border.solid, Border.rect ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
             div [ padding2, Border.solid, Border.rect ] [ t "I'm surrounded by 2px padding. ", t lorem ]
         , withSource """div [ padding5, Border.solid, Border.rect ] [ t "I'm surrounded by 5px padding. ", t lorem ]""" <|
             div [ padding5, Border.solid, Border.rect ] [ t "I'm surrounded by 5px padding. ", t lorem ]
@@ -365,7 +367,17 @@ padding =
 spacing : Html ()
 spacing =
     section []
-        [ withSource """div [ flexRow, spacingRow5, Border.solid, Border.rect ]
+        [ withSource """div [ flexRow, Border.solid, Border.rect ]
+    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+    ]""" <|
+            div [ flexRow, Border.solid, Border.rect ]
+                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+                ]
+        , withSource """div [ flexRow, spacingRow5, Border.solid, Border.rect ]
     [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
     , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have left margins." ]
     , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
@@ -383,6 +395,16 @@ spacing =
             div [ flexRow, spacingRow15, Border.solid, Border.rect ]
                 [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
                 , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have left margins." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+                ]
+        , withSource """div [ flexColumn, Border.solid, Border.rect ]
+    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+    ]""" <|
+            div [ flexColumn, Border.solid, Border.rect ]
+                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
                 , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
                 ]
         , withSource """div [ flexColumn, spacingColumn5, Border.solid, Border.rect ]
