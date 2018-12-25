@@ -54,6 +54,18 @@ introduction =
             , t "I am bare texts in a paragraph, and I should be 12px in font-size (global default).\n"
             , t "By default this page has oneDark theme."
             ]
+        , div [ padding10 ]
+            [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
+            , pre [ padding10, Border.round5, Border.rect, Border.solid ]
+                [ t """import Html exposing (..)
+import Html.Attributes exposing (style)
+import View.Atom.Background as Background
+import View.Atom.Border as Border
+import View.Atom.Layout exposing (..)
+import View.Atom.Theme exposing (aubergine, oneDark)
+import View.Atom.Typography exposing (..)"""
+                ]
+            ]
         ]
 
 
