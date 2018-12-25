@@ -45,8 +45,6 @@ encode c =
         ]
 
 
-{-| Decode a well-structured Color object. Use it with EncodeExtra.color.
--}
 decoder : Decoder Color
 decoder =
     D.map Color <|

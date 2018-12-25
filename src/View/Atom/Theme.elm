@@ -1,12 +1,21 @@
-module View.Atom.Theme exposing (Theme, aubergine, oneDark)
+module View.Atom.Theme exposing
+    ( Theme, aubergineTheme, oneDarkTheme
+    , aubergine, oneDark
+    , aubergineClass, oneDarkClass
+    )
 
 {-| Color Theme Atoms.
 
-@docs Theme, aubergine, oneDark
+@docs Theme, aubergineTheme, oneDarkTheme
+@docs aubergine, oneDark
+@docs aubergineClass, oneDarkClass
 
 -}
 
 import Data.Color exposing (Color, fromHexUnsafe)
+import Html exposing (Attribute)
+import Html.Attributes exposing (class)
+import View.Style exposing (Style)
 
 
 type alias Theme =
@@ -24,8 +33,8 @@ type alias Theme =
     }
 
 
-oneDark : Theme
-oneDark =
+oneDarkTheme : Theme
+oneDarkTheme =
     { bg = fromHexUnsafe "#202225"
     , main = fromHexUnsafe "#35383e"
     , sub = fromHexUnsafe "#2f3136"
@@ -40,8 +49,8 @@ oneDark =
     }
 
 
-aubergine : Theme
-aubergine =
+aubergineTheme : Theme
+aubergineTheme =
     { bg = fromHexUnsafe "#211820"
     , main = fromHexUnsafe "#4d394b"
     , sub = fromHexUnsafe "#3e313c"
@@ -54,3 +63,29 @@ aubergine =
     , warn = fromHexUnsafe "#ff9018"
     , err = fromHexUnsafe "#eb4d5c"
     }
+
+
+
+-- CLASS
+-- These classes are just tokens that indicate their contents must be colored using that theme.
+-- Actual style definitions are found in Typography/Border/Background Atoms.
+
+
+oneDark : Attribute msg
+oneDark =
+    class oneDarkClass
+
+
+oneDarkClass : String
+oneDarkClass =
+    "oneDark"
+
+
+aubergine : Attribute msg
+aubergine =
+    class aubergineClass
+
+
+aubergineClass : String
+aubergineClass =
+    "aubergine"

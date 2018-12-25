@@ -1,23 +1,27 @@
 module View.Atom.Typography exposing
     ( t
-    , baseFontSize, detailFontSize, headlineFontSize, titleFontSize, sectionFontSize, impactFontSize
+    , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
-    , styles, baseFontSizeStyle, sansSerifStyle, monospaceStyle
+    , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
+    , styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
     )
 
 {-| Typography Atoms.
 
 @docs t
-@docs baseFontSize, detailFontSize, headlineFontSize, titleFontSize, sectionFontSize, impactFontSize
+@docs sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
-@docs styles, baseFontSizeStyle, sansSerifStyle, monospaceStyle
+@docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
+@docs styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
 
 -}
 
+import Data.Color exposing (Color, cssRgba)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
+import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
 
@@ -42,44 +46,44 @@ This equals to the global default, so you do not need this in an element
 where global default is not overridden.
 
 -}
-baseFontSize : Attribute msg
-baseFontSize =
-    Attributes.class baseFontSizeClass
+sizeBase : Attribute msg
+sizeBase =
+    Attributes.class sizeBaseClass
 
 
 {-| Scale -1 (9px)
 -}
-detailFontSize : Attribute msg
-detailFontSize =
-    Attributes.class detailFontSizeClass
+sizeDetail : Attribute msg
+sizeDetail =
+    Attributes.class sizeDetailClass
 
 
 {-| Scale 1 (15px)
 -}
-headlineFontSize : Attribute msg
-headlineFontSize =
-    Attributes.class headlineFontSizeClass
+sizeHeadline : Attribute msg
+sizeHeadline =
+    Attributes.class sizeHeadlineClass
 
 
 {-| Scale 2 (18px)
 -}
-titleFontSize : Attribute msg
-titleFontSize =
-    Attributes.class titleFontSizeClass
+sizeTitle : Attribute msg
+sizeTitle =
+    Attributes.class sizeTitleClass
 
 
 {-| Scale 4 (30px)
 -}
-sectionFontSize : Attribute msg
-sectionFontSize =
-    Attributes.class sectionFontSizeClass
+sizeSection : Attribute msg
+sizeSection =
+    Attributes.class sizeSectionClass
 
 
 {-| Scale 12 (174px). Used for background logo, and that's all.
 -}
-impactFontSize : Attribute msg
-impactFontSize =
-    Attributes.class impactFontSizeClass
+sizeImpact : Attribute msg
+sizeImpact =
+    Attributes.class sizeImpactClass
 
 
 {-| Sans-serif fonts. Used as the global default.
@@ -114,6 +118,41 @@ underline =
     Attributes.class underlineClass
 
 
+colorText : Attribute msg
+colorText =
+    Attributes.class colorTextClass
+
+
+colorNote : Attribute msg
+colorNote =
+    Attributes.class colorNoteClass
+
+
+colorLink : Attribute msg
+colorLink =
+    Attributes.class colorLinkClass
+
+
+colorPrim : Attribute msg
+colorPrim =
+    Attributes.class colorPrimClass
+
+
+colorSucc : Attribute msg
+colorSucc =
+    Attributes.class colorSuccClass
+
+
+colorWarn : Attribute msg
+colorWarn =
+    Attributes.class colorWarnClass
+
+
+colorErr : Attribute msg
+colorErr =
+    Attributes.class colorErrClass
+
+
 
 -- STYLE
 
@@ -121,12 +160,12 @@ underline =
 styles : List Style
 styles =
     [ -- Font sizes
-      baseFontSizeStyle
-    , c detailFontSizeClass [ ( "font-size", px (scale12 -1) ) ]
-    , c headlineFontSizeClass [ ( "font-size", px (scale12 1) ) ]
-    , c titleFontSizeClass [ ( "font-size", px (scale12 2) ) ]
-    , c sectionFontSizeClass [ ( "font-size", px (scale12 4) ) ]
-    , c impactFontSizeClass [ ( "font-size", px (scale12 12) ) ]
+      sizeBaseStyle
+    , c sizeDetailClass [ ( "font-size", px (scale12 -1) ) ]
+    , c sizeHeadlineClass [ ( "font-size", px (scale12 1) ) ]
+    , c sizeTitleClass [ ( "font-size", px (scale12 2) ) ]
+    , c sizeSectionClass [ ( "font-size", px (scale12 4) ) ]
+    , c sizeImpactClass [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
       sansSerifStyle
     , c serifClass [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
@@ -138,40 +177,41 @@ styles =
     , -- Others
       derive "code" monospaceStyle
     ]
+        ++ fontColorStyles
 
 
-baseFontSizeStyle : Style
-baseFontSizeStyle =
-    c baseFontSizeClass [ ( "font-size", px (scale12 0) ) ]
+sizeBaseStyle : Style
+sizeBaseStyle =
+    c sizeBaseClass [ ( "font-size", px (scale12 0) ) ]
 
 
-baseFontSizeClass : String
-baseFontSizeClass =
+sizeBaseClass : String
+sizeBaseClass =
     "bfs"
 
 
-detailFontSizeClass : String
-detailFontSizeClass =
+sizeDetailClass : String
+sizeDetailClass =
     "dfs"
 
 
-headlineFontSizeClass : String
-headlineFontSizeClass =
+sizeHeadlineClass : String
+sizeHeadlineClass =
     "hfs"
 
 
-titleFontSizeClass : String
-titleFontSizeClass =
+sizeTitleClass : String
+sizeTitleClass =
     "tfs"
 
 
-sectionFontSizeClass : String
-sectionFontSizeClass =
+sizeSectionClass : String
+sizeSectionClass =
     "sfs"
 
 
-impactFontSizeClass : String
-impactFontSizeClass =
+sizeImpactClass : String
+sizeImpactClass =
     "ifs"
 
 
@@ -218,3 +258,71 @@ boldClass =
 underlineClass : String
 underlineClass =
     "u"
+
+
+fontColorStyles : List Style
+fontColorStyles =
+    [ c oneDarkClass [ ( "color", cssRgba oneDarkTheme.text ) ] -- Default Font Color of the theme
+    , f oneDarkClass colorTextClass oneDarkTheme.text
+    , f oneDarkClass colorNoteClass oneDarkTheme.note
+    , f oneDarkClass colorLinkClass oneDarkTheme.link
+    , f oneDarkClass colorPrimClass oneDarkTheme.prim
+    , f oneDarkClass colorSuccClass oneDarkTheme.succ
+    , f oneDarkClass colorWarnClass oneDarkTheme.warn
+    , f oneDarkClass colorErrClass oneDarkTheme.err
+    , c aubergineClass [ ( "color", cssRgba aubergineTheme.text ) ] -- Default Font Color of the theme
+    , f aubergineClass colorTextClass aubergineTheme.text
+    , f aubergineClass colorNoteClass aubergineTheme.note
+    , f aubergineClass colorLinkClass aubergineTheme.link
+    , f aubergineClass colorPrimClass aubergineTheme.prim
+    , f aubergineClass colorSuccClass aubergineTheme.succ
+    , f aubergineClass colorWarnClass aubergineTheme.warn
+    , f aubergineClass colorErrClass aubergineTheme.err
+    ]
+
+
+f : String -> String -> Color -> Style
+f themeClass modeClass color =
+    let
+        selector =
+            String.join ","
+                [ "." ++ themeClass ++ "." ++ modeClass -- Same element
+                , "." ++ themeClass ++ " ." ++ modeClass -- Descendants
+                ]
+    in
+    s selector [ ( "color", cssRgba color ) ]
+
+
+colorTextClass : String
+colorTextClass =
+    "textfc"
+
+
+colorNoteClass : String
+colorNoteClass =
+    "notefc"
+
+
+colorLinkClass : String
+colorLinkClass =
+    "linkfc"
+
+
+colorPrimClass : String
+colorPrimClass =
+    "primfc"
+
+
+colorSuccClass : String
+colorSuccClass =
+    "succfc"
+
+
+colorWarnClass : String
+colorWarnClass =
+    "warnfc"
+
+
+colorErrClass : String
+colorErrClass =
+    "errfc"

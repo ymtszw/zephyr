@@ -1,6 +1,7 @@
 module View.Stylesheet exposing (render)
 
 import Html
+import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
@@ -18,6 +19,7 @@ render =
                 ++ Typography.styles
                 ++ TextBlock.styles
                 ++ Border.styles
+                ++ Background.styles
                 ++ Layout.styles
 
 
@@ -64,8 +66,9 @@ resetUserAgentStyles =
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
     , s "body" [ ( "line-height", "1" ) ]
-        |> inject Typography.baseFontSizeStyle
+        |> inject Typography.sizeBaseStyle
         |> inject Typography.sansSerifStyle
+        |> inject Background.oneDarkDefaultStyle
     , s "ol,ul"
         [ ( "list-style", "none" ) ]
     , s "blockquote,q"
@@ -86,7 +89,7 @@ globalStyles =
         , ( "box-sizing", "border-box" ) -- Really, WHO needs other than border-box??? JK
         ]
     , s ":focus"
-        [ ( "box-shadow", "0px 0px 3px 3px rgb(103,123,196)" )
+        [ ( "box-shadow", "0px 0px 3px 3px #677bc4" )
         , ( "outline", "none" )
         ]
     , -- When we use images as a cosmetic tokens, we almost always need them to be rendered as blocks.
