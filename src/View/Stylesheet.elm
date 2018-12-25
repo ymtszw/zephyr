@@ -95,6 +95,4 @@ globalStyles =
     , -- When we use images as a cosmetic tokens, we almost always need them to be rendered as blocks.
       -- Override when inlining is explicitly needed
       s "img" [ ( "display", "block" ) ]
-    , s "a:link" [ ( "text-decoration", "none" ) ]
-    , s "a:link:hover" [ ( "text-decoration", "underline" ) ]
     ]

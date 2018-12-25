@@ -1,5 +1,5 @@
 module View.Atom.Typography exposing
-    ( t
+    ( t, link
     , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
@@ -9,7 +9,7 @@ module View.Atom.Typography exposing
 
 {-| Typography Atoms.
 
-@docs t
+@docs t, link
 @docs sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
@@ -29,11 +29,29 @@ import View.Style exposing (..)
 -- HTML
 
 
-{-| Just emit a given String to Html. Synonym of Html.text
+{-| Just emits a given String to Html. Synonym of Html.text
 -}
 t : String -> Html msg
 t =
     Html.text
+
+
+{-| Creates a link. In this app we always target new tabs.
+
+Mostly for inlines, but usable for blocks too.
+Texts in links are automatically styled according to its upstream theme.
+
+-}
+link : List (Attribute msg) -> { url : String, children : List (Html msg) } -> Html msg
+link attrs { url, children } =
+    let
+        linkAttrs =
+            [ Attributes.href url
+            , Attributes.rel "noopener noreferrer"
+            , Attributes.target "_blank"
+            ]
+    in
+    Html.a (linkAttrs ++ attrs) children
 
 
 
@@ -174,10 +192,10 @@ styles =
       c italicClass [ ( "font-style", "italic" ) ]
     , c boldClass [ ( "font-weight", "700" ) ]
     , c underlineClass [ ( "text-decoration", "underline" ) ]
-    , -- Others
-      derive "code" monospaceStyle
     ]
         ++ fontColorStyles
+        ++ inlineCodeStyles
+        ++ linkStyles
 
 
 sizeBaseStyle : Style
@@ -326,3 +344,34 @@ colorWarnClass =
 colorErrClass : String
 colorErrClass =
     "errfc"
+
+
+inlineCodeStyles : List Style
+inlineCodeStyles =
+    let
+        styled class theme =
+            s ("." ++ class ++ " code")
+                [ ( "color", cssRgba theme.err ), ( "background-color", cssRgba theme.bg ) ]
+    in
+    [ s "code"
+        [ ( "padding-left", "0.4em" )
+        , ( "padding-right", "0.4em" )
+        , ( "border-radius", "0.2em" )
+        ]
+        |> inject monospaceStyle
+    , styled oneDarkClass oneDarkTheme
+    , styled aubergineClass aubergineTheme
+    ]
+
+
+linkStyles : List Style
+linkStyles =
+    let
+        styled class theme =
+            s ("." ++ class ++ " a:link") [ ( "color", cssRgba theme.link ) ]
+    in
+    [ s "a:link" [ ( "text-decoration", "none" ) ] -- Cancelling UA's default decorations
+    , s "a:link:hover" [ ( "text-decoration", "underline" ) ]
+    , styled oneDarkClass oneDarkTheme
+    , styled aubergineClass aubergineTheme
+    ]
