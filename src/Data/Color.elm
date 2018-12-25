@@ -1,12 +1,12 @@
 module Data.Color exposing
     ( Color, encode, decoder, hexDecoder
-    , setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, toHex
+    , setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
     )
 
 {-| Color type and functions. Mimicks Element.Color in elm-ui.
 
 @docs Color, encode, decoder, hexDecoder
-@docs setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, toHex
+@docs setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
 
 -}
 
@@ -101,6 +101,11 @@ fromRgba { red, green, blue, alpha } =
     Color (ColorRecord (cap red) (cap green) (cap blue) (cap alpha))
 
 
+black : Color
+black =
+    Color (ColorRecord (CFloat 0) (CFloat 0) (CFloat 0) (CFloat 1))
+
+
 {-| Shift brightness of a Color (RGB) by a power of 1.15, without altering alpha.
 
 `brightness 1` on a Color of `{red = 100, green = 100, blue = 100}`
@@ -141,8 +146,15 @@ cssRgba (Color cr) =
 
 
 fromHex : String -> Result String Color
-fromHex hexStr =
+fromHex hexStr_ =
     let
+        hexStr =
+            if String.startsWith "#" hexStr_ then
+                String.dropLeft 1 hexStr_
+
+            else
+                hexStr_
+
         toCFloat int =
             cap (toFloat int / 255)
     in
@@ -150,6 +162,11 @@ fromHex hexStr =
         (hexStr |> String.slice 0 2 |> Hex.fromString |> Result.map toCFloat)
         (hexStr |> String.slice 2 4 |> Hex.fromString |> Result.map toCFloat)
         (hexStr |> String.slice 4 6 |> Hex.fromString |> Result.map toCFloat)
+
+
+fromHexUnsafe : String -> Color
+fromHexUnsafe surelyHexStr =
+    Result.withDefault black (fromHex surelyHexStr)
 
 
 toHex : Color -> String
