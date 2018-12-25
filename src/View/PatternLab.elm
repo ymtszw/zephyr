@@ -3,6 +3,7 @@ module View.PatternLab exposing (main)
 import Browser
 import Html exposing (..)
 import Html.Attributes
+import View.Atom.Border as Border
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Stylesheet
@@ -27,6 +28,8 @@ view =
             [ introduction
             , typography
             , textBlock
+            , border
+            , layout
             ]
         ]
     }
@@ -34,7 +37,7 @@ view =
 
 introduction : Html ()
 introduction =
-    div [ flexColumn, widthFill, spacingColumn15 ]
+    section
         [ h1 [ impactFontSize ]
             [ span [ serif, bold ] [ t "Zephyr:" ]
             , t " "
@@ -49,9 +52,14 @@ introduction =
         ]
 
 
+section : List (Html ()) -> Html ()
+section =
+    div [ flexColumn, widthFill, spacingColumn15 ]
+
+
 typography : Html ()
 typography =
-    div [ flexColumn, widthFill, spacingColumn15 ]
+    section
         [ h1 [ sectionFontSize ] [ t "Typography" ]
         , h2 [ titleFontSize ] [ t "Font families" ]
         , fontFamilies
@@ -64,7 +72,7 @@ typography =
 
 fontFamilies : Html ()
 fontFamilies =
-    div [ flexColumn, widthFill, spacingColumn15 ]
+    section
         [ withSource "p [ sansSerif ] [ t \"This paragraph uses a sans-serif font. あいうえお水兵リーベ\" ]" <|
             p [ sansSerif ] [ t "This paragraph uses a sans-serif font. あいうえお水兵リーベ" ]
         , withSource "p [ serif ] [ t \"This paragraph uses a serif font. あいうえお水兵リーベ\" ]" <|
@@ -84,7 +92,7 @@ withSource source toRender =
 
 fontSizes : Html ()
 fontSizes =
-    div [ flexColumn, widthFill, spacingColumn15 ]
+    section
         [ withSource "p [ impactFontSize ] [ t \"impact\" ]" <|
             p [ impactFontSize ] [ t "impact" ]
         , withSource "p [ sectionFontSize ] [ t \"section\" ]" <|
@@ -102,7 +110,7 @@ fontSizes =
 
 fontDecorations : Html ()
 fontDecorations =
-    div [ flexColumn, widthFill, spacingColumn15 ]
+    section
         [ withSource "p [] [ t \"This is normal text, あいうえお水兵リーベ\" ]" <|
             p [] [ t "This is normal text, あいうえお水兵リーベ" ]
         , withSource "p [ italic ] [ t \"This is italic text, あいうえお水兵リーベ\" ]" <|
@@ -116,7 +124,7 @@ fontDecorations =
 
 textBlock : Html ()
 textBlock =
-    div [ flexColumn, widthFill, spacingColumn15 ]
+    section
         [ h1 [ sectionFontSize ] [ t "Text Blocks" ]
         , withSource """p []
     [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\\n"
@@ -145,3 +153,37 @@ lorem =
 iroha : String
 iroha =
     "いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん"
+
+
+border : Html ()
+border =
+    section
+        [ h1 [ sectionFontSize ] [ t "Border" ]
+        , withSource "div [ Border.solid, Border.rect ] [ t \"I'm surrounded by solid border.\" ]" <|
+            div [ Border.solid, Border.rect ] [ t "I'm surrounded by solid border." ]
+        , withSource "div [ Border.dotted, Border.rect ] [ t \"I'm surrounded by dotted border.\" ]" <|
+            div [ Border.dotted, Border.rect ] [ t "I'm surrounded by dotted border." ]
+        , withSource "div [ Border.dashed, Border.rect ] [ t \"I'm surrounded by dashed border.\" ]" <|
+            div [ Border.dashed, Border.rect ] [ t "I'm surrounded by dashed border." ]
+        , withSource "div [ Border.solid, Border.rect, Border.round2 ] [ t \"I'm surrounded by rounded solid border.\" ]" <|
+            div [ Border.solid, Border.rect, Border.round2 ] [ t "I'm surrounded by rounded solid border." ]
+        , withSource "div [ Border.solid, Border.rect, Border.round5 ] [ t \"I'm surrounded by more rounded solid border.\" ]" <|
+            div [ Border.solid, Border.rect, Border.round5 ] [ t "I'm surrounded by more rounded solid border." ]
+        ]
+
+
+layout : Html ()
+layout =
+    section
+        [ h1 [ sectionFontSize ] [ t "Layout" ]
+        , h2 [ titleFontSize ] [ t "FlexBox and Width Control" ]
+        , flexBox
+        ]
+
+
+flexBox : Html ()
+flexBox =
+    section
+        [ div [] []
+        , div [ widthFill ] [ t "I am a Block with `widthFill`, occupying all available width." ]
+        ]

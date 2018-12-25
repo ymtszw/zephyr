@@ -1,6 +1,7 @@
 module View.Stylesheet exposing (render)
 
 import Html
+import View.Atom.Border as Border
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
@@ -16,6 +17,7 @@ render =
             preamble
                 ++ Typography.styles
                 ++ TextBlock.styles
+                ++ Border.styles
                 ++ Layout.styles
 
 
