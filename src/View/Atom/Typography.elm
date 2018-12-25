@@ -368,7 +368,14 @@ linkStyles : List Style
 linkStyles =
     let
         styled class theme =
-            s ("." ++ class ++ " a:link") [ ( "color", cssRgba theme.link ) ]
+            let
+                selector =
+                    String.join ","
+                        [ "." ++ class ++ " a:link"
+                        , "." ++ class ++ " a:visited"
+                        ]
+            in
+            s selector [ ( "color", cssRgba theme.link ) ]
     in
     [ s "a:link" [ ( "text-decoration", "none" ) ] -- Cancelling UA's default decorations
     , s "a:link:hover" [ ( "text-decoration", "underline" ) ]
