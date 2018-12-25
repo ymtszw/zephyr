@@ -34,7 +34,6 @@ t =
 
 
 -- CLASS
--- Font sizes
 
 
 {-| Scale 0 (12px)
@@ -81,10 +80,6 @@ sectionFontSize =
 impactFontSize : Attribute msg
 impactFontSize =
     Attributes.class impactFontSizeClass
-
-
-
--- Font families
 
 
 {-| Sans-serif fonts. Used as the global default.
@@ -134,12 +129,14 @@ styles =
     , c impactFontSizeClass [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
       sansSerifStyle
-    , c serifClass [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "sans-serif" ] ]
+    , c serifClass [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
     , monospaceStyle
     , -- Font decorations
       c italicClass [ ( "font-style", "italic" ) ]
     , c boldClass [ ( "font-weight", "700" ) ]
     , c underlineClass [ ( "text-decoration", "underline" ) ]
+    , -- Others
+      derive "code" monospaceStyle
     ]
 
 

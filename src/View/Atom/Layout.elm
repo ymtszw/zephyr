@@ -1,5 +1,6 @@
 module View.Atom.Layout exposing
     ( widthFill, flexRow, flexColumn, flexItem, flexGrow, flexShrink, flexCenter
+    , padding2, padding5, padding10, padding15
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
     , styles
@@ -8,6 +9,7 @@ module View.Atom.Layout exposing
 {-| Essential layouting Atoms.
 
 @docs widthFill, flexRow, flexColumn, flexItem, flexGrow, flexShrink, flexCenter
+@docs padding2, padding5, padding10, padding15
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
 @docs styles
@@ -34,8 +36,8 @@ flexColumn =
     Attributes.class flexColumnClass
 
 
-{-| Styles equivalent to this class are automatically applied to
-`<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` and `<blockquote>`.
+{-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 flexItem : Attribute msg
 flexItem =
@@ -55,6 +57,26 @@ flexShrink =
 flexCenter : Attribute msg
 flexCenter =
     Attributes.class flexCenterClass
+
+
+padding2 : Attribute msg
+padding2 =
+    Attributes.class (paddingClass 2)
+
+
+padding5 : Attribute msg
+padding5 =
+    Attributes.class (paddingClass 5)
+
+
+padding10 : Attribute msg
+padding10 =
+    Attributes.class (paddingClass 10)
+
+
+padding15 : Attribute msg
+padding15 =
+    Attributes.class (paddingClass 15)
 
 
 spacingRow2 : Attribute msg
@@ -108,6 +130,10 @@ styles =
     , flexGrowStyle
     , flexShrinkStyle
     , flexCenterStyle
+    , paddingStyle 2
+    , paddingStyle 5
+    , paddingStyle 10
+    , paddingStyle 15
     , spacingRowStyle 2
     , spacingRowStyle 5
     , spacingRowStyle 10
@@ -218,6 +244,16 @@ flexCenterStyle =
 flexCenterClass : String
 flexCenterClass =
     "fcenter"
+
+
+paddingStyle : Int -> Style
+paddingStyle pad =
+    c (paddingClass pad) [ ( "padding", px pad ) ]
+
+
+paddingClass : Int -> String
+paddingClass pad =
+    "pa" ++ String.fromInt pad
 
 
 spacingRowStyle : Int -> Style
