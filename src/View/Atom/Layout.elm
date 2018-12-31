@@ -37,7 +37,7 @@ flexColumn =
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<button>`, `<input>` or `<blockquote>`.
 -}
 flexItem : Attribute msg
 flexItem =
@@ -178,7 +178,7 @@ autoFlexItemStyle =
 
 autoFlexItemTags : List String
 autoFlexItemTags =
-    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote" ]
+    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "button", "input", "blockquote" ]
 
 
 flexItemStyle : Style
