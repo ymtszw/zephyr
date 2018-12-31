@@ -1,4 +1,4 @@
-module View.Stylesheet exposing (render)
+module View.Stylesheet exposing (length, render)
 
 import Html
 import View.Atom.Background as Background
@@ -14,8 +14,13 @@ import View.Style exposing (Style, inject, px, s, scale12)
 -}
 render : Html.Html msg
 render =
-    Html.node "style" [] <|
-        List.map (View.Style.toString >> Html.text) <|
+    Html.node "style" [] [ Html.text rendered ]
+
+
+rendered : String
+rendered =
+    String.join "" <|
+        List.map View.Style.toString <|
             preamble
                 ++ Typography.styles
                 ++ TextBlock.styles
@@ -23,6 +28,11 @@ render =
                 ++ Background.styles
                 ++ Layout.styles
                 ++ Button.styles
+
+
+length : Int
+length =
+    String.length rendered
 
 
 preamble : List Style
