@@ -5,6 +5,7 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (aubergine, oneDark)
 import View.Atom.Typography exposing (..)
@@ -34,6 +35,7 @@ view =
             , border
             , background
             , layout
+            , button_
             ]
         ]
     }
@@ -61,6 +63,7 @@ introduction =
 import Html.Attributes exposing (style)
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (aubergine, oneDark)
 import View.Atom.Typography exposing (..)"""
@@ -435,4 +438,25 @@ spacing =
                 , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have top margins." ]
                 , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
                 ]
+        ]
+
+
+button_ : Html ()
+button_ =
+    section []
+        [ h1 [ sizeSection ] [ t "Button" ]
+        , section [ oneDark ]
+            [ h2 [ sizeTitle ] [ t "oneDark" ]
+            , withSource """button [ Button.prim, widthFill ] [ t "prim" ]""" <| button [ Button.prim, widthFill ] [ t "prim" ]
+            , withSource """button [ Button.succ, widthFill ] [ t "succ" ]""" <| button [ Button.succ, widthFill ] [ t "succ" ]
+            , withSource """button [ Button.warn, widthFill ] [ t "warn" ]""" <| button [ Button.warn, widthFill ] [ t "warn" ]
+            , withSource """button [ Button.err, widthFill ] [ t "err" ]""" <| button [ Button.err, widthFill ] [ t "err" ]
+            ]
+        , section [ aubergine ]
+            [ h2 [ sizeTitle ] [ t "oneDark" ]
+            , withSource """button [ Button.prim, widthFill ] [ t "prim" ]""" <| button [ Button.prim, widthFill ] [ t "prim" ]
+            , withSource """button [ Button.succ, widthFill ] [ t "succ" ]""" <| button [ Button.succ, widthFill ] [ t "succ" ]
+            , withSource """button [ Button.warn, widthFill ] [ t "warn" ]""" <| button [ Button.warn, widthFill ] [ t "warn" ]
+            , withSource """button [ Button.err, widthFill ] [ t "err" ]""" <| button [ Button.err, widthFill ] [ t "err" ]
+            ]
         ]

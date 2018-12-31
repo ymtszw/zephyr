@@ -3,6 +3,7 @@ module View.Stylesheet exposing (render)
 import Html
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Button as Button
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
@@ -21,6 +22,7 @@ render =
                 ++ Border.styles
                 ++ Background.styles
                 ++ Layout.styles
+                ++ Button.styles
 
 
 preamble : List Style
