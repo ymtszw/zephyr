@@ -3,6 +3,7 @@ module View.PatternLab exposing (main)
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (style)
+import Html.Events exposing (onClick)
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -12,36 +13,85 @@ import View.Atom.Typography exposing (..)
 import View.Stylesheet
 
 
-main : Program () () ()
+main : Program () Route Route
 main =
     Browser.document
-        { init = always ( (), Cmd.none )
-        , view = always view
-        , update = \() () -> ( (), Cmd.none )
+        { init = always ( Top, Cmd.none )
+        , view = view
+        , update = \newRoute _ -> ( newRoute, Cmd.none )
         , subscriptions = always Sub.none
         }
 
 
-view : { title : String, body : List (Html ()) }
-view =
+type Route
+    = Top
+    | Typography
+    | TextBlock
+    | Border
+    | Background
+    | Layout
+    | Button
+
+
+view : Route -> { title : String, body : List (Html Route) }
+view r =
     { title = "Zephyr: Pattern Lab"
     , body =
         [ View.Stylesheet.render
-        , div [ flexColumn, widthFill, spacingColumn15, oneDark ]
-            [ introduction
-            , theme
-            , typography
-            , textBlock
-            , border
-            , background
-            , layout
-            , button_
-            ]
+        , div [ flexColumn, widthFill, spacingColumn15, oneDark ] <|
+            (::) (navi r) <|
+                case r of
+                    Top ->
+                        [ introduction, theme ]
+
+                    Typography ->
+                        [ typography ]
+
+                    TextBlock ->
+                        [ textBlock ]
+
+                    Border ->
+                        [ border ]
+
+                    Background ->
+                        [ background ]
+
+                    Layout ->
+                        [ layout ]
+
+                    Button ->
+                        [ button_ ]
         ]
     }
 
 
-introduction : Html ()
+navi : Route -> Html Route
+navi r =
+    div [ flexRow, spacingRow15, padding15, oneDark ]
+        [ naviButton r Top "Top"
+        , naviButton r Typography "Typography"
+        , naviButton r TextBlock "TextBlock"
+        , naviButton r Border "Border"
+        , naviButton r Background "Background"
+        , naviButton r Layout "Layout"
+        , naviButton r Button "Button"
+        ]
+
+
+naviButton : Route -> Route -> String -> Html Route
+naviButton current hit btnLabel =
+    let
+        c =
+            if current == hit then
+                Button.succ
+
+            else
+                Button.prim
+    in
+    button [ sizeHeadline, padding10, onClick hit, c ] [ t btnLabel ]
+
+
+introduction : Html Route
 introduction =
     section []
         [ h1 [ sizeImpact ]
@@ -72,12 +122,12 @@ import View.Atom.Typography exposing (..)"""
         ]
 
 
-section : List (Attribute ()) -> List (Html ()) -> Html ()
+section : List (Attribute Route) -> List (Html Route) -> Html Route
 section attrs =
     div ([ flexColumn, widthFill, spacingColumn15, padding10 ] ++ attrs)
 
 
-theme : Html ()
+theme : Html Route
 theme =
     section []
         [ h1 [ sizeSection ] [ t "Theme" ]
@@ -100,7 +150,7 @@ theme =
         ]
 
 
-typography : Html ()
+typography : Html Route
 typography =
     section []
         [ h1 [ sizeSection ] [ t "Typography" ]
@@ -111,7 +161,7 @@ typography =
         ]
 
 
-fontFamilies : Html ()
+fontFamilies : Html Route
 fontFamilies =
     section []
         [ h2 [ sizeTitle ] [ t "Font families" ]
@@ -124,7 +174,7 @@ fontFamilies =
         ]
 
 
-withSource : String -> Html () -> Html ()
+withSource : String -> Html Route -> Html Route
 withSource source toRender =
     div [ flexRow, flexCenter, widthFill, spacingRow15 ]
         [ div [ flexGrow ] [ toRender ]
@@ -132,7 +182,7 @@ withSource source toRender =
         ]
 
 
-fontSizes : Html ()
+fontSizes : Html Route
 fontSizes =
     section []
         [ h2 [ sizeTitle ] [ t "Font sizes" ]
@@ -151,7 +201,7 @@ fontSizes =
         ]
 
 
-fontDecorations : Html ()
+fontDecorations : Html Route
 fontDecorations =
     section []
         [ h2 [ sizeTitle ] [ t "Font decorations" ]
@@ -166,7 +216,7 @@ fontDecorations =
         ]
 
 
-fontColors : Html ()
+fontColors : Html Route
 fontColors =
     section []
         [ h2 [ sizeTitle ] [ t "Font colors" ]
@@ -215,7 +265,7 @@ fontColors =
         ]
 
 
-textBlock : Html ()
+textBlock : Html Route
 textBlock =
     section []
         [ h1 [ sizeSection ] [ t "Text Blocks" ]
@@ -248,7 +298,7 @@ iroha =
     "いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん"
 
 
-border : Html ()
+border : Html Route
 border =
     section []
         [ h1 [ sizeSection ] [ t "Border" ]
@@ -265,7 +315,7 @@ border =
         ]
 
 
-background : Html ()
+background : Html Route
 background =
     section []
         [ h1 [ sizeSection ] [ t "Background" ]
@@ -314,7 +364,7 @@ background =
         ]
 
 
-layout : Html ()
+layout : Html Route
 layout =
     section []
         [ h1 [ sizeSection ] [ t "Layout" ]
@@ -327,7 +377,7 @@ layout =
         ]
 
 
-flexBox : Html ()
+flexBox : Html Route
 flexBox =
     section []
         [ withSource """div [ widthFill, Border.solid, Border.rect ] [ t "I eat all available width. This is default behavior." ]""" <|
@@ -359,7 +409,7 @@ flexBox =
         ]
 
 
-padding : Html ()
+padding : Html Route
 padding =
     section []
         [ withSource """div [ Border.solid, Border.rect ] [ t "No padding. ", t lorem ]""" <|
@@ -375,7 +425,7 @@ padding =
         ]
 
 
-spacing : Html ()
+spacing : Html Route
 spacing =
     section []
         [ withSource """div [ flexRow, Border.solid, Border.rect ]
@@ -441,7 +491,7 @@ spacing =
         ]
 
 
-button_ : Html ()
+button_ : Html Route
 button_ =
     section []
         [ h1 [ sizeSection ] [ t "Button" ]
