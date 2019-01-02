@@ -9,6 +9,7 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
+import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark)
 import View.Atom.Typography exposing (..)
 import View.Stylesheet
@@ -68,14 +69,17 @@ view r =
 
 navi : Route -> Html Route
 navi r =
-    div [ flexRow, spacingRow15, padding15, oneDark ]
-        [ naviButton r Top "Top"
-        , naviButton r Typography "Typography"
-        , naviButton r TextBlock "TextBlock"
-        , naviButton r Border "Border"
-        , naviButton r Background "Background"
-        , naviButton r Layout "Layout"
-        , naviButton r Button "Button"
+    div [ flexColumn, spacingColumn10, padding15, oneDark ]
+        [ div [ flexRow, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
+            , naviButton r Top "Top"
+            , naviButton r Typography "Typography"
+            , naviButton r TextBlock "TextBlock"
+            , naviButton r Border "Border"
+            , naviButton r Background "Background"
+            , naviButton r Layout "Layout"
+            , naviButton r Button "Button"
+            ]
         ]
 
 
@@ -103,8 +107,8 @@ introduction =
             , span [ monospace, underline, bold ] [ t "Lab" ]
             ]
         , p [ padding10 ]
-            [ t "... is a catalogue of Atomic Design in Zephyr app.\n"
-            , t "I am bare texts in a paragraph, and I should be 12px in font-size (global default).\n"
+            [ t "... is a catalogue of Atomic Design in Zephyr app. "
+            , t "I am bare texts in a paragraph, and I should be 12px in font-size (global default). "
             , t "By default this page has oneDark theme."
             ]
         , div [ padding10 ]
@@ -279,16 +283,40 @@ textBlock =
         , withSource """p [ Border.solid, Border.rect ]
     [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\\n"
     , t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\\n"
-    , t "and as you can see, respects literal line breaks.\\n"
+    , t "and as you can see, do not respect literal line breaks.\\n"
     , t (String.repeat 2 lorem ++ "\\n")
-    , t (String.repeat 10 iroha)
+    , t (String.repeat 10 iroha ++ "\\n")
+    , t "Also, significantly long strings can overflow from its parent blocks."
+    , t (String.repeat 20 "abcd0123")
     ]""" <|
             p [ Border.solid, Border.rect ]
                 [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\n"
                 , t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\n"
                 , t "and as you can see, respects literal line breaks.\n"
                 , t (String.repeat 2 lorem ++ "\n")
-                , t (String.repeat 10 iroha)
+                , t (String.repeat 10 iroha ++ "\n")
+                , t "Also, significantly long strings can overflow from its parent blocks."
+                , t (String.repeat 20 "abcd0123")
+                ]
+        , withSource """p [ Border.solid, Border.rect, forceBreak ]
+    [ t "With "
+    , code [] [ t "forceBreak" ]
+    , t " attribute, literal line breaks are respected\\n"
+    , t "like this!\\n"
+    , t "With "
+    , code [] [ t "forceBreak" ]
+    , t ", even significantly long alphanumeric strings are contained within their parent blocks like so:\\n"
+    , t (String.repeat 100 "abcd0123")
+    ]""" <|
+            p [ Border.solid, Border.rect, forceBreak ]
+                [ t "With "
+                , code [] [ t "forceBreak" ]
+                , t " attribute, literal line breaks are respected\n"
+                , t "like this!\n"
+                , t "With "
+                , code [] [ t "forceBreak" ]
+                , t ", even significantly long alphanumeric strings are contained within their parent blocks like so:\n"
+                , t (String.repeat 100 "abcd0123")
                 ]
         , withSource "pre [] [ t \"In pre tag, texts have monospace font.\" ]" <|
             pre [] [ t "In pre tag, texts have monospace font." ]
