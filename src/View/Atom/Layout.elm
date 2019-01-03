@@ -54,6 +54,15 @@ flexShrink =
     Attributes.class flexShrinkClass
 
 
+{-| Sets `align-items: center;`.
+
+Basically, if paired with `flexRow`, it aligns its items vertically centered.
+With `flexColumn`, aligns horizontally.
+
+Not that it ceases to "stretch" children's cross-sizes. See
+<https://developer.mozilla.org/ja/docs/Web/CSS/align-items>
+
+-}
 flexCenter : Attribute msg
 flexCenter =
     Attributes.class flexCenterClass

@@ -69,8 +69,8 @@ view r =
 
 navi : Route -> Html Route
 navi r =
-    div [ flexColumn, spacingColumn10, padding15, oneDark ]
-        [ div [ flexRow, spacingRow15 ]
+    div [ flexColumn, flexCenter, spacingColumn10, padding15, oneDark ]
+        [ div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
             , naviButton r Top "Top"
             , naviButton r Typography "Typography"
@@ -135,7 +135,7 @@ import View.Atom.Typography exposing (..)"""
 
 section : List (Attribute Route) -> List (Html Route) -> Html Route
 section attrs =
-    div ([ flexColumn, widthFill, spacingColumn15, padding10 ] ++ attrs)
+    div ([ flexColumn, widthFill, flexCenter, spacingColumn15, padding10 ] ++ attrs)
 
 
 theme : Html Route
@@ -280,25 +280,27 @@ textBlock : Html Route
 textBlock =
     section []
         [ h1 [ sizeSection ] [ t "Text Blocks" ]
-        , withSource """p [ Border.solid, Border.rect ]
-    [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\\n"
-    , t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\\n"
-    , t "and as you can see, do not respect literal line breaks.\\n"
-    , t (String.repeat 2 lorem ++ "\\n")
-    , t (String.repeat 10 iroha ++ "\\n")
-    , t "Also, significantly long strings can overflow from its parent blocks."
+        , withSource """h2 [] [ t "Heading tags does not have default styles. Use Typography classes/styles." ]""" <|
+            h2 [] [ t "Heading tags does not have default styles. Use Typography classes/styles." ]
+        , withSource """p []
+    [ t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\\n"
+    , t "and as you can see, do not respect literal line breaks."
+    ]""" <|
+            p []
+                [ t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\n"
+                , t "and as you can see, respects literal line breaks."
+                ]
+        , withSource """p [] [ t (String.repeat 2 lorem) ]""" <| p [] [ t (String.repeat 2 lorem) ]
+        , withSource """p [] [ t (String.repeat 10 iroha) ]""" <| p [] [ t (String.repeat 10 iroha) ]
+        , withSource """p []
+    [ t "Significantly long alphanumeric strings can overflow from its parent blocks, or stretch its container if it is a flex item. Like this: "
     , t (String.repeat 20 "abcd0123")
     ]""" <|
-            p [ Border.solid, Border.rect ]
-                [ t "(Heading tags does not have attached styles. Use Typography classes/styles and make Molecules/Organisms.)\n"
-                , t "By default, all text blocks (p,pre,h1-h6) have line-height of 1.3em,\n"
-                , t "and as you can see, respects literal line breaks.\n"
-                , t (String.repeat 2 lorem ++ "\n")
-                , t (String.repeat 10 iroha ++ "\n")
-                , t "Also, significantly long strings can overflow from its parent blocks."
+            p []
+                [ t "Significantly long alphanumeric strings can overflow from its parent blocks, or stretch its container if it is a flex item. Like this: "
                 , t (String.repeat 20 "abcd0123")
                 ]
-        , withSource """p [ Border.solid, Border.rect, forceBreak ]
+        , withSource """p [ forceBreak ]
     [ t "With "
     , code [] [ t "forceBreak" ]
     , t " attribute, literal line breaks are respected\\n"
@@ -308,7 +310,7 @@ textBlock =
     , t ", even significantly long alphanumeric strings are contained within their parent blocks like so:\\n"
     , t (String.repeat 100 "abcd0123")
     ]""" <|
-            p [ Border.solid, Border.rect, forceBreak ]
+            p [ forceBreak ]
                 [ t "With "
                 , code [] [ t "forceBreak" ]
                 , t " attribute, literal line breaks are respected\n"
@@ -318,8 +320,16 @@ textBlock =
                 , t ", even significantly long alphanumeric strings are contained within their parent blocks like so:\n"
                 , t (String.repeat 100 "abcd0123")
                 ]
-        , withSource "pre [] [ t \"In pre tag, texts have monospace font.\" ]" <|
-            pre [] [ t "In pre tag, texts have monospace font." ]
+        , withSource """pre []
+    [ t "In <pre>, texts have monospace font.\\n"
+    , t "Also, by default it breaks texts in the same manner as forceBreak.\\n"
+    , t (String.repeat 100 "abcd0123")
+    ]""" <|
+            pre []
+                [ t "In <pre>, texts have monospace font.\n"
+                , t "Also, by default it breaks texts in the same manner as forceBreak.\n"
+                , t (String.repeat 100 "abcd0123")
+                ]
         ]
 
 
@@ -418,28 +428,48 @@ flexBox =
         [ withSource """div [ widthFill, Border.solid, Border.rect ] [ t "I eat all available width. This is default behavior." ]""" <|
             div [ widthFill, Border.solid, Border.rect ] [ t "I eat all available width. This is default behavior." ]
         , withSource """div [ flexRow ]
-    [ div [ Border.solid, Border.rect, Border.round5 ] [ t "I shrink as narrow as content length allows." ]
-    , div [ Border.solid, Border.rect, Border.round5, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-    , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "I grow." ]
-    , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "I grow too." ]
+    [ div [ Border.solid, Border.rect ] [ t "I shrink as narrow as content length allows." ]
+    , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex row. I grow." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are vertically stretched by default." ]
     ]""" <|
             div [ flexRow ]
-                [ div [ Border.solid, Border.rect, Border.round5 ] [ t "I shrink as narrow as content length allows." ]
-                , div [ Border.solid, Border.rect, Border.round5, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-                , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "We are children of flex row. I grow." ]
-                , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "I grow too." ]
+                [ div [ Border.solid, Border.rect ] [ t "I shrink as narrow as content length allows." ]
+                , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex row. I grow." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are vertically stretched by default." ]
                 ]
         , withSource """div [ flexColumn, style "height" "30vh" ]
-    [ div [ Border.solid, Border.rect, Border.round5 ] [ t "I shrink as short as content length allows." ]
-    , div [ Border.solid, Border.rect, Border.round5, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-    , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "We are children of flex column. I grow." ]
-    , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "I grow too." ]
+    [ div [ Border.solid, Border.rect ] [ t "I shrink as short as content length allows." ]
+    , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex column. I grow." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are horizontally stretched by default." ]
     ]""" <|
             div [ flexColumn, style "height" "30vh" ]
-                [ div [ Border.solid, Border.rect, Border.round5 ] [ t "I shrink as short as content length allows." ]
-                , div [ Border.solid, Border.rect, Border.round5, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-                , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "We are children of flex column. I grow." ]
-                , div [ flexGrow, Border.solid, Border.rect, Border.round5 ] [ t "I grow too." ]
+                [ div [ Border.solid, Border.rect ] [ t "I shrink as short as content length allows." ]
+                , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex column. I grow." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+                ]
+        , withSource """div [ flexRow, flexCenter ]
+    [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are vertically centered and not stretched." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 lorem) ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 iroha) ]
+    ]""" <|
+            div [ flexRow, flexCenter ]
+                [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are vertically centered and not stretched." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 lorem) ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 iroha) ]
+                ]
+        , withSource """div [ flexColumn, flexCenter ]
+    [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are horizontally centered and not stretched." ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t lorem ]
+    , div [ flexGrow, Border.solid, Border.rect ] [ t iroha ]
+    ]""" <|
+            div [ flexColumn, flexCenter ]
+                [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are horizontally centered and not stretched." ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t lorem ]
+                , div [ flexGrow, Border.solid, Border.rect ] [ t iroha ]
                 ]
         ]
 
