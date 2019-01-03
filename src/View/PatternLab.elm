@@ -1,10 +1,14 @@
 module View.PatternLab exposing (main)
 
 import Browser
+import Browser.Navigation exposing (Key)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import StringExtra
+import Url exposing (Url)
+import Url.Builder
+import Url.Parser as U exposing ((</>))
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -15,14 +19,22 @@ import View.Atom.Typography exposing (..)
 import View.Stylesheet
 
 
-main : Program () Route Route
+main : Program () Model Msg
 main =
-    Browser.document
-        { init = always ( Top, Cmd.none )
+    Browser.application
+        { init = init
         , view = view
-        , update = \newRoute _ -> ( newRoute, Cmd.none )
+        , update = update
         , subscriptions = always Sub.none
+        , onUrlRequest = always NoOp
+        , onUrlChange = Arrived
         }
+
+
+type alias Model =
+    { key : Key
+    , route : Route
+    }
 
 
 type Route
@@ -35,14 +47,83 @@ type Route
     | Button
 
 
-view : Route -> { title : String, body : List (Html Route) }
-view r =
+routeToString : Route -> String
+routeToString r =
+    let
+        abs_ path =
+            Url.Builder.absolute path []
+    in
+    case r of
+        Top ->
+            abs_ []
+
+        Typography ->
+            abs_ [ "typography" ]
+
+        TextBlock ->
+            abs_ [ "text_block" ]
+
+        Border ->
+            abs_ [ "border" ]
+
+        Background ->
+            abs_ [ "background" ]
+
+        Layout ->
+            abs_ [ "layout" ]
+
+        Button ->
+            abs_ [ "button" ]
+
+
+init : () -> Url -> Key -> ( Model, Cmd Msg )
+init () url key =
+    ( { key = key, route = urlToRoute url }, Cmd.none )
+
+
+urlToRoute : Url -> Route
+urlToRoute url =
+    let
+        urlParser =
+            U.oneOf
+                [ U.map Typography (U.s "typography")
+                , U.map TextBlock (U.s "text_block")
+                , U.map Border (U.s "border")
+                , U.map Background (U.s "background")
+                , U.map Layout (U.s "layout")
+                , U.map Button (U.s "button")
+                ]
+    in
+    Maybe.withDefault Top (U.parse urlParser url)
+
+
+type Msg
+    = NoOp
+    | GoTo Route
+    | Arrived Url
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg m =
+    case msg of
+        NoOp ->
+            ( m, Cmd.none )
+
+        GoTo route ->
+            ( m, Browser.Navigation.pushUrl m.key (routeToString route) )
+
+        Arrived url ->
+            ( { m | route = urlToRoute url }, Cmd.none )
+
+
+view : Model -> { title : String, body : List (Html Msg) }
+view m =
     { title = "Zephyr: Pattern Lab"
     , body =
         [ View.Stylesheet.render
         , div [ flexColumn, widthFill, spacingColumn15, oneDark ] <|
-            (::) (navi r) <|
-                case r of
+            (::) (navi m.route) <|
+                case m.route of
                     Top ->
                         [ introduction, theme ]
 
@@ -67,7 +148,7 @@ view r =
     }
 
 
-navi : Route -> Html Route
+navi : Route -> Html Msg
 navi r =
     div [ flexColumn, flexCenter, spacingColumn10, padding15, oneDark ]
         [ div [ flexRow, flexCenter, spacingRow15 ]
@@ -83,7 +164,7 @@ navi r =
         ]
 
 
-naviButton : Route -> Route -> String -> Html Route
+naviButton : Route -> Route -> String -> Html Msg
 naviButton current hit btnLabel =
     let
         c =
@@ -93,10 +174,10 @@ naviButton current hit btnLabel =
             else
                 Button.prim
     in
-    button [ sizeHeadline, padding10, onClick hit, c ] [ t btnLabel ]
+    button [ sizeHeadline, padding10, onClick (GoTo hit), c ] [ t btnLabel ]
 
 
-introduction : Html Route
+introduction : Html Msg
 introduction =
     section []
         [ h1 [ sizeImpact ]
@@ -133,12 +214,12 @@ import View.Atom.Typography exposing (..)"""
         ]
 
 
-section : List (Attribute Route) -> List (Html Route) -> Html Route
+section : List (Attribute Msg) -> List (Html Msg) -> Html Msg
 section attrs =
     div ([ flexColumn, widthFill, flexCenter, spacingColumn15, padding10 ] ++ attrs)
 
 
-theme : Html Route
+theme : Html Msg
 theme =
     section []
         [ h1 [ sizeSection ] [ t "Theme" ]
@@ -161,7 +242,7 @@ theme =
         ]
 
 
-typography : Html Route
+typography : Html Msg
 typography =
     section []
         [ h1 [ sizeSection ] [ t "Typography" ]
@@ -172,7 +253,7 @@ typography =
         ]
 
 
-fontFamilies : Html Route
+fontFamilies : Html Msg
 fontFamilies =
     section []
         [ h2 [ sizeTitle ] [ t "Font families" ]
@@ -185,7 +266,7 @@ fontFamilies =
         ]
 
 
-withSource : String -> Html Route -> Html Route
+withSource : String -> Html Msg -> Html Msg
 withSource source toRender =
     div [ flexRow, flexCenter, widthFill, spacingRow15 ]
         [ div [ flexGrow ] [ toRender ]
@@ -193,7 +274,7 @@ withSource source toRender =
         ]
 
 
-fontSizes : Html Route
+fontSizes : Html Msg
 fontSizes =
     section []
         [ h2 [ sizeTitle ] [ t "Font sizes" ]
@@ -212,7 +293,7 @@ fontSizes =
         ]
 
 
-fontDecorations : Html Route
+fontDecorations : Html Msg
 fontDecorations =
     section []
         [ h2 [ sizeTitle ] [ t "Font decorations" ]
@@ -227,7 +308,7 @@ fontDecorations =
         ]
 
 
-fontColors : Html Route
+fontColors : Html Msg
 fontColors =
     section []
         [ h2 [ sizeTitle ] [ t "Font colors" ]
@@ -276,7 +357,7 @@ fontColors =
         ]
 
 
-textBlock : Html Route
+textBlock : Html Msg
 textBlock =
     section []
         [ h1 [ sizeSection ] [ t "Text Blocks" ]
@@ -343,7 +424,7 @@ iroha =
     "いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん"
 
 
-border : Html Route
+border : Html Msg
 border =
     section []
         [ h1 [ sizeSection ] [ t "Border" ]
@@ -360,7 +441,7 @@ border =
         ]
 
 
-background : Html Route
+background : Html Msg
 background =
     section []
         [ h1 [ sizeSection ] [ t "Background" ]
@@ -409,7 +490,7 @@ background =
         ]
 
 
-layout : Html Route
+layout : Html Msg
 layout =
     section []
         [ h1 [ sizeSection ] [ t "Layout" ]
@@ -422,7 +503,7 @@ layout =
         ]
 
 
-flexBox : Html Route
+flexBox : Html Msg
 flexBox =
     section []
         [ withSource """div [ widthFill, Border.solid, Border.rect ] [ t "I eat all available width. This is default behavior." ]""" <|
@@ -474,7 +555,7 @@ flexBox =
         ]
 
 
-padding : Html Route
+padding : Html Msg
 padding =
     section []
         [ withSource """div [ Border.solid, Border.rect ] [ t "No padding. ", t lorem ]""" <|
@@ -490,7 +571,7 @@ padding =
         ]
 
 
-spacing : Html Route
+spacing : Html Msg
 spacing =
     section []
         [ withSource """div [ flexRow, Border.solid, Border.rect ]
@@ -556,7 +637,7 @@ spacing =
         ]
 
 
-button_ : Html Route
+button_ : Html Msg
 button_ =
     section []
         [ h1 [ sizeSection ] [ t "Button" ]
