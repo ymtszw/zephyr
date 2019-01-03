@@ -223,20 +223,20 @@ theme : Html Msg
 theme =
     section []
         [ h1 [ sizeSection ] [ t "Theme" ]
-        , withSource """p [ widthFill, padding15, oneDark ]
-    [ t "This block has oneDark theme. Default background color and text color are automatically applied to its children.\\n"
+        , withSource """div [ padding15, oneDark ]
+    [ t "This block has oneDark theme. Default background color and text color are automatically applied to its children. "
     , t "Child elements may apply specific color mode classes for decorations. See Typography/Border/Background sections."
     ]""" <|
-            p [ widthFill, padding15, oneDark ]
-                [ t "This block has oneDark theme. Default background color and text color are automatically applied to its children.\n"
+            div [ padding15, oneDark ]
+                [ t "This block has oneDark theme. Default background color and text color are automatically applied to its children. "
                 , t "Child elements may apply specific color mode classes for decorations. See Typography/Border/Background sections."
                 ]
-        , withSource """p [ widthFill, padding15, aubergine ]
-    [ t "This block has aubergine theme. Default background color and text color are automatically applied to its children.\\n"
+        , withSource """div [ padding15, aubergine ]
+    [ t "This block has aubergine theme. Default background color and text color are automatically applied to its children. "
     , t "Child elements may apply specific color mode classes for decorations. See Typography/Border/Background sections."
     ]""" <|
-            p [ widthFill, padding15, aubergine ]
-                [ t "This block has aubergine theme. Default background color and text color are automatically applied to its children.\n"
+            div [ padding15, aubergine ]
+                [ t "This block has aubergine theme. Default background color and text color are automatically applied to its children. "
                 , t "Child elements may apply specific color mode classes for decorations. See Typography/Border/Background sections."
                 ]
         ]
