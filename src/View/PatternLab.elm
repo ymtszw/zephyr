@@ -8,7 +8,7 @@ import Html.Events exposing (onClick)
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
-import Url.Parser as U exposing ((</>))
+import Url.Parser as U
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
