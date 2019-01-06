@@ -14,7 +14,7 @@ import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
-import View.Atom.Theme exposing (aubergine, oneDark)
+import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Stylesheet
 
@@ -438,6 +438,28 @@ border =
             div [ padding5, Border.solid, Border.rect, Border.round2 ] [ t "I'm surrounded by rounded solid border." ]
         , withSource "div [ padding5, Border.solid, Border.rect, Border.round5 ] [ t \"I'm surrounded by more rounded solid border.\" ]" <|
             div [ padding5, Border.solid, Border.rect, Border.round5 ] [ t "I'm surrounded by more rounded solid border." ]
+        , withSource """div [ Border.gutter, padding10, Background.colorBg, style "height" "100px" ] [ t "I'm a guttered block." ]""" <|
+            div [ Border.gutter, padding10, Background.colorBg ] [ t "I'm a guttered block." ]
+        , withSource """div
+    [ Border.gutter
+    , Border.color oneDarkTheme.prim
+    , padding10
+    , Background.colorBg
+    ]
+    [ t "Gutter border colors can be specified by "
+    , code [] [ t "Border.color" ]
+    , t " helper."
+    ]""" <|
+            div
+                [ Border.gutter
+                , Border.color oneDarkTheme.prim
+                , padding10
+                , Background.colorBg
+                ]
+                [ t "Gutter border colors can be specified by "
+                , code [] [ t "Border.color" ]
+                , t " helper."
+                ]
         ]
 
 

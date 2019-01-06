@@ -1,17 +1,20 @@
 module View.Atom.Border exposing
     ( solid, dotted, dashed
-    , rect, round2, round5
+    , rect, round2, round5, gutter
+    , color
     , styles
     )
 
 {-| Border Atoms.
 
 @docs solid, dotted, dashed
-@docs rect, round2, round5
+@docs rect, round2, round5, gutter
+@docs color
 @docs styles
 
 -}
 
+import Color exposing (Color, cssRgba)
 import Html exposing (Attribute)
 import Html.Attributes as Attributes
 import View.Style exposing (..)
@@ -47,6 +50,19 @@ round5 =
     Attributes.class round5Class
 
 
+{-| Since gutters are mostly used with user-defined colors,
+it should be paired with `color` helper.
+-}
+gutter : Attribute msg
+gutter =
+    Attributes.class gutterClass
+
+
+color : Color -> Attribute msg
+color c =
+    Attributes.style "border-color" (cssRgba c)
+
+
 styles : List Style
 styles =
     [ c solidClass [ ( "border-style", "solid" ) ]
@@ -55,6 +71,7 @@ styles =
     , c rectClass [ ( "border-width", "1px" ) ]
     , c round2Class [ ( "border-radius", "2px" ) ]
     , c round5Class [ ( "border-radius", "5px" ) ]
+    , gutterStyle
     ]
 
 
@@ -86,3 +103,18 @@ round2Class =
 round5Class : String
 round5Class =
     "boro5"
+
+
+gutterStyle : Style
+gutterStyle =
+    c gutterClass
+        [ ( "border-left-width", "5px" )
+        , ( "border-left-style", "solid" )
+        , ( "border-top-left-radius", "5px" )
+        , ( "border-bottom-left-radius", "5px" )
+        ]
+
+
+gutterClass : String
+gutterClass =
+    "bogut"
