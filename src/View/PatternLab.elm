@@ -200,7 +200,7 @@ introduction =
             ]
         , div [ padding10 ]
             [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
-            , pre [ padding10, Border.round5, Border.rect, Border.solid ]
+            , pre [ padding10, Border.round5, Border.w1, Border.solid ]
                 [ t """import Html exposing (..)
 import Html.Attributes exposing (style)
 import View.Atom.Background as Background
@@ -268,9 +268,9 @@ fontFamilies =
 
 withSource : String -> Html Msg -> Html Msg
 withSource source toRender =
-    div [ flexRow, flexCenter, widthFill, spacingRow15 ]
-        [ div [ flexGrow ] [ toRender ]
-        , pre [ flexGrow ] [ t source ]
+    div [ growRow, flexCenter, widthFill, spacingRow15 ]
+        [ div [] [ toRender ]
+        , pre [] [ t source ]
         ]
 
 
@@ -428,16 +428,26 @@ border : Html Msg
 border =
     section []
         [ h1 [ sizeSection ] [ t "Border" ]
-        , withSource "div [ padding5, Border.solid, Border.rect ] [ t \"I'm surrounded by solid border.\" ]" <|
-            div [ padding5, Border.solid, Border.rect ] [ t "I'm surrounded by solid border." ]
-        , withSource "div [ padding5, Border.dotted, Border.rect ] [ t \"I'm surrounded by dotted border.\" ]" <|
-            div [ padding5, Border.dotted, Border.rect ] [ t "I'm surrounded by dotted border." ]
-        , withSource "div [ padding5, Border.dashed, Border.rect ] [ t \"I'm surrounded by dashed border.\" ]" <|
-            div [ padding5, Border.dashed, Border.rect ] [ t "I'm surrounded by dashed border." ]
-        , withSource "div [ padding5, Border.solid, Border.rect, Border.round2 ] [ t \"I'm surrounded by rounded solid border.\" ]" <|
-            div [ padding5, Border.solid, Border.rect, Border.round2 ] [ t "I'm surrounded by rounded solid border." ]
-        , withSource "div [ padding5, Border.solid, Border.rect, Border.round5 ] [ t \"I'm surrounded by more rounded solid border.\" ]" <|
-            div [ padding5, Border.solid, Border.rect, Border.round5 ] [ t "I'm surrounded by more rounded solid border." ]
+        , withSource "div [ padding5, Border.solid, Border.w1 ] [ t \"I'm surrounded by solid border.\" ]" <|
+            div [ padding5, Border.solid, Border.w1 ] [ t "I'm surrounded by solid border." ]
+        , withSource "div [ padding5, Border.dotted, Border.w1 ] [ t \"I'm surrounded by dotted border.\" ]" <|
+            div [ padding5, Border.dotted, Border.w1 ] [ t "I'm surrounded by dotted border." ]
+        , withSource "div [ padding5, Border.dashed, Border.w1 ] [ t \"I'm surrounded by dashed border.\" ]" <|
+            div [ padding5, Border.dashed, Border.w1 ] [ t "I'm surrounded by dashed border." ]
+        , withSource "div [ padding5, Border.solid, Border.w1, Border.round2 ] [ t \"I'm surrounded by rounded solid border.\" ]" <|
+            div [ padding5, Border.solid, Border.w1, Border.round2 ] [ t "I'm surrounded by rounded solid border." ]
+        , withSource "div [ padding5, Border.solid, Border.w1, Border.round5 ] [ t \"I'm surrounded by more rounded solid border.\" ]" <|
+            div [ padding5, Border.solid, Border.w1, Border.round5 ] [ t "I'm surrounded by more rounded solid border." ]
+        , withSource """div [ growRow ]
+    [ div [ Border.leftRound5, padding10, Background.colorSucc ] [ t "I'm left, and border-rounded." ]
+    , div [ padding10, Background.colorWarn ] [ t "I'm center, and not border-rounded." ]
+    , div [ Border.rightRound5, padding10, Background.colorErr ] [ t "I'm right, and border-rounded." ]
+    ]""" <|
+            div [ growRow ]
+                [ div [ Border.leftRound5, padding10, Background.colorSucc ] [ t "I'm left, and border-rounded." ]
+                , div [ padding10, Background.colorWarn ] [ t "I'm center, and not border-rounded." ]
+                , div [ Border.rightRound5, padding10, Background.colorErr ] [ t "I'm right, and border-rounded." ]
+                ]
         , withSource """div [ Border.gutter, padding10, Background.colorBg, style "height" "100px" ] [ t "I'm a guttered block." ]""" <|
             div [ Border.gutter, padding10, Background.colorBg ] [ t "I'm a guttered block." ]
         , withSource """div
@@ -528,51 +538,81 @@ layout =
 flexBox : Html Msg
 flexBox =
     section []
-        [ withSource """div [ widthFill, Border.solid, Border.rect ] [ t "I eat all available width. This is default behavior." ]""" <|
-            div [ widthFill, Border.solid, Border.rect ] [ t "I eat all available width. This is default behavior." ]
+        [ withSource """div [ widthFill, Border.solid, Border.w1 ]
+    [ t "I eat all available width. "
+    , t "Though, since I am a child of "
+    , code [] [ t "flexRow" ]
+    , t ", I am automatically stretched horizontally."
+    ]""" <|
+            div [ widthFill, Border.solid, Border.w1 ]
+                [ t "I eat all available width. "
+                , t "Though, since I am a child of "
+                , code [] [ t "flexRow" ]
+                , t ", I am automatically stretched horizontally."
+                ]
         , withSource """div [ flexRow ]
-    [ div [ Border.solid, Border.rect ] [ t "I shrink as narrow as content length allows." ]
-    , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex row. I grow." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are vertically stretched by default." ]
+    [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
+    , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow." ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default." ]
     ]""" <|
             div [ flexRow ]
-                [ div [ Border.solid, Border.rect ] [ t "I shrink as narrow as content length allows." ]
-                , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex row. I grow." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are vertically stretched by default." ]
+                [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
+                , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow." ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default." ]
                 ]
         , withSource """div [ flexColumn, style "height" "30vh" ]
-    [ div [ Border.solid, Border.rect ] [ t "I shrink as short as content length allows." ]
-    , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex column. I grow." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+    [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows." ]
+    , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow." ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default." ]
     ]""" <|
             div [ flexColumn, style "height" "30vh" ]
-                [ div [ Border.solid, Border.rect ] [ t "I shrink as short as content length allows." ]
-                , div [ Border.solid, Border.rect, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "We are children of flex column. I grow." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+                [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows." ]
+                , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow." ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default." ]
                 ]
-        , withSource """div [ flexRow, flexCenter ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are vertically centered and not stretched." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 lorem) ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 iroha) ]
+        , withSource """div [ growRow ]
+    [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow." ]
+    , div [ Border.solid, Border.w1 ] [ t "Like this." ]
+    , div [ Border.solid, Border.w1 ] [ t "Like us." ]
     ]""" <|
-            div [ flexRow, flexCenter ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are vertically centered and not stretched." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 lorem) ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t (String.repeat 3 iroha) ]
+            div [ growRow ]
+                [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow." ]
+                , div [ Border.solid, Border.w1 ] [ t "Like this." ]
+                , div [ Border.solid, Border.w1 ] [ t "Like us." ]
                 ]
-        , withSource """div [ flexColumn, flexCenter ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are horizontally centered and not stretched." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t lorem ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t iroha ]
+        , withSource """div [ growColumn, style "height" "30vh" ]
+    [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growColumn" ], t " automatically grow." ]
+    , div [ Border.solid, Border.w1 ] [ t "Like this." ]
+    , div [ Border.solid, Border.w1 ] [ t "Like us." ]
     ]""" <|
-            div [ flexColumn, flexCenter ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "We are horizontally centered and not stretched." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t lorem ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t iroha ]
+            div [ growColumn, style "height" "30vh" ]
+                [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growColumn" ], t " automatically grow." ]
+                , div [ Border.solid, Border.w1 ] [ t "Like this." ]
+                , div [ Border.solid, Border.w1 ] [ t "Like us." ]
+                ]
+        , withSource """div [ growRow, flexCenter ]
+    [ div [ Border.solid, Border.w1 ] [ t "We are vertically centered and not stretched." ]
+    , div [ Border.solid, Border.w1 ] [ t (String.repeat 3 lorem) ]
+    , div [ Border.solid, Border.w1 ] [ t (String.repeat 3 iroha) ]
+    ]""" <|
+            div [ growRow, flexCenter ]
+                [ div [ Border.solid, Border.w1 ] [ t "We are vertically centered and not stretched." ]
+                , div [ Border.solid, Border.w1 ] [ t (String.repeat 3 lorem) ]
+                , div [ Border.solid, Border.w1 ] [ t (String.repeat 3 iroha) ]
+                ]
+        , withSource """div [ growColumn, flexCenter ]
+    [ div [ Border.solid, Border.w1 ] [ t "We are horizontally centered and not stretched." ]
+    , div [ Border.solid, Border.w1 ] [ t lorem ]
+    , div [ Border.solid, Border.w1 ] [ t iroha ]
+    ]""" <|
+            div [ growColumn, flexCenter ]
+                [ div [ Border.solid, Border.w1 ] [ t "We are horizontally centered and not stretched." ]
+                , div [ Border.solid, Border.w1 ] [ t lorem ]
+                , div [ Border.solid, Border.w1 ] [ t iroha ]
                 ]
         ]
 
@@ -580,81 +620,81 @@ flexBox =
 padding : Html Msg
 padding =
     section []
-        [ withSource """div [ Border.solid, Border.rect ] [ t "No padding. ", t lorem ]""" <|
-            div [ Border.solid, Border.rect ] [ t "No padding. ", t lorem ]
-        , withSource """div [ padding2, Border.solid, Border.rect ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
-            div [ padding2, Border.solid, Border.rect ] [ t "I'm surrounded by 2px padding. ", t lorem ]
-        , withSource """div [ padding5, Border.solid, Border.rect ] [ t "I'm surrounded by 5px padding. ", t lorem ]""" <|
-            div [ padding5, Border.solid, Border.rect ] [ t "I'm surrounded by 5px padding. ", t lorem ]
-        , withSource """div [ padding10, Border.solid, Border.rect ] [ t "I'm surrounded by 10px padding. ", t lorem ]""" <|
-            div [ padding10, Border.solid, Border.rect ] [ t "I'm surrounded by 10px padding. ", t lorem ]
-        , withSource """div [ padding15, Border.solid, Border.rect ] [ t "I'm surrounded by 15px padding. ", t lorem ]""" <|
-            div [ padding15, Border.solid, Border.rect ] [ t "I'm surrounded by 15px padding. ", t lorem ]
+        [ withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
+            div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]
+        , withSource """div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
+            div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]
+        , withSource """div [ padding5, Border.solid, Border.w1 ] [ t "I'm surrounded by 5px padding. ", t lorem ]""" <|
+            div [ padding5, Border.solid, Border.w1 ] [ t "I'm surrounded by 5px padding. ", t lorem ]
+        , withSource """div [ padding10, Border.solid, Border.w1 ] [ t "I'm surrounded by 10px padding. ", t lorem ]""" <|
+            div [ padding10, Border.solid, Border.w1 ] [ t "I'm surrounded by 10px padding. ", t lorem ]
+        , withSource """div [ padding15, Border.solid, Border.w1 ] [ t "I'm surrounded by 15px padding. ", t lorem ]""" <|
+            div [ padding15, Border.solid, Border.w1 ] [ t "I'm surrounded by 15px padding. ", t lorem ]
         ]
 
 
 spacing : Html Msg
 spacing =
     section []
-        [ withSource """div [ flexRow, Border.solid, Border.rect ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+        [ withSource """div [ growRow, Border.solid, Border.w1 ]
+    [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
     ]""" <|
-            div [ flexRow, Border.solid, Border.rect ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+            div [ growRow, Border.solid, Border.w1 ]
+                [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
-        , withSource """div [ flexRow, spacingRow5, Border.solid, Border.rect ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have left margins." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+        , withSource """div [ growRow, spacingRow5, Border.solid, Border.w1 ]
+    [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have left margins." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
     ]""" <|
-            div [ flexRow, spacingRow5, Border.solid, Border.rect ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have left margins." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+            div [ growRow, spacingRow5, Border.solid, Border.w1 ]
+                [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have left margins." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
-        , withSource """div [ flexRow, spacingRow15, Border.solid, Border.rect ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have left margins." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+        , withSource """div [ growRow, spacingRow15, Border.solid, Border.w1 ]
+    [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have left margins." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
     ]""" <|
-            div [ flexRow, spacingRow15, Border.solid, Border.rect ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex row." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have left margins." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+            div [ growRow, spacingRow15, Border.solid, Border.w1 ]
+                [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have left margins." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
-        , withSource """div [ flexColumn, Border.solid, Border.rect ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+        , withSource """div [ growColumn, Border.solid, Border.w1 ]
+    [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex column." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
     ]""" <|
-            div [ flexColumn, Border.solid, Border.rect ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. No spacing." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+            div [ growColumn, Border.solid, Border.w1 ]
+                [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex column." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
-        , withSource """div [ flexColumn, spacingColumn5, Border.solid, Border.rect ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have top margins." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+        , withSource """div [ growColumn, spacingColumn5, Border.solid, Border.w1 ]
+    [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex column." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
     ]""" <|
-            div [ flexColumn, spacingColumn5, Border.solid, Border.rect ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have top margins." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+            div [ growColumn, spacingColumn5, Border.solid, Border.w1 ]
+                [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex column." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
-        , withSource """div [ flexColumn, spacingColumn15, Border.solid, Border.rect ]
-    [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have top margins." ]
-    , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+        , withSource """div [ growColumn, spacingColumn15, Border.solid, Border.w1 ]
+    [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex column." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
+    , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
     ]""" <|
-            div [ flexColumn, spacingColumn15, Border.solid, Border.rect ]
-                [ div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the first child of flex column." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the second one. Second and thereafter have top margins." ]
-                , div [ flexGrow, Border.solid, Border.rect ] [ t "I'm the third one." ]
+            div [ growColumn, spacingColumn15, Border.solid, Border.w1 ]
+                [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex column." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
+                , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
         ]
 

@@ -1,5 +1,5 @@
 module View.Atom.Layout exposing
-    ( widthFill, flexRow, flexColumn, flexItem, flexGrow, flexShrink, flexCenter
+    ( widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
     , padding2, padding5, padding10, padding15
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -8,7 +8,7 @@ module View.Atom.Layout exposing
 
 {-| Essential layouting Atoms.
 
-@docs widthFill, flexRow, flexColumn, flexItem, flexGrow, flexShrink, flexCenter
+@docs widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
 @docs padding2, padding5, padding10, padding15
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -36,12 +36,39 @@ flexColumn =
     Attributes.class flexColumnClass
 
 
+{-| Mostly equivalent to `flexRow`,
+with only difference is its child elements have `flex-grow: 1;` by default.
+
+If you just want to have a flex row with growing children,
+using this instead of `flexRow` may help.
+
+-}
+growRow : Attribute msg
+growRow =
+    Attributes.class growRowClass
+
+
+{-| Similar to `growRow`, for a column.
+-}
+growColumn : Attribute msg
+growColumn =
+    Attributes.class growColumnClass
+
+
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
 if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<button>`, `<input>` or `<blockquote>`.
 -}
 flexItem : Attribute msg
 flexItem =
     Attributes.class flexItemClass
+
+
+{-| Styles equivalent to this class are automatically applied to direct children of `growRow` or `growColumn`
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<button>`, `<input>` or `<blockquote>`.
+-}
+growItem : Attribute msg
+growItem =
+    Attributes.class growItemClass
 
 
 flexGrow : Attribute msg
@@ -132,10 +159,14 @@ styles : List Style
 styles =
     -- XXX Order matters!
     [ c widthFillClass [ ( "width", "100%" ) ]
-    , c flexRowClass [ ( "display", "flex" ), ( "flex-direction", "row" ) ]
-    , c flexColumnClass [ ( "display", "flex" ), ( "flex-direction", "column" ) ]
+    , flexRowStyle
+    , flexColumnStyle
+    , derive ("." ++ growRowClass) flexRowStyle
+    , derive ("." ++ growColumnClass) flexColumnStyle
     , autoFlexItemStyle
+    , autoGrowItemStyle
     , flexItemStyle
+    , growItemStyle
     , flexGrowStyle
     , flexShrinkStyle
     , flexCenterStyle
@@ -159,14 +190,34 @@ widthFillClass =
     "wf"
 
 
+flexRowStyle : Style
+flexRowStyle =
+    c flexRowClass [ ( "display", "flex" ), ( "flex-direction", "row" ) ]
+
+
 flexRowClass : String
 flexRowClass =
     "fr"
 
 
+flexColumnStyle : Style
+flexColumnStyle =
+    c flexColumnClass [ ( "display", "flex" ), ( "flex-direction", "column" ) ]
+
+
 flexColumnClass : String
 flexColumnClass =
     "fc"
+
+
+growRowClass : String
+growRowClass =
+    "gr"
+
+
+growColumnClass : String
+growColumnClass =
+    "gc"
 
 
 autoFlexItemStyle : Style
@@ -204,6 +255,36 @@ flexItemClass =
     "fi"
 
 
+autoGrowItemStyle : Style
+autoGrowItemStyle =
+    let
+        autoGrowItemSelector =
+            String.join "," <|
+                List.concatMap childOfFlexBox <|
+                    autoFlexItemTags
+
+        childOfFlexBox tag =
+            [ "." ++ growRowClass ++ ">" ++ tag
+            , "." ++ growColumnClass ++ ">" ++ tag
+            ]
+    in
+    derive autoGrowItemSelector growItemStyle
+
+
+growItemStyle : Style
+growItemStyle =
+    c growItemClass
+        [ ( "flex-grow", "1" )
+        , ( "flex-shrink", "0" )
+        , ( "flex-basis", "0%" )
+        ]
+
+
+growItemClass : String
+growItemClass =
+    "gi"
+
+
 flexGrowStyle : Style
 flexGrowStyle =
     let
@@ -211,6 +292,8 @@ flexGrowStyle =
             String.join ","
                 [ "." ++ flexRowClass ++ ">." ++ flexGrowClass
                 , "." ++ flexColumnClass ++ ">." ++ flexGrowClass
+                , "." ++ growRowClass ++ ">." ++ flexGrowClass
+                , "." ++ growColumnClass ++ ">." ++ flexGrowClass
                 ]
     in
     s growingChildlen [ ( "flex-grow", "10000" ) ]
@@ -228,6 +311,8 @@ flexShrinkStyle =
             String.join ","
                 [ "." ++ flexRowClass ++ ">." ++ flexShrinkClass
                 , "." ++ flexColumnClass ++ ">." ++ flexShrinkClass
+                , "." ++ growRowClass ++ ">." ++ flexShrinkClass
+                , "." ++ growColumnClass ++ ">." ++ flexShrinkClass
                 ]
     in
     s shrinkingChildlen [ ( "flex-shrink", "1" ) ]
@@ -245,6 +330,8 @@ flexCenterStyle =
             String.join ","
                 [ "." ++ flexRowClass ++ "." ++ flexCenterClass
                 , "." ++ flexColumnClass ++ "." ++ flexCenterClass
+                , "." ++ growRowClass ++ "." ++ flexCenterClass
+                , "." ++ growColumnClass ++ "." ++ flexCenterClass
                 ]
     in
     s shrinkingChildlen [ ( "align-items", "center" ) ]

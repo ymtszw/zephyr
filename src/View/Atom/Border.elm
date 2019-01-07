@@ -1,6 +1,6 @@
 module View.Atom.Border exposing
     ( solid, dotted, dashed
-    , rect, round2, round5, gutter
+    , w1, round2, round5, leftRound5, rightRound5, gutter
     , color
     , styles
     )
@@ -8,7 +8,7 @@ module View.Atom.Border exposing
 {-| Border Atoms.
 
 @docs solid, dotted, dashed
-@docs rect, round2, round5, gutter
+@docs w1, round2, round5, leftRound5, rightRound5, gutter
 @docs color
 @docs styles
 
@@ -35,9 +35,9 @@ dashed =
     Attributes.class dashedClass
 
 
-rect : Attribute msg
-rect =
-    Attributes.class rectClass
+w1 : Attribute msg
+w1 =
+    Attributes.class w1Class
 
 
 round2 : Attribute msg
@@ -48,6 +48,16 @@ round2 =
 round5 : Attribute msg
 round5 =
     Attributes.class round5Class
+
+
+leftRound5 : Attribute msg
+leftRound5 =
+    Attributes.class leftRound5Class
+
+
+rightRound5 : Attribute msg
+rightRound5 =
+    Attributes.class rightRound5Class
 
 
 {-| Since gutters are mostly used with user-defined colors,
@@ -68,9 +78,11 @@ styles =
     [ c solidClass [ ( "border-style", "solid" ) ]
     , c dottedClass [ ( "border-style", "dotted" ) ]
     , c dashedClass [ ( "border-style", "dashed" ) ]
-    , c rectClass [ ( "border-width", "1px" ) ]
+    , c w1Class [ ( "border-width", "1px" ) ]
     , c round2Class [ ( "border-radius", "2px" ) ]
     , c round5Class [ ( "border-radius", "5px" ) ]
+    , c leftRound5Class [ ( "border-top-left-radius", "5px" ), ( "border-bottom-left-radius", "5px" ) ]
+    , c rightRound5Class [ ( "border-top-right-radius", "5px" ), ( "border-bottom-right-radius", "5px" ) ]
     , gutterStyle
     ]
 
@@ -90,9 +102,9 @@ dashedClass =
     "boda"
 
 
-rectClass : String
-rectClass =
-    "bore"
+w1Class : String
+w1Class =
+    "bow1"
 
 
 round2Class : String
@@ -103,6 +115,16 @@ round2Class =
 round5Class : String
 round5Class =
     "boro5"
+
+
+leftRound5Class : String
+leftRound5Class =
+    "bolr5"
+
+
+rightRound5Class : String
+rightRound5Class =
+    "borr5"
 
 
 gutterStyle : Style
