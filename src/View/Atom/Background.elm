@@ -113,39 +113,39 @@ bg themeClass modeClass color =
 
 colorBgClass : String
 colorBgClass =
-    "bgbgc"
+    "bgcbg"
 
 
 colorMainClass : String
 colorMainClass =
-    "mainbgc"
+    "bgcmain"
 
 
 colorSubClass : String
 colorSubClass =
-    "subbgc"
+    "bgcsub"
 
 
 colorNoteClass : String
 colorNoteClass =
-    "notebgc"
+    "bgcnote"
 
 
 colorPrimClass : String
 colorPrimClass =
-    "primbgc"
+    "bgcprim"
 
 
 colorSuccClass : String
 colorSuccClass =
-    "succbgc"
+    "bgcsucc"
 
 
 colorWarnClass : String
 colorWarnClass =
-    "warnbgc"
+    "bgcwarn"
 
 
 colorErrClass : String
 colorErrClass =
-    "errbgc"
+    "bgcerr"

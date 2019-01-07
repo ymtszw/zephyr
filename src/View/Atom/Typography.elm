@@ -205,32 +205,32 @@ sizeBaseStyle =
 
 sizeBaseClass : String
 sizeBaseClass =
-    "bfs"
+    "fsb"
 
 
 sizeDetailClass : String
 sizeDetailClass =
-    "dfs"
+    "fsd"
 
 
 sizeHeadlineClass : String
 sizeHeadlineClass =
-    "hfs"
+    "fsh"
 
 
 sizeTitleClass : String
 sizeTitleClass =
-    "tfs"
+    "fst"
 
 
 sizeSectionClass : String
 sizeSectionClass =
-    "sfs"
+    "fss"
 
 
 sizeImpactClass : String
 sizeImpactClass =
-    "ifs"
+    "fsi"
 
 
 sansSerifStyle : Style
@@ -313,37 +313,37 @@ f themeClass modeClass color =
 
 colorTextClass : String
 colorTextClass =
-    "textfc"
+    "fctext"
 
 
 colorNoteClass : String
 colorNoteClass =
-    "notefc"
+    "fcnote"
 
 
 colorLinkClass : String
 colorLinkClass =
-    "linkfc"
+    "fclink"
 
 
 colorPrimClass : String
 colorPrimClass =
-    "primfc"
+    "fcprim"
 
 
 colorSuccClass : String
 colorSuccClass =
-    "succfc"
+    "fcsucc"
 
 
 colorWarnClass : String
 colorWarnClass =
-    "warnfc"
+    "fcwarn"
 
 
 colorErrClass : String
 colorErrClass =
-    "errfc"
+    "fcerr"
 
 
 inlineCodeStyles : List Style
