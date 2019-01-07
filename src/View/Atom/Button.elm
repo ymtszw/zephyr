@@ -1,0 +1,103 @@
+module View.Atom.Button exposing
+    ( link
+    , styles
+    )
+
+{-| Button Atoms.
+
+Color of buttons are decided by upstream themes and `Background`/`Typography` APIs.
+
+@docs link
+@docs styles
+
+-}
+
+import Color exposing (Color, cssRgba)
+import Html exposing (Attribute, Html)
+import Html.Attributes as Attributes
+import View.Atom.Layout as Layout
+import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
+import View.Atom.Typography as Typography
+import View.Style exposing (..)
+
+
+{-| A.k.a "LinkButton".
+
+Note that link buttons cannot be "disabled" like we do for standard buttons.
+
+-}
+link : List (Attribute msg) -> { url : String, children : List (Html msg) } -> Html msg
+link attrs opts =
+    Typography.link (Attributes.class linkButtonClass :: attrs) opts
+
+
+styles : List Style
+styles =
+    [ oneDarkDefaultFaceStyle
+    , defaultFaceStyle aubergineClass aubergineTheme.bd
+    ]
+        ++ standardStyles
+        ++ linkButtonStyles
+
+
+standardStyles : List Style
+standardStyles =
+    [ s "button"
+        [ ( "border-radius", "0.2em" )
+        , ( "border-width", "0px" )
+        , ( "cursor", "pointer" ) -- I deliberately want this. I am AGAINST the philosophy of "buttons do not need pointer."
+        ]
+        |> inject Layout.paddingInlineStyle
+        |> inject oneDarkDefaultFaceStyle
+    , s "button:hover" [ ( "opacity", "0.9" ) ]
+    , s "button:disabled" [ ( "opacity", "0.7" ), ( "cursor", "default" ) ]
+    ]
+
+
+oneDarkDefaultFaceStyle : Style
+oneDarkDefaultFaceStyle =
+    -- .bd colors are used as defaults; these colors are not available as neither font nor BG colors
+    defaultFaceStyle oneDarkClass oneDarkTheme.bd
+
+
+defaultFaceStyle : String -> Color -> Style
+defaultFaceStyle themeClass defaultColor =
+    let
+        selector =
+            String.join ","
+                [ "button." ++ themeClass
+                , "." ++ linkButtonClass ++ "." ++ themeClass
+                , "." ++ themeClass ++ " button"
+                , "." ++ themeClass ++ " ." ++ linkButtonClass
+                ]
+    in
+    s selector [ ( "background-color", cssRgba defaultColor ) ]
+
+
+linkButtonStyles : List Style
+linkButtonStyles =
+    let
+        linkSelectors =
+            String.join ","
+                [ "a." ++ linkButtonClass ++ ":link"
+                , "a." ++ linkButtonClass ++ ":visited"
+                , "a." ++ linkButtonClass ++ ":hover"
+                , "a." ++ linkButtonClass ++ ":active"
+                ]
+    in
+    -- Inline OR Block element that behave like a button but actually a link
+    [ c linkButtonClass
+        [ ( "border-radius", "0.2em" )
+        , ( "border-width", "0px" )
+        , ( "cursor", "pointer" ) -- I deliberately want this. I am AGAINST the philosophy of "buttons do not need pointer."
+        ]
+        |> inject Layout.paddingInlineStyle
+        |> inject oneDarkDefaultFaceStyle
+    , c (linkButtonClass ++ ":hover") [ ( "opacity", "0.9" ) ]
+    , s linkSelectors [ ( "color", "inherit" ), ( "text-decoration", "none" ) ] -- Cancelling default link decorations
+    ]
+
+
+linkButtonClass : String
+linkButtonClass =
+    "btn"
