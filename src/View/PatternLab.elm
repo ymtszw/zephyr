@@ -47,35 +47,6 @@ type Route
     | Button
 
 
-routeToString : Route -> String
-routeToString r =
-    let
-        abs_ path =
-            Url.Builder.absolute path []
-    in
-    case r of
-        Top ->
-            abs_ []
-
-        Typography ->
-            abs_ [ "typography" ]
-
-        TextBlock ->
-            abs_ [ "text_block" ]
-
-        Border ->
-            abs_ [ "border" ]
-
-        Background ->
-            abs_ [ "background" ]
-
-        Layout ->
-            abs_ [ "layout" ]
-
-        Button ->
-            abs_ [ "button" ]
-
-
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init () url key =
     ( { key = key, route = urlToRoute url }, Cmd.none )
@@ -175,6 +146,35 @@ naviButton current hit btnLabel =
     in
     Button.link [ sizeHeadline, padding10, flexItem, c ]
         { url = routeToString hit, children = [ t btnLabel ] }
+
+
+routeToString : Route -> String
+routeToString r =
+    let
+        abs_ path =
+            Url.Builder.absolute path []
+    in
+    case r of
+        Top ->
+            abs_ []
+
+        Typography ->
+            abs_ [ "typography" ]
+
+        TextBlock ->
+            abs_ [ "text_block" ]
+
+        Border ->
+            abs_ [ "border" ]
+
+        Background ->
+            abs_ [ "background" ]
+
+        Layout ->
+            abs_ [ "layout" ]
+
+        Button ->
+            abs_ [ "button" ]
 
 
 introduction : Html Msg
