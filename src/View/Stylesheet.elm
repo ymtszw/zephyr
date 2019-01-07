@@ -108,17 +108,5 @@ globalStyles =
     , -- When we use images as a cosmetic tokens, we almost always need them to be rendered as blocks.
       -- Override when inlining is explicitly needed
       s "img" [ ( "display", "block" ) ]
-    , s "input,textarea,button"
-        [ ( "color", "inherit" )
-        ]
-    , -- Applied here, since otherwise it conflicts with overriding class like `padding5`
-      s "button"
-        [ ( "border-radius", "0.2em" )
-        , ( "border-width", "0px" )
-        , ( "cursor", "pointer" ) -- I deliberately want this. I am AGAINST the philosophy of "buttons do not need pointer."
-        ]
-        |> inject Layout.paddingInlineStyle
-        |> inject Button.oneDarkDefaultStyle
-    , s "button:hover" [ ( "opacity", "0.9" ) ]
-    , s "button:disabled" [ ( "opacity", "0.7" ), ( "cursor", "default" ) ]
+    , s "input,textarea,button" [ ( "color", "inherit" ) ]
     ]
