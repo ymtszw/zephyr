@@ -1,18 +1,18 @@
 module View.Atom.Layout exposing
     ( widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
-    , padding2, padding5, padding10, padding15
+    , padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
-    , styles
+    , styles, paddingInlineStyle
     )
 
 {-| Essential layouting Atoms.
 
 @docs widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
-@docs padding2, padding5, padding10, padding15
+@docs padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
-@docs styles
+@docs styles, paddingInlineStyle
 
 -}
 
@@ -115,6 +115,11 @@ padding15 =
     Attributes.class (paddingClass 15)
 
 
+paddingInline : Attribute msg
+paddingInline =
+    Attributes.class paddingInlineClass
+
+
 spacingRow2 : Attribute msg
 spacingRow2 =
     Attributes.class (spacingRowClass 2)
@@ -174,6 +179,7 @@ styles =
     , paddingStyle 5
     , paddingStyle 10
     , paddingStyle 15
+    , paddingInlineStyle
     , spacingRowStyle 2
     , spacingRowStyle 5
     , spacingRowStyle 10
@@ -350,6 +356,21 @@ paddingStyle pad =
 paddingClass : Int -> String
 paddingClass pad =
     "pa" ++ String.fromInt pad
+
+
+paddingInlineStyle : Style
+paddingInlineStyle =
+    c paddingInlineClass
+        [ ( "padding-left", "0.4em" )
+        , ( "padding-top", "0.1em" )
+        , ( "padding-right", "0.4em" )
+        , ( "padding-bottom", "0.1em" )
+        ]
+
+
+paddingInlineClass : String
+paddingInlineClass =
+    "pail"
 
 
 spacingRowStyle : Int -> Style

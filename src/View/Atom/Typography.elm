@@ -21,6 +21,7 @@ module View.Atom.Typography exposing
 import Color exposing (Color, cssRgba)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
+import View.Atom.Layout as Layout
 import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
@@ -255,7 +256,7 @@ serifClass =
 
 monospaceStyle : Style
 monospaceStyle =
-    c monospaceClass [ fontFamily [ "Lucida Console", "Monaco", "Courier New", "monospace" ] ]
+    c monospaceClass [ fontFamily [ "Consolas", "Lucida Console", "Monaco", "Courier New", "monospace" ] ]
 
 
 monospaceClass : String
@@ -353,13 +354,9 @@ inlineCodeStyles =
             s ("." ++ class ++ " code")
                 [ ( "color", cssRgba theme.err ), ( "background-color", cssRgba theme.bg ) ]
     in
-    [ s "code"
-        [ ( "padding-left", "0.4em" )
-        , ( "padding-top", "0.2em" )
-        , ( "padding-right", "0.4em" )
-        , ( "border-radius", "0.2em" )
-        ]
+    [ s "code" [ ( "border-radius", "0.2em" ) ]
         |> inject monospaceStyle
+        |> inject Layout.paddingInlineStyle
     , styled oneDarkClass oneDarkTheme
     , styled aubergineClass aubergineTheme
     ]
