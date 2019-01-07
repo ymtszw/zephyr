@@ -3,7 +3,7 @@ module View.PatternLab exposing (main)
 import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (disabled, style)
 import Html.Events exposing (onClick)
 import StringExtra
 import Url exposing (Url)
@@ -11,7 +11,6 @@ import Url.Builder
 import Url.Parser as U
 import View.Atom.Background as Background
 import View.Atom.Border as Border
-import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
@@ -169,10 +168,10 @@ naviButton current hit btnLabel =
     let
         c =
             if current == hit then
-                Button.succ
+                Background.colorSucc
 
             else
-                Button.prim
+                Background.colorPrim
     in
     button [ sizeHeadline, padding10, onClick (GoTo hit), c ] [ t btnLabel ]
 
@@ -675,10 +674,49 @@ button_ =
         themedButtons theme_ themeText =
             section [ theme_ ]
                 [ h2 [ sizeTitle ] [ t themeText ]
-                , withSource """button [ Button.prim, widthFill ] [ t "prim" ]""" <| button [ Button.prim, widthFill ] [ t "prim" ]
-                , withSource """button [ Button.succ, widthFill ] [ t "succ" ]""" <| button [ Button.succ, widthFill ] [ t "succ" ]
-                , withSource """button [ Button.warn, widthFill ] [ t "warn" ]""" <| button [ Button.warn, widthFill ] [ t "warn" ]
-                , withSource """button [ Button.err, widthFill ] [ t "err" ]""" <| button [ Button.err, widthFill ] [ t "err" ]
+                , withSource """button [] [ t "default" ]""" <| button [] [ t "default" ]
+                , withSource """button [ Background.colorPrim ] [ t "prim" ]""" <| button [ Background.colorPrim ] [ t "prim" ]
+                , withSource """button [ Background.colorSucc ] [ t "succ" ]""" <| button [ Background.colorSucc ] [ t "succ" ]
+                , withSource """button [ Background.colorWarn ] [ t "warn" ]""" <| button [ Background.colorWarn ] [ t "warn" ]
+                , withSource """button [ Background.colorErr ] [ t "err" ]""" <| button [ Background.colorErr ] [ t "err" ]
+                , withSource """button [ Background.colorPrim, sizeHeadline ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeHeadline ] [ t "prim HEADLINE" ]
+                , withSource """button [ Background.colorPrim, sizeSection ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeSection ] [ t "prim SECTION" ]
+                , withSource """button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]""" <|
+                    button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]
+                , withSource """button [ Background.colorPrim, padding10 ]
+    [ t "Can be padded with "
+    , code [] [ t "padding10" ]
+    , t " and its family"
+    ]""" <|
+                    button [ Background.colorPrim, padding10 ]
+                        [ t "Can be padded with "
+                        , code [] [ t "padding10" ]
+                        , t " and its family"
+                        ]
+                , withSource """button [ Background.colorPrim, disabled True ] [ t "I'm disabled" ]""" <|
+                    button [ Background.colorPrim, disabled True ] [ t "I'm disabled" ]
+                , withSource """button [ Background.colorPrim, Border.noRound ] [ t "Rounding can be canceled" ]""" <|
+                    button [ Background.colorPrim, Border.noRound ] [ t "Rounding can be canceled" ]
+                , withSource """div []
+    [ code [] [ t "<button>" ]
+    , t " is an inline element. "
+    , button [ Background.colorPrim ] [ t "Like This" ]
+    ]""" <|
+                    div []
+                        [ code [] [ t "<button>" ]
+                        , t " is an inline element. "
+                        , button [ Background.colorPrim ] [ t "Like This" ]
+                        ]
+                , withSource """div [ growRow, sizeHeadline ]
+    [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
+    , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
+    , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
+    ]""" <|
+                    div [ growRow, sizeHeadline ]
+                        [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
+                        , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
+                        , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
+                        ]
                 ]
     in
     section []

@@ -1,94 +1,38 @@
-module View.Atom.Button exposing
-    ( prim, succ, warn, err
-    , styles
-    )
+module View.Atom.Button exposing (styles, oneDarkDefaultStyle)
 
 {-| Button Atoms.
 
-Color of buttons are decided by upstream themes.
+Color of buttons are decided by upstream themes and `Background`/`Typography` APIs.
 
-@docs prim, succ, warn, err
-@docs styles
+@docs styles, oneDarkDefaultStyle
 
 -}
 
-import Color exposing (Color, brightness, cssRgba)
-import Html exposing (Attribute)
-import Html.Attributes exposing (class)
+import Color exposing (Color, cssRgba)
 import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
-import View.Atom.Typography exposing (colorText)
 import View.Style exposing (..)
-
-
-prim : Attribute msg
-prim =
-    class primClass
-
-
-succ : Attribute msg
-succ =
-    class succClass
-
-
-warn : Attribute msg
-warn =
-    class warnClass
-
-
-err : Attribute msg
-err =
-    class errClass
 
 
 styles : List Style
 styles =
-    List.concat
-        [ btn oneDarkClass primClass oneDarkTheme.prim oneDarkTheme.text
-        , btn oneDarkClass succClass oneDarkTheme.succ oneDarkTheme.text
-        , btn oneDarkClass warnClass oneDarkTheme.warn oneDarkTheme.text
-        , btn oneDarkClass errClass oneDarkTheme.err oneDarkTheme.text
-        , btn aubergineClass primClass aubergineTheme.prim aubergineTheme.text
-        , btn aubergineClass succClass aubergineTheme.succ aubergineTheme.text
-        , btn aubergineClass warnClass aubergineTheme.warn aubergineTheme.text
-        , btn aubergineClass errClass aubergineTheme.err aubergineTheme.text
-        ]
-
-
-btn : String -> String -> Color -> Color -> List Style
-btn themeClass modeClass bgColor fontColor =
-    let
-        selectorBase =
-            [ "." ++ themeClass ++ "." ++ modeClass -- Same element
-            , "." ++ themeClass ++ " ." ++ modeClass -- Descendants
-            ]
-    in
-    [ s (String.join "," selectorBase)
-        [ ( "background-color", cssRgba bgColor )
-        , ( "border-radius", "5px" )
-        , ( "border-width", "0px" )
-        , ( "color", cssRgba fontColor )
-        , ( "cursor", "pointer" )
-        ]
-    , s (String.join "," (List.map (\c -> c ++ ":hover") selectorBase))
-        [ ( "background-color", cssRgba (brightness -1 bgColor) ) ]
+    -- .bd colors are used as defaults; these colors are not available as neither font nor BG colors
+    [ oneDarkDefaultStyle
+    , defaultStyle aubergineClass aubergineTheme.bd
     ]
 
 
-primClass : String
-primClass =
-    "primbtn"
+oneDarkDefaultStyle : Style
+oneDarkDefaultStyle =
+    defaultStyle oneDarkClass oneDarkTheme.bd
 
 
-succClass : String
-succClass =
-    "succbtn"
-
-
-warnClass : String
-warnClass =
-    "warnbtn"
-
-
-errClass : String
-errClass =
-    "errbtn"
+defaultStyle : String -> Color -> Style
+defaultStyle themeClass defaultColor =
+    let
+        selector =
+            String.join ","
+                [ "button." ++ themeClass
+                , "." ++ themeClass ++ " button"
+                ]
+    in
+    s selector [ ( "background-color", cssRgba defaultColor ) ]
