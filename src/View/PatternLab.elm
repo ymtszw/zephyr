@@ -11,6 +11,7 @@ import Url.Builder
 import Url.Parser as U
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
@@ -25,7 +26,7 @@ main =
         , view = view
         , update = update
         , subscriptions = always Sub.none
-        , onUrlRequest = always NoOp
+        , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
 
@@ -97,19 +98,18 @@ urlToRoute url =
 
 
 type Msg
-    = NoOp
-    | GoTo Route
+    = GoTo Browser.UrlRequest
     | Arrived Url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
-        NoOp ->
-            ( m, Cmd.none )
+        GoTo (Browser.Internal url) ->
+            ( m, Browser.Navigation.pushUrl m.key (Url.toString url) )
 
-        GoTo route ->
-            ( m, Browser.Navigation.pushUrl m.key (routeToString route) )
+        GoTo (Browser.External urlStr) ->
+            ( m, Browser.Navigation.load urlStr )
 
         Arrived url ->
             ( { m | route = urlToRoute url }, Cmd.none )
@@ -173,7 +173,8 @@ naviButton current hit btnLabel =
             else
                 Background.colorPrim
     in
-    button [ sizeHeadline, padding10, onClick (GoTo hit), c ] [ t btnLabel ]
+    Button.link [ sizeHeadline, padding10, flexItem, c ]
+        { url = routeToString hit, children = [ t btnLabel ] }
 
 
 introduction : Html Msg
@@ -333,6 +334,18 @@ fontColors =
                     p [] [ code [] [ t "More inline code with varying texts. ygqjp0123456789" ], code [] [ t (String.repeat 2 iroha) ] ]
                 , withSource """p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]""" <|
                     p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]
+                , withSource """p []
+    [ t "Links pop on the current tab unless specified as "
+    , code [] [ t "newTab" ]
+    , t " "
+    , link [ newTab ] { url = "https://example.com", children = [ t "example.com" ] }
+    ]""" <|
+                    p []
+                        [ t "Links pop on the current tab unless specified as "
+                        , code [] [ t "newTab" ]
+                        , t " "
+                        , link [ newTab ] { url = "https://example.com", children = [ t "example.com" ] }
+                        ]
                 ]
     in
     section []
@@ -671,7 +684,7 @@ spacing =
 button_ : Html Msg
 button_ =
     let
-        themedButtons theme_ themeText =
+        themedStdButtons theme_ themeText =
             section [ theme_ ]
                 [ h2 [ sizeTitle ] [ t themeText ]
                 , withSource """button [] [ t "default" ]""" <| button [] [ t "default" ]
@@ -707,6 +720,8 @@ button_ =
                         , t " is an inline element. "
                         , button [ Background.colorPrim ] [ t "Like This" ]
                         ]
+                , withSource """div [ flexRow ] [ button [ Background.colorPrim, flexGrow, flexItem ] [ t "Can become a flex item" ] ]""" <|
+                    div [ flexRow ] [ button [ Background.colorPrim, flexGrow, flexItem ] [ t "Can become a flex item" ] ]
                 , withSource """div [ growRow, sizeHeadline ]
     [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
     , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
@@ -718,9 +733,45 @@ button_ =
                         , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
                         ]
                 ]
+
+        themedLinkButtons theme_ themeText =
+            section [ theme_ ]
+                [ h2 [ sizeTitle ] [ t themeText ]
+                , withSource """Button.link [] { url = "https://example.com", children = [ t "A Link button looks like a button but is a link" ] }""" <|
+                    Button.link [] { url = "https://example.com", children = [ t "A Link button looks like a button but is a link" ] }
+                , withSource """Button.link [ Background.colorPrim ] { url = "https://example.com", children = [ t "colorPrim" ] }""" <|
+                    Button.link [ Background.colorPrim ] { url = "https://example.com", children = [ t "colorPrim" ] }
+                , withSource """Button.link [ Background.colorSucc ] { url = "https://example.com", children = [ t "colorSucc" ] }""" <|
+                    Button.link [ Background.colorSucc ] { url = "https://example.com", children = [ t "colorSucc" ] }
+                , withSource """Button.link [ Background.colorWarn ] { url = "https://example.com", children = [ t "colorWarn" ] }""" <|
+                    Button.link [ Background.colorWarn ] { url = "https://example.com", children = [ t "colorWarn" ] }
+                , withSource """Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }""" <|
+                    Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }
+                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection ]
+    { url = "https://example.com"
+    , children = [ t "Can be padded/sized" ]
+    }""" <|
+                    Button.link [ Background.colorPrim, padding10, sizeSection ]
+                        { url = "https://example.com"
+                        , children = [ t "Can be padded/sized" ]
+                        }
+                , withSource """Button.link
+    [ Background.colorPrim, padding5, newTab ]
+    { url = "https://example.com"
+    , children = [ code [] [ t "newTab" ], t " also works" ]
+    }""" <|
+                    Button.link
+                        [ Background.colorPrim, padding5, newTab ]
+                        { url = "https://example.com"
+                        , children = [ code [] [ t "newTab" ], t " also works" ]
+                        }
+                ]
     in
     section []
         [ h1 [ sizeSection ] [ t "Button" ]
-        , themedButtons oneDark "oneDark"
-        , themedButtons aubergine "aubergine"
+        , themedStdButtons oneDark "oneDark"
+        , themedStdButtons aubergine "aubergine"
+        , h2 [ sizeSection ] [ t "Link Button" ]
+        , themedLinkButtons oneDark "oneDark"
+        , themedLinkButtons aubergine "aubergine"
         ]
