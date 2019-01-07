@@ -4,7 +4,6 @@ import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (..)
 import Html.Attributes exposing (disabled, style)
-import Html.Events exposing (onClick)
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
@@ -202,12 +201,12 @@ introduction =
             [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
             , pre [ padding10, Border.round5, Border.w1, Border.solid ]
                 [ t """import Html exposing (..)
-import Html.Attributes exposing (style)
-import View.Atom.Background as Background
+import Html.Attributes exposing (disabled, style)
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (aubergine, oneDark)
+import View.Atom.TextBlock exposing (forceBreak)
+import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)"""
                 ]
             ]
