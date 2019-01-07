@@ -355,6 +355,7 @@ inlineCodeStyles =
     in
     [ s "code"
         [ ( "padding-left", "0.4em" )
+        , ( "padding-top", "0.2em" )
         , ( "padding-right", "0.4em" )
         , ( "border-radius", "0.2em" )
         ]

@@ -310,50 +310,36 @@ fontDecorations =
 
 fontColors : Html Msg
 fontColors =
+    let
+        coloredTexts theme_ themeText =
+            section [ theme_ ]
+                [ h3 [ sizeHeadline ] [ t themeText ]
+                , withSource """p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]
+                , withSource """p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]
+                , withSource """p [ colorLink ] [ t "Link color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorLink ] [ t "Link color, あいうえお水兵リーベ" ]
+                , withSource """p [ colorPrim ] [ t "Prim color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorPrim ] [ t "Prim color, あいうえお水兵リーベ" ]
+                , withSource """p [ colorSucc ] [ t "Succ color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorSucc ] [ t "Succ color, あいうえお水兵リーベ" ]
+                , withSource """p [ colorWarn ] [ t "Warn color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorWarn ] [ t "Warn color, あいうえお水兵リーベ" ]
+                , withSource """p [ colorErr ] [ t "Err color, あいうえお水兵リーベ" ]""" <|
+                    p [ colorErr ] [ t "Err color, あいうえお水兵リーベ" ]
+                , withSource """p [] [ t "With ", code [] [ t "Inline Code" ], t " 水兵リーベ" ]""" <|
+                    p [] [ t "With ", code [] [ t "Inline Code" ], t " 水兵リーベ" ]
+                , withSource """p [] [ code [] [ t "More inline code with varying texts. ygqjp0123456789" ], code [] [ t (String.repeat 2 iroha) ] ]""" <|
+                    p [] [ code [] [ t "More inline code with varying texts. ygqjp0123456789" ], code [] [ t (String.repeat 2 iroha) ] ]
+                , withSource """p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]""" <|
+                    p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]
+                ]
+    in
     section []
         [ h2 [ sizeTitle ] [ t "Font colors" ]
-        , section [ oneDark ]
-            [ h3 [ sizeHeadline ] [ t "oneDark" ]
-            , withSource """p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]""" <|
-                p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]""" <|
-                p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorLink ] [ t "Link color, あいうえお水兵リーベ" ]""" <|
-                p [ colorLink ] [ t "Link color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorPrim ] [ t "Prim color, あいうえお水兵リーベ" ]""" <|
-                p [ colorPrim ] [ t "Prim color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorSucc ] [ t "Succ color, あいうえお水兵リーベ" ]""" <|
-                p [ colorSucc ] [ t "Succ color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorWarn ] [ t "Warn color, あいうえお水兵リーベ" ]""" <|
-                p [ colorWarn ] [ t "Warn color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorErr ] [ t "Err color, あいうえお水兵リーベ" ]""" <|
-                p [ colorErr ] [ t "Err color, あいうえお水兵リーベ" ]
-            , withSource """p [] [ t "With ", code [] [ t "Inline Code" ], t " 水兵リーベ" ]""" <|
-                p [] [ t "With ", code [] [ t "Inline Code" ], t " 水兵リーベ" ]
-            , withSource """p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]""" <|
-                p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]
-            ]
-        , section [ aubergine ]
-            [ h3 [ sizeHeadline ] [ t "aubergine" ]
-            , withSource """p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]""" <|
-                p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]""" <|
-                p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorLink ] [ t "Link color, あいうえお水兵リーベ" ]""" <|
-                p [ colorLink ] [ t "Link color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorPrim ] [ t "Prim color, あいうえお水兵リーベ" ]""" <|
-                p [ colorPrim ] [ t "Prim color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorSucc ] [ t "Succ color, あいうえお水兵リーベ" ]""" <|
-                p [ colorSucc ] [ t "Succ color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorWarn ] [ t "Warn color, あいうえお水兵リーベ" ]""" <|
-                p [ colorWarn ] [ t "Warn color, あいうえお水兵リーベ" ]
-            , withSource """p [ colorErr ] [ t "Err color, あいうえお水兵リーベ" ]""" <|
-                p [ colorErr ] [ t "Err color, あいうえお水兵リーベ" ]
-            , withSource """p [] [ t "With ", code [] [ t "Inline Code" ], t " 水兵リーベ" ]""" <|
-                p [] [ t "With ", code [] [ t "Inline Code" ], t " 水兵リーベ" ]
-            , withSource """p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]""" <|
-                p [] [ t "Auto style on links: ", link [] { url = "https://example.com", children = [ t "example.com" ] } ]
-            ]
+        , coloredTexts oneDark "oneDark"
+        , coloredTexts aubergine "aubergine"
         ]
 
 
