@@ -56,7 +56,7 @@ growColumn =
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<button>`, `<input>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 flexItem : Attribute msg
 flexItem =
@@ -64,7 +64,7 @@ flexItem =
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `growRow` or `growColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<button>`, `<input>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 growItem : Attribute msg
 growItem =
@@ -232,7 +232,7 @@ autoFlexItemStyle =
         autoFlexItemSelector =
             String.join "," <|
                 List.concatMap childOfFlexBox <|
-                    autoFlexItemTags
+                    autoFlexItemSelectors
 
         childOfFlexBox tag =
             [ "." ++ flexRowClass ++ ">" ++ tag
@@ -242,9 +242,9 @@ autoFlexItemStyle =
     derive autoFlexItemSelector flexItemStyle
 
 
-autoFlexItemTags : List String
-autoFlexItemTags =
-    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "button", "input", "blockquote" ]
+autoFlexItemSelectors : List String
+autoFlexItemSelectors =
+    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote" ]
 
 
 flexItemStyle : Style
@@ -267,7 +267,7 @@ autoGrowItemStyle =
         autoGrowItemSelector =
             String.join "," <|
                 List.concatMap childOfFlexBox <|
-                    autoFlexItemTags
+                    autoFlexItemSelectors
 
         childOfFlexBox tag =
             [ "." ++ growRowClass ++ ">" ++ tag
@@ -389,7 +389,7 @@ spacingRowStyle space =
 
 flexItems : List String
 flexItems =
-    ".fi" :: autoFlexItemTags
+    ".fi" :: autoFlexItemSelectors
 
 
 spacingRowClass : Int -> String

@@ -4,6 +4,7 @@ module View.Atom.Typography exposing
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
+    , newTab
     , styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
     )
 
@@ -14,6 +15,7 @@ module View.Atom.Typography exposing
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
+@docs newTab
 @docs styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
 
 -}
@@ -49,7 +51,6 @@ link attrs { url, children } =
         linkAttrs =
             [ Attributes.href url
             , Attributes.rel "noopener noreferrer"
-            , Attributes.target "_blank"
             ]
     in
     Html.a (linkAttrs ++ attrs) children
@@ -170,6 +171,13 @@ colorWarn =
 colorErr : Attribute msg
 colorErr =
     Attributes.class colorErrClass
+
+
+{-| Used with `link`, sets "target='\_blank'".
+-}
+newTab : Attribute msg
+newTab =
+    Attributes.target "_blank"
 
 
 
