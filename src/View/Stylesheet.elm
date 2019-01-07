@@ -21,13 +21,14 @@ rendered : String
 rendered =
     String.join "" <|
         List.map View.Style.toString <|
+            -- XXX Order matters!!
             preamble
                 ++ Typography.styles
                 ++ TextBlock.styles
                 ++ Border.styles
+                ++ Button.styles
                 ++ Background.styles
                 ++ Layout.styles
-                ++ Button.styles
 
 
 length : Int
