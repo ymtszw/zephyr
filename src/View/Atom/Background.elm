@@ -1,12 +1,12 @@
 module View.Atom.Background exposing
     ( colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr
-    , styles, oneDarkDefaultStyle, aubergineDefaultStyle
+    , styles, oneDarkMainStyle, aubergineMainStyle
     )
 
 {-| Background Atoms.
 
 @docs colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr
-@docs styles, oneDarkDefaultStyle, aubergineDefaultStyle
+@docs styles, oneDarkMainStyle, aubergineMainStyle
 
 -}
 
@@ -68,7 +68,7 @@ colorErr =
 styles : List Style
 styles =
     -- XXX Order matters!
-    [ oneDarkDefaultStyle
+    [ oneDarkMainStyle
     , bg oneDarkClass colorBgClass oneDarkTheme.bg
     , bg oneDarkClass colorMainClass oneDarkTheme.main
     , bg oneDarkClass colorSubClass oneDarkTheme.sub
@@ -77,7 +77,7 @@ styles =
     , bg oneDarkClass colorSuccClass oneDarkTheme.succ
     , bg oneDarkClass colorWarnClass oneDarkTheme.warn
     , bg oneDarkClass colorErrClass oneDarkTheme.err
-    , aubergineDefaultStyle
+    , aubergineMainStyle
     , bg aubergineClass colorBgClass aubergineTheme.bg
     , bg aubergineClass colorMainClass aubergineTheme.main
     , bg aubergineClass colorSubClass aubergineTheme.sub
@@ -89,13 +89,13 @@ styles =
     ]
 
 
-oneDarkDefaultStyle : Style
-oneDarkDefaultStyle =
+oneDarkMainStyle : Style
+oneDarkMainStyle =
     c oneDarkClass [ ( "background-color", cssRgba oneDarkTheme.main ) ]
 
 
-aubergineDefaultStyle : Style
-aubergineDefaultStyle =
+aubergineMainStyle : Style
+aubergineMainStyle =
     c aubergineClass [ ( "background-color", cssRgba aubergineTheme.main ) ]
 
 

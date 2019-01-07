@@ -7,7 +7,7 @@ import View.Atom.Button as Button
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
-import View.Style exposing (Style, inject, px, s, scale12)
+import View.Style exposing (..)
 
 
 {-| Dumps all required stylesheet of the app as a single `<style>` node.
@@ -80,7 +80,7 @@ resetUserAgentStyles =
     , s "body" [ ( "line-height", "1" ) ]
         |> inject Typography.sizeBaseStyle
         |> inject Typography.sansSerifStyle
-        |> inject Background.oneDarkDefaultStyle
+        |> inject Background.oneDarkMainStyle
     , s "ol,ul"
         [ ( "list-style", "none" ) ]
     , s "blockquote,q"
