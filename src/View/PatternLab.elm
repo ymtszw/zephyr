@@ -150,7 +150,7 @@ view m =
 
 navi : Route -> Html Msg
 navi r =
-    div [ flexColumn, flexCenter, spacingColumn10, padding15, oneDark ]
+    div [ flexColumn, flexCenter, spacingColumn10, padding15 ]
         [ div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
             , naviButton r Top "Top"
@@ -461,50 +461,34 @@ border =
 
 background : Html Msg
 background =
+    let
+        themedBg theme_ themeText =
+            section [ theme_ ]
+                [ h2 [ sizeTitle ] [ t themeText ]
+                , withSource """div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]""" <|
+                    div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]
+                , withSource """div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]""" <|
+                    div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]
+                , withSource """div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]""" <|
+                    div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]
+                , withSource """div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]""" <|
+                    div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]
+                , withSource """div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]""" <|
+                    div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]
+                , withSource """div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]""" <|
+                    div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]
+                , withSource """div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]""" <|
+                    div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]
+                , withSource """div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]""" <|
+                    div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]
+                , withSource """div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]""" <|
+                    div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]
+                ]
+    in
     section []
         [ h1 [ sizeSection ] [ t "Background" ]
-        , section [ oneDark ]
-            [ h2 [ sizeTitle ] [ t "oneDark" ]
-            , withSource """div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]""" <|
-                div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]
-            , withSource """div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]""" <|
-                div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]
-            , withSource """div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]""" <|
-                div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]
-            , withSource """div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]""" <|
-                div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]
-            , withSource """div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]""" <|
-                div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]
-            , withSource """div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]""" <|
-                div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]
-            , withSource """div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]""" <|
-                div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]
-            , withSource """div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]""" <|
-                div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]
-            , withSource """div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]""" <|
-                div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]
-            ]
-        , section [ aubergine ]
-            [ h2 [ sizeTitle ] [ t "aubergine" ]
-            , withSource """div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]""" <|
-                div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]
-            , withSource """div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]""" <|
-                div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]
-            , withSource """div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]""" <|
-                div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]
-            , withSource """div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]""" <|
-                div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]
-            , withSource """div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]""" <|
-                div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]
-            , withSource """div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]""" <|
-                div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]
-            , withSource """div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]""" <|
-                div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]
-            , withSource """div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]""" <|
-                div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]
-            , withSource """div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]""" <|
-                div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]
-            ]
+        , themedBg oneDark "oneDark"
+        , themedBg aubergine "aubergine"
         ]
 
 
@@ -527,13 +511,13 @@ flexBox =
         [ withSource """div [ widthFill, Border.solid, Border.w1 ]
     [ t "I eat all available width. "
     , t "Though, since I am a child of "
-    , code [] [ t "flexRow" ]
+    , code [] [ t "growRow" ]
     , t ", I am automatically stretched horizontally."
     ]""" <|
             div [ widthFill, Border.solid, Border.w1 ]
                 [ t "I eat all available width. "
                 , t "Though, since I am a child of "
-                , code [] [ t "flexRow" ]
+                , code [] [ t "growRow" ]
                 , t ", I am automatically stretched horizontally."
                 ]
         , withSource """div [ flexRow ]
@@ -687,20 +671,18 @@ spacing =
 
 button_ : Html Msg
 button_ =
+    let
+        themedButtons theme_ themeText =
+            section [ theme_ ]
+                [ h2 [ sizeTitle ] [ t themeText ]
+                , withSource """button [ Button.prim, widthFill ] [ t "prim" ]""" <| button [ Button.prim, widthFill ] [ t "prim" ]
+                , withSource """button [ Button.succ, widthFill ] [ t "succ" ]""" <| button [ Button.succ, widthFill ] [ t "succ" ]
+                , withSource """button [ Button.warn, widthFill ] [ t "warn" ]""" <| button [ Button.warn, widthFill ] [ t "warn" ]
+                , withSource """button [ Button.err, widthFill ] [ t "err" ]""" <| button [ Button.err, widthFill ] [ t "err" ]
+                ]
+    in
     section []
         [ h1 [ sizeSection ] [ t "Button" ]
-        , section [ oneDark ]
-            [ h2 [ sizeTitle ] [ t "oneDark" ]
-            , withSource """button [ Button.prim, widthFill ] [ t "prim" ]""" <| button [ Button.prim, widthFill ] [ t "prim" ]
-            , withSource """button [ Button.succ, widthFill ] [ t "succ" ]""" <| button [ Button.succ, widthFill ] [ t "succ" ]
-            , withSource """button [ Button.warn, widthFill ] [ t "warn" ]""" <| button [ Button.warn, widthFill ] [ t "warn" ]
-            , withSource """button [ Button.err, widthFill ] [ t "err" ]""" <| button [ Button.err, widthFill ] [ t "err" ]
-            ]
-        , section [ aubergine ]
-            [ h2 [ sizeTitle ] [ t "oneDark" ]
-            , withSource """button [ Button.prim, widthFill ] [ t "prim" ]""" <| button [ Button.prim, widthFill ] [ t "prim" ]
-            , withSource """button [ Button.succ, widthFill ] [ t "succ" ]""" <| button [ Button.succ, widthFill ] [ t "succ" ]
-            , withSource """button [ Button.warn, widthFill ] [ t "warn" ]""" <| button [ Button.warn, widthFill ] [ t "warn" ]
-            , withSource """button [ Button.err, widthFill ] [ t "err" ]""" <| button [ Button.err, widthFill ] [ t "err" ]
-            ]
+        , themedButtons oneDark "oneDark"
+        , themedButtons aubergine "aubergine"
         ]
