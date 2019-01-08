@@ -43,6 +43,7 @@ type Route
     | Border
     | Background
     | Layout
+    | Image
     | Button
 
 
@@ -61,6 +62,7 @@ urlToRoute url =
                 , U.map Border (U.s "border")
                 , U.map Background (U.s "background")
                 , U.map Layout (U.s "layout")
+                , U.map Image (U.s "image")
                 , U.map Button (U.s "button")
                 ]
     in
@@ -111,6 +113,9 @@ view m =
                     Layout ->
                         [ layout ]
 
+                    Image ->
+                        [ image ]
+
                     Button ->
                         [ button_ ]
         ]
@@ -128,6 +133,7 @@ navi r =
             , naviButton r Border "Border"
             , naviButton r Background "Background"
             , naviButton r Layout "Layout"
+            , naviButton r Image "Image"
             , naviButton r Button "Button"
             ]
         ]
@@ -171,6 +177,9 @@ routeToString r =
 
         Layout ->
             abs_ [ "layout" ]
+
+        Image ->
+            abs_ [ "image" ]
 
         Button ->
             abs_ [ "button" ]
@@ -677,6 +686,13 @@ spacing =
                 , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
                 , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
+        ]
+
+
+image : Html Msg
+image =
+    section []
+        [ h1 [ sizeSection ] [ t "Image" ]
         ]
 
 

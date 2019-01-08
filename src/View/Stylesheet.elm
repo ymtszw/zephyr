@@ -4,6 +4,7 @@ import Html
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
+import View.Atom.Image as Image
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
@@ -29,6 +30,7 @@ rendered =
                 ++ Button.styles
                 ++ Background.styles
                 ++ Layout.styles
+                ++ Image.styles
 
 
 length : Int
@@ -106,8 +108,5 @@ globalStyles =
         [ ( "box-shadow", "0px 0px 3px 3px #677bc4" )
         , ( "outline", "none" )
         ]
-    , -- When we use images as a cosmetic tokens, we almost always need them to be rendered as blocks.
-      -- Override when inlining is explicitly needed
-      s "img" [ ( "display", "block" ) ]
     , s "input,textarea,button" [ ( "color", "inherit" ) ]
     ]
