@@ -3,7 +3,7 @@ module View.PatternLab exposing (main)
 import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (..)
-import Html.Attributes exposing (disabled, style)
+import Html.Attributes exposing (..)
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
@@ -11,6 +11,7 @@ import Url.Parser as U
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
+import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
@@ -444,6 +445,8 @@ border =
             div [ padding5, Border.solid, Border.w1, Border.round2 ] [ t "I'm surrounded by rounded solid border." ]
         , withSource "div [ padding5, Border.solid, Border.w1, Border.round5 ] [ t \"I'm surrounded by more rounded solid border.\" ]" <|
             div [ padding5, Border.solid, Border.w1, Border.round5 ] [ t "I'm surrounded by more rounded solid border." ]
+        , withSource """div [ padding5, Border.solid, Border.w1, Border.elliptic ] [ t "I'm elliptic!" ]""" <|
+            div [ padding5, Border.solid, Border.w1, Border.elliptic ] [ t "I'm elliptic!" ]
         , withSource """div [ growRow ]
     [ div [ Border.leftRound5, padding10, Background.colorSucc ] [ t "I'm left, and border-rounded." ]
     , div [ padding10, Background.colorWarn ] [ t "I'm center, and not border-rounded." ]
@@ -693,6 +696,57 @@ image : Html Msg
 image =
     section []
         [ h1 [ sizeSection ] [ t "Image" ]
+        , withSource """img [ src (Image.ph 200 100), alt "200x100" ] []""" <| img [ src (Image.ph 200 100), alt "200x100" ] []
+        , withSource """div []
+    [ t "By default, "
+    , code [] [ t "<img>" ]
+    , t "s are inline elements. "
+    , img [ src (Image.ph 20 20), alt "20x20" ] []
+    , t " "
+    , img [ src (Image.ph 20 20), alt "20x20" ] []
+    , t "You see that they are aligned by "
+    , code [] [ t "vertical-align: middle;" ]
+    , t " which is the global default. "
+    , img [ src (Image.ph 30 15), alt "30x15" ] []
+    , t "水兵リーベ。"
+    ]""" <|
+            div []
+                [ t "By default, "
+                , code [] [ t "<img>" ]
+                , t "s are inline elements. "
+                , img [ src (Image.ph 20 20), alt "20x20" ] []
+                , t " "
+                , img [ src (Image.ph 20 20), alt "20x20" ] []
+                , t "You see that they are aligned by "
+                , code [] [ t "vertical-align: middle;" ]
+                , t " which is the global default. "
+                , img [ src (Image.ph 30 15), alt "30x15" ] []
+                , t "水兵リーベ。"
+                ]
+        , withSource """div []
+    [ t "Can become a block element with "
+    , code [] [ t "block" ]
+    , img [ src (Image.ph 400 300), alt "400x300", Image.block ] []
+    ]""" <|
+            div []
+                [ t "Can become a block element with "
+                , code [] [ t "block" ]
+                , img [ src (Image.ph 400 300), alt "400x300", Image.block ] []
+                ]
+        , withSource """div [ growRow, spacingRow10 ]
+    [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
+    , img [ src (Image.ph 200 200), alt "200x200", flexItem ] []
+    , p [] [ t (String.repeat 5 iroha) ]
+    ]""" <|
+            div [ growRow, spacingRow10 ]
+                [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
+                , img [ src (Image.ph 200 200), alt "200x200", flexItem ] []
+                , p [] [ t (String.repeat 5 iroha) ]
+                ]
+        , withSource """div [] [ t "Can be rounded", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.round5 ] [] ]""" <|
+            div [] [ t "Can be rounded", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.round5 ] [] ]
+        , withSource """div [] [ t "Can be circled even!", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.elliptic ] [] ]""" <|
+            div [] [ t "Can be circled even!", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.elliptic ] [] ]
         ]
 
 
@@ -725,6 +779,10 @@ button_ =
                     button [ Background.colorPrim, disabled True ] [ t "I'm disabled" ]
                 , withSource """button [ Background.colorPrim, Border.noRound ] [ t "Rounding can be canceled" ]""" <|
                     button [ Background.colorPrim, Border.noRound ] [ t "Rounding can be canceled" ]
+                , withSource """button [ Background.colorPrim, Border.round5 ] [ t "Explicit rounding can be set" ]""" <|
+                    button [ Background.colorPrim, Border.round5 ] [ t "Explicit rounding can be set" ]
+                , withSource """button [ Background.colorPrim, Border.w1, Border.solid ] [ t "Can have borders" ]""" <|
+                    button [ Background.colorPrim, Border.w1, Border.solid ] [ t "Can have borders" ]
                 , withSource """div []
     [ code [] [ t "<button>" ]
     , t " is an inline element. "

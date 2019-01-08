@@ -1,6 +1,6 @@
 module View.Atom.Border exposing
     ( solid, dotted, dashed
-    , w1, noRound, round2, round5, leftRound5, rightRound5, gutter
+    , w1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
     , color
     , styles
     )
@@ -8,7 +8,7 @@ module View.Atom.Border exposing
 {-| Border Atoms.
 
 @docs solid, dotted, dashed
-@docs w1, noRound, round2, round5, leftRound5, rightRound5, gutter
+@docs w1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
 @docs color
 @docs styles
 
@@ -55,6 +55,13 @@ round5 =
     Attributes.class round5Class
 
 
+{-| 50% radius rounding. If the element is squared, it looks like a circle.
+-}
+elliptic : Attribute msg
+elliptic =
+    Attributes.class ellipticClass
+
+
 leftRound5 : Attribute msg
 leftRound5 =
     Attributes.class leftRound5Class
@@ -87,6 +94,7 @@ styles =
     , c noRoundClass [ ( "border-radius", "0px" ) ]
     , c round2Class [ ( "border-radius", "2px" ) ]
     , c round5Class [ ( "border-radius", "5px" ) ]
+    , c ellipticClass [ ( "border-radius", "50%" ) ]
     , c leftRound5Class
         [ ( "border-top-left-radius", "5px" )
         , ( "border-top-right-radius", "0px" )
@@ -136,6 +144,11 @@ round2Class =
 round5Class : String
 round5Class =
     "boro5"
+
+
+ellipticClass : String
+ellipticClass =
+    "boell"
 
 
 leftRound5Class : String
