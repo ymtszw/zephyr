@@ -211,9 +211,11 @@ introduction =
             [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
             , pre [ padding10, Border.round5, Border.w1, Border.solid ]
                 [ t """import Html exposing (..)
-import Html.Attributes exposing (disabled, style)
+import Html.Attributes exposing (..)
+import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
+import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
