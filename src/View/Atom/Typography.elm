@@ -1,5 +1,5 @@
 module View.Atom.Typography exposing
-    ( t, link
+    ( t, link, ntLink
     , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
@@ -10,7 +10,7 @@ module View.Atom.Typography exposing
 
 {-| Typography Atoms.
 
-@docs t, link
+@docs t, link, ntLink
 @docs sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
@@ -54,6 +54,13 @@ link attrs { url, children } =
             ]
     in
     Html.a (linkAttrs ++ attrs) children
+
+
+{-| Creates a link with `newTab`.
+-}
+ntLink : List (Attribute msg) -> { url : String, children : List (Html msg) } -> Html msg
+ntLink attrs opts =
+    link (newTab :: attrs) opts
 
 
 
