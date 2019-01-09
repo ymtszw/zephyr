@@ -203,7 +203,7 @@ flexRowStyle =
 
 flexRowClass : String
 flexRowClass =
-    "fr"
+    "flr"
 
 
 flexColumnStyle : Style
@@ -213,17 +213,17 @@ flexColumnStyle =
 
 flexColumnClass : String
 flexColumnClass =
-    "fc"
+    "flc"
 
 
 growRowClass : String
 growRowClass =
-    "gr"
+    "grr"
 
 
 growColumnClass : String
 growColumnClass =
-    "gc"
+    "grc"
 
 
 autoFlexItemStyle : Style
@@ -258,7 +258,7 @@ flexItemStyle =
 
 flexItemClass : String
 flexItemClass =
-    "fi"
+    "fli"
 
 
 autoGrowItemStyle : Style
@@ -288,7 +288,7 @@ growItemStyle =
 
 growItemClass : String
 growItemClass =
-    "gi"
+    "gri"
 
 
 flexGrowStyle : Style
@@ -307,7 +307,7 @@ flexGrowStyle =
 
 flexGrowClass : String
 flexGrowClass =
-    "fg"
+    "flg"
 
 
 flexShrinkStyle : Style
@@ -326,7 +326,7 @@ flexShrinkStyle =
 
 flexShrinkClass : String
 flexShrinkClass =
-    "fs"
+    "fls"
 
 
 flexCenterStyle : Style
@@ -345,7 +345,7 @@ flexCenterStyle =
 
 flexCenterClass : String
 flexCenterClass =
-    "fcenter"
+    "flcenter"
 
 
 paddingStyle : Int -> Style
@@ -389,12 +389,12 @@ spacingRowStyle space =
 
 flexItems : List String
 flexItems =
-    ".fi" :: autoFlexItemSelectors
+    ("." ++ flexItemClass) :: ("." ++ growItemClass) :: autoFlexItemSelectors
 
 
 spacingRowClass : Int -> String
 spacingRowClass space =
-    "sr" ++ String.fromInt space
+    "spr" ++ String.fromInt space
 
 
 spacingColumnStyle : Int -> Style
@@ -413,4 +413,4 @@ spacingColumnStyle space =
 
 spacingColumnClass : Int -> String
 spacingColumnClass space =
-    "sc" ++ String.fromInt space
+    "spc" ++ String.fromInt space

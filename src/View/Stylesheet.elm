@@ -43,6 +43,8 @@ preamble =
 
 {-| Resets CSS, and apply some global defaults.
 
+Based on:
+
 <http://meyerweb.com/eric/tools/css/reset/>
 v2.0 | 20110126
 License: none (public domain)
@@ -73,7 +75,7 @@ resetUserAgentStyles =
         [ ( "margin", "0" )
         , ( "padding", "0" )
         , ( "border", "0" )
-        , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading parents' font settings to children
+        , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading ancestors' font settings to descendants
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
         ]
