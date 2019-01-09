@@ -26,8 +26,8 @@ rendered =
             preamble
                 ++ Typography.styles
                 ++ TextBlock.styles
-                ++ Border.styles
                 ++ Button.styles
+                ++ Border.styles
                 ++ Background.styles
                 ++ Layout.styles
                 ++ Image.styles

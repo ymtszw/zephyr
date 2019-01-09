@@ -824,13 +824,13 @@ button_ =
                     Button.link [ Background.colorWarn ] { url = "https://example.com", children = [ t "colorWarn" ] }
                 , withSource """Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }""" <|
                     Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }
-                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection ]
+                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
     { url = "https://example.com"
-    , children = [ t "Can be padded/sized" ]
+    , children = [ t "Can be padded/sized/bordered" ]
     }""" <|
-                    Button.link [ Background.colorPrim, padding10, sizeSection ]
+                    Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
                         { url = "https://example.com"
-                        , children = [ t "Can be padded/sized" ]
+                        , children = [ t "Can be padded/sized/bordered" ]
                         }
                 , withSource """Button.link
     [ Background.colorPrim, padding5, newTab ]
