@@ -520,7 +520,9 @@ layout =
 flexBox : Html Msg
 flexBox =
     section []
-        [ withSource """div [ widthFill, Border.solid, Border.w1 ]
+        [ withSource """div [ Border.solid, Border.w1 ] [ t "I am a bare ", code [] [ t "div" ] ]""" <|
+            div [ Border.solid, Border.w1, flexShrink ] [ t "I am a bare ", code [] [ t "div" ] ]
+        , withSource """div [ widthFill, Border.solid, Border.w1 ]
     [ t "I eat all available width. "
     , t "Though, since I am a child of "
     , code [] [ t "growRow" ]
