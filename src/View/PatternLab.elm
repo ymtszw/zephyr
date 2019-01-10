@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Octicons
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
@@ -732,12 +733,12 @@ image =
         , withSource """div []
     [ t "Can become a block element with "
     , code [] [ t "block" ]
-    , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, Image.block ] []
+    , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, block ] []
     ]""" <|
             div []
                 [ t "Can become a block element with "
                 , code [] [ t "block" ]
-                , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, Image.block ] []
+                , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, block ] []
                 ]
         , withSource """div [ growRow, spacingRow10 ]
     [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
@@ -751,19 +752,31 @@ image =
                 ]
         , withSource """div []
     [ t "Can be rounded"
-    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.round5 ] []
+    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.round5 ] []
     ]""" <|
             div []
                 [ t "Can be rounded"
-                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.round5 ] []
+                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.round5 ] []
                 ]
         , withSource """div []
     [ t "Can be circled even!"
-    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.elliptic ] []
+    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.elliptic ] []
     ]""" <|
             div []
                 [ t "Can be circled even!"
-                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.elliptic ] []
+                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.elliptic ] []
+                ]
+        , withSource """div []
+    [ t "Octicon API is also provided. "
+    , Image.octicon { size = 20, color = oneDarkTheme.err, shape = Octicons.alert }
+    , t " They are also inline elements. "
+    , Image.octicon { size = 20, color = oneDarkTheme.prim, shape = Octicons.info }
+    ]""" <|
+            div []
+                [ t "Octicon API is also provided. "
+                , Image.octicon { size = 20, color = oneDarkTheme.err, shape = Octicons.alert }
+                , t " They are also inline elements. "
+                , Image.octicon { size = 20, color = oneDarkTheme.prim, shape = Octicons.info }
                 ]
         ]
 

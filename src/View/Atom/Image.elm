@@ -1,26 +1,22 @@
 module View.Atom.Image exposing
-    ( block
-    , ph
+    ( ph
+    , octicon
     , styles
     )
 
 {-| Image Atoms.
 
-@docs block
 @docs ph
+@docs octicon
 @docs styles
 
 -}
 
-import Html exposing (Attribute)
-import Html.Attributes exposing (class)
+import Color exposing (Color, cssRgba)
+import Html exposing (Attribute, Html)
+import Octicons
 import Url.Builder
 import View.Style exposing (..)
-
-
-block : Attribute msg
-block =
-    class blockClass
 
 
 {-| Generates a link to placeholder image, powered by Lorem Picsum.
@@ -35,13 +31,18 @@ ph width height =
         []
 
 
+{-| Render inline Octicon. Has `octicon` class.
+-}
+octicon : { size : Int, color : Color, shape : Octicons.Options -> Html msg } -> Html msg
+octicon opts =
+    Octicons.defaultOptions
+        |> Octicons.color (cssRgba opts.color)
+        |> Octicons.size opts.size
+        |> opts.shape
+
+
 styles : List Style
 styles =
     [ s "img" [ ( "vertical-align", "middle" ) ]
-    , c blockClass [ ( "display", "block" ) ]
+    , c "octicon" [ ( "vertical-align", "middle" ) ]
     ]
-
-
-blockClass : String
-blockClass =
-    "imgbl"

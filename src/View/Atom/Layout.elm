@@ -1,5 +1,6 @@
 module View.Atom.Layout exposing
-    ( widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
+    ( widthFill, block
+    , flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
     , padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -8,7 +9,8 @@ module View.Atom.Layout exposing
 
 {-| Essential layouting Atoms.
 
-@docs widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
+@docs widthFill, block
+@docs flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
 @docs padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -24,6 +26,11 @@ import View.Style exposing (..)
 widthFill : Attribute msg
 widthFill =
     Attributes.class widthFillClass
+
+
+block : Attribute msg
+block =
+    Attributes.class blockClass
 
 
 flexRow : Attribute msg
@@ -177,6 +184,7 @@ styles : List Style
 styles =
     -- XXX Order matters!
     [ c widthFillClass [ ( "width", "100%" ) ]
+    , c blockClass [ ( "display", "block" ) ]
     , flexRowStyle
     , flexColumnStyle
     , derive ("." ++ growRowClass) flexRowStyle
@@ -207,6 +215,11 @@ styles =
 widthFillClass : String
 widthFillClass =
     "wf"
+
+
+blockClass : String
+blockClass =
+    "bl"
 
 
 flexRowStyle : Style
