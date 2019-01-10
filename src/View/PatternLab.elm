@@ -48,6 +48,7 @@ type Route
     | Layout
     | Image
     | Button
+    | Input
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -67,6 +68,7 @@ urlToRoute url =
                 , U.map Layout (U.s "layout")
                 , U.map Image (U.s "image")
                 , U.map Button (U.s "button")
+                , U.map Input (U.s "input")
                 ]
     in
     Maybe.withDefault Top (U.parse urlParser url)
@@ -121,6 +123,9 @@ view m =
 
                     Button ->
                         [ button_ ]
+
+                    Input ->
+                        [ input_ ]
         ]
     }
 
@@ -138,6 +143,7 @@ navi r =
             , naviButton r Layout "Layout"
             , naviButton r Image "Image"
             , naviButton r Button "Button"
+            , naviButton r Input "Input"
             ]
         ]
 
@@ -186,6 +192,9 @@ routeToString r =
 
         Button ->
             abs_ [ "button" ]
+
+        Input ->
+            abs_ [ "input" ]
 
 
 introduction : Html Msg
@@ -895,4 +904,11 @@ button_ =
         , h1 [ sizeSection ] [ t "Link Button" ]
         , themedLinkButtons oneDark "oneDark"
         , themedLinkButtons aubergine "aubergine"
+        ]
+
+
+input_ : Html Msg
+input_ =
+    section []
+        [ h1 [ sizeSection ] [ t "Input" ]
         ]
