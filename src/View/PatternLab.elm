@@ -16,6 +16,7 @@ import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
+import View.Style exposing (px)
 import View.Stylesheet
 
 
@@ -549,44 +550,44 @@ flexBox =
                 ]
         , withSource """div [ flexRow ]
     [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
-    , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default." ]
+    , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default. ", t lorem ]
     ]""" <|
             div [ flexRow ]
                 [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
-                , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default." ]
+                , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default. ", t lorem ]
                 ]
-        , withSource """div [ flexColumn, style "height" "30vh" ]
-    [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows." ]
-    , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+        , withSource """div [ flexColumn ]
+    [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows. ", t lorem ]
+    , div [ Border.solid, Border.w1, flexShrink, flexBasis (px 200) ] [ t "I start from 200px height, but may shrink. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default. ", t lorem ]
     ]""" <|
-            div [ flexColumn, style "height" "30vh" ]
-                [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows." ]
-                , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+            div [ flexColumn ]
+                [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows. ", t lorem ]
+                , div [ Border.solid, Border.w1, flexShrink, flexBasis (px 200) ] [ t "I start from 200px height, but may shrink. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default. ", t lorem ]
                 ]
         , withSource """div [ growRow ]
-    [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow." ]
-    , div [ Border.solid, Border.w1 ] [ t "Like this." ]
-    , div [ Border.solid, Border.w1 ] [ t "Like us." ]
+    [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow. ", t lorem ]
+    , div [ Border.solid, Border.w1 ] [ t "Like this. ", t lorem ]
+    , div [ Border.solid, Border.w1 ] [ t "Like us. ", t lorem ]
     ]""" <|
             div [ growRow ]
-                [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow." ]
-                , div [ Border.solid, Border.w1 ] [ t "Like this." ]
-                , div [ Border.solid, Border.w1 ] [ t "Like us." ]
+                [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow. ", t lorem ]
+                , div [ Border.solid, Border.w1 ] [ t "Like this. ", t lorem ]
+                , div [ Border.solid, Border.w1 ] [ t "Like us. ", t lorem ]
                 ]
-        , withSource """div [ growColumn, style "height" "30vh" ]
+        , withSource """div [ growColumn, style "height" (px 300) ]
     [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growColumn" ], t " automatically grow." ]
     , div [ Border.solid, Border.w1 ] [ t "Like this." ]
     , div [ Border.solid, Border.w1 ] [ t "Like us." ]
     ]""" <|
-            div [ growColumn, style "height" "30vh" ]
+            div [ growColumn, style "height" (px 300) ]
                 [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growColumn" ], t " automatically grow." ]
                 , div [ Border.solid, Border.w1 ] [ t "Like this." ]
                 , div [ Border.solid, Border.w1 ] [ t "Like us." ]
@@ -700,57 +701,70 @@ image : Html Msg
 image =
     section []
         [ h1 [ sizeSection ] [ t "Image" ]
-        , withSource """img [ src (Image.ph 200 100), alt "200x100" ] []""" <| img [ src (Image.ph 200 100), alt "200x100" ] []
+        , withSource """img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []""" <|
+            img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []
         , withSource """div []
     [ t "By default, "
     , code [] [ t "<img>" ]
     , t "s are inline elements. "
-    , img [ src (Image.ph 20 20), alt "20x20" ] []
+    , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
     , t " "
-    , img [ src (Image.ph 20 20), alt "20x20" ] []
+    , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
     , t "You see that they are aligned by "
     , code [] [ t "vertical-align: middle;" ]
     , t " which is the global default. "
-    , img [ src (Image.ph 30 15), alt "30x15" ] []
+    , img [ src (Image.ph 30 15), alt "30x15", width 30, height 15 ] []
     , t "水兵リーベ。"
     ]""" <|
             div []
                 [ t "By default, "
                 , code [] [ t "<img>" ]
                 , t "s are inline elements. "
-                , img [ src (Image.ph 20 20), alt "20x20" ] []
+                , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
                 , t " "
-                , img [ src (Image.ph 20 20), alt "20x20" ] []
+                , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
                 , t "You see that they are aligned by "
                 , code [] [ t "vertical-align: middle;" ]
                 , t " which is the global default. "
-                , img [ src (Image.ph 30 15), alt "30x15" ] []
+                , img [ src (Image.ph 30 15), alt "30x15", width 30, height 15 ] []
                 , t "水兵リーベ。"
                 ]
         , withSource """div []
     [ t "Can become a block element with "
     , code [] [ t "block" ]
-    , img [ src (Image.ph 400 300), alt "400x300", Image.block ] []
+    , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, Image.block ] []
     ]""" <|
             div []
                 [ t "Can become a block element with "
                 , code [] [ t "block" ]
-                , img [ src (Image.ph 400 300), alt "400x300", Image.block ] []
+                , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, Image.block ] []
                 ]
         , withSource """div [ growRow, spacingRow10 ]
     [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
-    , img [ src (Image.ph 200 200), alt "200x200", flexItem ] []
-    , p [] [ t (String.repeat 5 iroha) ]
+    , img [ src (Image.ph 200 200), alt "200x200", width 200, height 200, flexItem, flexBasis (px 200) ] []
+    , p [] [ t "Use ", code [] [ t "flexBasis" ], t " if needs be. ", t (String.repeat 5 iroha) ]
     ]""" <|
             div [ growRow, spacingRow10 ]
                 [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
-                , img [ src (Image.ph 200 200), alt "200x200", flexItem ] []
-                , p [] [ t (String.repeat 5 iroha) ]
+                , img [ src (Image.ph 200 200), alt "200x200", width 200, height 200, flexItem, flexBasis (px 200) ] []
+                , p [] [ t "Use ", code [] [ t "flexBasis" ], t " if needs be. ", t (String.repeat 5 iroha) ]
                 ]
-        , withSource """div [] [ t "Can be rounded", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.round5 ] [] ]""" <|
-            div [] [ t "Can be rounded", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.round5 ] [] ]
-        , withSource """div [] [ t "Can be circled even!", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.elliptic ] [] ]""" <|
-            div [] [ t "Can be circled even!", img [ src (Image.ph 300 300), alt "300x300", Image.block, Border.elliptic ] [] ]
+        , withSource """div []
+    [ t "Can be rounded"
+    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.round5 ] []
+    ]""" <|
+            div []
+                [ t "Can be rounded"
+                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.round5 ] []
+                ]
+        , withSource """div []
+    [ t "Can be circled even!"
+    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.elliptic ] []
+    ]""" <|
+            div []
+                [ t "Can be circled even!"
+                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, Image.block, Border.elliptic ] []
+                ]
         ]
 
 

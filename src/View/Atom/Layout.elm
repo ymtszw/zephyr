@@ -1,5 +1,5 @@
 module View.Atom.Layout exposing
-    ( widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
+    ( widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
     , padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -8,7 +8,7 @@ module View.Atom.Layout exposing
 
 {-| Essential layouting Atoms.
 
-@docs widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
+@docs widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
 @docs padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -93,6 +93,19 @@ Not that it ceases to "stretch" children's cross-sizes. See
 flexCenter : Attribute msg
 flexCenter =
     Attributes.class flexCenterClass
+
+
+{-| Flex elements such as `<img>`s may unintendedly collapse
+if their contents are not loaded before reflow.
+Explicitly setting this property can prevent that.
+
+In `flexRow`, you should supply width value,
+conversely in `flexColumn`, supply height value.
+
+-}
+flexBasis : String -> Attribute msg
+flexBasis widthOrHeight =
+    Attributes.style "flex-basis" widthOrHeight
 
 
 padding2 : Attribute msg
@@ -252,7 +265,7 @@ flexItemStyle =
     c flexItemClass
         [ ( "flex-grow", "0" )
         , ( "flex-shrink", "0" ) -- No, do not shrink past contents' dimension by default
-        , ( "flex-basis", "0%" )
+        , ( "flex-basis", "0%" ) -- Allow elements to "collapse"
         ]
 
 
