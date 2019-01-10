@@ -1,6 +1,6 @@
 module View.Style exposing
     ( Style, toString, s, kf, pure, derive, inject, scoped
-    , c, px, scaleByQuarter, scale12
+    , c, px, scaleByQuarter, scale12, none, noAttr
     )
 
 {-| Style entry type and its manipulations.
@@ -8,11 +8,14 @@ module View.Style exposing
 Provides necessary types and helper functions.
 
 @docs Style, toString, s, kf, pure, derive, inject, scoped
-@docs c, px, scaleByQuarter, scale12
+@docs c, px, scaleByQuarter, scale12, none, noAttr
 
 -}
 
 import Dict exposing (Dict)
+import Html exposing (Attribute, Html)
+import Html.Attributes
+import Json.Encode
 
 
 {-| An entry in stylesheet.
@@ -191,3 +194,13 @@ scaleByQuarter base factor =
 
     else
         floor (toFloat base * 1.25 ^ toFloat factor)
+
+
+none : Html msg
+none =
+    Html.text ""
+
+
+noAttr : Attribute msg
+noAttr =
+    Html.Attributes.property "none" Json.Encode.null
