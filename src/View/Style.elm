@@ -1,14 +1,14 @@
 module View.Style exposing
-    ( Style, toString, s, c, kf, pure, derive, inject
-    , px, scaleByQuarter, scale12
+    ( Style, toString, s, kf, pure, derive, inject, scoped
+    , c, px, scaleByQuarter, scale12
     )
 
 {-| Style entry type and its manipulations.
 
 Provides necessary types and helper functions.
 
-@docs Style, toString, s, c, kf, pure, derive, inject
-@docs px, scaleByQuarter, scale12
+@docs Style, toString, s, kf, pure, derive, inject, scoped
+@docs c, px, scaleByQuarter, scale12
 
 -}
 
@@ -53,17 +53,6 @@ You will use this with `inject`.
 pure : String -> Style
 pure selector =
     RawStyle (Raw selector Dict.empty)
-
-
-{-| Produces a `RawStyle` entry for a class.
-
-    toString (c "foo" [ ( "color", "red" ) ])
-    --> ".foo{color:red;}"
-
--}
-c : String -> List ( String, String ) -> Style
-c className props =
-    RawStyle (Raw ("." ++ className) (Dict.fromList props))
 
 
 {-| Produces a `@keyframes` entry.
@@ -122,6 +111,32 @@ inject new base =
             base
 
 
+{-| Generates a scoped style with scope-defining selector and target selector.
+
+One of them can be a tag, but NOT both!
+Since it tries to create "inclusive" scope, where the scope-defining selector
+and the target selector can match on a single element.
+An element cannot be two tags!
+
+-}
+scoped : String -> String -> List ( String, String ) -> Style
+scoped scopeSelector targetSelector props =
+    let
+        selector =
+            String.join ","
+                [ -- Same element
+                  if String.startsWith "." targetSelector then
+                    scopeSelector ++ targetSelector
+
+                  else
+                    -- targetSelector is a tag, must come first
+                    targetSelector ++ scopeSelector
+                , scopeSelector ++ " " ++ targetSelector -- Descendants
+                ]
+    in
+    s selector props
+
+
 {-| Renders a `Style` into bare string.
 -}
 toString : Style -> String
@@ -152,6 +167,11 @@ rawToString (Raw selector props) =
 
 
 -- HELPERS
+
+
+c : String -> String
+c className =
+    "." ++ className
 
 
 px : Int -> String

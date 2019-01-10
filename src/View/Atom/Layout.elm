@@ -183,8 +183,8 @@ spacingColumn15 =
 styles : List Style
 styles =
     -- XXX Order matters!
-    [ c widthFillClass [ ( "width", "100%" ) ]
-    , c blockClass [ ( "display", "block" ) ]
+    [ s (c widthFillClass) [ ( "width", "100%" ) ]
+    , s (c blockClass) [ ( "display", "block" ) ]
     , flexRowStyle
     , flexColumnStyle
     , derive ("." ++ growRowClass) flexRowStyle
@@ -224,7 +224,7 @@ blockClass =
 
 flexRowStyle : Style
 flexRowStyle =
-    c flexRowClass [ ( "display", "flex" ), ( "flex-direction", "row" ) ]
+    s (c flexRowClass) [ ( "display", "flex" ), ( "flex-direction", "row" ) ]
 
 
 flexRowClass : String
@@ -234,7 +234,7 @@ flexRowClass =
 
 flexColumnStyle : Style
 flexColumnStyle =
-    c flexColumnClass [ ( "display", "flex" ), ( "flex-direction", "column" ) ]
+    s (c flexColumnClass) [ ( "display", "flex" ), ( "flex-direction", "column" ) ]
 
 
 flexColumnClass : String
@@ -261,8 +261,8 @@ autoFlexItemStyle =
                     autoFlexItemSelectors
 
         childOfFlexBox tag =
-            [ "." ++ flexRowClass ++ ">" ++ tag
-            , "." ++ flexColumnClass ++ ">" ++ tag
+            [ c flexRowClass ++ ">" ++ tag
+            , c flexColumnClass ++ ">" ++ tag
             ]
     in
     derive autoFlexItemSelector flexItemStyle
@@ -275,7 +275,7 @@ autoFlexItemSelectors =
 
 flexItemStyle : Style
 flexItemStyle =
-    c flexItemClass
+    s (c flexItemClass)
         [ ( "flex-grow", "0" )
         , ( "flex-shrink", "0" ) -- No, do not shrink past contents' dimension by default
         , ( "flex-basis", "0%" ) -- Allow elements to "collapse"
@@ -296,8 +296,8 @@ autoGrowItemStyle =
                     autoFlexItemSelectors
 
         childOfFlexBox tag =
-            [ "." ++ growRowClass ++ ">" ++ tag
-            , "." ++ growColumnClass ++ ">" ++ tag
+            [ c growRowClass ++ ">" ++ tag
+            , c growColumnClass ++ ">" ++ tag
             ]
     in
     derive autoGrowItemSelector growItemStyle
@@ -305,7 +305,7 @@ autoGrowItemStyle =
 
 growItemStyle : Style
 growItemStyle =
-    c growItemClass
+    s (c growItemClass)
         [ ( "flex-grow", "1" )
         , ( "flex-shrink", "0" )
         , ( "flex-basis", "0%" )
@@ -322,10 +322,10 @@ flexGrowStyle =
     let
         growingChildlen =
             String.join ","
-                [ "." ++ flexRowClass ++ ">." ++ flexGrowClass
-                , "." ++ flexColumnClass ++ ">." ++ flexGrowClass
-                , "." ++ growRowClass ++ ">." ++ flexGrowClass
-                , "." ++ growColumnClass ++ ">." ++ flexGrowClass
+                [ c flexRowClass ++ ">" ++ c flexGrowClass
+                , c flexColumnClass ++ ">" ++ c flexGrowClass
+                , c growRowClass ++ ">" ++ c flexGrowClass
+                , c growColumnClass ++ ">" ++ c flexGrowClass
                 ]
     in
     s growingChildlen [ ( "flex-grow", "10000" ) ]
@@ -341,10 +341,10 @@ flexShrinkStyle =
     let
         shrinkingChildlen =
             String.join ","
-                [ "." ++ flexRowClass ++ ">." ++ flexShrinkClass
-                , "." ++ flexColumnClass ++ ">." ++ flexShrinkClass
-                , "." ++ growRowClass ++ ">." ++ flexShrinkClass
-                , "." ++ growColumnClass ++ ">." ++ flexShrinkClass
+                [ c flexRowClass ++ ">" ++ c flexShrinkClass
+                , c flexColumnClass ++ ">" ++ c flexShrinkClass
+                , c growRowClass ++ ">" ++ c flexShrinkClass
+                , c growColumnClass ++ ">" ++ c flexShrinkClass
                 ]
     in
     s shrinkingChildlen [ ( "flex-shrink", "1" ) ]
@@ -360,10 +360,10 @@ flexCenterStyle =
     let
         shrinkingChildlen =
             String.join ","
-                [ "." ++ flexRowClass ++ "." ++ flexCenterClass
-                , "." ++ flexColumnClass ++ "." ++ flexCenterClass
-                , "." ++ growRowClass ++ "." ++ flexCenterClass
-                , "." ++ growColumnClass ++ "." ++ flexCenterClass
+                [ c flexRowClass ++ c flexCenterClass
+                , c flexColumnClass ++ c flexCenterClass
+                , c growRowClass ++ c flexCenterClass
+                , c growColumnClass ++ c flexCenterClass
                 ]
     in
     s shrinkingChildlen [ ( "align-items", "center" ) ]
@@ -376,7 +376,7 @@ flexCenterClass =
 
 paddingStyle : Int -> Style
 paddingStyle pad =
-    c (paddingClass pad) [ ( "padding", px pad ) ]
+    s (c (paddingClass pad)) [ ( "padding", px pad ) ]
 
 
 paddingClass : Int -> String
@@ -386,7 +386,7 @@ paddingClass pad =
 
 paddingInlineStyle : Style
 paddingInlineStyle =
-    c paddingInlineClass
+    s (c paddingInlineClass)
         [ ( "padding-left", "0.4em" )
         , ( "padding-top", "0.1em" )
         , ( "padding-right", "0.4em" )
@@ -408,14 +408,14 @@ spacingRowStyle space =
                     flexItems
 
         trailingChildOfRow selector =
-            "." ++ spacingRowClass space ++ ">" ++ selector ++ ":nth-child(n+2)"
+            c (spacingRowClass space) ++ ">" ++ selector ++ ":nth-child(n+2)"
     in
     s spacedItemsSelector [ ( "margin-left", px space ) ]
 
 
 flexItems : List String
 flexItems =
-    ("." ++ flexItemClass) :: ("." ++ growItemClass) :: autoFlexItemSelectors
+    c flexItemClass :: c growItemClass :: autoFlexItemSelectors
 
 
 spacingRowClass : Int -> String
@@ -432,7 +432,7 @@ spacingColumnStyle space =
                     flexItems
 
         trailingChildOfColumn selector =
-            "." ++ spacingColumnClass space ++ ">" ++ selector ++ ":nth-child(n+2)"
+            c (spacingColumnClass space) ++ ">" ++ selector ++ ":nth-child(n+2)"
     in
     s spacedItemsSelector [ ( "margin-top", px space ) ]
 

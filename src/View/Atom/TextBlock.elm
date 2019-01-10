@@ -36,7 +36,7 @@ baseTextBlockStyle =
 
 forceBreakStyle : Style
 forceBreakStyle =
-    c forceBreakClass
+    s (c forceBreakClass)
         [ ( "white-space", "pre-wrap" )
         , ( "word-break", "break-all" )
         ]

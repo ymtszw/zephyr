@@ -44,5 +44,5 @@ octicon opts =
 styles : List Style
 styles =
     [ s "img" [ ( "vertical-align", "middle" ) ]
-    , c "octicon" [ ( "vertical-align", "middle" ) ]
+    , s (c "octicon") [ ( "vertical-align", "middle" ) ]
     ]

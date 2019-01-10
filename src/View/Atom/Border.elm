@@ -81,27 +81,27 @@ gutter =
 
 
 color : Color -> Attribute msg
-color c =
-    Attributes.style "border-color" (cssRgba c)
+color color_ =
+    Attributes.style "border-color" (cssRgba color_)
 
 
 styles : List Style
 styles =
-    [ c solidClass [ ( "border-style", "solid" ) ]
-    , c dottedClass [ ( "border-style", "dotted" ) ]
-    , c dashedClass [ ( "border-style", "dashed" ) ]
-    , c w1Class [ ( "border-width", "1px" ) ]
-    , c noRoundClass [ ( "border-radius", "0px" ) ]
-    , c round2Class [ ( "border-radius", "2px" ) ]
-    , c round5Class [ ( "border-radius", "5px" ) ]
-    , c ellipticClass [ ( "border-radius", "50%" ) ]
-    , c leftRound5Class
+    [ s (c solidClass) [ ( "border-style", "solid" ) ]
+    , s (c dottedClass) [ ( "border-style", "dotted" ) ]
+    , s (c dashedClass) [ ( "border-style", "dashed" ) ]
+    , s (c w1Class) [ ( "border-width", "1px" ) ]
+    , s (c noRoundClass) [ ( "border-radius", "0px" ) ]
+    , s (c round2Class) [ ( "border-radius", "2px" ) ]
+    , s (c round5Class) [ ( "border-radius", "5px" ) ]
+    , s (c ellipticClass) [ ( "border-radius", "50%" ) ]
+    , s (c leftRound5Class)
         [ ( "border-top-left-radius", "5px" )
         , ( "border-top-right-radius", "0px" )
         , ( "border-bottom-right-radius", "0px" )
         , ( "border-bottom-left-radius", "5px" )
         ]
-    , c rightRound5Class
+    , s (c rightRound5Class)
         [ ( "border-top-left-radius", "0px" )
         , ( "border-top-right-radius", "5px" )
         , ( "border-bottom-right-radius", "5px" )
@@ -163,7 +163,7 @@ rightRound5Class =
 
 gutterStyle : Style
 gutterStyle =
-    c gutterClass
+    s (c gutterClass)
         [ ( "border-left-width", "5px" )
         , ( "border-left-style", "solid" )
         , ( "border-top-left-radius", "3px" )
