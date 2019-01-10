@@ -521,13 +521,41 @@ background =
 
 layout : Html Msg
 layout =
+    let
+        basics =
+            section []
+                [ h2 [ sizeTitle ] [ t "Basics" ]
+                , withSource """div [ Border.solid, Border.w1 ] [ t "I am a bare ", code [] [ t "div" ] ]""" <|
+                    div [ Border.solid, Border.w1, flexShrink ] [ t "I am a bare ", code [] [ t "div" ] ]
+                , withSource """div [ widthFill, Border.solid, Border.w1 ]
+    [ t "I eat all available width. "
+    , t "Though, since I am a child of "
+    , code [] [ t "growRow" ]
+    , t ", I am automatically stretched horizontally."
+    ]""" <|
+                    div [ widthFill, Border.solid, Border.w1 ]
+                        [ t "I eat all available width. "
+                        , t "Though, since I am a child of "
+                        , code [] [ t "growRow" ]
+                        , t ", I am automatically stretched horizontally."
+                        ]
+                , withSource """div [ Border.solid, Border.w1 ]
+    [ code [] [ t "block" ]
+    , t " enforces any elements to become a block element, like this:"
+    , code [ block ] [ t "I'm blockified." ]
+    ]""" <|
+                    div [ Border.solid, Border.w1 ]
+                        [ code [] [ t "block" ]
+                        , t " enforces any elements to become a block element, like this:"
+                        , code [ block ] [ t "I'm blockified." ]
+                        ]
+                ]
+    in
     section []
         [ h1 [ sizeSection ] [ t "Layout" ]
-        , h2 [ sizeTitle ] [ t "FlexBox and Width Control" ]
+        , basics
         , flexBox
-        , h2 [ sizeTitle ] [ t "Padding" ]
         , padding
-        , h2 [ sizeTitle ] [ t "Spacing" ]
         , spacing
         ]
 
@@ -535,20 +563,7 @@ layout =
 flexBox : Html Msg
 flexBox =
     section []
-        [ withSource """div [ Border.solid, Border.w1 ] [ t "I am a bare ", code [] [ t "div" ] ]""" <|
-            div [ Border.solid, Border.w1, flexShrink ] [ t "I am a bare ", code [] [ t "div" ] ]
-        , withSource """div [ widthFill, Border.solid, Border.w1 ]
-    [ t "I eat all available width. "
-    , t "Though, since I am a child of "
-    , code [] [ t "growRow" ]
-    , t ", I am automatically stretched horizontally."
-    ]""" <|
-            div [ widthFill, Border.solid, Border.w1 ]
-                [ t "I eat all available width. "
-                , t "Though, since I am a child of "
-                , code [] [ t "growRow" ]
-                , t ", I am automatically stretched horizontally."
-                ]
+        [ h2 [ sizeTitle ] [ t "FlexBox" ]
         , withSource """div [ flexRow ]
     [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
     , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
@@ -619,7 +634,8 @@ flexBox =
 padding : Html Msg
 padding =
     section []
-        [ withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
+        [ h2 [ sizeTitle ] [ t "Padding" ]
+        , withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
             div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]
         , withSource """div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
             div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]
@@ -635,7 +651,8 @@ padding =
 spacing : Html Msg
 spacing =
     section []
-        [ withSource """div [ growRow, Border.solid, Border.w1 ]
+        [ h2 [ sizeTitle ] [ t "Spacing" ]
+        , withSource """div [ growRow, Border.solid, Border.w1 ]
     [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
     , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
     , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
@@ -875,7 +892,7 @@ button_ =
         [ h1 [ sizeSection ] [ t "Button" ]
         , themedStdButtons oneDark "oneDark"
         , themedStdButtons aubergine "aubergine"
-        , h2 [ sizeSection ] [ t "Link Button" ]
+        , h1 [ sizeSection ] [ t "Link Button" ]
         , themedLinkButtons oneDark "oneDark"
         , themedLinkButtons aubergine "aubergine"
         ]
