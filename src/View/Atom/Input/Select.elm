@@ -158,7 +158,13 @@ select userAttrs opts =
 
         attrs =
             [ class selectClass
-            , attribute "role" "select"
+            , attribute "role" <|
+                case opts.filterMatch of
+                    Just _ ->
+                        "combobox"
+
+                    Nothing ->
+                        "listbox"
             , tabindex 0
             ]
                 ++ userAttrs
