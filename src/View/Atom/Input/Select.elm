@@ -150,7 +150,9 @@ type alias Options a msg =
 {-| Select input element.
 
 Require `id` and `state` to control open/closed status.
-Also, it uess Keyed.column.
+Also, it uess Html.Keyed.
+
+By default it is a block element.
 
 -}
 select : List (Attribute msg) -> Options a msg -> Html msg
@@ -313,6 +315,7 @@ styles =
         , ( "text-overflow", "ellipsis" )
         , ( "padding-left", px headerTextPaddingX )
         , ( "padding-right", px headerTextPaddingX )
+        , ( "min-width", "0" )
         ]
     , s_ (c headerChevronClass)
         [ ( "width", px headerChevronSize )

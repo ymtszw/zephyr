@@ -974,48 +974,144 @@ select_ ss selected =
     in
     section []
         [ h2 [ sizeTitle ] [ t "Select" ]
-        , Select.select []
-            { state = ss
-            , msgTagger = SelectCtrl
-            , id = "s1"
-            , thin = False
-            , onSelect = Selected
-            , selectedOption = selected
-            , filterMatch = Nothing
-            , options = options
-            , optionHtml = text
-            }
-        , Select.select []
-            { state = ss
-            , msgTagger = SelectCtrl
-            , id = "s2"
-            , thin = True
-            , onSelect = Selected
-            , selectedOption = selected
-            , filterMatch = Nothing
-            , options = options
-            , optionHtml = text
-            }
-        , Select.select []
-            { state = ss
-            , msgTagger = SelectCtrl
-            , id = "s3"
-            , thin = False
-            , onSelect = Selected
-            , selectedOption = selected
-            , filterMatch = Just String.contains
-            , options = options
-            , optionHtml = text
-            }
-        , Select.select [ aubergine ]
-            { state = ss
-            , msgTagger = SelectCtrl
-            , id = "s4"
-            , thin = False
-            , onSelect = Selected
-            , selectedOption = selected
-            , filterMatch = Just String.contains
-            , options = options
-            , optionHtml = text
-            }
+        , withSource """div []
+    [ t "By default these are block elements."
+    , Select.select []
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s1"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Nothing
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "By default these are block elements."
+                , Select.select []
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s1"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Nothing
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div [ growRow, spacingRow10 ]
+    [ p [] [ t "Width can be contained externally. Be warned though, flex calculation with padding is complicated, and may not work as you intended!" ]
+    , Select.select [ style "max-width" "300px" ]
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s2"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Nothing
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div [ growRow, spacingRow10 ]
+                [ p [] [ t "Width can be contained externally. Though, flex calculation with padding may not work as you intended!" ]
+                , Select.select [ style "max-width" "300px" ]
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s2"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Nothing
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div []
+    [ t "Can be thinned."
+    , Select.select []
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s3"
+        , thin = True
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Nothing
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "Can be thinned."
+                , Select.select []
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s3"
+                    , thin = True
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Nothing
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div []
+    [ t "Can have filter box."
+    , Select.select []
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s4"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Just String.contains
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "Can have filter box."
+                , Select.select []
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s4"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Just String.contains
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div []
+    [ t "Can be themed."
+    , Select.select [ aubergine ]
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s5"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Just String.contains
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "Can be themed."
+                , Select.select [ aubergine ]
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s5"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Just String.contains
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
         ]
