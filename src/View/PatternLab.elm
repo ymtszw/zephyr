@@ -794,15 +794,25 @@ image =
                 ]
         , withSource """div []
     [ t "Octicon API is also provided. "
-    , Image.octicon { size = 20, color = oneDarkTheme.err, shape = Octicons.alert }
+    , Image.octicon { size = 20, shape = Octicons.alert }
     , t " They are also inline elements. "
-    , Image.octicon { size = 20, color = oneDarkTheme.prim, shape = Octicons.info }
+    , Image.octicon { size = 20, shape = Octicons.info }
     ]""" <|
             div []
                 [ t "Octicon API is also provided. "
-                , Image.octicon { size = 20, color = oneDarkTheme.err, shape = Octicons.alert }
+                , Image.octicon { size = 20, shape = Octicons.alert }
                 , t " They are also inline elements. "
-                , Image.octicon { size = 20, color = oneDarkTheme.prim, shape = Octicons.info }
+                , Image.octicon { size = 20, shape = Octicons.info }
+                ]
+        , withSource """div []
+    [ t "Octicon fill colors depend on upstream theme and custom styles. "
+    , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+    , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+    ]""" <|
+            div []
+                [ t "Octicon fill colors depend on upstream theme and custom styles. "
+                , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
                 ]
         ]
 
