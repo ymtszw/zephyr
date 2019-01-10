@@ -19,6 +19,7 @@ import Debounce exposing (Debounce)
 import Extra exposing (emit)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Octicons
 import Task
 import View.Atom.Background as Background
@@ -165,22 +166,27 @@ select userAttrs opts =
         onHeaderPress =
             opts.msgTagger (Toggle opts.id (not opened))
     in
-    div attrs [ header onHeaderPress opts ]
+    div attrs
+        [ header onHeaderPress opts
+        , optionsWithFilter opened opts
+        ]
 
 
 header : msg -> Options a msg -> Html msg
 header onPress opts =
     div
-        [ Layout.flexRow
+        [ class headerClass
+        , Layout.flexRow
         , Layout.flexCenter
         , headerPadding opts.thin
         , Layout.spacingRow2
         , Border.round5
         , Background.colorNote
+        , onClick onPress
         ]
         [ div [ class headerTextClass, Layout.flexGrow ]
             [ Maybe.withDefault (text "Select...") (Maybe.map opts.optionHtml opts.selectedOption) ]
-        , div [ class chevronClass, Border.rightRound5, Background.colorSub ]
+        , div [ class headerChevronClass, Border.rightRound5, Background.colorSub ]
             [ Image.octicon { size = headerChevronSize, shape = Octicons.chevronDown } ]
         ]
 
@@ -194,32 +200,22 @@ headerPadding thin =
         Layout.padding5
 
 
-headerChevronSize : Int
-headerChevronSize =
-    20
+optionsWithFilter : Bool -> Options a msg -> Html msg
+optionsWithFilter opened opts =
+    if opened then
+        div
+            [ class optionsClass
+            , Border.round5
+            , Background.colorNote
+            ]
+            [ text "NYI"
+            ]
+
+    else
+        none
 
 
 
---
--- optionsWithFilterEl : Bool -> Options a msg -> Element msg
--- optionsWithFilterEl opened opts =
---     column
---         [ height (fill |> maximum optionListMaxHeight)
---         , paddingXY 0 optionListPaddingY
---         , visible opened
---         , BD.rounded rectElementRound
---         , BD.shadow
---             { offset = ( 5.0, 5.0 )
---             , blur = 10.0
---             , size = 0.0
---             , color = opts.theme.bg
---             }
---         , BG.color opts.theme.note
---         ]
---         [ lazy optionFilterEl opts
---         , lazy optionsEl opts
---         ]
---
 --
 -- optionFilterEl : Options a msg -> Element msg
 -- optionFilterEl opts =
@@ -264,19 +260,6 @@ headerChevronSize =
 --                     opts.options
 --
 --
--- optionListMinWidth : Int
--- optionListMinWidth =
---     100
---
---
--- optionListMaxHeight : Int
--- optionListMaxHeight =
---     300
---
---
--- optionListPaddingY : Int
--- optionListPaddingY =
---     5
 --
 --
 -- optionRowKeyEl : Options a msg -> ( String, a ) -> ( String, Element msg )
@@ -309,20 +292,30 @@ headerChevronSize =
 
 styles : List Style
 styles =
-    [ s_ (c selectClass) [ ( "cursor", "pointer" ) ]
+    [ s_ (c headerClass) [ ( "cursor", "pointer" ) ]
     , s_ (c headerTextClass)
         [ ( "padding-left", px headerTextPaddingX )
         , ( "padding-right", px headerTextPaddingX )
         ]
-    , s_ (c chevronClass)
+    , s_ (c headerChevronClass)
         [ ( "width", px headerChevronSize )
         , ( "height", px headerChevronSize )
+        ]
+    , s_ (c optionsClass)
+        [ ( "position", "absolute" )
+        , ( "z-index", "20" ) -- Pop above all else
+        , ( "box-shadow", "5px 5px 10px 0px " ++ cssRgba oneDarkTheme.bg )
+        , ( "max-height", px optionListMaxHeight )
+        , ( "min-width", px optionListMinWidth )
+        , ( "padding-top", px optionListPaddingY )
+        , ( "padding-bottom", px optionListPaddingY )
         ]
     ]
         ++ themedStyles oneDarkClass oneDarkTheme
         ++ themedStyles aubergineClass aubergineTheme
 
 
+s_ : String -> List ( String, String ) -> Style
 s_ =
     View.Style.s
 
@@ -333,14 +326,14 @@ themedStyles themeClass theme =
     ]
 
 
-headerTextPaddingX : Int
-headerTextPaddingX =
-    3
-
-
 selectClass : String
 selectClass =
     "sl"
+
+
+headerClass : String
+headerClass =
+    "slhead"
 
 
 headerTextClass : String
@@ -348,6 +341,36 @@ headerTextClass =
     "slhtxt"
 
 
-chevronClass : String
-chevronClass =
+headerTextPaddingX : Int
+headerTextPaddingX =
+    3
+
+
+headerChevronClass : String
+headerChevronClass =
     "slchev"
+
+
+headerChevronSize : Int
+headerChevronSize =
+    20
+
+
+optionsClass : String
+optionsClass =
+    "slopts"
+
+
+optionListMinWidth : Int
+optionListMinWidth =
+    100
+
+
+optionListMaxHeight : Int
+optionListMaxHeight =
+    300
+
+
+optionListPaddingY : Int
+optionListPaddingY =
+    5

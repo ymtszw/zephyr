@@ -37,6 +37,7 @@ main =
 type alias Model =
     { key : Key
     , route : Route
+    , select : Select.State
     }
 
 
@@ -54,7 +55,7 @@ type Route
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init () url key =
-    ( { key = key, route = urlToRoute url }, Cmd.none )
+    ( { key = key, route = urlToRoute url, select = Select.AllClosed }, Cmd.none )
 
 
 urlToRoute : Url -> Route
@@ -97,8 +98,12 @@ update msg m =
         Arrived url ->
             ( { m | route = urlToRoute url }, Cmd.none )
 
-        SelectCtrl _ ->
-            ( m, Cmd.none )
+        SelectCtrl sMsg ->
+            let
+                ( ss, cmd ) =
+                    Select.update SelectCtrl sMsg m.select
+            in
+            ( { m | select = ss }, cmd )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -134,7 +139,7 @@ view m =
                         [ button_ ]
 
                     Input ->
-                        [ input_ ]
+                        [ input_ m ]
         ]
     }
 
@@ -926,20 +931,20 @@ button_ =
         ]
 
 
-input_ : Html Msg
-input_ =
+input_ : Model -> Html Msg
+input_ m =
     section []
         [ h1 [ sizeSection ] [ t "Input" ]
-        , select_
+        , select_ m.select
         ]
 
 
-select_ : Html Msg
-select_ =
+select_ : Select.State -> Html Msg
+select_ ss =
     section []
         [ h2 [ sizeTitle ] [ t "Select" ]
         , Select.select []
-            { state = Select.AllClosed
+            { state = ss
             , msgTagger = SelectCtrl
             , id = "s1"
             , thin = False
@@ -950,7 +955,7 @@ select_ =
             , optionHtml = text
             }
         , Select.select []
-            { state = Select.AllClosed
+            { state = ss
             , msgTagger = SelectCtrl
             , id = "s2"
             , thin = True
