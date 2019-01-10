@@ -38,6 +38,7 @@ type alias Model =
     { key : Key
     , route : Route
     , select : Select.State
+    , selected : Maybe String
     }
 
 
@@ -55,7 +56,13 @@ type Route
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init () url key =
-    ( { key = key, route = urlToRoute url, select = Select.AllClosed }, Cmd.none )
+    ( { key = key
+      , route = urlToRoute url
+      , select = Select.AllClosed
+      , selected = Nothing
+      }
+    , Cmd.none
+    )
 
 
 urlToRoute : Url -> Route
@@ -81,6 +88,7 @@ type Msg
     | GoTo Browser.UrlRequest
     | Arrived Url
     | SelectCtrl (Select.Msg Msg)
+    | Selected String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -104,6 +112,9 @@ update msg m =
                     Select.update SelectCtrl sMsg m.select
             in
             ( { m | select = ss }, cmd )
+
+        Selected opt ->
+            ( { m | selected = Just opt }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -935,12 +946,32 @@ input_ : Model -> Html Msg
 input_ m =
     section []
         [ h1 [ sizeSection ] [ t "Input" ]
-        , select_ m.select
+        , select_ m.select m.selected
         ]
 
 
-select_ : Select.State -> Html Msg
-select_ ss =
+select_ : Select.State -> Maybe String -> Html Msg
+select_ ss selected =
+    let
+        options =
+            List.range 0 20
+                |> List.map
+                    (\int ->
+                        Tuple.pair ("option" ++ String.fromInt int) <|
+                            case modBy 4 int of
+                                0 ->
+                                    "abcd0123"
+
+                                1 ->
+                                    "水兵リーベ。"
+
+                                2 ->
+                                    lorem
+
+                                _ ->
+                                    iroha
+                    )
+    in
     section []
         [ h2 [ sizeTitle ] [ t "Select" ]
         , Select.select []
@@ -948,10 +979,10 @@ select_ ss =
             , msgTagger = SelectCtrl
             , id = "s1"
             , thin = False
-            , onSelect = always NoOp
-            , selectedOption = Nothing
+            , onSelect = Selected
+            , selectedOption = selected
             , filterMatch = Nothing
-            , options = []
+            , options = options
             , optionHtml = text
             }
         , Select.select []
@@ -959,10 +990,32 @@ select_ ss =
             , msgTagger = SelectCtrl
             , id = "s2"
             , thin = True
-            , onSelect = always NoOp
-            , selectedOption = Nothing
+            , onSelect = Selected
+            , selectedOption = selected
             , filterMatch = Nothing
-            , options = []
+            , options = options
+            , optionHtml = text
+            }
+        , Select.select []
+            { state = ss
+            , msgTagger = SelectCtrl
+            , id = "s3"
+            , thin = False
+            , onSelect = Selected
+            , selectedOption = selected
+            , filterMatch = Just String.contains
+            , options = options
+            , optionHtml = text
+            }
+        , Select.select [ aubergine ]
+            { state = ss
+            , msgTagger = SelectCtrl
+            , id = "s4"
+            , thin = False
+            , onSelect = Selected
+            , selectedOption = selected
+            , filterMatch = Just String.contains
+            , options = options
             , optionHtml = text
             }
         ]

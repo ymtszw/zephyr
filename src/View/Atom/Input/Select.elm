@@ -19,7 +19,10 @@ import Debounce exposing (Debounce)
 import Extra exposing (emit)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (on, onClick, onInput)
+import Html.Keyed
+import Json.Decode exposing (field, string, succeed)
+import Json.DecodeExtra exposing (when)
 import Octicons
 import Task
 import View.Atom.Background as Background
@@ -165,7 +168,6 @@ select userAttrs opts =
 
                     Nothing ->
                         "listbox"
-            , tabindex 0
             ]
                 ++ userAttrs
 
@@ -189,12 +191,19 @@ header onPress opts =
         , Border.round5
         , Background.colorNote
         , onClick onPress
+        , onEnterKeyDown onPress
+        , tabindex 0
         ]
         [ div [ class headerTextClass, Layout.flexGrow ]
             [ Maybe.withDefault (text "Select...") (Maybe.map opts.optionHtml opts.selectedOption) ]
         , div [ class headerChevronClass, Border.rightRound5, Background.colorSub ]
             [ Image.octicon { size = headerChevronSize, shape = Octicons.chevronDown } ]
         ]
+
+
+onEnterKeyDown : msg -> Attribute msg
+onEnterKeyDown onPress =
+    on "keydown" (when (field "key" string) ((==) "Enter") (succeed onPress))
 
 
 headerPadding : Bool -> Attribute msg
@@ -214,93 +223,95 @@ optionsWithFilter opened opts =
             , Border.round5
             , Background.colorNote
             ]
-            [ text "NYI"
+            [ optionFilter opts
+            , optionList opts
             ]
 
     else
         none
 
 
+optionFilter : Options a msg -> Html msg
+optionFilter opts =
+    case opts.filterMatch of
+        Just _ ->
+            Html.input
+                [ type_ "text"
+                , class optionFilterClass
+                , placeholder "Filter"
+                , onInput (opts.msgTagger << FilterInput)
+                , Layout.widthFill
+                , Layout.padding2
+                , Border.y1
+                , Border.solid
+                , Background.colorNote
+                , value <|
+                    case opts.state of
+                        Open { filter } ->
+                            filter
 
---
--- optionFilterEl : Options a msg -> Element msg
--- optionFilterEl opts =
---     case opts.filterMatch of
---         Just _ ->
---             textInputEl
---                 [ BD.rounded 0
---                 , BD.widthXY 0 1
---                 , BD.color opts.theme.bd
---                 ]
---                 { onChange = opts.msgTagger << FilterInput
---                 , theme = opts.theme
---                 , enabled = True
---                 , text =
---                     case opts.state of
---                         Open { filter } ->
---                             filter
---
---                         AllClosed ->
---                             ""
---                 , label = Element.Input.labelHidden "Select Filter"
---                 , placeholder = Just (text "Filter")
---                 }
---
---         Nothing ->
---             none
---
---
--- optionsEl : Options a msg -> Element msg
--- optionsEl opts =
---     Element.Keyed.column [ width (fill |> minimum optionListMinWidth), scrollbarY ] <|
---         List.map (optionRowKeyEl opts) <|
---             case ( opts.state, opts.filterMatch ) of
---                 ( Open { filterSettled }, Just matcher ) ->
---                     if filterSettled /= "" then
---                         List.filter (Tuple.second >> matcher filterSettled) opts.options
---
---                     else
---                         opts.options
---
---                 _ ->
---                     opts.options
---
---
---
---
--- optionRowKeyEl : Options a msg -> ( String, a ) -> ( String, Element msg )
--- optionRowKeyEl opts ( optionKey, option ) =
---     let
---         onPickOption =
---             opts.msgTagger (Pick (opts.onSelect option))
---     in
---     Element.Input.button
---         [ width fill
---         , padding optionPadding
---         , mouseOver [ BG.color opts.theme.sub ]
---         , if opts.selectedOption == Just option then
---             BG.color opts.theme.prim
---
---           else
---             noneAttr
---         ]
---         { onPress = Just onPickOption
---         , label = opts.optionEl option
---         }
---         |> Tuple.pair optionKey
---
---
--- optionPadding : Int
--- optionPadding =
---     5
+                        AllClosed ->
+                            ""
+                ]
+                []
+
+        Nothing ->
+            none
+
+
+optionList : Options a msg -> Html msg
+optionList opts =
+    Html.Keyed.node "div" [ class optionListClass, Layout.flexColumn ] <|
+        List.map (optionRowKey opts) <|
+            case ( opts.state, opts.filterMatch ) of
+                ( Open { filterSettled }, Just matcher ) ->
+                    if filterSettled /= "" then
+                        List.filter (Tuple.second >> matcher filterSettled) opts.options
+
+                    else
+                        opts.options
+
+                _ ->
+                    opts.options
+
+
+optionRowKey : Options a msg -> ( String, a ) -> ( String, Html msg )
+optionRowKey opts ( optionKey, option ) =
+    let
+        onSelect =
+            opts.msgTagger (Pick (opts.onSelect option))
+    in
+    Tuple.pair optionKey <|
+        div
+            [ class optionRowClass
+            , Layout.flexItem
+            , Layout.padding5
+            , attribute "role" "option"
+            , tabindex 0
+            , onClick onSelect
+            , onEnterKeyDown onSelect
+            , if opts.selectedOption == Just option then
+                class optionActiveClass
+
+              else
+                noAttr
+            ]
+            [ opts.optionHtml option ]
+
+
+
 -- STYLES
 
 
 styles : List Style
 styles =
-    [ s_ (c headerClass) [ ( "cursor", "pointer" ) ]
+    [ s_ (c selectClass) [ ( "max-width", "50vw" ) ] -- Global maximum width for select
+    , s_ (c headerClass) [ ( "cursor", "pointer" ) ]
     , s_ (c headerTextClass)
-        [ ( "padding-left", px headerTextPaddingX )
+        [ ( "white-space", "nowrap" )
+        , ( "overflow", "hidden" )
+        , ( "text-overflow", "ellipsis" )
+        , ( "padding-left", px headerTextPaddingX )
         , ( "padding-right", px headerTextPaddingX )
         ]
     , s_ (c headerChevronClass)
@@ -311,11 +322,16 @@ styles =
         [ ( "position", "absolute" )
         , ( "z-index", "20" ) -- Pop above all else
         , ( "box-shadow", "5px 5px 10px 0px " ++ cssRgba oneDarkTheme.bg )
-        , ( "max-height", px optionListMaxHeight )
-        , ( "min-width", px optionListMinWidth )
         , ( "padding-top", px optionListPaddingY )
         , ( "padding-bottom", px optionListPaddingY )
         ]
+    , s_ (c optionListClass)
+        [ ( "overflow-y", "auto" )
+        , ( "max-height", px optionListMaxHeight )
+        , ( "min-width", px optionListMinWidth )
+        , ( "max-width", "50vw" )
+        ]
+    , s_ (c optionRowClass) [ ( "cursor", "pointer" ) ]
     ]
         ++ themedStyles oneDarkClass oneDarkTheme
         ++ themedStyles aubergineClass aubergineTheme
@@ -329,6 +345,14 @@ s_ =
 themedStyles : String -> Theme -> List Style
 themedStyles themeClass theme =
     [ scoped (c themeClass) (c selectClass) [ ( "color", cssRgba theme.text ) ]
+    , let
+        focusSelector =
+            String.join "," <|
+                List.map ((++) (c themeClass ++ " " ++ c optionRowClass)) <|
+                    [ ":hover", ":focus" ]
+      in
+      s_ focusSelector [ ( "background-color", cssRgba theme.bg ) ]
+    , s_ (c themeClass ++ " " ++ c optionActiveClass) [ ( "background-color", cssRgba theme.prim ) ]
     ]
 
 
@@ -380,3 +404,23 @@ optionListMaxHeight =
 optionListPaddingY : Int
 optionListPaddingY =
     5
+
+
+optionFilterClass : String
+optionFilterClass =
+    "slfltr"
+
+
+optionListClass : String
+optionListClass =
+    "slopli"
+
+
+optionRowClass : String
+optionRowClass =
+    "slopro"
+
+
+optionActiveClass : String
+optionActiveClass =
+    "slopac"
