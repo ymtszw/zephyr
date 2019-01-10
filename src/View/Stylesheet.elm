@@ -5,6 +5,7 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
+import View.Atom.Input.Select as Select
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
@@ -27,6 +28,7 @@ rendered =
                 ++ Typography.styles
                 ++ TextBlock.styles
                 ++ Button.styles
+                ++ Select.styles
                 ++ Border.styles
                 ++ Background.styles
                 ++ Layout.styles

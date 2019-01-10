@@ -13,6 +13,7 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
+import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
@@ -75,13 +76,18 @@ urlToRoute url =
 
 
 type Msg
-    = GoTo Browser.UrlRequest
+    = NoOp
+    | GoTo Browser.UrlRequest
     | Arrived Url
+    | SelectCtrl (Select.Msg Msg)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
+        NoOp ->
+            ( m, Cmd.none )
+
         GoTo (Browser.Internal url) ->
             ( m, Browser.Navigation.pushUrl m.key (Url.toString url) )
 
@@ -90,6 +96,9 @@ update msg m =
 
         Arrived url ->
             ( { m | route = urlToRoute url }, Cmd.none )
+
+        SelectCtrl _ ->
+            ( m, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -921,4 +930,34 @@ input_ : Html Msg
 input_ =
     section []
         [ h1 [ sizeSection ] [ t "Input" ]
+        , select_
+        ]
+
+
+select_ : Html Msg
+select_ =
+    section []
+        [ h2 [ sizeTitle ] [ t "Select" ]
+        , Select.select []
+            { state = Select.AllClosed
+            , msgTagger = SelectCtrl
+            , id = "s1"
+            , thin = False
+            , onSelect = always NoOp
+            , selectedOption = Nothing
+            , filterMatch = Nothing
+            , options = []
+            , optionHtml = text
+            }
+        , Select.select []
+            { state = Select.AllClosed
+            , msgTagger = SelectCtrl
+            , id = "s2"
+            , thin = True
+            , onSelect = always NoOp
+            , selectedOption = Nothing
+            , filterMatch = Nothing
+            , options = []
+            , optionHtml = text
+            }
         ]
