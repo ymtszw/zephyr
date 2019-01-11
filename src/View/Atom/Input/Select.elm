@@ -1,5 +1,5 @@
 module View.Atom.Input.Select exposing
-    ( State(..), Msg(..), update, isOpen
+    ( State(..), Msg(..), update, isOpen, closeSub
     , Options, select, styles
     )
 
@@ -9,19 +9,20 @@ Since this select input is implemented in pure Elm,
 it is a component with State and Msg, in order to control its toggle state,
 and filtering feature.
 
-@docs State, Msg, update, isOpen
+@docs State, Msg, update, isOpen, closeSub
 @docs Options, select, styles
 
 -}
 
+import Browser.Events
 import Color exposing (cssRgba)
 import Debounce exposing (Debounce)
 import Extra exposing (emit)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (on, onClick, onInput)
+import Html.Events exposing (on, onInput, stopPropagationOn)
 import Html.Keyed
-import Json.Decode exposing (field, string, succeed)
+import Json.Decode exposing (at, fail, field, string, succeed)
 import Json.DecodeExtra exposing (when)
 import Octicons
 import Task
@@ -44,7 +45,13 @@ Therefore you should only have one instance of this type in your application's m
 
 -}
 type State
-    = Open { id : String, filter : String, filterSettled : String, filterDebouncer : Debounce String }
+    = Open
+        { id : String
+        , filter : String
+        , filterSettled : String
+        , filterDebouncer : Debounce String
+        , readyToClose : Bool
+        }
     | AllClosed
 
 
@@ -54,6 +61,7 @@ type State
 
 type Msg msg
     = Toggle String Bool
+    | ReadyToClose
     | Pick msg
     | FilterInput String
     | FilterSettle String
@@ -64,10 +72,18 @@ update : (Msg msg -> msg) -> Msg msg -> State -> ( State, Cmd msg )
 update msgTagger msg state =
     case msg of
         Toggle id True ->
-            ( Open { id = id, filter = "", filterSettled = "", filterDebouncer = Debounce.init }, Cmd.none )
+            ( Open { id = id, filter = "", filterSettled = "", filterDebouncer = Debounce.init, readyToClose = False }, Cmd.none )
 
         Toggle _ False ->
             ( AllClosed, Cmd.none )
+
+        ReadyToClose ->
+            case state of
+                Open record ->
+                    ( Open { record | readyToClose = True }, Cmd.none )
+
+                AllClosed ->
+                    ( AllClosed, Cmd.none )
 
         Pick x ->
             ( AllClosed, emit x )
@@ -128,6 +144,38 @@ isOpen id state =
 
         AllClosed ->
             False
+
+
+closeSub : (Msg msg -> msg) -> State -> Sub msg
+closeSub msgTagger state =
+    case state of
+        Open { id, readyToClose } ->
+            if readyToClose then
+                -- This additional step is required due to a bug:
+                -- https://discourse.elm-lang.org/t/mouse-clicks-subscription-created-and-executed-following-click-event/1067
+                let
+                    closer =
+                        msgTagger (Toggle id False)
+                in
+                Sub.batch
+                    [ Browser.Events.onClick <|
+                        let
+                            targetIsNotSelectParts className =
+                                List.all (\class_ -> not (String.contains class_ className))
+                                    -- Other targets should stop propagation of click events on bubbling phase
+                                    [ optionsClass, optionFilterClass ]
+                        in
+                        when (at [ "target", "className" ] string) targetIsNotSelectParts (succeed closer)
+                    , Browser.Events.onKeyDown <|
+                        when (field "key" string) ((==) "Escape") (succeed closer)
+                    ]
+
+            else
+                Browser.Events.onAnimationFrame <|
+                    \_ -> msgTagger ReadyToClose
+
+        AllClosed ->
+            Sub.none
 
 
 
@@ -192,7 +240,7 @@ header onPress opts =
         , Layout.spacingRow2
         , Border.round5
         , Background.colorNote
-        , onClick onPress
+        , stopPropagationOn "click" (succeed ( onPress, True ))
         , onEnterKeyDown onPress
         , tabindex 0
         ]
@@ -290,7 +338,7 @@ optionRowKey opts ( optionKey, option ) =
             , Layout.padding5
             , attribute "role" "option"
             , tabindex 0
-            , onClick onSelect
+            , stopPropagationOn "click" (succeed ( onSelect, True ))
             , onEnterKeyDown onSelect
             , if opts.selectedOption == Just option then
                 class optionActiveClass
@@ -354,7 +402,7 @@ themedStyles themeClass theme =
                 List.map ((++) (c themeClass ++ " " ++ c optionRowClass)) <|
                     [ ":hover", ":focus" ]
       in
-      s_ focusSelector [ ( "background-color", cssRgba theme.bg ) ]
+      s_ focusSelector [ ( "background-color", cssRgba theme.sub ) ]
     , s_ (c themeClass ++ " " ++ c optionActiveClass) [ ( "background-color", cssRgba theme.prim ) ]
     ]
 
