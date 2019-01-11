@@ -28,7 +28,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \m -> Select.closeSub SelectCtrl m.select
+        , subscriptions = \m -> Select.sub SelectCtrl m.select
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }

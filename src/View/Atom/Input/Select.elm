@@ -1,5 +1,5 @@
 module View.Atom.Input.Select exposing
-    ( State(..), Msg(..), update, isOpen, closeSub
+    ( State(..), Msg(..), update, sub
     , Options, select, styles
     )
 
@@ -9,7 +9,7 @@ Since this select input is implemented in pure Elm,
 it is a component with State and Msg, in order to control its toggle state,
 and filtering feature.
 
-@docs State, Msg, update, isOpen, closeSub
+@docs State, Msg, update, sub
 @docs Options, select, styles
 
 -}
@@ -146,8 +146,8 @@ isOpen id state =
             False
 
 
-closeSub : (Msg msg -> msg) -> State -> Sub msg
-closeSub msgTagger state =
+sub : (Msg msg -> msg) -> State -> Sub msg
+sub msgTagger state =
     case state of
         Open { id, readyToClose } ->
             if readyToClose then
