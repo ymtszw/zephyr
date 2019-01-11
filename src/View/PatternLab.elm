@@ -13,6 +13,7 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
+import View.Atom.Input as Input
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
@@ -37,6 +38,7 @@ main =
 type alias Model =
     { key : Key
     , route : Route
+    , toggle : Bool
     , select : Select.State
     , selected : Maybe String
     }
@@ -58,6 +60,7 @@ init : () -> Url -> Key -> ( Model, Cmd Msg )
 init () url key =
     ( { key = key
       , route = urlToRoute url
+      , toggle = True
       , select = Select.AllClosed
       , selected = Nothing
       }
@@ -87,6 +90,7 @@ type Msg
     = NoOp
     | GoTo Browser.UrlRequest
     | Arrived Url
+    | Toggle Bool
     | SelectCtrl (Select.Msg Msg)
     | Selected String
 
@@ -105,6 +109,9 @@ update msg m =
 
         Arrived url ->
             ( { m | route = urlToRoute url }, Cmd.none )
+
+        Toggle bool ->
+            ( { m | toggle = bool }, Cmd.none )
 
         SelectCtrl sMsg ->
             let
@@ -946,7 +953,47 @@ input_ : Model -> Html Msg
 input_ m =
     section []
         [ h1 [ sizeSection ] [ t "Input" ]
+        , toggle m.toggle
         , select_ m.select m.selected
+        ]
+
+
+toggle : Bool -> Html Msg
+toggle checked =
+    section []
+        [ h2 [ sizeTitle ] [ t "Toggle" ]
+        , withSource """div []
+    [ t "Inline toggle input. Width and height are fixed 36x18px. "
+    , Input.toggle [] { onChange = Toggle, checked = checked }
+    ]""" <|
+            div []
+                [ t "Inline toggle input. Width and height are fixed 36x18px. "
+                , Input.toggle [] { onChange = Toggle, checked = checked }
+                ]
+        , withSource """div []
+    [ t "As a block element. "
+    , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+    ]""" <|
+            div []
+                [ t "As a block element. "
+                , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+                ]
+        , withSource """label []
+    [ t "With Label!"
+    , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+    ]""" <|
+            label []
+                [ t "With Label!"
+                , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+                ]
+        , withSource """div [ aubergine ]
+    [ t "Can be themed!"
+    , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+    ]""" <|
+            div [ aubergine ]
+                [ t "Can be themed!"
+                , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+                ]
         ]
 
 
