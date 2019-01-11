@@ -109,7 +109,7 @@ globalStyles =
         , ( "box-sizing", "border-box" ) -- Really, WHO needs other than border-box??? JK
         ]
     , s ":focus"
-        [ ( "box-shadow", "0px 0px 3px 3px #677bc4" )
+        [ ( "box-shadow", "0px 0px 3px 1px #677bc4" )
         , ( "outline", "none" )
         ]
     , s "input,textarea,button" [ ( "color", "inherit" ) ]
