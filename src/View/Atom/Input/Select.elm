@@ -151,8 +151,6 @@ sub msgTagger state =
     case state of
         Open { id, readyToClose } ->
             if readyToClose then
-                -- This additional step is required due to a bug:
-                -- https://discourse.elm-lang.org/t/mouse-clicks-subscription-created-and-executed-following-click-event/1067
                 let
                     closer =
                         msgTagger (Toggle id False)
@@ -171,6 +169,8 @@ sub msgTagger state =
                     ]
 
             else
+                -- This additional step is required due to a bug:
+                -- https://discourse.elm-lang.org/t/mouse-clicks-subscription-created-and-executed-following-click-event/1067
                 Browser.Events.onAnimationFrame <|
                     \_ -> msgTagger ReadyToClose
 

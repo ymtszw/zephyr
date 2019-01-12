@@ -10,7 +10,7 @@ module View.Atom.Input exposing
 
 -}
 
-import Color exposing (cssRgba)
+import Color exposing (cssRgba, setAlpha)
 import Element.Background as Background
 import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (attribute, class)
@@ -41,7 +41,24 @@ toggle userAttrs opts =
 
 styles : List Style
 styles =
-    [ s (c toggleClass)
+    [ s "input[type=text]"
+        [ ( "color", cssRgba oneDarkTheme.text )
+        , ( "background-color", cssRgba oneDarkTheme.note )
+        ]
+    , -- Partial support in Edge, no-support in IE
+      s "input[type=text]::placeholder"
+        [ ( "color", cssRgba (setAlpha 0.4 oneDarkTheme.text) )
+        ]
+    , scoped (c aubergineClass)
+        "input[type=text]"
+        [ ( "color", cssRgba aubergineTheme.text )
+        , ( "background-color", cssRgba aubergineTheme.note )
+        ]
+    , scoped (c aubergineClass)
+        "input[type=text]::placeholder"
+        [ ( "color", cssRgba (setAlpha 0.4 aubergineTheme.text) )
+        ]
+    , s (c toggleClass)
         [ ( "width", px (toggleHeight * 2) )
         , ( "height", px toggleHeight )
         , ( "padding", px togglePadding )

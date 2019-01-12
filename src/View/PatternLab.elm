@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
 import Octicons
 import StringExtra
 import Url exposing (Url)
@@ -38,6 +39,7 @@ main =
 type alias Model =
     { key : Key
     , route : Route
+    , textInput : String
     , toggle : Bool
     , select : Select.State
     , selected : Maybe String
@@ -60,6 +62,7 @@ init : () -> Url -> Key -> ( Model, Cmd Msg )
 init () url key =
     ( { key = key
       , route = urlToRoute url
+      , textInput = ""
       , toggle = True
       , select = Select.AllClosed
       , selected = Nothing
@@ -90,6 +93,7 @@ type Msg
     = NoOp
     | GoTo Browser.UrlRequest
     | Arrived Url
+    | TextInput String
     | Toggle Bool
     | SelectCtrl (Select.Msg Msg)
     | Selected String
@@ -106,6 +110,9 @@ update msg m =
 
         GoTo (Browser.External urlStr) ->
             ( m, Browser.Navigation.load urlStr )
+
+        TextInput str ->
+            ( { m | textInput = str }, Cmd.none )
 
         Arrived url ->
             ( { m | route = urlToRoute url }, Cmd.none )
@@ -953,8 +960,62 @@ input_ : Model -> Html Msg
 input_ m =
     section []
         [ h1 [ sizeSection ] [ t "Input" ]
+        , textInput m.textInput
         , toggle m.toggle
         , select_ m.select m.selected
+        ]
+
+
+textInput : String -> Html Msg
+textInput currentInput =
+    section []
+        [ h2 [ sizeTitle ] [ t "Text" ]
+        , withSource """div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]""" <|
+            div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]
+        , withSource """div [] [ t "With placeholder. ", input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!" ] [] ]""" <|
+            div [] [ t "With placeholder. ", input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!" ] [] ]
+        , withSource """div []
+    [ t "Styles/layouts attached. "
+    , input
+        [ type_ "text"
+        , value currentInput
+        , onInput TextInput
+        , placeholder "Big input"
+        , block
+        , sizeHeadline
+        , padding5
+        , Border.round5
+        , Border.w1
+        , Border.solid
+        , style "width" (px 300)
+        ]
+        []
+    ]""" <|
+            div []
+                [ t "Styles/layouts attached. "
+                , input
+                    [ type_ "text"
+                    , value currentInput
+                    , onInput TextInput
+                    , placeholder "Big input"
+                    , block
+                    , sizeHeadline
+                    , padding5
+                    , Border.round5
+                    , Border.w1
+                    , Border.solid
+                    , style "width" (px 300)
+                    ]
+                    []
+                ]
+        , withSource """div [ aubergine ]
+    [ t "Can be themed."
+    , input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!", block ] []
+    ]""" <|
+            div [ aubergine ]
+                [ t "Can be themed."
+                , input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!", block ] []
+                ]
         ]
 
 
