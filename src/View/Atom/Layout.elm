@@ -1,9 +1,10 @@
 module View.Atom.Layout exposing
     ( widthFill, block
     , flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
-    , padding2, padding5, padding10, padding15, paddingInline
+    , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
+    , withBadge
     , styles, paddingInlineStyle
     )
 
@@ -11,36 +12,37 @@ module View.Atom.Layout exposing
 
 @docs widthFill, block
 @docs flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
-@docs padding2, padding5, padding10, padding15, paddingInline
+@docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
+@docs withBadge
 @docs styles, paddingInlineStyle
 
 -}
 
-import Html exposing (Attribute)
-import Html.Attributes as Attributes
+import Html exposing (Attribute, Html, div)
+import Html.Attributes exposing (class, style)
 import View.Style exposing (..)
 
 
 widthFill : Attribute msg
 widthFill =
-    Attributes.class widthFillClass
+    class widthFillClass
 
 
 block : Attribute msg
 block =
-    Attributes.class blockClass
+    class blockClass
 
 
 flexRow : Attribute msg
 flexRow =
-    Attributes.class flexRowClass
+    class flexRowClass
 
 
 flexColumn : Attribute msg
 flexColumn =
-    Attributes.class flexColumnClass
+    class flexColumnClass
 
 
 {-| Mostly equivalent to `flexRow`,
@@ -52,14 +54,14 @@ using this instead of `flexRow` may help.
 -}
 growRow : Attribute msg
 growRow =
-    Attributes.class growRowClass
+    class growRowClass
 
 
 {-| Similar to `growRow`, for a column.
 -}
 growColumn : Attribute msg
 growColumn =
-    Attributes.class growColumnClass
+    class growColumnClass
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
@@ -67,7 +69,7 @@ if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 flexItem : Attribute msg
 flexItem =
-    Attributes.class flexItemClass
+    class flexItemClass
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `growRow` or `growColumn`
@@ -75,17 +77,17 @@ if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 growItem : Attribute msg
 growItem =
-    Attributes.class growItemClass
+    class growItemClass
 
 
 flexGrow : Attribute msg
 flexGrow =
-    Attributes.class flexGrowClass
+    class flexGrowClass
 
 
 flexShrink : Attribute msg
 flexShrink =
-    Attributes.class flexShrinkClass
+    class flexShrinkClass
 
 
 {-| Sets `align-items: center;`.
@@ -99,7 +101,7 @@ Not that it ceases to "stretch" children's cross-sizes. See
 -}
 flexCenter : Attribute msg
 flexCenter =
-    Attributes.class flexCenterClass
+    class flexCenterClass
 
 
 {-| Flex elements such as `<img>`s may unintendedly collapse
@@ -112,72 +114,89 @@ conversely in `flexColumn`, supply height value.
 -}
 flexBasis : String -> Attribute msg
 flexBasis widthOrHeight =
-    Attributes.style "flex-basis" widthOrHeight
+    style "flex-basis" widthOrHeight
+
+
+noPadding : Attribute msg
+noPadding =
+    class (paddingClass 0)
 
 
 padding2 : Attribute msg
 padding2 =
-    Attributes.class (paddingClass 2)
+    class (paddingClass 2)
 
 
 padding5 : Attribute msg
 padding5 =
-    Attributes.class (paddingClass 5)
+    class (paddingClass 5)
 
 
 padding10 : Attribute msg
 padding10 =
-    Attributes.class (paddingClass 10)
+    class (paddingClass 10)
 
 
 padding15 : Attribute msg
 padding15 =
-    Attributes.class (paddingClass 15)
+    class (paddingClass 15)
 
 
 paddingInline : Attribute msg
 paddingInline =
-    Attributes.class paddingInlineClass
+    class paddingInlineClass
 
 
 spacingRow2 : Attribute msg
 spacingRow2 =
-    Attributes.class (spacingRowClass 2)
+    class (spacingRowClass 2)
 
 
 spacingRow5 : Attribute msg
 spacingRow5 =
-    Attributes.class (spacingRowClass 5)
+    class (spacingRowClass 5)
 
 
 spacingRow10 : Attribute msg
 spacingRow10 =
-    Attributes.class (spacingRowClass 10)
+    class (spacingRowClass 10)
 
 
 spacingRow15 : Attribute msg
 spacingRow15 =
-    Attributes.class (spacingRowClass 15)
+    class (spacingRowClass 15)
 
 
 spacingColumn2 : Attribute msg
 spacingColumn2 =
-    Attributes.class (spacingColumnClass 2)
+    class (spacingColumnClass 2)
 
 
 spacingColumn5 : Attribute msg
 spacingColumn5 =
-    Attributes.class (spacingColumnClass 5)
+    class (spacingColumnClass 5)
 
 
 spacingColumn10 : Attribute msg
 spacingColumn10 =
-    Attributes.class (spacingColumnClass 10)
+    class (spacingColumnClass 10)
 
 
 spacingColumn15 : Attribute msg
 spacingColumn15 =
-    Attributes.class (spacingColumnClass 15)
+    class (spacingColumnClass 15)
+
+
+withBadge : List (Attribute msg) -> { badge : Html msg, content : Html msg } -> Html msg
+withBadge userAttrs { badge, content } =
+    div (class badgeOuterClass :: userAttrs)
+        [ content
+        , div [ class badgeInnerClass ] [ badge ]
+        ]
+
+
+
+-- STYLE
 
 
 styles : List Style
@@ -196,6 +215,7 @@ styles =
     , flexGrowStyle
     , flexShrinkStyle
     , flexCenterStyle
+    , paddingStyle 0
     , paddingStyle 2
     , paddingStyle 5
     , paddingStyle 10
@@ -209,6 +229,15 @@ styles =
     , spacingColumnStyle 5
     , spacingColumnStyle 10
     , spacingColumnStyle 15
+    , s (c badgeOuterClass)
+        [ ( "display", "flex" )
+        , ( "flex-direction", "row-reverse" ) -- Trick!
+        ]
+    , s (c badgeInnerClass)
+        [ ( "align-self", "flex-end" )
+        , ( "position", "absolute" )
+        , ( "overflow", "hidden" )
+        ]
     ]
 
 
@@ -440,3 +469,13 @@ spacingColumnStyle space =
 spacingColumnClass : Int -> String
 spacingColumnClass space =
     "spc" ++ String.fromInt space
+
+
+badgeOuterClass : String
+badgeOuterClass =
+    "badgeouter"
+
+
+badgeInnerClass : String
+badgeInnerClass =
+    "badgeinner"

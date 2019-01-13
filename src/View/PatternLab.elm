@@ -266,10 +266,13 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
+import View.Atom.Input as Input
+import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
-import View.Atom.Typography exposing (..)"""
+import View.Atom.Typography exposing (..)
+import View.Style exposing (px)"""
                 ]
             ]
         ]
@@ -605,6 +608,7 @@ layout =
         , flexBox
         , padding
         , spacing
+        , badge
         ]
 
 
@@ -760,6 +764,29 @@ spacing =
                 , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
                 , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
+        ]
+
+
+badge : Html Msg
+badge =
+    section []
+        [ h2 [ sizeTitle ] [ t "Badge" ]
+        , withSource """withBadge []
+    { content =
+        div [ padding2 ]
+            [ div [ Background.colorPrim ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
+            ]
+    , badge =
+        div [ Background.colorErr ] [ t "I'm badge! Badges are positioned at bottom-right." ]
+    }""" <|
+            withBadge []
+                { content =
+                    div [ padding2 ]
+                        [ div [ Background.colorPrim ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
+                        ]
+                , badge =
+                    div [ Background.colorErr ] [ t "I'm badge! Badges are positioned at bottom-right." ]
+                }
         ]
 
 
