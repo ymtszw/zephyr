@@ -10,6 +10,8 @@ import View.Atom.Input.Select as Select
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
+import View.Molecule.Icon as Icon
+import View.Organism.Sidebar as Sidebar
 import View.Style exposing (..)
 
 
@@ -35,6 +37,8 @@ rendered =
                 ++ Background.styles
                 ++ Layout.styles
                 ++ Image.styles
+                ++ Icon.styles
+                ++ Sidebar.styles
 
 
 length : Int
@@ -84,6 +88,7 @@ resetUserAgentStyles =
         , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading ancestors' font settings to descendants
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
+        , ( "position", "relative" ) -- We use position: absolute; blocks for badges, which requires non-static (non-default) containing ancestor block
         ]
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]

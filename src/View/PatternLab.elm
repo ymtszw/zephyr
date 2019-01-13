@@ -20,6 +20,8 @@ import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
+import View.Molecule.Icon as Icon
+import View.Organism.Sidebar as Sidebar
 import View.Style exposing (px)
 import View.Stylesheet
 
@@ -43,6 +45,7 @@ type alias Model =
     , toggle : Bool
     , select : Select.State
     , selected : Maybe String
+    , numColumns : Int
     }
 
 
@@ -56,6 +59,8 @@ type Route
     | Image
     | Button
     | Input
+    | Icon
+    | Sidebar
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -63,9 +68,10 @@ init () url key =
     ( { key = key
       , route = urlToRoute url
       , textInput = ""
-      , toggle = True
+      , toggle = False
       , select = Select.AllClosed
       , selected = Nothing
+      , numColumns = 10
       }
     , Cmd.none
     )
@@ -84,6 +90,8 @@ urlToRoute url =
                 , U.map Image (U.s "image")
                 , U.map Button (U.s "button")
                 , U.map Input (U.s "input")
+                , U.map Icon (U.s "icon")
+                , U.map Sidebar (U.s "sidebar")
                 ]
     in
     Maybe.withDefault Top (U.parse urlParser url)
@@ -97,6 +105,7 @@ type Msg
     | Toggle Bool
     | SelectCtrl (Select.Msg Msg)
     | Selected String
+    | AddColumn
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -129,6 +138,9 @@ update msg m =
 
         Selected opt ->
             ( { m | selected = Just opt }, Cmd.none )
+
+        AddColumn ->
+            ( { m | numColumns = m.numColumns + 1 }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -165,6 +177,12 @@ view m =
 
                     Input ->
                         [ input_ m ]
+
+                    Icon ->
+                        [ icon ]
+
+                    Sidebar ->
+                        [ sidebar m ]
         ]
     }
 
@@ -183,6 +201,14 @@ navi r =
             , naviButton r Image "Image"
             , naviButton r Button "Button"
             , naviButton r Input "Input"
+            ]
+        , div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Molecules" ]
+            , naviButton r Icon "Icon"
+            ]
+        , div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
+            , naviButton r Sidebar "Sidebar"
             ]
         ]
 
@@ -234,6 +260,12 @@ routeToString r =
 
         Input ->
             abs_ [ "input" ]
+
+        Icon ->
+            abs_ [ "icon" ]
+
+        Sidebar ->
+            abs_ [ "sidebar" ]
 
 
 introduction : Html Msg
@@ -1274,3 +1306,62 @@ select_ ss selected =
                     }
                 ]
         ]
+
+
+icon : Html Msg
+icon =
+    section []
+        [ h1 [ sizeSection ] [ t "Icon" ]
+        , withSource """Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }""" <|
+            Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }
+        , withSource """Icon.button [ Border.round5 ] { onPress = NoOp, src = Image.ph 75 75, alt = "75x75 icon" }""" <|
+            Icon.button [ Border.round5 ] { onPress = NoOp, src = Image.ph 75 75, alt = "75x75 icon" }
+        , withSource """Icon.link [] { url = "https://example.com", src = Image.ph 50 50, alt = "50x50 icon" }""" <|
+            Icon.link [] { url = "https://example.com", src = Image.ph 50 50, alt = "50x50 icon" }
+        , withSource """Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }""" <|
+            Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }
+        , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
+            Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
+        , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|
+            Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }
+        , withSource """Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }""" <|
+            Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }
+        , withSource """Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }""" <|
+            Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }
+        ]
+
+
+sidebar : Model -> Html Msg
+sidebar m =
+    section []
+        [ h1 [ sizeSection ] [ t "Sidebar" ]
+        , Sidebar.sidebar (dummySidebarProps m.toggle m.numColumns)
+        , p []
+            [ t "Shown to the left. This is a position-width-fixed organism. "
+            , t "Msg is not yet wired!"
+            ]
+        ]
+
+
+dummySidebarProps : Bool -> Int -> Sidebar.Props Msg
+dummySidebarProps isOpen numColumns =
+    let
+        dummyColumnButton i =
+            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
+            , case modBy 3 i of
+                0 ->
+                    Sidebar.Fallback "Zehpyr"
+
+                1 ->
+                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+
+                _ ->
+                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
+            )
+    in
+    { configOpen = isOpen
+    , configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClicker = always NoOp
+    , columns = List.range 0 numColumns |> List.map dummyColumnButton
+    }
