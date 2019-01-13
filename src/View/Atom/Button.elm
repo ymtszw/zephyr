@@ -81,6 +81,7 @@ linkButtonStyles =
         [ ( "border-radius", "0.2em" )
         , ( "border-width", "0px" )
         , ( "cursor", "pointer" ) -- I deliberately want this. I am AGAINST the philosophy of "buttons do not need pointer."
+        , ( "width", "fit-content" ) -- XXX Applied in order to fit width to contents regardless of `display` value or contents, but this might not be supported by all browsers
         ]
         |> inject Layout.paddingInlineStyle
         |> inject oneDarkDefaultFaceStyle
