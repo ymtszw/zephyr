@@ -1,6 +1,6 @@
 module View.Atom.Layout exposing
     ( widthFill, block
-    , flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
+    , flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
     , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -11,7 +11,7 @@ module View.Atom.Layout exposing
 {-| Essential layouting Atoms.
 
 @docs widthFill, block
-@docs flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis
+@docs flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
 @docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -116,6 +116,16 @@ Note that `flex-basis` has precedence over `width` or `height`.
 flexBasis : String -> Attribute msg
 flexBasis widthOrHeight =
     style "flex-basis" widthOrHeight
+
+
+{-| Set `flex-basis: auto;` which is UA default.
+
+With this setting, containers respect items' `width` or `height`.
+
+-}
+flexBasisAuto : Attribute msg
+flexBasisAuto =
+    class flexBasisAutoClass
 
 
 noPadding : Attribute msg
@@ -235,6 +245,7 @@ styles =
     , flexGrowStyle
     , flexShrinkStyle
     , flexCenterStyle
+    , s (c flexBasisAutoClass) [ ( "flex-basis", "auto" ) ]
     , paddingStyle 0
     , paddingStyle 2
     , paddingStyle 5
@@ -413,6 +424,11 @@ flexCenterStyle =
 flexCenterClass : String
 flexCenterClass =
     "flcenter"
+
+
+flexBasisAutoClass : String
+flexBasisAutoClass =
+    "flbauto"
 
 
 paddingStyle : Int -> Style
