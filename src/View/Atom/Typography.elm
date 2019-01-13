@@ -317,7 +317,7 @@ fontColorStyles =
 
 f : String -> String -> Color -> Style
 f themeClass modeClass color =
-    scoped (c themeClass) modeClass [ ( "color", cssRgba color ) ]
+    scoped (c themeClass) (c modeClass) [ ( "color", cssRgba color ) ]
 
 
 colorTextClass : String
