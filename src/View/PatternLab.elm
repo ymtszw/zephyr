@@ -774,18 +774,22 @@ badge =
         , withSource """withBadge []
     { content =
         div [ padding2 ]
-            [ div [ Background.colorPrim ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
+            [ div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
             ]
-    , badge =
-        div [ Background.colorErr ] [ t "I'm badge! Badges are positioned at bottom-right." ]
+    , topRight =
+        Just (div [ Background.colorWarn ] [ t "I'm top-right badge!" ])
+    , bottomRight =
+        Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
     }""" <|
             withBadge []
                 { content =
                     div [ padding2 ]
-                        [ div [ Background.colorPrim ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
+                        [ div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
                         ]
-                , badge =
-                    div [ Background.colorErr ] [ t "I'm badge! Badges are positioned at bottom-right." ]
+                , topRight =
+                    Just (div [ Background.colorWarn ] [ t "I'm top-right badge!" ])
+                , bottomRight =
+                    Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
                 }
         ]
 

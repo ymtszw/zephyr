@@ -104,12 +104,13 @@ flexCenter =
     class flexCenterClass
 
 
-{-| Flex elements such as `<img>`s may unintendedly collapse
-if their contents are not loaded before reflow.
-Explicitly setting this property can prevent that.
+{-| We set `flex-basis: 0%;` by default, in order to allow inline elements to collapse.
+Explicitly setting this can prevent unintended collapsing.
 
 In `flexRow`, you should supply width value,
 conversely in `flexColumn`, supply height value.
+
+Note that `flex-basis` has precedence over `width` or `height`.
 
 -}
 flexBasis : String -> Attribute msg
@@ -187,11 +188,30 @@ spacingColumn15 =
     class (spacingColumnClass 15)
 
 
-withBadge : List (Attribute msg) -> { badge : Html msg, content : Html msg } -> Html msg
-withBadge userAttrs { badge, content } =
+withBadge :
+    List (Attribute msg)
+    ->
+        { topRight : Maybe (Html msg)
+        , bottomRight : Maybe (Html msg)
+        , content : Html msg
+        }
+    -> Html msg
+withBadge userAttrs opts =
+    -- XXX: Supporting left-aligned badges within this scheme is not straightforward; not doing now
     div (class badgeOuterClass :: userAttrs)
-        [ content
-        , div [ class badgeInnerClass ] [ badge ]
+        [ opts.content
+        , case opts.topRight of
+            Just b ->
+                div [ class badgeTopRightClass ] [ b ]
+
+            Nothing ->
+                none
+        , case opts.bottomRight of
+            Just b ->
+                div [ class badgeBottomRightClass ] [ b ]
+
+            Nothing ->
+                none
         ]
 
 
@@ -229,16 +249,8 @@ styles =
     , spacingColumnStyle 5
     , spacingColumnStyle 10
     , spacingColumnStyle 15
-    , s (c badgeOuterClass)
-        [ ( "display", "flex" )
-        , ( "flex-direction", "row-reverse" ) -- Trick!
-        ]
-    , s (c badgeInnerClass)
-        [ ( "align-self", "flex-end" )
-        , ( "position", "absolute" )
-        , ( "overflow", "hidden" )
-        ]
     ]
+        ++ badgeStyles
 
 
 widthFillClass : String
@@ -471,11 +483,35 @@ spacingColumnClass space =
     "spc" ++ String.fromInt space
 
 
+badgeStyles : List Style
+badgeStyles =
+    [ s (c badgeOuterClass)
+        [ ( "display", "flex" )
+        , ( "flex-direction", "row-reverse" )
+        ]
+    , s (c badgeTopRightClass)
+        [ ( "position", "absolute" )
+        , ( "align-self", "flex-start" )
+        , ( "overflow", "hidden" )
+        ]
+    , s (c badgeBottomRightClass)
+        [ ( "position", "absolute" )
+        , ( "align-self", "flex-end" )
+        , ( "overflow", "hidden" )
+        ]
+    ]
+
+
 badgeOuterClass : String
 badgeOuterClass =
     "badgeouter"
 
 
-badgeInnerClass : String
-badgeInnerClass =
-    "badgeinner"
+badgeTopRightClass : String
+badgeTopRightClass =
+    "badgetopr"
+
+
+badgeBottomRightClass : String
+badgeBottomRightClass =
+    "badgebotr"
