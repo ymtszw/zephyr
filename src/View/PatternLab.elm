@@ -24,6 +24,7 @@ import View.Molecule.Icon as Icon
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (px)
 import View.Stylesheet
+import View.Template.Main
 
 
 main : Program () Model Msg
@@ -61,6 +62,7 @@ type Route
     | Input
     | Icon
     | Sidebar
+    | MainTemplate
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -92,6 +94,7 @@ urlToRoute url =
                 , U.map Input (U.s "input")
                 , U.map Icon (U.s "icon")
                 , U.map Sidebar (U.s "sidebar")
+                , U.map MainTemplate (U.s "main_template")
                 ]
     in
     Maybe.withDefault Top (U.parse urlParser url)
@@ -145,45 +148,61 @@ update msg m =
 
 view : Model -> { title : String, body : List (Html Msg) }
 view m =
+    let
+        pLab contents =
+            [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
+    in
     { title = "Zephyr: Pattern Lab"
     , body =
-        [ View.Stylesheet.render
-        , div [ flexColumn, widthFill, spacingColumn15, oneDark ] <|
-            (::) (navi m.route) <|
-                case m.route of
-                    Top ->
-                        [ introduction, theme ]
+        (::) View.Stylesheet.render <|
+            case m.route of
+                Top ->
+                    pLab [ introduction, theme ]
 
-                    Typography ->
-                        [ typography ]
+                Typography ->
+                    pLab [ typography ]
 
-                    TextBlock ->
-                        [ textBlock ]
+                TextBlock ->
+                    pLab [ textBlock ]
 
-                    Border ->
-                        [ border ]
+                Border ->
+                    pLab [ border ]
 
-                    Background ->
-                        [ background ]
+                Background ->
+                    pLab [ background ]
 
-                    Layout ->
-                        [ layout ]
+                Layout ->
+                    pLab [ layout ]
 
-                    Image ->
-                        [ image ]
+                Image ->
+                    pLab [ image ]
 
-                    Button ->
-                        [ button_ ]
+                Button ->
+                    pLab [ button_ ]
 
-                    Input ->
-                        [ input_ m ]
+                Input ->
+                    pLab [ input_ m ]
 
-                    Icon ->
-                        [ icon ]
+                Icon ->
+                    pLab [ icon ]
 
-                    Sidebar ->
-                        [ sidebar m ]
-        ]
+                Sidebar ->
+                    pLab [ sidebar m ]
+
+                MainTemplate ->
+                    View.Template.Main.render (mainEffects m) (mainProps m)
+    }
+
+
+mainProps : Model -> View.Template.Main.Props
+mainProps m =
+    { sidebarProps = dummySidebarProps m.toggle m.numColumns
+    }
+
+
+mainEffects : Model -> View.Template.Main.Effects Msg
+mainEffects m =
+    { sidebarEffects = dummySidebarEffects m.toggle
     }
 
 
@@ -209,6 +228,10 @@ navi r =
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
             , naviButton r Sidebar "Sidebar"
+            ]
+        , div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
+            , naviButton r MainTemplate "Main"
             ]
         ]
 
@@ -266,6 +289,9 @@ routeToString r =
 
         Sidebar ->
             abs_ [ "sidebar" ]
+
+        MainTemplate ->
+            abs_ [ "main_template" ]
 
 
 introduction : Html Msg
@@ -1335,7 +1361,7 @@ sidebar : Model -> Html Msg
 sidebar m =
     section []
         [ h1 [ sizeSection ] [ t "Sidebar" ]
-        , Sidebar.sidebar (dummySidebarProps m.toggle m.numColumns)
+        , Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
         , p []
             [ t "Shown to the left. This is a position-width-fixed organism. "
             , t "Msg is not yet wired!"
@@ -1343,7 +1369,7 @@ sidebar m =
         ]
 
 
-dummySidebarProps : Bool -> Int -> Sidebar.Props Msg
+dummySidebarProps : Bool -> Int -> Sidebar.Props
 dummySidebarProps isOpen numColumns =
     let
         dummyColumnButton i =
@@ -1360,8 +1386,13 @@ dummySidebarProps isOpen numColumns =
             )
     in
     { configOpen = isOpen
-    , configOpener = Toggle (not isOpen)
-    , columnAdder = AddColumn
-    , columnButtonClicker = always NoOp
     , columns = List.range 0 numColumns |> List.map dummyColumnButton
+    }
+
+
+dummySidebarEffects : Bool -> Sidebar.Effects Msg
+dummySidebarEffects isOpen =
+    { configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClickerByIndex = always NoOp
     }

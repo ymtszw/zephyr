@@ -1,4 +1,14 @@
-module View.Organism.Sidebar exposing (ColumnButton(..), ColumnProps, Props, sidebar, styles)
+module View.Organism.Sidebar exposing
+    ( Props, ColumnProps, ColumnButton(..), Effects, render
+    , styles
+    )
+
+{-| Sidebar Organism.
+
+@docs Props, ColumnProps, ColumnButton, Props, Effects, render
+@docs styles
+
+-}
 
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
@@ -12,39 +22,44 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDarkTheme)
+import View.Atom.Theme exposing (oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Style exposing (..)
 
 
-type alias Props msg =
+type alias Props =
     { configOpen : Bool
-    , configOpener : msg
-    , columnAdder : msg
-    , columnButtonClicker : Int -> msg
     , columns : List ( ColumnProps, ColumnButton )
     }
 
 
-sidebar : Props msg -> Html msg
-sidebar p =
+type alias Effects msg =
+    { configOpener : msg
+    , columnAdder : msg
+    , columnButtonClickerByIndex : Int -> msg
+    }
+
+
+render : Effects msg -> Props -> Html msg
+render eff p =
     nav
         [ class sidebarClass
         , flexColumn
         , spacingColumn15
+        , oneDark
         , Background.colorBg
         ]
-        [ addColumnButton p.columnAdder
-        , columnButtons p
-        , otherButtons p.configOpener p.configOpen
+        [ addColumnButton eff.columnAdder
+        , columnButtons eff.columnButtonClickerByIndex p.columns
+        , otherButtons eff.configOpener p.configOpen
         ]
 
 
-columnButtons : Props msg -> Html msg
-columnButtons p =
+columnButtons : (Int -> msg) -> List ( ColumnProps, ColumnButton ) -> Html msg
+columnButtons columnButtonClickerByIndex columns =
     Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, spacingColumn10 ] <|
-        List.indexedMap (colummButtonKey p.columnButtonClicker) p.columns
+        List.indexedMap (colummButtonKey columnButtonClickerByIndex) columns
 
 
 addColumnButton : msg -> Html msg
