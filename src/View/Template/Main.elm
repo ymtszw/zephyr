@@ -17,6 +17,7 @@ so that we can test our views in PatternLab! DI, anyone?
 -}
 
 import Html exposing (Html)
+import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (Style)
 
@@ -33,7 +34,8 @@ type alias Effects msg =
 
 render : Effects msg -> Props -> List (Html msg)
 render eff p =
-    [ Sidebar.render eff.sidebarEffects p.sidebarProps
+    [ Wallpaper.zephyr
+    , Sidebar.render eff.sidebarEffects p.sidebarProps
     ]
 
 
