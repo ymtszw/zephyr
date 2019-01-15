@@ -1386,7 +1386,7 @@ dummySidebarProps isOpen numColumns =
             )
     in
     { configOpen = isOpen
-    , columns = List.range 0 numColumns |> List.map dummyColumnButton
+    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
     }
 
 

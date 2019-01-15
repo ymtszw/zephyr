@@ -1,12 +1,12 @@
 module View.Organism.Sidebar exposing
     ( Props, ColumnProps, ColumnButton(..), Effects, render
-    , styles
+    , styles, sidebarWidth
     )
 
 {-| Sidebar Organism.
 
 @docs Props, ColumnProps, ColumnButton, Props, Effects, render
-@docs styles
+@docs styles, sidebarWidth
 
 -}
 
