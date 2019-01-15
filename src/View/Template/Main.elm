@@ -25,7 +25,7 @@ import View.Style exposing (Style)
 
 type alias Props =
     { sidebarProps : Sidebar.Props
-    , columnCtnrProps : CCtnr.Props
+    , columnCtnrProps : CCtnr.Props ()
     }
 
 
