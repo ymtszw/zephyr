@@ -245,7 +245,7 @@ styles =
     , flexGrowStyle
     , flexShrinkStyle
     , flexCenterStyle
-    , s (c flexBasisAutoClass) [ ( "flex-basis", "auto" ) ]
+    , flexBasisAutoStyle
     , paddingStyle 0
     , paddingStyle 2
     , paddingStyle 5
@@ -410,7 +410,7 @@ flexShrinkClass =
 flexCenterStyle : Style
 flexCenterStyle =
     let
-        shrinkingChildlen =
+        centeredFlex =
             String.join ","
                 [ c flexRowClass ++ c flexCenterClass
                 , c flexColumnClass ++ c flexCenterClass
@@ -418,12 +418,26 @@ flexCenterStyle =
                 , c growColumnClass ++ c flexCenterClass
                 ]
     in
-    s shrinkingChildlen [ ( "align-items", "center" ) ]
+    s centeredFlex [ ( "align-items", "center" ) ]
 
 
 flexCenterClass : String
 flexCenterClass =
     "flcenter"
+
+
+flexBasisAutoStyle : Style
+flexBasisAutoStyle =
+    let
+        childlen =
+            String.join ","
+                [ c flexRowClass ++ ">" ++ c flexBasisAutoClass
+                , c flexColumnClass ++ ">" ++ c flexBasisAutoClass
+                , c growRowClass ++ ">" ++ c flexBasisAutoClass
+                , c growColumnClass ++ ">" ++ c flexBasisAutoClass
+                ]
+    in
+    s childlen [ ( "flex-basis", "auto" ) ]
 
 
 flexBasisAutoClass : String
