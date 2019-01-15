@@ -197,12 +197,14 @@ view m =
 mainProps : Model -> View.Template.Main.Props
 mainProps m =
     { sidebarProps = dummySidebarProps m.toggle m.numColumns
+    , columnCtnrProps = { columns = List.repeat m.numColumns () }
     }
 
 
 mainEffects : Model -> View.Template.Main.Effects Msg
 mainEffects m =
     { sidebarEffects = dummySidebarEffects m.toggle
+    , columnCtnrEffects = { columnDragEnd = NoOp }
     }
 
 

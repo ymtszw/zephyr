@@ -18,17 +18,20 @@ so that we can test our views in PatternLab! DI, anyone?
 
 import Html exposing (Html)
 import View.Molecule.Wallpaper as Wallpaper
+import View.Organism.ColumnContainer as CCtnr
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (Style)
 
 
 type alias Props =
     { sidebarProps : Sidebar.Props
+    , columnCtnrProps : CCtnr.Props
     }
 
 
 type alias Effects msg =
     { sidebarEffects : Sidebar.Effects msg
+    , columnCtnrEffects : CCtnr.Effects msg
     }
 
 
@@ -36,6 +39,7 @@ render : Effects msg -> Props -> List (Html msg)
 render eff p =
     [ Wallpaper.zephyr
     , Sidebar.render eff.sidebarEffects p.sidebarProps
+    , CCtnr.render eff.columnCtnrEffects p.columnCtnrProps
     ]
 
 
