@@ -62,16 +62,7 @@ oneDarkDefaultFaceStyle =
 
 defaultFaceStyle : String -> Color -> Style
 defaultFaceStyle themeClass defaultColor =
-    let
-        selector =
-            String.join ","
-                [ "button." ++ themeClass
-                , "." ++ linkButtonClass ++ "." ++ themeClass
-                , "." ++ themeClass ++ " button"
-                , "." ++ themeClass ++ " ." ++ linkButtonClass
-                ]
-    in
-    s selector [ ( "background-color", cssRgba defaultColor ) ]
+    scoped (c themeClass) "button" [ ( "background-color", cssRgba defaultColor ) ]
 
 
 linkButtonStyles : List Style
@@ -79,21 +70,22 @@ linkButtonStyles =
     let
         linkSelectors =
             String.join ","
-                [ "a." ++ linkButtonClass ++ ":link"
-                , "a." ++ linkButtonClass ++ ":visited"
-                , "a." ++ linkButtonClass ++ ":hover"
-                , "a." ++ linkButtonClass ++ ":active"
+                [ "a" ++ c linkButtonClass ++ ":link"
+                , "a" ++ c linkButtonClass ++ ":visited"
+                , "a" ++ c linkButtonClass ++ ":hover"
+                , "a" ++ c linkButtonClass ++ ":active"
                 ]
     in
     -- Inline OR Block element that behave like a button but actually a link
-    [ c linkButtonClass
+    [ s (c linkButtonClass)
         [ ( "border-radius", "0.2em" )
         , ( "border-width", "0px" )
         , ( "cursor", "pointer" ) -- I deliberately want this. I am AGAINST the philosophy of "buttons do not need pointer."
+        , ( "width", "fit-content" ) -- XXX Applied in order to fit width to contents regardless of `display` value or contents, but this might not be supported by all browsers
         ]
         |> inject Layout.paddingInlineStyle
         |> inject oneDarkDefaultFaceStyle
-    , c (linkButtonClass ++ ":hover") [ ( "opacity", "0.9" ) ]
+    , s (c (linkButtonClass ++ ":hover")) [ ( "opacity", "0.9" ) ]
     , s linkSelectors [ ( "color", "inherit" ), ( "text-decoration", "none" ) ] -- Cancelling default link decorations
     ]
 

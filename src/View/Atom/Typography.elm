@@ -1,5 +1,5 @@
 module View.Atom.Typography exposing
-    ( t, link
+    ( t, link, ntLink
     , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
@@ -10,7 +10,7 @@ module View.Atom.Typography exposing
 
 {-| Typography Atoms.
 
-@docs t, link
+@docs t, link, ntLink
 @docs sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
@@ -54,6 +54,13 @@ link attrs { url, children } =
             ]
     in
     Html.a (linkAttrs ++ attrs) children
+
+
+{-| Creates a link with `newTab`.
+-}
+ntLink : List (Attribute msg) -> { url : String, children : List (Html msg) } -> Html msg
+ntLink attrs opts =
+    link (newTab :: attrs) opts
 
 
 
@@ -188,19 +195,19 @@ styles : List Style
 styles =
     [ -- Font sizes
       sizeBaseStyle
-    , c sizeDetailClass [ ( "font-size", px (scale12 -1) ) ]
-    , c sizeHeadlineClass [ ( "font-size", px (scale12 1) ) ]
-    , c sizeTitleClass [ ( "font-size", px (scale12 2) ) ]
-    , c sizeSectionClass [ ( "font-size", px (scale12 4) ) ]
-    , c sizeImpactClass [ ( "font-size", px (scale12 12) ) ]
+    , s (c sizeDetailClass) [ ( "font-size", px (scale12 -1) ) ]
+    , s (c sizeHeadlineClass) [ ( "font-size", px (scale12 1) ) ]
+    , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
+    , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
+    , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
       sansSerifStyle
-    , c serifClass [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
+    , s (c serifClass) [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
     , monospaceStyle
     , -- Font decorations
-      c italicClass [ ( "font-style", "italic" ) ]
-    , c boldClass [ ( "font-weight", "700" ) ]
-    , c underlineClass [ ( "text-decoration", "underline" ) ]
+      s (c italicClass) [ ( "font-style", "italic" ) ]
+    , s (c boldClass) [ ( "font-weight", "700" ) ]
+    , s (c underlineClass) [ ( "text-decoration", "underline" ) ]
     ]
         ++ fontColorStyles
         ++ inlineCodeStyles
@@ -209,7 +216,7 @@ styles =
 
 sizeBaseStyle : Style
 sizeBaseStyle =
-    c sizeBaseClass [ ( "font-size", px (scale12 0) ) ]
+    s (c sizeBaseClass) [ ( "font-size", px (scale12 0) ) ]
 
 
 sizeBaseClass : String
@@ -244,7 +251,7 @@ sizeImpactClass =
 
 sansSerifStyle : Style
 sansSerifStyle =
-    c sansSerifClass [ fontFamily [ "Tahoma", "Verdana", "Arial", "Helvetica", "sans-serif" ] ]
+    s (c sansSerifClass) [ fontFamily [ "Tahoma", "Verdana", "Arial", "Helvetica", "sans-serif" ] ]
 
 
 sansSerifClass : String
@@ -264,7 +271,7 @@ serifClass =
 
 monospaceStyle : Style
 monospaceStyle =
-    c monospaceClass [ fontFamily [ "Consolas", "Lucida Console", "Monaco", "Courier New", "monospace" ] ]
+    s (c monospaceClass) [ fontFamily [ "Consolas", "Lucida Console", "Monaco", "Courier New", "monospace" ] ]
 
 
 monospaceClass : String
@@ -289,7 +296,7 @@ underlineClass =
 
 fontColorStyles : List Style
 fontColorStyles =
-    [ c oneDarkClass [ ( "color", cssRgba oneDarkTheme.text ) ] -- Default Font Color of the theme
+    [ s (c oneDarkClass) [ ( "color", cssRgba oneDarkTheme.text ) ] -- Default Font Color of the theme
     , f oneDarkClass colorTextClass oneDarkTheme.text
     , f oneDarkClass colorNoteClass oneDarkTheme.note
     , f oneDarkClass colorLinkClass oneDarkTheme.link
@@ -297,7 +304,7 @@ fontColorStyles =
     , f oneDarkClass colorSuccClass oneDarkTheme.succ
     , f oneDarkClass colorWarnClass oneDarkTheme.warn
     , f oneDarkClass colorErrClass oneDarkTheme.err
-    , c aubergineClass [ ( "color", cssRgba aubergineTheme.text ) ] -- Default Font Color of the theme
+    , s (c aubergineClass) [ ( "color", cssRgba aubergineTheme.text ) ] -- Default Font Color of the theme
     , f aubergineClass colorTextClass aubergineTheme.text
     , f aubergineClass colorNoteClass aubergineTheme.note
     , f aubergineClass colorLinkClass aubergineTheme.link
@@ -310,14 +317,7 @@ fontColorStyles =
 
 f : String -> String -> Color -> Style
 f themeClass modeClass color =
-    let
-        selector =
-            String.join ","
-                [ "." ++ themeClass ++ "." ++ modeClass -- Same element
-                , "." ++ themeClass ++ " ." ++ modeClass -- Descendants
-                ]
-    in
-    s selector [ ( "color", cssRgba color ) ]
+    scoped (c themeClass) (c modeClass) [ ( "color", cssRgba color ) ]
 
 
 colorTextClass : String
@@ -357,34 +357,20 @@ colorErrClass =
 
 inlineCodeStyles : List Style
 inlineCodeStyles =
-    let
-        styled class theme =
-            s ("." ++ class ++ " code")
-                [ ( "color", cssRgba theme.err ), ( "background-color", cssRgba theme.bg ) ]
-    in
     [ s "code" [ ( "border-radius", "0.2em" ) ]
         |> inject monospaceStyle
         |> inject Layout.paddingInlineStyle
-    , styled oneDarkClass oneDarkTheme
-    , styled aubergineClass aubergineTheme
+    , scoped (c oneDarkClass) "code" [ ( "color", cssRgba oneDarkTheme.err ), ( "background-color", cssRgba oneDarkTheme.bg ) ]
+    , scoped (c aubergineClass) "code" [ ( "color", cssRgba aubergineTheme.err ), ( "background-color", cssRgba aubergineTheme.bg ) ]
     ]
 
 
 linkStyles : List Style
 linkStyles =
-    let
-        styled class theme =
-            let
-                selector =
-                    String.join ","
-                        [ "." ++ class ++ " a:link"
-                        , "." ++ class ++ " a:visited"
-                        ]
-            in
-            s selector [ ( "color", cssRgba theme.link ) ]
-    in
     [ s "a:link" [ ( "text-decoration", "none" ) ] -- Cancelling UA's default decorations
     , s "a:link:hover" [ ( "text-decoration", "underline" ) ]
-    , styled oneDarkClass oneDarkTheme
-    , styled aubergineClass aubergineTheme
+    , scoped (c oneDarkClass) "a:link" [ ( "color", cssRgba oneDarkTheme.link ) ]
+    , scoped (c oneDarkClass) "a:visited" [ ( "color", cssRgba oneDarkTheme.link ) ]
+    , scoped (c aubergineClass) "a:link" [ ( "color", cssRgba aubergineTheme.link ) ]
+    , scoped (c aubergineClass) "a:visited" [ ( "color", cssRgba aubergineTheme.link ) ]
     ]

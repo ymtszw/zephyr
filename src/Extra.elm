@@ -1,4 +1,4 @@
-module Extra exposing (doAfter, doT)
+module Extra exposing (doAfter, doT, emit)
 
 {-| Extensions for Platform.Cmd/Sub and Task.
 -}
@@ -25,3 +25,10 @@ doAfter timeout toMsg taskOnTimeout =
 doT : Task x a -> (a -> Task x b) -> Task x b
 doT t1 toT2 =
     Task.andThen toT2 t1
+
+
+{-| Just emit an arbitrary message.
+-}
+emit : msg -> Cmd msg
+emit =
+    Task.succeed >> Task.perform identity

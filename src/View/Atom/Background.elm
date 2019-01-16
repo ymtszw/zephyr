@@ -91,24 +91,17 @@ styles =
 
 oneDarkMainStyle : Style
 oneDarkMainStyle =
-    c oneDarkClass [ ( "background-color", cssRgba oneDarkTheme.main ) ]
+    s (c oneDarkClass) [ ( "background-color", cssRgba oneDarkTheme.main ) ]
 
 
 aubergineMainStyle : Style
 aubergineMainStyle =
-    c aubergineClass [ ( "background-color", cssRgba aubergineTheme.main ) ]
+    s (c aubergineClass) [ ( "background-color", cssRgba aubergineTheme.main ) ]
 
 
 bg : String -> String -> Color -> Style
 bg themeClass modeClass color =
-    let
-        selector =
-            String.join ","
-                [ "." ++ themeClass ++ "." ++ modeClass -- Same element
-                , "." ++ themeClass ++ " ." ++ modeClass -- Descendants
-                ]
-    in
-    s selector [ ( "background-color", cssRgba color ) ]
+    scoped (c themeClass) (c modeClass) [ ( "background-color", cssRgba color ) ]
 
 
 colorBgClass : String

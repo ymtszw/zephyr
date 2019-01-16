@@ -1,39 +1,48 @@
 module View.Atom.Layout exposing
-    ( widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
-    , padding2, padding5, padding10, padding15, paddingInline
+    ( widthFill, block
+    , flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+    , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
+    , withBadge
     , styles, paddingInlineStyle
     )
 
 {-| Essential layouting Atoms.
 
-@docs widthFill, flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter
-@docs padding2, padding5, padding10, padding15, paddingInline
+@docs widthFill, block
+@docs flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+@docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
+@docs withBadge
 @docs styles, paddingInlineStyle
 
 -}
 
-import Html exposing (Attribute)
-import Html.Attributes as Attributes
+import Html exposing (Attribute, Html, div)
+import Html.Attributes exposing (class, style)
 import View.Style exposing (..)
 
 
 widthFill : Attribute msg
 widthFill =
-    Attributes.class widthFillClass
+    class widthFillClass
+
+
+block : Attribute msg
+block =
+    class blockClass
 
 
 flexRow : Attribute msg
 flexRow =
-    Attributes.class flexRowClass
+    class flexRowClass
 
 
 flexColumn : Attribute msg
 flexColumn =
-    Attributes.class flexColumnClass
+    class flexColumnClass
 
 
 {-| Mostly equivalent to `flexRow`,
@@ -45,14 +54,14 @@ using this instead of `flexRow` may help.
 -}
 growRow : Attribute msg
 growRow =
-    Attributes.class growRowClass
+    class growRowClass
 
 
 {-| Similar to `growRow`, for a column.
 -}
 growColumn : Attribute msg
 growColumn =
-    Attributes.class growColumnClass
+    class growColumnClass
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
@@ -60,7 +69,7 @@ if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 flexItem : Attribute msg
 flexItem =
-    Attributes.class flexItemClass
+    class flexItemClass
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `growRow` or `growColumn`
@@ -68,17 +77,17 @@ if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
 -}
 growItem : Attribute msg
 growItem =
-    Attributes.class growItemClass
+    class growItemClass
 
 
 flexGrow : Attribute msg
 flexGrow =
-    Attributes.class flexGrowClass
+    class flexGrowClass
 
 
 flexShrink : Attribute msg
 flexShrink =
-    Attributes.class flexShrinkClass
+    class flexShrinkClass
 
 
 {-| Sets `align-items: center;`.
@@ -92,78 +101,139 @@ Not that it ceases to "stretch" children's cross-sizes. See
 -}
 flexCenter : Attribute msg
 flexCenter =
-    Attributes.class flexCenterClass
+    class flexCenterClass
+
+
+{-| We set `flex-basis: 0%;` by default, in order to allow inline elements to collapse.
+Explicitly setting this can prevent unintended collapsing.
+
+In `flexRow`, you should supply width value,
+conversely in `flexColumn`, supply height value.
+
+Note that `flex-basis` has precedence over `width` or `height`.
+
+-}
+flexBasis : String -> Attribute msg
+flexBasis widthOrHeight =
+    style "flex-basis" widthOrHeight
+
+
+{-| Set `flex-basis: auto;` which is UA default.
+
+With this setting, containers respect items' `width` or `height`.
+
+-}
+flexBasisAuto : Attribute msg
+flexBasisAuto =
+    class flexBasisAutoClass
+
+
+noPadding : Attribute msg
+noPadding =
+    class (paddingClass 0)
 
 
 padding2 : Attribute msg
 padding2 =
-    Attributes.class (paddingClass 2)
+    class (paddingClass 2)
 
 
 padding5 : Attribute msg
 padding5 =
-    Attributes.class (paddingClass 5)
+    class (paddingClass 5)
 
 
 padding10 : Attribute msg
 padding10 =
-    Attributes.class (paddingClass 10)
+    class (paddingClass 10)
 
 
 padding15 : Attribute msg
 padding15 =
-    Attributes.class (paddingClass 15)
+    class (paddingClass 15)
 
 
 paddingInline : Attribute msg
 paddingInline =
-    Attributes.class paddingInlineClass
+    class paddingInlineClass
 
 
 spacingRow2 : Attribute msg
 spacingRow2 =
-    Attributes.class (spacingRowClass 2)
+    class (spacingRowClass 2)
 
 
 spacingRow5 : Attribute msg
 spacingRow5 =
-    Attributes.class (spacingRowClass 5)
+    class (spacingRowClass 5)
 
 
 spacingRow10 : Attribute msg
 spacingRow10 =
-    Attributes.class (spacingRowClass 10)
+    class (spacingRowClass 10)
 
 
 spacingRow15 : Attribute msg
 spacingRow15 =
-    Attributes.class (spacingRowClass 15)
+    class (spacingRowClass 15)
 
 
 spacingColumn2 : Attribute msg
 spacingColumn2 =
-    Attributes.class (spacingColumnClass 2)
+    class (spacingColumnClass 2)
 
 
 spacingColumn5 : Attribute msg
 spacingColumn5 =
-    Attributes.class (spacingColumnClass 5)
+    class (spacingColumnClass 5)
 
 
 spacingColumn10 : Attribute msg
 spacingColumn10 =
-    Attributes.class (spacingColumnClass 10)
+    class (spacingColumnClass 10)
 
 
 spacingColumn15 : Attribute msg
 spacingColumn15 =
-    Attributes.class (spacingColumnClass 15)
+    class (spacingColumnClass 15)
+
+
+withBadge :
+    List (Attribute msg)
+    ->
+        { topRight : Maybe (Html msg)
+        , bottomRight : Maybe (Html msg)
+        , content : Html msg
+        }
+    -> Html msg
+withBadge userAttrs opts =
+    -- XXX: Supporting left-aligned badges within this scheme is not straightforward; not doing now
+    div (class badgeOuterClass :: userAttrs)
+        [ opts.content
+        , case opts.topRight of
+            Just b ->
+                div [ class badgeTopRightClass ] [ b ]
+
+            Nothing ->
+                none
+        , case opts.bottomRight of
+            Just b ->
+                div [ class badgeBottomRightClass ] [ b ]
+
+            Nothing ->
+                none
+        ]
+
+
+
+-- STYLE
 
 
 styles : List Style
 styles =
     -- XXX Order matters!
-    [ c widthFillClass [ ( "width", "100%" ) ]
+    [ s (c widthFillClass) [ ( "width", "100%" ) ]
+    , s (c blockClass) [ ( "display", "block" ) ]
     , flexRowStyle
     , flexColumnStyle
     , derive ("." ++ growRowClass) flexRowStyle
@@ -175,6 +245,8 @@ styles =
     , flexGrowStyle
     , flexShrinkStyle
     , flexCenterStyle
+    , flexBasisAutoStyle
+    , paddingStyle 0
     , paddingStyle 2
     , paddingStyle 5
     , paddingStyle 10
@@ -189,6 +261,7 @@ styles =
     , spacingColumnStyle 10
     , spacingColumnStyle 15
     ]
+        ++ badgeStyles
 
 
 widthFillClass : String
@@ -196,34 +269,39 @@ widthFillClass =
     "wf"
 
 
+blockClass : String
+blockClass =
+    "bl"
+
+
 flexRowStyle : Style
 flexRowStyle =
-    c flexRowClass [ ( "display", "flex" ), ( "flex-direction", "row" ) ]
+    s (c flexRowClass) [ ( "display", "flex" ), ( "flex-direction", "row" ) ]
 
 
 flexRowClass : String
 flexRowClass =
-    "fr"
+    "flr"
 
 
 flexColumnStyle : Style
 flexColumnStyle =
-    c flexColumnClass [ ( "display", "flex" ), ( "flex-direction", "column" ) ]
+    s (c flexColumnClass) [ ( "display", "flex" ), ( "flex-direction", "column" ) ]
 
 
 flexColumnClass : String
 flexColumnClass =
-    "fc"
+    "flc"
 
 
 growRowClass : String
 growRowClass =
-    "gr"
+    "grr"
 
 
 growColumnClass : String
 growColumnClass =
-    "gc"
+    "grc"
 
 
 autoFlexItemStyle : Style
@@ -235,8 +313,8 @@ autoFlexItemStyle =
                     autoFlexItemSelectors
 
         childOfFlexBox tag =
-            [ "." ++ flexRowClass ++ ">" ++ tag
-            , "." ++ flexColumnClass ++ ">" ++ tag
+            [ c flexRowClass ++ ">" ++ tag
+            , c flexColumnClass ++ ">" ++ tag
             ]
     in
     derive autoFlexItemSelector flexItemStyle
@@ -249,16 +327,16 @@ autoFlexItemSelectors =
 
 flexItemStyle : Style
 flexItemStyle =
-    c flexItemClass
+    s (c flexItemClass)
         [ ( "flex-grow", "0" )
         , ( "flex-shrink", "0" ) -- No, do not shrink past contents' dimension by default
-        , ( "flex-basis", "0%" )
+        , ( "flex-basis", "0%" ) -- Allow elements to "collapse"
         ]
 
 
 flexItemClass : String
 flexItemClass =
-    "fi"
+    "fli"
 
 
 autoGrowItemStyle : Style
@@ -270,8 +348,8 @@ autoGrowItemStyle =
                     autoFlexItemSelectors
 
         childOfFlexBox tag =
-            [ "." ++ growRowClass ++ ">" ++ tag
-            , "." ++ growColumnClass ++ ">" ++ tag
+            [ c growRowClass ++ ">" ++ tag
+            , c growColumnClass ++ ">" ++ tag
             ]
     in
     derive autoGrowItemSelector growItemStyle
@@ -279,7 +357,7 @@ autoGrowItemStyle =
 
 growItemStyle : Style
 growItemStyle =
-    c growItemClass
+    s (c growItemClass)
         [ ( "flex-grow", "1" )
         , ( "flex-shrink", "0" )
         , ( "flex-basis", "0%" )
@@ -288,7 +366,7 @@ growItemStyle =
 
 growItemClass : String
 growItemClass =
-    "gi"
+    "gri"
 
 
 flexGrowStyle : Style
@@ -296,10 +374,10 @@ flexGrowStyle =
     let
         growingChildlen =
             String.join ","
-                [ "." ++ flexRowClass ++ ">." ++ flexGrowClass
-                , "." ++ flexColumnClass ++ ">." ++ flexGrowClass
-                , "." ++ growRowClass ++ ">." ++ flexGrowClass
-                , "." ++ growColumnClass ++ ">." ++ flexGrowClass
+                [ c flexRowClass ++ ">" ++ c flexGrowClass
+                , c flexColumnClass ++ ">" ++ c flexGrowClass
+                , c growRowClass ++ ">" ++ c flexGrowClass
+                , c growColumnClass ++ ">" ++ c flexGrowClass
                 ]
     in
     s growingChildlen [ ( "flex-grow", "10000" ) ]
@@ -307,7 +385,7 @@ flexGrowStyle =
 
 flexGrowClass : String
 flexGrowClass =
-    "fg"
+    "flg"
 
 
 flexShrinkStyle : Style
@@ -315,10 +393,10 @@ flexShrinkStyle =
     let
         shrinkingChildlen =
             String.join ","
-                [ "." ++ flexRowClass ++ ">." ++ flexShrinkClass
-                , "." ++ flexColumnClass ++ ">." ++ flexShrinkClass
-                , "." ++ growRowClass ++ ">." ++ flexShrinkClass
-                , "." ++ growColumnClass ++ ">." ++ flexShrinkClass
+                [ c flexRowClass ++ ">" ++ c flexShrinkClass
+                , c flexColumnClass ++ ">" ++ c flexShrinkClass
+                , c growRowClass ++ ">" ++ c flexShrinkClass
+                , c growColumnClass ++ ">" ++ c flexShrinkClass
                 ]
     in
     s shrinkingChildlen [ ( "flex-shrink", "1" ) ]
@@ -326,31 +404,50 @@ flexShrinkStyle =
 
 flexShrinkClass : String
 flexShrinkClass =
-    "fs"
+    "fls"
 
 
 flexCenterStyle : Style
 flexCenterStyle =
     let
-        shrinkingChildlen =
+        centeredFlex =
             String.join ","
-                [ "." ++ flexRowClass ++ "." ++ flexCenterClass
-                , "." ++ flexColumnClass ++ "." ++ flexCenterClass
-                , "." ++ growRowClass ++ "." ++ flexCenterClass
-                , "." ++ growColumnClass ++ "." ++ flexCenterClass
+                [ c flexRowClass ++ c flexCenterClass
+                , c flexColumnClass ++ c flexCenterClass
+                , c growRowClass ++ c flexCenterClass
+                , c growColumnClass ++ c flexCenterClass
                 ]
     in
-    s shrinkingChildlen [ ( "align-items", "center" ) ]
+    s centeredFlex [ ( "align-items", "center" ) ]
 
 
 flexCenterClass : String
 flexCenterClass =
-    "fcenter"
+    "flcenter"
+
+
+flexBasisAutoStyle : Style
+flexBasisAutoStyle =
+    let
+        childlen =
+            String.join ","
+                [ c flexRowClass ++ ">" ++ c flexBasisAutoClass
+                , c flexColumnClass ++ ">" ++ c flexBasisAutoClass
+                , c growRowClass ++ ">" ++ c flexBasisAutoClass
+                , c growColumnClass ++ ">" ++ c flexBasisAutoClass
+                ]
+    in
+    s childlen [ ( "flex-basis", "auto" ) ]
+
+
+flexBasisAutoClass : String
+flexBasisAutoClass =
+    "flbauto"
 
 
 paddingStyle : Int -> Style
 paddingStyle pad =
-    c (paddingClass pad) [ ( "padding", px pad ) ]
+    s (c (paddingClass pad)) [ ( "padding", px pad ) ]
 
 
 paddingClass : Int -> String
@@ -360,7 +457,7 @@ paddingClass pad =
 
 paddingInlineStyle : Style
 paddingInlineStyle =
-    c paddingInlineClass
+    s (c paddingInlineClass)
         [ ( "padding-left", "0.4em" )
         , ( "padding-top", "0.1em" )
         , ( "padding-right", "0.4em" )
@@ -382,19 +479,19 @@ spacingRowStyle space =
                     flexItems
 
         trailingChildOfRow selector =
-            "." ++ spacingRowClass space ++ ">" ++ selector ++ ":nth-child(n+2)"
+            c (spacingRowClass space) ++ ">" ++ selector ++ ":nth-child(n+2)"
     in
     s spacedItemsSelector [ ( "margin-left", px space ) ]
 
 
 flexItems : List String
 flexItems =
-    ".fi" :: autoFlexItemSelectors
+    c flexItemClass :: c growItemClass :: autoFlexItemSelectors
 
 
 spacingRowClass : Int -> String
 spacingRowClass space =
-    "sr" ++ String.fromInt space
+    "spr" ++ String.fromInt space
 
 
 spacingColumnStyle : Int -> Style
@@ -406,11 +503,45 @@ spacingColumnStyle space =
                     flexItems
 
         trailingChildOfColumn selector =
-            "." ++ spacingColumnClass space ++ ">" ++ selector ++ ":nth-child(n+2)"
+            c (spacingColumnClass space) ++ ">" ++ selector ++ ":nth-child(n+2)"
     in
     s spacedItemsSelector [ ( "margin-top", px space ) ]
 
 
 spacingColumnClass : Int -> String
 spacingColumnClass space =
-    "sc" ++ String.fromInt space
+    "spc" ++ String.fromInt space
+
+
+badgeStyles : List Style
+badgeStyles =
+    [ s (c badgeOuterClass)
+        [ ( "display", "flex" )
+        , ( "flex-direction", "row-reverse" )
+        ]
+    , s (c badgeTopRightClass)
+        [ ( "position", "absolute" )
+        , ( "align-self", "flex-start" )
+        , ( "overflow", "hidden" )
+        ]
+    , s (c badgeBottomRightClass)
+        [ ( "position", "absolute" )
+        , ( "align-self", "flex-end" )
+        , ( "overflow", "hidden" )
+        ]
+    ]
+
+
+badgeOuterClass : String
+badgeOuterClass =
+    "badgeouter"
+
+
+badgeTopRightClass : String
+badgeTopRightClass =
+    "badgetopr"
+
+
+badgeBottomRightClass : String
+badgeBottomRightClass =
+    "badgebotr"

@@ -4,9 +4,16 @@ import Html
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
+import View.Atom.Image as Image
+import View.Atom.Input as Input
+import View.Atom.Input.Select as Select
 import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
+import View.Molecule.Icon as Icon
+import View.Molecule.Wallpaper as Wallpaper
+import View.Organism.ColumnContainer as ColumnContainer
+import View.Organism.Sidebar as Sidebar
 import View.Style exposing (..)
 
 
@@ -25,10 +32,17 @@ rendered =
             preamble
                 ++ Typography.styles
                 ++ TextBlock.styles
-                ++ Border.styles
                 ++ Button.styles
+                ++ Select.styles
+                ++ Input.styles
+                ++ Border.styles
                 ++ Background.styles
                 ++ Layout.styles
+                ++ Image.styles
+                ++ Icon.styles
+                ++ Wallpaper.styles
+                ++ Sidebar.styles
+                ++ ColumnContainer.styles
 
 
 length : Int
@@ -42,6 +56,8 @@ preamble =
 
 
 {-| Resets CSS, and apply some global defaults.
+
+Based on:
 
 <http://meyerweb.com/eric/tools/css/reset/>
 v2.0 | 20110126
@@ -73,9 +89,10 @@ resetUserAgentStyles =
         [ ( "margin", "0" )
         , ( "padding", "0" )
         , ( "border", "0" )
-        , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading parents' font settings to children
+        , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading ancestors' font settings to descendants
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
+        , ( "position", "relative" ) -- We use position: absolute; blocks for badges, which requires non-static (non-default) containing ancestor block
         ]
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
@@ -103,11 +120,8 @@ globalStyles =
         , ( "box-sizing", "border-box" ) -- Really, WHO needs other than border-box??? JK
         ]
     , s ":focus"
-        [ ( "box-shadow", "0px 0px 3px 3px #677bc4" )
+        [ ( "box-shadow", "0px 0px 3px 1px #677bc4" )
         , ( "outline", "none" )
         ]
-    , -- When we use images as a cosmetic tokens, we almost always need them to be rendered as blocks.
-      -- Override when inlining is explicitly needed
-      s "img" [ ( "display", "block" ) ]
     , s "input,textarea,button" [ ( "color", "inherit" ) ]
     ]

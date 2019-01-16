@@ -3,8 +3,9 @@ module View.PatternLab exposing (main)
 import Browser
 import Browser.Navigation exposing (Key)
 import Html exposing (..)
-import Html.Attributes exposing (disabled, style)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
+import Octicons
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
@@ -12,11 +13,19 @@ import Url.Parser as U
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
+import View.Atom.Image as Image
+import View.Atom.Input as Input
+import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
+import View.Molecule.Icon as Icon
+import View.Organism.ColumnContainer as ColumnContainer
+import View.Organism.Sidebar as Sidebar
+import View.Style exposing (none, px)
 import View.Stylesheet
+import View.Template.Main
 
 
 main : Program () Model Msg
@@ -25,7 +34,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = \m -> Select.sub SelectCtrl m.select
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
@@ -34,6 +43,11 @@ main =
 type alias Model =
     { key : Key
     , route : Route
+    , textInput : String
+    , toggle : Bool
+    , select : Select.State
+    , selected : Maybe String
+    , numColumns : Int
     }
 
 
@@ -44,7 +58,185 @@ type Route
     | Border
     | Background
     | Layout
+    | Image
     | Button
+    | Input
+    | Icon
+    | Sidebar
+    | MainTemplate
+
+
+init : () -> Url -> Key -> ( Model, Cmd Msg )
+init () url key =
+    ( { key = key
+      , route = urlToRoute url
+      , textInput = ""
+      , toggle = False
+      , select = Select.AllClosed
+      , selected = Nothing
+      , numColumns = 10
+      }
+    , Cmd.none
+    )
+
+
+urlToRoute : Url -> Route
+urlToRoute url =
+    let
+        urlParser =
+            U.oneOf
+                [ U.map Typography (U.s "typography")
+                , U.map TextBlock (U.s "text_block")
+                , U.map Border (U.s "border")
+                , U.map Background (U.s "background")
+                , U.map Layout (U.s "layout")
+                , U.map Image (U.s "image")
+                , U.map Button (U.s "button")
+                , U.map Input (U.s "input")
+                , U.map Icon (U.s "icon")
+                , U.map Sidebar (U.s "sidebar")
+                , U.map MainTemplate (U.s "main_template")
+                ]
+    in
+    Maybe.withDefault Top (U.parse urlParser url)
+
+
+type Msg
+    = NoOp
+    | GoTo Browser.UrlRequest
+    | Arrived Url
+    | TextInput String
+    | Toggle Bool
+    | SelectCtrl (Select.Msg Msg)
+    | Selected String
+    | AddColumn
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg m =
+    case msg of
+        NoOp ->
+            ( m, Cmd.none )
+
+        GoTo (Browser.Internal url) ->
+            ( m, Browser.Navigation.pushUrl m.key (Url.toString url) )
+
+        GoTo (Browser.External urlStr) ->
+            ( m, Browser.Navigation.load urlStr )
+
+        TextInput str ->
+            ( { m | textInput = str }, Cmd.none )
+
+        Arrived url ->
+            ( { m | route = urlToRoute url }, Cmd.none )
+
+        Toggle bool ->
+            ( { m | toggle = bool }, Cmd.none )
+
+        SelectCtrl sMsg ->
+            let
+                ( ss, cmd ) =
+                    Select.update SelectCtrl sMsg m.select
+            in
+            ( { m | select = ss }, cmd )
+
+        Selected opt ->
+            ( { m | selected = Just opt }, Cmd.none )
+
+        AddColumn ->
+            ( { m | numColumns = m.numColumns + 1 }, Cmd.none )
+
+
+view : Model -> { title : String, body : List (Html Msg) }
+view m =
+    let
+        pLab contents =
+            [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
+    in
+    { title = "Zephyr: Pattern Lab"
+    , body =
+        (::) View.Stylesheet.render <|
+            case m.route of
+                Top ->
+                    pLab [ introduction, theme ]
+
+                Typography ->
+                    pLab [ typography ]
+
+                TextBlock ->
+                    pLab [ textBlock ]
+
+                Border ->
+                    pLab [ border ]
+
+                Background ->
+                    pLab [ background ]
+
+                Layout ->
+                    pLab [ layout ]
+
+                Image ->
+                    pLab [ image ]
+
+                Button ->
+                    pLab [ button_ ]
+
+                Input ->
+                    pLab [ input_ m ]
+
+                Icon ->
+                    pLab [ icon ]
+
+                Sidebar ->
+                    pLab [ sidebar m ]
+
+                MainTemplate ->
+                    mainTemplate m
+    }
+
+
+navi : Route -> Html Msg
+navi r =
+    div [ flexColumn, flexCenter, spacingColumn10, padding15 ]
+        [ div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
+            , naviButton r Top "Top"
+            , naviButton r Typography "Typography"
+            , naviButton r TextBlock "TextBlock"
+            , naviButton r Border "Border"
+            , naviButton r Background "Background"
+            , naviButton r Layout "Layout"
+            , naviButton r Image "Image"
+            , naviButton r Button "Button"
+            , naviButton r Input "Input"
+            ]
+        , div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Molecules" ]
+            , naviButton r Icon "Icon"
+            ]
+        , div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
+            , naviButton r Sidebar "Sidebar"
+            ]
+        , div [ flexRow, flexCenter, spacingRow15 ]
+            [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
+            , naviButton r MainTemplate "Main"
+            ]
+        ]
+
+
+naviButton : Route -> Route -> String -> Html Msg
+naviButton current hit btnLabel =
+    let
+        c =
+            if current == hit then
+                Background.colorSucc
+
+            else
+                Background.colorPrim
+    in
+    Button.link [ sizeHeadline, padding10, flexItem, c ]
+        { url = routeToString hit, children = [ t btnLabel ] }
 
 
 routeToString : Route -> String
@@ -72,109 +264,23 @@ routeToString r =
         Layout ->
             abs_ [ "layout" ]
 
+        Image ->
+            abs_ [ "image" ]
+
         Button ->
             abs_ [ "button" ]
 
+        Input ->
+            abs_ [ "input" ]
 
-init : () -> Url -> Key -> ( Model, Cmd Msg )
-init () url key =
-    ( { key = key, route = urlToRoute url }, Cmd.none )
+        Icon ->
+            abs_ [ "icon" ]
 
+        Sidebar ->
+            abs_ [ "sidebar" ]
 
-urlToRoute : Url -> Route
-urlToRoute url =
-    let
-        urlParser =
-            U.oneOf
-                [ U.map Typography (U.s "typography")
-                , U.map TextBlock (U.s "text_block")
-                , U.map Border (U.s "border")
-                , U.map Background (U.s "background")
-                , U.map Layout (U.s "layout")
-                , U.map Button (U.s "button")
-                ]
-    in
-    Maybe.withDefault Top (U.parse urlParser url)
-
-
-type Msg
-    = GoTo Browser.UrlRequest
-    | Arrived Url
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg m =
-    case msg of
-        GoTo (Browser.Internal url) ->
-            ( m, Browser.Navigation.pushUrl m.key (Url.toString url) )
-
-        GoTo (Browser.External urlStr) ->
-            ( m, Browser.Navigation.load urlStr )
-
-        Arrived url ->
-            ( { m | route = urlToRoute url }, Cmd.none )
-
-
-view : Model -> { title : String, body : List (Html Msg) }
-view m =
-    { title = "Zephyr: Pattern Lab"
-    , body =
-        [ View.Stylesheet.render
-        , div [ flexColumn, widthFill, spacingColumn15, oneDark ] <|
-            (::) (navi m.route) <|
-                case m.route of
-                    Top ->
-                        [ introduction, theme ]
-
-                    Typography ->
-                        [ typography ]
-
-                    TextBlock ->
-                        [ textBlock ]
-
-                    Border ->
-                        [ border ]
-
-                    Background ->
-                        [ background ]
-
-                    Layout ->
-                        [ layout ]
-
-                    Button ->
-                        [ button_ ]
-        ]
-    }
-
-
-navi : Route -> Html Msg
-navi r =
-    div [ flexColumn, flexCenter, spacingColumn10, padding15 ]
-        [ div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
-            , naviButton r Top "Top"
-            , naviButton r Typography "Typography"
-            , naviButton r TextBlock "TextBlock"
-            , naviButton r Border "Border"
-            , naviButton r Background "Background"
-            , naviButton r Layout "Layout"
-            , naviButton r Button "Button"
-            ]
-        ]
-
-
-naviButton : Route -> Route -> String -> Html Msg
-naviButton current hit btnLabel =
-    let
-        c =
-            if current == hit then
-                Background.colorSucc
-
-            else
-                Background.colorPrim
-    in
-    Button.link [ sizeHeadline, padding10, flexItem, c ]
-        { url = routeToString hit, children = [ t btnLabel ] }
+        MainTemplate ->
+            abs_ [ "main_template" ]
 
 
 introduction : Html Msg
@@ -202,13 +308,18 @@ introduction =
             [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
             , pre [ padding10, Border.round5, Border.w1, Border.solid ]
                 [ t """import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (..)
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
+import View.Atom.Image as Image
+import View.Atom.Input as Input
+import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (aubergine, oneDark)
-import View.Atom.Typography exposing (..)"""
+import View.Atom.TextBlock exposing (forceBreak)
+import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
+import View.Atom.Typography exposing (..)
+import View.Style exposing (px)"""
                 ]
             ]
         ]
@@ -436,6 +547,8 @@ border =
             div [ padding5, Border.solid, Border.w1, Border.round2 ] [ t "I'm surrounded by rounded solid border." ]
         , withSource "div [ padding5, Border.solid, Border.w1, Border.round5 ] [ t \"I'm surrounded by more rounded solid border.\" ]" <|
             div [ padding5, Border.solid, Border.w1, Border.round5 ] [ t "I'm surrounded by more rounded solid border." ]
+        , withSource """div [ padding5, Border.solid, Border.w1, Border.elliptic ] [ t "I'm elliptic!" ]""" <|
+            div [ padding5, Border.solid, Border.w1, Border.elliptic ] [ t "I'm elliptic!" ]
         , withSource """div [ growRow ]
     [ div [ Border.leftRound5, padding10, Background.colorSucc ] [ t "I'm left, and border-rounded." ]
     , div [ padding10, Background.colorWarn ] [ t "I'm center, and not border-rounded." ]
@@ -506,72 +619,90 @@ background =
 
 layout : Html Msg
 layout =
+    let
+        basics =
+            section []
+                [ h2 [ sizeTitle ] [ t "Basics" ]
+                , withSource """div [ Border.solid, Border.w1 ] [ t "I am a bare ", code [] [ t "div" ] ]""" <|
+                    div [ Border.solid, Border.w1, flexShrink ] [ t "I am a bare ", code [] [ t "div" ] ]
+                , withSource """div [ widthFill, Border.solid, Border.w1 ]
+    [ t "I eat all available width. "
+    , t "Though, since I am a child of "
+    , code [] [ t "growRow" ]
+    , t ", I am automatically stretched horizontally."
+    ]""" <|
+                    div [ widthFill, Border.solid, Border.w1 ]
+                        [ t "I eat all available width. "
+                        , t "Though, since I am a child of "
+                        , code [] [ t "growRow" ]
+                        , t ", I am automatically stretched horizontally."
+                        ]
+                , withSource """div [ Border.solid, Border.w1 ]
+    [ code [] [ t "block" ]
+    , t " enforces any elements to become a block element, like this:"
+    , code [ block ] [ t "I'm blockified." ]
+    ]""" <|
+                    div [ Border.solid, Border.w1 ]
+                        [ code [] [ t "block" ]
+                        , t " enforces any elements to become a block element, like this:"
+                        , code [ block ] [ t "I'm blockified." ]
+                        ]
+                ]
+    in
     section []
         [ h1 [ sizeSection ] [ t "Layout" ]
-        , h2 [ sizeTitle ] [ t "FlexBox and Width Control" ]
+        , basics
         , flexBox
-        , h2 [ sizeTitle ] [ t "Padding" ]
         , padding
-        , h2 [ sizeTitle ] [ t "Spacing" ]
         , spacing
+        , badge
         ]
 
 
 flexBox : Html Msg
 flexBox =
     section []
-        [ withSource """div [ widthFill, Border.solid, Border.w1 ]
-    [ t "I eat all available width. "
-    , t "Though, since I am a child of "
-    , code [] [ t "growRow" ]
-    , t ", I am automatically stretched horizontally."
-    ]""" <|
-            div [ widthFill, Border.solid, Border.w1 ]
-                [ t "I eat all available width. "
-                , t "Though, since I am a child of "
-                , code [] [ t "growRow" ]
-                , t ", I am automatically stretched horizontally."
-                ]
+        [ h2 [ sizeTitle ] [ t "FlexBox" ]
         , withSource """div [ flexRow ]
     [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
-    , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default." ]
+    , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default. ", t lorem ]
     ]""" <|
             div [ flexRow ]
                 [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
-                , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px width." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default." ]
+                , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex row. I grow. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are vertically stretched by default. ", t lorem ]
                 ]
-        , withSource """div [ flexColumn, style "height" "30vh" ]
-    [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows." ]
-    , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow." ]
-    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+        , withSource """div [ flexColumn ]
+    [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows. ", t lorem ]
+    , div [ Border.solid, Border.w1, flexShrink, flexBasis (px 200) ] [ t "I start from 200px height, but may shrink. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow. ", t lorem ]
+    , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default. ", t lorem ]
     ]""" <|
-            div [ flexColumn, style "height" "30vh" ]
-                [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows." ]
-                , div [ Border.solid, Border.w1, style "flex-basis" "200px" ] [ t "I am fixed 200px height." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow." ]
-                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default." ]
+            div [ flexColumn ]
+                [ div [ Border.solid, Border.w1 ] [ t "I shrink as short as content length allows. ", t lorem ]
+                , div [ Border.solid, Border.w1, flexShrink, flexBasis (px 200) ] [ t "I start from 200px height, but may shrink. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "We are children of flex column. I grow. ", t lorem ]
+                , div [ flexGrow, Border.solid, Border.w1 ] [ t "I grow too. Also, we are horizontally stretched by default. ", t lorem ]
                 ]
         , withSource """div [ growRow ]
-    [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow." ]
-    , div [ Border.solid, Border.w1 ] [ t "Like this." ]
-    , div [ Border.solid, Border.w1 ] [ t "Like us." ]
+    [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow. ", t lorem ]
+    , div [ Border.solid, Border.w1 ] [ t "Like this. ", t lorem ]
+    , div [ Border.solid, Border.w1 ] [ t "Like us. ", t lorem ]
     ]""" <|
             div [ growRow ]
-                [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow." ]
-                , div [ Border.solid, Border.w1 ] [ t "Like this." ]
-                , div [ Border.solid, Border.w1 ] [ t "Like us." ]
+                [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growRow" ], t " automatically grow. ", t lorem ]
+                , div [ Border.solid, Border.w1 ] [ t "Like this. ", t lorem ]
+                , div [ Border.solid, Border.w1 ] [ t "Like us. ", t lorem ]
                 ]
-        , withSource """div [ growColumn, style "height" "30vh" ]
+        , withSource """div [ growColumn, style "height" (px 300) ]
     [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growColumn" ], t " automatically grow." ]
     , div [ Border.solid, Border.w1 ] [ t "Like this." ]
     , div [ Border.solid, Border.w1 ] [ t "Like us." ]
     ]""" <|
-            div [ growColumn, style "height" "30vh" ]
+            div [ growColumn, style "height" (px 300) ]
                 [ div [ Border.solid, Border.w1 ] [ t "Children of ", code [] [ t "growColumn" ], t " automatically grow." ]
                 , div [ Border.solid, Border.w1 ] [ t "Like this." ]
                 , div [ Border.solid, Border.w1 ] [ t "Like us." ]
@@ -602,7 +733,8 @@ flexBox =
 padding : Html Msg
 padding =
     section []
-        [ withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
+        [ h2 [ sizeTitle ] [ t "Padding" ]
+        , withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
             div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]
         , withSource """div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
             div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]
@@ -618,7 +750,8 @@ padding =
 spacing : Html Msg
 spacing =
     section []
-        [ withSource """div [ growRow, Border.solid, Border.w1 ]
+        [ h2 [ sizeTitle ] [ t "Spacing" ]
+        , withSource """div [ growRow, Border.solid, Border.w1 ]
     [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
     , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
     , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
@@ -681,6 +814,146 @@ spacing =
         ]
 
 
+badge : Html Msg
+badge =
+    section []
+        [ h2 [ sizeTitle ] [ t "Badge" ]
+        , withSource """withBadge []
+    { content =
+        div [ padding2 ]
+            [ div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
+            ]
+    , topRight =
+        Just (div [ Background.colorSucc ] [ t "I'm top-right badge!" ])
+    , bottomRight =
+        Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
+    }""" <|
+            withBadge []
+                { content =
+                    div [ padding2 ]
+                        [ div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
+                        ]
+                , topRight =
+                    Just (div [ Background.colorSucc ] [ t "I'm top-right badge!" ])
+                , bottomRight =
+                    Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
+                }
+        , withSource """withBadge []
+    { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+    , topRight = Just (div [ Background.colorSucc ] [ t "Top-right only" ])
+    , bottomRight = Nothing
+    }""" <|
+            withBadge []
+                { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+                , topRight = Just (div [ Background.colorSucc ] [ t "Top-right only" ])
+                , bottomRight = Nothing
+                }
+        , withSource """withBadge []
+    { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+    , topRight = Nothing
+    , bottomRight = Just (div [ Background.colorErr ] [ t "Bottom-right only" ])
+    }""" <|
+            withBadge []
+                { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+                , topRight = Nothing
+                , bottomRight = Just (div [ Background.colorErr ] [ t "Bottom-right only" ])
+                }
+        ]
+
+
+image : Html Msg
+image =
+    section []
+        [ h1 [ sizeSection ] [ t "Image" ]
+        , withSource """img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []""" <|
+            img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []
+        , withSource """div []
+    [ t "By default, "
+    , code [] [ t "<img>" ]
+    , t "s are inline elements. "
+    , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
+    , t " "
+    , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
+    , t "You see that they are aligned by "
+    , code [] [ t "vertical-align: middle;" ]
+    , t " which is the global default. "
+    , img [ src (Image.ph 30 15), alt "30x15", width 30, height 15 ] []
+    , t "水兵リーベ。"
+    ]""" <|
+            div []
+                [ t "By default, "
+                , code [] [ t "<img>" ]
+                , t "s are inline elements. "
+                , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
+                , t " "
+                , img [ src (Image.ph 20 20), alt "20x20", width 20, height 20 ] []
+                , t "You see that they are aligned by "
+                , code [] [ t "vertical-align: middle;" ]
+                , t " which is the global default. "
+                , img [ src (Image.ph 30 15), alt "30x15", width 30, height 15 ] []
+                , t "水兵リーベ。"
+                ]
+        , withSource """div []
+    [ t "Can become a block element with "
+    , code [] [ t "block" ]
+    , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, block ] []
+    ]""" <|
+            div []
+                [ t "Can become a block element with "
+                , code [] [ t "block" ]
+                , img [ src (Image.ph 400 300), alt "400x300", width 400, height 300, block ] []
+                ]
+        , withSource """div [ growRow, spacingRow10 ]
+    [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
+    , img [ src (Image.ph 200 200), alt "200x200", width 200, height 200, flexItem, flexBasis (px 200) ] []
+    , p [] [ t "Use ", code [] [ t "flexBasis" ], t " if needs be. ", t (String.repeat 5 iroha) ]
+    ]""" <|
+            div [ growRow, spacingRow10 ]
+                [ p [] [ t "Or, for finer control, just become a flex item! ", t lorem ]
+                , img [ src (Image.ph 200 200), alt "200x200", width 200, height 200, flexItem, flexBasis (px 200) ] []
+                , p [] [ t "Use ", code [] [ t "flexBasis" ], t " if needs be. ", t (String.repeat 5 iroha) ]
+                ]
+        , withSource """div []
+    [ t "Can be rounded"
+    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.round5 ] []
+    ]""" <|
+            div []
+                [ t "Can be rounded"
+                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.round5 ] []
+                ]
+        , withSource """div []
+    [ t "Can be circled even!"
+    , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.elliptic ] []
+    ]""" <|
+            div []
+                [ t "Can be circled even!"
+                , img [ src (Image.ph 300 300), alt "300x300", width 300, height 300, block, Border.elliptic ] []
+                ]
+        , withSource """div []
+    [ t "Octicon API is also provided. "
+    , Image.octicon { size = 20, shape = Octicons.alert }
+    , t " They are also inline elements. "
+    , Image.octicon { size = 20, shape = Octicons.info }
+    ]""" <|
+            div []
+                [ t "Octicon API is also provided. "
+                , Image.octicon { size = 20, shape = Octicons.alert }
+                , t " They are also inline elements. "
+                , Image.octicon { size = 20, shape = Octicons.info }
+                ]
+        , withSource """div []
+    [ t "Octicon fill colors depend on upstream theme and custom styles. "
+    , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+    , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+    ]""" <|
+            div []
+                [ t "Octicon fill colors depend on upstream theme and custom styles. "
+                , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                ]
+        ]
+
+
 button_ : Html Msg
 button_ =
     let
@@ -710,6 +983,10 @@ button_ =
                     button [ Background.colorPrim, disabled True ] [ t "I'm disabled" ]
                 , withSource """button [ Background.colorPrim, Border.noRound ] [ t "Rounding can be canceled" ]""" <|
                     button [ Background.colorPrim, Border.noRound ] [ t "Rounding can be canceled" ]
+                , withSource """button [ Background.colorPrim, Border.round5 ] [ t "Explicit rounding can be set" ]""" <|
+                    button [ Background.colorPrim, Border.round5 ] [ t "Explicit rounding can be set" ]
+                , withSource """button [ Background.colorPrim, Border.w1, Border.solid ] [ t "Can have borders" ]""" <|
+                    button [ Background.colorPrim, Border.w1, Border.solid ] [ t "Can have borders" ]
                 , withSource """div []
     [ code [] [ t "<button>" ]
     , t " is an inline element. "
@@ -747,13 +1024,13 @@ button_ =
                     Button.link [ Background.colorWarn ] { url = "https://example.com", children = [ t "colorWarn" ] }
                 , withSource """Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }""" <|
                     Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }
-                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection ]
+                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
     { url = "https://example.com"
-    , children = [ t "Can be padded/sized" ]
+    , children = [ t "Can be padded/sized/bordered" ]
     }""" <|
-                    Button.link [ Background.colorPrim, padding10, sizeSection ]
+                    Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
                         { url = "https://example.com"
-                        , children = [ t "Can be padded/sized" ]
+                        , children = [ t "Can be padded/sized/bordered" ]
                         }
                 , withSource """Button.link
     [ Background.colorPrim, padding5, newTab ]
@@ -771,7 +1048,417 @@ button_ =
         [ h1 [ sizeSection ] [ t "Button" ]
         , themedStdButtons oneDark "oneDark"
         , themedStdButtons aubergine "aubergine"
-        , h2 [ sizeSection ] [ t "Link Button" ]
+        , h1 [ sizeSection ] [ t "Link Button" ]
         , themedLinkButtons oneDark "oneDark"
         , themedLinkButtons aubergine "aubergine"
         ]
+
+
+input_ : Model -> Html Msg
+input_ m =
+    section []
+        [ h1 [ sizeSection ] [ t "Input" ]
+        , textInput m.textInput
+        , toggle m.toggle
+        , select_ m.select m.selected
+        ]
+
+
+textInput : String -> Html Msg
+textInput currentInput =
+    section []
+        [ h2 [ sizeTitle ] [ t "Text" ]
+        , withSource """div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]""" <|
+            div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]
+        , withSource """div [] [ t "With placeholder. ", input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!" ] [] ]""" <|
+            div [] [ t "With placeholder. ", input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!" ] [] ]
+        , withSource """div []
+    [ t "Styles/layouts attached. "
+    , input
+        [ type_ "text"
+        , value currentInput
+        , onInput TextInput
+        , placeholder "Big input"
+        , block
+        , sizeHeadline
+        , padding5
+        , Border.round5
+        , Border.w1
+        , Border.solid
+        , style "width" (px 300)
+        ]
+        []
+    ]""" <|
+            div []
+                [ t "Styles/layouts attached. "
+                , input
+                    [ type_ "text"
+                    , value currentInput
+                    , onInput TextInput
+                    , placeholder "Big input"
+                    , block
+                    , sizeHeadline
+                    , padding5
+                    , Border.round5
+                    , Border.w1
+                    , Border.solid
+                    , style "width" (px 300)
+                    ]
+                    []
+                ]
+        , withSource """div [ aubergine ]
+    [ t "Can be themed."
+    , input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!", block ] []
+    ]""" <|
+            div [ aubergine ]
+                [ t "Can be themed."
+                , input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!", block ] []
+                ]
+        ]
+
+
+toggle : Bool -> Html Msg
+toggle checked =
+    section []
+        [ h2 [ sizeTitle ] [ t "Toggle" ]
+        , withSource """div []
+    [ t "Inline toggle input. Width and height are fixed 36x18px. "
+    , Input.toggle [] { onChange = Toggle, checked = checked }
+    ]""" <|
+            div []
+                [ t "Inline toggle input. Width and height are fixed 36x18px. "
+                , Input.toggle [] { onChange = Toggle, checked = checked }
+                ]
+        , withSource """div []
+    [ t "As a block element. "
+    , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+    ]""" <|
+            div []
+                [ t "As a block element. "
+                , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+                ]
+        , withSource """label []
+    [ t "With Label!"
+    , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+    ]""" <|
+            label []
+                [ t "With Label!"
+                , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+                ]
+        , withSource """div [ aubergine ]
+    [ t "Can be themed!"
+    , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+    ]""" <|
+            div [ aubergine ]
+                [ t "Can be themed!"
+                , Input.toggle [ block ] { onChange = Toggle, checked = checked }
+                ]
+        ]
+
+
+select_ : Select.State -> Maybe String -> Html Msg
+select_ ss selected =
+    let
+        options =
+            List.range 0 20
+                |> List.map
+                    (\int ->
+                        Tuple.pair ("option" ++ String.fromInt int) <|
+                            case modBy 4 int of
+                                0 ->
+                                    "abcd0123"
+
+                                1 ->
+                                    "水兵リーベ。"
+
+                                2 ->
+                                    lorem
+
+                                _ ->
+                                    iroha
+                    )
+    in
+    section []
+        [ h2 [ sizeTitle ] [ t "Select" ]
+        , withSource """div []
+    [ t "By default these are block elements."
+    , Select.select []
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s1"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Nothing
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "By default these are block elements."
+                , Select.select []
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s1"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Nothing
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div [ growRow, spacingRow10 ]
+    [ p [] [ t "Width can be contained externally. Be warned though, flex calculation with padding is complicated, and may not work as you intended!" ]
+    , Select.select [ style "max-width" "300px" ]
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s2"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Nothing
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div [ growRow, spacingRow10 ]
+                [ p [] [ t "Width can be contained externally. Though, flex calculation with padding may not work as you intended!" ]
+                , Select.select [ style "max-width" "300px" ]
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s2"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Nothing
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div []
+    [ t "Can be thinned."
+    , Select.select []
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s3"
+        , thin = True
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Nothing
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "Can be thinned."
+                , Select.select []
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s3"
+                    , thin = True
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Nothing
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div []
+    [ t "Can have filter box."
+    , Select.select []
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s4"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Just String.contains
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "Can have filter box."
+                , Select.select []
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s4"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Just String.contains
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        , withSource """div []
+    [ t "Can be themed."
+    , Select.select [ aubergine ]
+        { state = ss
+        , msgTagger = SelectCtrl
+        , id = "s5"
+        , thin = False
+        , onSelect = Selected
+        , selectedOption = selected
+        , filterMatch = Just String.contains
+        , options = options
+        , optionHtml = text
+        }
+    ]""" <|
+            div []
+                [ t "Can be themed."
+                , Select.select [ aubergine ]
+                    { state = ss
+                    , msgTagger = SelectCtrl
+                    , id = "s5"
+                    , thin = False
+                    , onSelect = Selected
+                    , selectedOption = selected
+                    , filterMatch = Just String.contains
+                    , options = options
+                    , optionHtml = text
+                    }
+                ]
+        ]
+
+
+icon : Html Msg
+icon =
+    section []
+        [ h1 [ sizeSection ] [ t "Icon" ]
+        , withSource """Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }""" <|
+            Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }
+        , withSource """Icon.button [ Border.round5 ] { onPress = NoOp, src = Image.ph 75 75, alt = "75x75 icon" }""" <|
+            Icon.button [ Border.round5 ] { onPress = NoOp, src = Image.ph 75 75, alt = "75x75 icon" }
+        , withSource """Icon.link [] { url = "https://example.com", src = Image.ph 50 50, alt = "50x50 icon" }""" <|
+            Icon.link [] { url = "https://example.com", src = Image.ph 50 50, alt = "50x50 icon" }
+        , withSource """Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }""" <|
+            Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }
+        , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
+            Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
+        , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|
+            Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }
+        , withSource """Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }""" <|
+            Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }
+        , withSource """Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }""" <|
+            Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }
+        ]
+
+
+sidebar : Model -> Html Msg
+sidebar m =
+    section []
+        [ h1 [ sizeSection ] [ t "Sidebar" ]
+        , Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
+        , p []
+            [ t "Shown to the left. This is a position-width-fixed organism. "
+            , t "Msg is not yet wired!"
+            ]
+        ]
+
+
+dummySidebarProps : Bool -> Int -> Sidebar.Props
+dummySidebarProps isOpen numColumns =
+    let
+        dummyColumnButton i =
+            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
+            , case modBy 3 i of
+                0 ->
+                    Sidebar.Fallback "Zehpyr"
+
+                1 ->
+                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+
+                _ ->
+                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
+            )
+    in
+    { configOpen = isOpen
+    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
+    }
+
+
+dummySidebarEffects : Bool -> Sidebar.Effects Msg
+dummySidebarEffects isOpen =
+    { configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClickerByIndex = always NoOp
+    }
+
+
+mainTemplate : Model -> List (Html Msg)
+mainTemplate m =
+    View.Template.Main.render
+        (mainEffects m)
+        (mainProps m)
+        { columnCtnrContents =
+            { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
+            , config =
+                \index _ ->
+                    if m.toggle then
+                        div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
+
+                    else
+                        none
+            , newMessageEditor =
+                \_ ->
+                    if m.toggle then
+                        div [ flexBasis "150px" ] [ t "MESSAGE EDITOR[PH]" ]
+
+                    else
+                        none
+            , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
+            }
+        }
+
+
+dummyItem : Int -> Html Msg
+dummyItem index =
+    case modBy 4 index of
+        0 ->
+            div [ flexBasis "50px", Background.colorPrim ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+        1 ->
+            div [ flexBasis "100px", Background.colorSucc ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+        2 ->
+            div [ flexBasis "200px", Background.colorWarn ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+        _ ->
+            div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+
+mainProps : Model -> View.Template.Main.Props ()
+mainProps m =
+    { sidebarProps = dummySidebarProps m.toggle m.numColumns
+    , columnCtnrProps =
+        { columns = List.repeat m.numColumns ()
+        , dragStatus =
+            \index _ ->
+                case modBy 4 index of
+                    0 ->
+                        ColumnContainer.Settled
+
+                    1 ->
+                        ColumnContainer.Undroppable
+
+                    2 ->
+                        ColumnContainer.Droppable
+
+                    _ ->
+                        ColumnContainer.Grabbed
+        }
+    }
+
+
+mainEffects : Model -> View.Template.Main.Effects () Msg
+mainEffects m =
+    { sidebarEffects = dummySidebarEffects m.toggle
+    , columnCtnrEffects =
+        { columnDragEnd = NoOp
+        , columnDragStart = \_ _ -> NoOp
+        , columnDragEnter = \_ -> NoOp
+        , columnDragOver = NoOp
+        }
+    }
