@@ -1,10 +1,10 @@
-module View.Organism.ColumnContainer exposing (Props, Effects, DragStatus(..), render, styles)
+module View.Organism.ColumnContainer exposing (Props, Effects, DragStatus(..), Contents, render, styles)
 
 {-| Column Container Organism.
 
 Handles column swapping.
 
-@docs Props, Effects, DragStatus, render, styles
+@docs Props, Effects, DragStatus, Contents, render, styles
 
 -}
 
@@ -47,8 +47,20 @@ type alias Effects c msg =
     }
 
 
-render : Effects c msg -> Props c -> Html msg
-render eff p =
+type alias Contents c msg =
+    { header : Int -> c -> Html msg
+    , config : Int -> c -> Html msg
+    , newMessageEditor : c -> Html msg
+    , items : c -> Html msg
+    }
+
+
+render :
+    Effects c msg
+    -> Props c
+    -> Contents c msg
+    -> Html msg
+render eff p contents =
     Html.Keyed.node "div"
         [ class columnCtnrClass
         , id columnAreaParentId
@@ -56,7 +68,7 @@ render eff p =
         , oneDark
         , on "dragend" (succeed eff.columnDragEnd)
         ]
-        (List.indexedMap (columnWrapperKey p.dragStatus eff) p.columns)
+        (List.indexedMap (columnWrapperKey p.dragStatus eff contents) p.columns)
 
 
 columnAreaParentId : String
@@ -64,8 +76,14 @@ columnAreaParentId =
     "columnAreaParent"
 
 
-columnWrapperKey : (Int -> c -> DragStatus) -> Effects c msg -> Int -> c -> ( String, Html msg )
-columnWrapperKey dragStatus eff index c =
+columnWrapperKey :
+    (Int -> c -> DragStatus)
+    -> Effects c msg
+    -> Contents c msg
+    -> Int
+    -> c
+    -> ( String, Html msg )
+columnWrapperKey dragStatus eff contents index c =
     let
         staticAttrs =
             [ class columnWrapperClass
@@ -98,13 +116,20 @@ columnWrapperKey dragStatus eff index c =
     in
     Tuple.pair ("column_" ++ String.fromInt index) <|
         div (staticAttrs ++ dragHandlers)
-            [ header (eff.columnDragStart index c)
-            , t (String.fromInt index)
+            [ header (eff.columnDragStart index c) (contents.header index c)
+            , contents.config index c
+            , contents.newMessageEditor c
+            , div
+                [ class itemsWrapperClass
+                , flexBasisAuto
+                , flexShrink
+                ]
+                [ contents.items c ]
             ]
 
 
-header : msg -> Html msg
-header onDragstart =
+header : msg -> Html msg -> Html msg
+header onDragstart content =
     div
         [ class headerClass
         , flexBasisAuto
@@ -113,7 +138,7 @@ header onDragstart =
         , Background.colorSub
         ]
         [ grabber onDragstart
-        , div [ flexGrow ] [ t "header" ]
+        , div [ flexGrow ] [ content ]
         ]
 
 
@@ -143,6 +168,8 @@ styles =
         ]
     , s (c columnWrapperClass)
         [ ( "width", px columnWidth )
+        , ( "max-height", "100vh" )
+        , ( "overflow-y", "auto" )
         , ( "transition", "all 0.15s" )
         ]
     , s (c headerClass) [ ( "height", px headerHeight ) ]
@@ -153,6 +180,10 @@ styles =
         ]
     , s (c droppableClass) [ ( "transform", "scale(0.98)" ) ]
     , s (c undroppableClass) [ ( "opacity", "0.2" ) ]
+    , s (c itemsWrapperClass)
+        [ ( "max-height", "" )
+        , ( "overflow-y", "auto" )
+        ]
     ]
 
 
@@ -199,3 +230,8 @@ droppableClass =
 undroppableClass : String
 undroppableClass =
     "cundrppbl"
+
+
+itemsWrapperClass : String
+itemsWrapperClass =
+    "citmswrap"

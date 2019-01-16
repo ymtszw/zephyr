@@ -191,42 +191,7 @@ view m =
                     pLab [ sidebar m ]
 
                 MainTemplate ->
-                    View.Template.Main.render (mainEffects m) (mainProps m)
-    }
-
-
-mainProps : Model -> View.Template.Main.Props
-mainProps m =
-    { sidebarProps = dummySidebarProps m.toggle m.numColumns
-    , columnCtnrProps =
-        { columns = List.repeat m.numColumns ()
-        , dragStatus =
-            \index _ ->
-                case modBy 4 index of
-                    0 ->
-                        ColumnContainer.Grabbed
-
-                    1 ->
-                        ColumnContainer.Droppable
-
-                    2 ->
-                        ColumnContainer.Undroppable
-
-                    _ ->
-                        ColumnContainer.Settled
-        }
-    }
-
-
-mainEffects : Model -> View.Template.Main.Effects Msg
-mainEffects m =
-    { sidebarEffects = dummySidebarEffects m.toggle
-    , columnCtnrEffects =
-        { columnDragEnd = NoOp
-        , columnDragStart = \_ _ -> NoOp
-        , columnDragEnter = \_ -> NoOp
-        , columnDragOver = NoOp
-        }
+                    mainTemplate m
     }
 
 
@@ -1419,4 +1384,69 @@ dummySidebarEffects isOpen =
     { configOpener = Toggle (not isOpen)
     , columnAdder = AddColumn
     , columnButtonClickerByIndex = always NoOp
+    }
+
+
+mainTemplate : Model -> List (Html Msg)
+mainTemplate m =
+    View.Template.Main.render
+        (mainEffects m)
+        (mainProps m)
+        { columnCtnrContents =
+            { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
+            , config = \index _ -> div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
+            , newMessageEditor = \_ -> div [ flexBasis "150px" ] [ t "MESSAGE EDITOR[PH]" ]
+            , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
+            }
+        }
+
+
+dummyItem : Int -> Html Msg
+dummyItem index =
+    case modBy 4 index of
+        0 ->
+            div [ flexBasis "50px", Background.colorPrim ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+        1 ->
+            div [ flexBasis "100px", Background.colorSucc ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+        2 ->
+            div [ flexBasis "200px", Background.colorWarn ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+        _ ->
+            div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+
+mainProps : Model -> View.Template.Main.Props ()
+mainProps m =
+    { sidebarProps = dummySidebarProps m.toggle m.numColumns
+    , columnCtnrProps =
+        { columns = List.repeat m.numColumns ()
+        , dragStatus =
+            \index _ ->
+                case modBy 4 index of
+                    0 ->
+                        ColumnContainer.Settled
+
+                    1 ->
+                        ColumnContainer.Undroppable
+
+                    2 ->
+                        ColumnContainer.Droppable
+
+                    _ ->
+                        ColumnContainer.Grabbed
+        }
+    }
+
+
+mainEffects : Model -> View.Template.Main.Effects () Msg
+mainEffects m =
+    { sidebarEffects = dummySidebarEffects m.toggle
+    , columnCtnrEffects =
+        { columnDragEnd = NoOp
+        , columnDragStart = \_ _ -> NoOp
+        , columnDragEnter = \_ -> NoOp
+        , columnDragOver = NoOp
+        }
     }
