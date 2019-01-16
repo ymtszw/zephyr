@@ -31,7 +31,7 @@ type alias Props =
 
 type alias Effects msg =
     { sidebarEffects : Sidebar.Effects msg
-    , columnCtnrEffects : CCtnr.Effects msg
+    , columnCtnrEffects : CCtnr.Effects () msg
     }
 
 

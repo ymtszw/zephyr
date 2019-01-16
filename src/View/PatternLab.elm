@@ -21,6 +21,7 @@ import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Organism.ColumnContainer as ColumnContainer
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (px)
 import View.Stylesheet
@@ -197,14 +198,35 @@ view m =
 mainProps : Model -> View.Template.Main.Props
 mainProps m =
     { sidebarProps = dummySidebarProps m.toggle m.numColumns
-    , columnCtnrProps = { columns = List.repeat m.numColumns () }
+    , columnCtnrProps =
+        { columns = List.repeat m.numColumns ()
+        , dragStatus =
+            \index _ ->
+                case modBy 4 index of
+                    0 ->
+                        ColumnContainer.Grabbed
+
+                    1 ->
+                        ColumnContainer.Droppable
+
+                    2 ->
+                        ColumnContainer.Undroppable
+
+                    _ ->
+                        ColumnContainer.Settled
+        }
     }
 
 
 mainEffects : Model -> View.Template.Main.Effects Msg
 mainEffects m =
     { sidebarEffects = dummySidebarEffects m.toggle
-    , columnCtnrEffects = { columnDragEnd = NoOp }
+    , columnCtnrEffects =
+        { columnDragEnd = NoOp
+        , columnDragStart = \_ _ -> NoOp
+        , columnDragEnter = \_ -> NoOp
+        , columnDragOver = NoOp
+        }
     }
 
 
