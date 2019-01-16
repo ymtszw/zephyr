@@ -23,7 +23,7 @@ import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Organism.ColumnContainer as ColumnContainer
 import View.Organism.Sidebar as Sidebar
-import View.Style exposing (px)
+import View.Style exposing (none, px)
 import View.Stylesheet
 import View.Template.Main
 
@@ -1394,8 +1394,20 @@ mainTemplate m =
         (mainProps m)
         { columnCtnrContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
-            , config = \index _ -> div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
-            , newMessageEditor = \_ -> div [ flexBasis "150px" ] [ t "MESSAGE EDITOR[PH]" ]
+            , config =
+                \index _ ->
+                    if m.toggle then
+                        div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
+
+                    else
+                        none
+            , newMessageEditor =
+                \_ ->
+                    if m.toggle then
+                        div [ flexBasis "150px" ] [ t "MESSAGE EDITOR[PH]" ]
+
+                    else
+                        none
             , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
             }
         }
