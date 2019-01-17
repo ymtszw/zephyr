@@ -21,11 +21,10 @@ import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
-import View.Organism.ColumnContainer as ColumnContainer
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)
 import View.Stylesheet
-import View.Template.Main
+import View.Template.Main exposing (DragStatus(..))
 
 
 main : Program () Model Msg
@@ -1392,7 +1391,7 @@ mainTemplate m =
     View.Template.Main.render
         (mainEffects m)
         (mainProps m)
-        { columnCtnrContents =
+        { columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
             , config =
                 \index _ ->
@@ -1433,21 +1432,21 @@ mainProps : Model -> View.Template.Main.Props ()
 mainProps m =
     { sidebarProps = dummySidebarProps m.toggle m.numColumns
     , columnCtnrProps =
-        { columns = List.repeat m.numColumns ()
+        { visibleColumns = List.repeat m.numColumns ()
         , dragStatus =
             \index _ ->
                 case modBy 4 index of
                     0 ->
-                        ColumnContainer.Settled
+                        Settled
 
                     1 ->
-                        ColumnContainer.Undroppable
+                        Undroppable
 
                     2 ->
-                        ColumnContainer.Droppable
+                        Droppable
 
                     _ ->
-                        ColumnContainer.Grabbed
+                        Grabbed
         }
     }
 
