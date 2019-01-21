@@ -11,22 +11,27 @@ Also, you can inject event handlers as a set of functions (called Effects).
 This allows you to wire different functions for any parts,
 so that we can test our views in PatternLab! DI, anyone?
 
+And finally, Contents record aggregates actual contents to be placed in the template.
+
 @docs Props, Effects, Contents, DragStatus, render
 @docs styles
 
 -}
 
 import Color exposing (cssRgba)
-import Html exposing (Attribute, Html, div)
-import Html.Attributes exposing (class, draggable, id)
+import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
+import Html exposing (Attribute, Html, div, h2, img, span)
+import Html.Attributes exposing (alt, class, draggable, id, src)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
 import Octicons
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDark, oneDarkTheme)
+import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Sidebar as Sidebar exposing (sidebarWidth)
@@ -35,6 +40,7 @@ import View.Style exposing (..)
 
 type alias Props c =
     { sidebarProps : Sidebar.Props
+    , configDrawerIsOpen : Bool
     , columnCtnrProps : ColumnContainerProps c
     }
 
@@ -68,7 +74,16 @@ type alias ColumnContainerEffects c msg =
 
 
 type alias Contents c msg =
-    { columnContents : ColumnContents c msg
+    { configContents : ConfigContents msg
+    , columnContents : ColumnContents c msg
+    }
+
+
+type alias ConfigContents msg =
+    { pref : Html msg
+    , slack : Html msg
+    , discord : Html msg
+    , status : Html msg
     }
 
 
@@ -82,10 +97,102 @@ type alias ColumnContents c msg =
 
 render : Effects c msg -> Props c -> Contents c msg -> List (Html msg)
 render eff p contents =
+    -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
-    , Sidebar.render eff.sidebarEffects p.sidebarProps
     , columnContainer eff.columnCtnrEffects p.columnCtnrProps contents.columnContents
+    , configDrawer p.configDrawerIsOpen contents.configContents
+    , Sidebar.render eff.sidebarEffects p.sidebarProps
     ]
+
+
+configDrawer : Bool -> ConfigContents msg -> Html msg
+configDrawer isOpen cc =
+    div
+        [ class configDrawerClass
+        , if isOpen then
+            class drawerOpenClass
+
+          else
+            noAttr
+        , oneDark
+        , flexColumn
+        , padding15
+        , spacingColumn15
+        , Background.colorBg
+        ]
+        [ configSectionWrapper Nothing prefTitle cc.pref
+        , configSectionWrapper (Just aubergine) slackTitle cc.slack
+        , configSectionWrapper Nothing discordTitle cc.discord
+        , configSectionWrapper Nothing statusTitle cc.status
+        ]
+
+
+configSectionWrapper : Maybe (Attribute msg) -> Html msg -> Html msg -> Html msg
+configSectionWrapper maybeTheme title content =
+    div
+        [ flexColumn
+        , padding5
+        , spacingColumn5
+        , Border.round5
+        , Background.colorMain
+        , case maybeTheme of
+            Just theme ->
+                theme
+
+            Nothing ->
+                noAttr
+        ]
+        [ title
+        , content
+        ]
+
+
+prefTitle : Html msg
+prefTitle =
+    titleTemplate "Preference" <|
+        span [ class prefOcticonClass ] [ Image.octicon { size = titleIconSize, shape = Octicons.settings } ]
+
+
+titleTemplate : String -> Html msg -> Html msg
+titleTemplate text icon =
+    h2
+        [ class configTitleClass
+        , padding5
+        , bold
+        , sizeTitle
+        , Border.solid
+        ]
+        [ icon
+        , t " "
+        , t text
+        ]
+
+
+titleIconSize : Int
+titleIconSize =
+    -- same as sizeTitle
+    18
+
+
+slackTitle : Html msg
+slackTitle =
+    titleTemplate "Slack" <| imageIcon "Slack logo" <| Slack.defaultIconUrl (Just titleIconSize)
+
+
+imageIcon : String -> String -> Html msg
+imageIcon alt_ src_ =
+    img [ class configIconClass, Border.round2, src src_, alt alt_ ] []
+
+
+discordTitle : Html msg
+discordTitle =
+    titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl (Just titleIconSize)
+
+
+statusTitle : Html msg
+statusTitle =
+    titleTemplate "Status" <|
+        span [ class statusOcticonClass ] [ Image.octicon { size = titleIconSize, shape = Octicons.pulse } ]
 
 
 columnContainer :
@@ -191,7 +298,34 @@ grabber onDragstart =
 
 styles : List Style
 styles =
-    [ s (c columnCtnrClass)
+    [ s (c configDrawerClass)
+        [ ( "position", "fixed" )
+        , ( "left", px sidebarWidth )
+        , ( "top", "0" )
+        , ( "width", px configDrawerWidth )
+        , ( "height", "100vh" )
+        , ( "max-height", "100vh" )
+        , ( "overflow-y", "auto" )
+        , ( "transition", "all 0.15s" )
+        , -- Default hidden
+          ( "visibility", "hidden" )
+        , ( "opacity", "0" )
+        , ( "transform", "translateX(-50px)" ) -- The value sufficient for slide-in effect to be recognizable
+        ]
+    , s (c configDrawerClass ++ c drawerOpenClass)
+        [ ( "display", "block" )
+        , ( "visibility", "visible" )
+        , ( "opacity", "1" )
+        , ( "transform", "translateX(0px)" )
+        ]
+    , s (c configDrawerClass ++ " " ++ c configTitleClass) [ ( "border-bottom-width", "1px" ) ]
+    , s (c configDrawerClass ++ " " ++ c configIconClass)
+        [ ( "width", px titleIconSize )
+        , ( "height", px titleIconSize )
+        ]
+    , Image.octiconPathStyle (c configDrawerClass ++ " " ++ c prefOcticonClass) [ ( "fill", cssRgba oneDarkTheme.text ) ]
+    , Image.octiconPathStyle (c configDrawerClass ++ " " ++ c statusOcticonClass) [ ( "fill", cssRgba oneDarkTheme.succ ) ]
+    , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
         , ( "top", "0" )
@@ -218,6 +352,41 @@ styles =
         , ( "overflow-y", "auto" )
         ]
     ]
+
+
+configDrawerClass : String
+configDrawerClass =
+    "cnfdrwr"
+
+
+configDrawerWidth : Int
+configDrawerWidth =
+    640
+
+
+drawerOpenClass : String
+drawerOpenClass =
+    "drwropen"
+
+
+configTitleClass : String
+configTitleClass =
+    "cnftitle"
+
+
+configIconClass : String
+configIconClass =
+    "cnficon"
+
+
+prefOcticonClass : String
+prefOcticonClass =
+    "cnfprefoct"
+
+
+statusOcticonClass : String
+statusOcticonClass =
+    "cnfstatusoct"
 
 
 columnCtnrClass : String

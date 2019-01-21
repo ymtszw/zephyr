@@ -1391,7 +1391,13 @@ mainTemplate m =
     View.Template.Main.render
         (mainEffects m)
         (mainProps m)
-        { columnContents =
+        { configContents =
+            { pref = div [ flexBasis "400px" ] [ t "PREFERENCE[PH]" ]
+            , slack = div [ flexBasis "400px" ] [ t "SLACK[PH]" ]
+            , discord = div [ flexBasis "400px" ] [ t "DISCORD[PH]" ]
+            , status = div [ flexBasis "400px" ] [ t "STATUS[PH]" ]
+            }
+        , columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
             , config =
                 \index _ ->
@@ -1431,6 +1437,7 @@ dummyItem index =
 mainProps : Model -> View.Template.Main.Props ()
 mainProps m =
     { sidebarProps = dummySidebarProps m.toggle m.numColumns
+    , configDrawerIsOpen = m.toggle
     , columnCtnrProps =
         { visibleColumns = List.repeat m.numColumns ()
         , dragStatus =

@@ -2442,7 +2442,7 @@ getTs { ts } =
 
 defaultIconUrl : Maybe Int -> String
 defaultIconUrl sizeMaybe =
-    logoCdnUrl sizeMaybe "/osogig-6gybeo-d2hu58/Slack%20App%20Icon.png"
+    logoCdnUrl sizeMaybe "/pl546j-7le8zk-199wkt/Slack%20Mark.png"
 
 
 logoCdnUrl : Maybe Int -> String -> String
