@@ -1392,10 +1392,10 @@ mainTemplate m =
         (mainEffects m)
         (mainProps m)
         { configContents =
-            { pref = div [ flexBasis "150px" ] [ t "PREFERENCE[PH]" ]
-            , slack = div [ flexBasis "150px" ] [ t "SLACK[PH]" ]
-            , discord = div [ flexBasis "150px" ] [ t "DISCORD[PH]" ]
-            , status = div [ flexBasis "150px" ] [ t "STATUS[PH]" ]
+            { pref = div [ flexBasis "400px" ] [ t "PREFERENCE[PH]" ]
+            , slack = div [ flexBasis "400px" ] [ t "SLACK[PH]" ]
+            , discord = div [ flexBasis "400px" ] [ t "DISCORD[PH]" ]
+            , status = div [ flexBasis "400px" ] [ t "STATUS[PH]" ]
             }
         , columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
