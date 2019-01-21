@@ -1395,6 +1395,7 @@ mainTemplate m =
             { pref = div [ flexBasis "150px" ] [ t "PREFERENCE[PH]" ]
             , slack = div [ flexBasis "150px" ] [ t "SLACK[PH]" ]
             , discord = div [ flexBasis "150px" ] [ t "DISCORD[PH]" ]
+            , status = div [ flexBasis "150px" ] [ t "STATUS[PH]" ]
             }
         , columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]

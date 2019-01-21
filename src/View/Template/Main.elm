@@ -21,7 +21,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html, div, h2, img)
+import Html exposing (Attribute, Html, div, h2, img, span)
 import Html.Attributes exposing (alt, class, draggable, id, src)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
@@ -83,6 +83,7 @@ type alias ConfigContents msg =
     { pref : Html msg
     , slack : Html msg
     , discord : Html msg
+    , status : Html msg
     }
 
 
@@ -116,12 +117,13 @@ configDrawer isOpen cc =
         , oneDark
         , flexColumn
         , padding15
-        , spacingColumn10
+        , spacingColumn15
         , Background.colorBg
         ]
         [ configSectionWrapper Nothing prefTitle cc.pref
         , configSectionWrapper (Just aubergine) slackTitle cc.slack
         , configSectionWrapper Nothing discordTitle cc.discord
+        , configSectionWrapper Nothing statusTitle cc.status
         ]
 
 
@@ -148,10 +150,7 @@ configSectionWrapper maybeTheme title content =
 prefTitle : Html msg
 prefTitle =
     titleTemplate "Preference" <|
-        Image.octicon
-            { size = titleIconSize
-            , shape = Octicons.settings
-            }
+        span [ class prefOcticonClass ] [ Image.octicon { size = titleIconSize, shape = Octicons.settings } ]
 
 
 titleTemplate : String -> Html msg -> Html msg
@@ -188,6 +187,12 @@ imageIcon alt_ src_ =
 discordTitle : Html msg
 discordTitle =
     titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl (Just titleIconSize)
+
+
+statusTitle : Html msg
+statusTitle =
+    titleTemplate "Status" <|
+        span [ class statusOcticonClass ] [ Image.octicon { size = titleIconSize, shape = Octicons.pulse } ]
 
 
 columnContainer :
@@ -318,6 +323,8 @@ styles =
         [ ( "width", px titleIconSize )
         , ( "height", px titleIconSize )
         ]
+    , Image.octiconPathStyle (c configDrawerClass ++ " " ++ c prefOcticonClass) [ ( "fill", cssRgba oneDarkTheme.text ) ]
+    , Image.octiconPathStyle (c configDrawerClass ++ " " ++ c statusOcticonClass) [ ( "fill", cssRgba oneDarkTheme.succ ) ]
     , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
@@ -370,6 +377,16 @@ configTitleClass =
 configIconClass : String
 configIconClass =
     "cnficon"
+
+
+prefOcticonClass : String
+prefOcticonClass =
+    "cnfprefoct"
+
+
+statusOcticonClass : String
+statusOcticonClass =
+    "cnfstatusoct"
 
 
 columnCtnrClass : String
