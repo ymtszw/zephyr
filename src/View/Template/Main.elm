@@ -19,7 +19,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 -}
 
 import Color exposing (cssRgba)
-import Html exposing (Attribute, Html, div)
+import Html exposing (Attribute, Html, div, h2)
 import Html.Attributes exposing (class, draggable, id)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
@@ -27,6 +27,7 @@ import Json.Decode exposing (succeed)
 import Octicons
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
@@ -71,7 +72,13 @@ type alias ColumnContainerEffects c msg =
 
 
 type alias Contents c msg =
-    { columnContents : ColumnContents c msg
+    { configContents : ConfigContents msg
+    , columnContents : ColumnContents c msg
+    }
+
+
+type alias ConfigContents msg =
+    { pref : Html msg
     }
 
 
@@ -88,13 +95,13 @@ render eff p contents =
     -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
     , columnContainer eff.columnCtnrEffects p.columnCtnrProps contents.columnContents
-    , configDrawer p.configDrawerIsOpen
+    , configDrawer p.configDrawerIsOpen contents.configContents
     , Sidebar.render eff.sidebarEffects p.sidebarProps
     ]
 
 
-configDrawer : Bool -> Html msg
-configDrawer isOpen =
+configDrawer : Bool -> ConfigContents msg -> Html msg
+configDrawer isOpen cc =
     div
         [ class configDrawerClass
         , if isOpen then
@@ -103,10 +110,63 @@ configDrawer isOpen =
           else
             noAttr
         , oneDark
+        , flexColumn
+        , padding15
+        , spacingColumn10
         , Background.colorBg
         ]
-        [ t "CONFIG[PH]"
+        [ configSectionWrapper Nothing prefTitle cc.pref
         ]
+
+
+configSectionWrapper : Maybe (Attribute msg) -> Html msg -> Html msg -> Html msg
+configSectionWrapper maybeTheme title content =
+    div
+        [ flexColumn
+        , padding10
+        , spacingColumn5
+        , Border.round5
+        , Background.colorMain
+        , case maybeTheme of
+            Just theme ->
+                theme
+
+            Nothing ->
+                noAttr
+        ]
+        [ title
+        , content
+        ]
+
+
+prefTitle : Html msg
+prefTitle =
+    titleTemplate "Preference" <|
+        Image.octicon
+            { size = titleIconSize
+            , shape = Octicons.settings
+            }
+
+
+titleTemplate : String -> Html msg -> Html msg
+titleTemplate text icon =
+    h2
+        [ class configTitleClass
+        , padding5
+        , bold
+        , sizeTitle
+        , Border.solid
+        ]
+        [ icon
+        , t " "
+        , t text
+        ]
+
+
+titleIconSize : Int
+titleIconSize =
+    -- same as sizeTitle
+    18
 
 
 columnContainer :
@@ -232,6 +292,7 @@ styles =
         , ( "opacity", "1" )
         , ( "transform", "translateX(0px)" )
         ]
+    , s (c configTitleClass) [ ( "border-bottom-width", "1px" ) ]
     , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
@@ -274,6 +335,11 @@ configDrawerWidth =
 drawerOpenClass : String
 drawerOpenClass =
     "drwropen"
+
+
+configTitleClass : String
+configTitleClass =
+    "cnftitle"
 
 
 columnCtnrClass : String
