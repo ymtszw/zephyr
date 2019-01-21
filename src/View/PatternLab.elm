@@ -1393,6 +1393,7 @@ mainTemplate m =
         (mainProps m)
         { configContents =
             { pref = div [ flexBasis "150px" ] [ t "PREFERENCE[PH]" ]
+            , slack = div [ flexBasis "150px" ] [ t "SLACK[PH]" ]
             , discord = div [ flexBasis "150px" ] [ t "DISCORD[PH]" ]
             }
         , columnContents =

@@ -20,6 +20,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div, h2, img)
 import Html.Attributes exposing (alt, class, draggable, id, src)
 import Html.Events exposing (on, preventDefaultOn)
@@ -30,7 +31,7 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDark, oneDarkTheme)
+import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Sidebar as Sidebar exposing (sidebarWidth)
@@ -80,6 +81,7 @@ type alias Contents c msg =
 
 type alias ConfigContents msg =
     { pref : Html msg
+    , slack : Html msg
     , discord : Html msg
     }
 
@@ -118,6 +120,7 @@ configDrawer isOpen cc =
         , Background.colorBg
         ]
         [ configSectionWrapper Nothing prefTitle cc.pref
+        , configSectionWrapper (Just aubergine) slackTitle cc.slack
         , configSectionWrapper Nothing discordTitle cc.discord
         ]
 
@@ -172,16 +175,19 @@ titleIconSize =
     18
 
 
+slackTitle : Html msg
+slackTitle =
+    titleTemplate "Slack" <| imageIcon "Slack logo" <| Slack.defaultIconUrl (Just titleIconSize)
+
+
+imageIcon : String -> String -> Html msg
+imageIcon alt_ src_ =
+    img [ class configIconClass, Border.round2, src src_, alt alt_ ] []
+
+
 discordTitle : Html msg
 discordTitle =
-    titleTemplate "Discord" <|
-        img
-            [ class discordLogoClass
-            , Border.round5
-            , src (Discord.defaultIconUrl (Just titleIconSize))
-            , alt "Discord logo"
-            ]
-            []
+    titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl (Just titleIconSize)
 
 
 columnContainer :
@@ -308,7 +314,10 @@ styles =
         , ( "transform", "translateX(0px)" )
         ]
     , s (c configDrawerClass ++ " " ++ c configTitleClass) [ ( "border-bottom-width", "1px" ) ]
-    , s (c configDrawerClass ++ " " ++ c discordLogoClass) [ ( "width", px titleIconSize ), ( "height", px titleIconSize ) ]
+    , s (c configDrawerClass ++ " " ++ c configIconClass)
+        [ ( "width", px titleIconSize )
+        , ( "height", px titleIconSize )
+        ]
     , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
@@ -358,9 +367,9 @@ configTitleClass =
     "cnftitle"
 
 
-discordLogoClass : String
-discordLogoClass =
-    "cnfdiscord"
+configIconClass : String
+configIconClass =
+    "cnficon"
 
 
 columnCtnrClass : String
