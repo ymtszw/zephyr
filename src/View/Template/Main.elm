@@ -37,6 +37,7 @@ import View.Style exposing (..)
 
 type alias Props c =
     { sidebarProps : Sidebar.Props
+    , configDrawerIsOpen : Bool
     , columnCtnrProps : ColumnContainerProps c
     }
 
@@ -84,10 +85,28 @@ type alias ColumnContents c msg =
 
 render : Effects c msg -> Props c -> Contents c msg -> List (Html msg)
 render eff p contents =
+    -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
-    , Sidebar.render eff.sidebarEffects p.sidebarProps
     , columnContainer eff.columnCtnrEffects p.columnCtnrProps contents.columnContents
+    , configDrawer p.configDrawerIsOpen
+    , Sidebar.render eff.sidebarEffects p.sidebarProps
     ]
+
+
+configDrawer : Bool -> Html msg
+configDrawer isOpen =
+    div
+        [ class configDrawerClass
+        , if isOpen then
+            class drawerOpenClass
+
+          else
+            noAttr
+        , oneDark
+        , Background.colorBg
+        ]
+        [ t "CONFIG[PH]"
+        ]
 
 
 columnContainer :
@@ -193,7 +212,27 @@ grabber onDragstart =
 
 styles : List Style
 styles =
-    [ s (c columnCtnrClass)
+    [ s (c configDrawerClass)
+        [ ( "position", "fixed" )
+        , ( "left", px sidebarWidth )
+        , ( "top", "0" )
+        , ( "width", px configDrawerWidth )
+        , ( "height", "100vh" )
+        , ( "max-height", "100vh" )
+        , ( "overflow-y", "auto" )
+        , ( "transition", "all 0.15s" )
+        , -- Default hidden
+          ( "visibility", "hidden" )
+        , ( "opacity", "0" )
+        , ( "transform", "translateX(-50px)" ) -- The value sufficient for slide-in effect to be recognizable
+        ]
+    , s (c configDrawerClass ++ c drawerOpenClass)
+        [ ( "display", "block" )
+        , ( "visibility", "visible" )
+        , ( "opacity", "1" )
+        , ( "transform", "translateX(0px)" )
+        ]
+    , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
         , ( "top", "0" )
@@ -220,6 +259,21 @@ styles =
         , ( "overflow-y", "auto" )
         ]
     ]
+
+
+configDrawerClass : String
+configDrawerClass =
+    "cnfdrwr"
+
+
+configDrawerWidth : Int
+configDrawerWidth =
+    640
+
+
+drawerOpenClass : String
+drawerOpenClass =
+    "drwropen"
 
 
 columnCtnrClass : String
