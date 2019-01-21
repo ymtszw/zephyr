@@ -11,6 +11,8 @@ Also, you can inject event handlers as a set of functions (called Effects).
 This allows you to wire different functions for any parts,
 so that we can test our views in PatternLab! DI, anyone?
 
+And finally, Contents record aggregates actual contents to be placed in the template.
+
 @docs Props, Effects, Contents, DragStatus, render
 @docs styles
 
