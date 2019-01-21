@@ -178,24 +178,17 @@ imageIcon src_ alt_ =
 
 discordBadge : Html msg
 discordBadge =
-    img [ class badgeClass, Border.round2, src discordBadgeUrl, alt "discord logo" ] []
+    imageBadge "Discord logo" <| Discord.defaultIconUrl (Just badgeSize)
 
 
-discordBadgeUrl : String
-discordBadgeUrl =
-    Discord.defaultIconUrl (Just badgeSize)
+imageBadge : String -> String -> Html msg
+imageBadge alt_ src_ =
+    img [ class badgeClass, Border.round2, src src_, alt alt_ ] []
 
 
 slackBadge : Html msg
 slackBadge =
-    div [ class badgeClass, Border.round2 ]
-        [ img [ src slackBadgeUrl, alt "slack logo", class slackBadgeClass ] []
-        ]
-
-
-slackBadgeUrl : String
-slackBadgeUrl =
-    Slack.defaultIconUrl (Just slackBadgeSize)
+    imageBadge "Slack logo" <| Slack.defaultIconUrl (Just badgeSize)
 
 
 otherButtons : msg -> Bool -> Html msg
@@ -260,11 +253,6 @@ styles =
         [ ( "width", px badgeSize )
         , ( "height", px badgeSize )
         , ( "overflow", "hidden" )
-        ]
-    , s (c sidebarClass ++ " " ++ c badgeClass ++ " " ++ c slackBadgeClass)
-        [ ( "width", px slackBadgeSize )
-        , ( "height", px slackBadgeSize )
-        , ( "transform", "translate(" ++ slackBadgeTranslate ++ "px," ++ slackBadgeTranslate ++ "px)" )
         ]
     , s (c sidebarClass ++ " " ++ c badgeClass ++ " " ++ c "pin")
         [ ( "transform", "rotate(-45deg)" )
@@ -340,21 +328,6 @@ innerFaceClass =
 innerFaceSize : Int
 innerFaceSize =
     buttonSize - (2 * 2)
-
-
-slackBadgeClass : String
-slackBadgeClass =
-    "sbarslackbadge"
-
-
-slackBadgeSize : Int
-slackBadgeSize =
-    (badgeSize * 7) // 5
-
-
-slackBadgeTranslate : String
-slackBadgeTranslate =
-    String.fromFloat (toFloat (badgeSize - slackBadgeSize) / 2)
 
 
 octiconButtonClass : String
