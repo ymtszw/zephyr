@@ -1393,6 +1393,7 @@ mainTemplate m =
         (mainProps m)
         { configContents =
             { pref = div [ flexBasis "150px" ] [ t "PREFERENCE[PH]" ]
+            , discord = div [ flexBasis "150px" ] [ t "DISCORD[PH]" ]
             }
         , columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]

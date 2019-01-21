@@ -19,8 +19,9 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 -}
 
 import Color exposing (cssRgba)
-import Html exposing (Attribute, Html, div, h2)
-import Html.Attributes exposing (class, draggable, id)
+import Data.Producer.Discord as Discord
+import Html exposing (Attribute, Html, div, h2, img)
+import Html.Attributes exposing (alt, class, draggable, id, src)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
@@ -79,6 +80,7 @@ type alias Contents c msg =
 
 type alias ConfigContents msg =
     { pref : Html msg
+    , discord : Html msg
     }
 
 
@@ -116,6 +118,7 @@ configDrawer isOpen cc =
         , Background.colorBg
         ]
         [ configSectionWrapper Nothing prefTitle cc.pref
+        , configSectionWrapper Nothing discordTitle cc.discord
         ]
 
 
@@ -123,7 +126,7 @@ configSectionWrapper : Maybe (Attribute msg) -> Html msg -> Html msg -> Html msg
 configSectionWrapper maybeTheme title content =
     div
         [ flexColumn
-        , padding10
+        , padding5
         , spacingColumn5
         , Border.round5
         , Background.colorMain
@@ -167,6 +170,18 @@ titleIconSize : Int
 titleIconSize =
     -- same as sizeTitle
     18
+
+
+discordTitle : Html msg
+discordTitle =
+    titleTemplate "Discord" <|
+        img
+            [ class discordLogoClass
+            , Border.round5
+            , src (Discord.defaultIconUrl (Just titleIconSize))
+            , alt "Discord logo"
+            ]
+            []
 
 
 columnContainer :
@@ -292,7 +307,8 @@ styles =
         , ( "opacity", "1" )
         , ( "transform", "translateX(0px)" )
         ]
-    , s (c configTitleClass) [ ( "border-bottom-width", "1px" ) ]
+    , s (c configDrawerClass ++ " " ++ c configTitleClass) [ ( "border-bottom-width", "1px" ) ]
+    , s (c configDrawerClass ++ " " ++ c discordLogoClass) [ ( "width", px titleIconSize ), ( "height", px titleIconSize ) ]
     , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
@@ -340,6 +356,11 @@ drawerOpenClass =
 configTitleClass : String
 configTitleClass =
     "cnftitle"
+
+
+discordLogoClass : String
+discordLogoClass =
+    "cnfdiscord"
 
 
 columnCtnrClass : String
