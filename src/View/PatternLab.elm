@@ -17,11 +17,12 @@ import View.Atom.Image as Image
 import View.Atom.Input as Input
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
-import View.Atom.TextBlock exposing (forceBreak)
+import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)
 import View.Stylesheet
@@ -64,6 +65,7 @@ type Route
     | Icon
     | Sidebar
     | ConfigPref
+    | ConfigStatus
     | MainTemplate
 
 
@@ -97,6 +99,7 @@ urlToRoute url =
                 , U.map Icon (U.s "icon")
                 , U.map Sidebar (U.s "sidebar")
                 , U.map ConfigPref (U.s "config_pref")
+                , U.map ConfigStatus (U.s "config_status")
                 , U.map MainTemplate (U.s "main_template")
                 ]
     in
@@ -195,6 +198,9 @@ view m =
                 ConfigPref ->
                     pLab [ configPref m ]
 
+                ConfigStatus ->
+                    pLab [ configStatus m ]
+
                 MainTemplate ->
                     mainTemplate m
     }
@@ -223,6 +229,7 @@ navi r =
             [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
             , naviButton r Sidebar "Sidebar"
             , naviButton r ConfigPref "Config.Pref"
+            , naviButton r ConfigStatus "Config.Status"
             ]
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
@@ -288,6 +295,9 @@ routeToString r =
         ConfigPref ->
             abs_ [ "config_pref" ]
 
+        ConfigStatus ->
+            abs_ [ "config_status" ]
+
         MainTemplate ->
             abs_ [ "main_template" ]
 
@@ -318,6 +328,7 @@ introduction =
             , pre [ padding10, Border.round5, Border.w1, Border.solid ]
                 [ t """import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -325,10 +336,14 @@ import View.Atom.Image as Image
 import View.Atom.Input as Input
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
-import View.Atom.TextBlock exposing (forceBreak)
+import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
-import View.Style exposing (px)"""
+import View.Molecule.Icon as Icon
+import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Status as Status
+import View.Organism.Sidebar as Sidebar
+import View.Style exposing (none, px)"""
                 ]
             ]
         ]
@@ -390,7 +405,7 @@ withSource : String -> Html Msg -> Html Msg
 withSource source toRender =
     div [ growRow, flexCenter, widthFill, spacingRow15 ]
         [ div [] [ toRender ]
-        , pre [] [ t source ]
+        , pre [ padding5, selectAll, Border.round5, Background.colorSub ] [ t source ]
         ]
 
 
@@ -518,6 +533,16 @@ textBlock =
                 , code [] [ t "forceBreak" ]
                 , t ", even significantly long alphanumeric strings are contained within their parent blocks like so:\n"
                 , t (String.repeat 100 "abcd0123")
+                ]
+        , withSource """p [ selectAll ]
+    [ t "Text block with "
+    , code [] [ t "selectAll" ]
+    , t " attribute will cause user clicks to select all texts in it."
+    ]""" <|
+            p [ selectAll ]
+                [ t "Text block with "
+                , code [] [ t "selectAll" ]
+                , t " attribute will cause user clicks to select all texts in it."
                 ]
         , withSource """pre []
     [ t "In <pre>, texts have monospace font.\\n"
@@ -1359,11 +1384,36 @@ sidebar : Model -> Html Msg
 sidebar m =
     section []
         [ h1 [ sizeSection ] [ t "Sidebar" ]
-        , Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
-        , p []
-            [ t "Shown to the left. This is a position-width-fixed organism. "
-            , t "Msg is not yet wired!"
-            ]
+        , withSource """dummySidebarProps : Bool -> Int -> Sidebar.Props
+dummySidebarProps isOpen numColumns =
+    let
+        dummyColumnButton i =
+            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
+            , case modBy 3 i of
+                0 ->
+                    Sidebar.Fallback "Zehpyr"
+
+                1 ->
+                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+
+                _ ->
+                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
+            )
+    in
+    { configOpen = isOpen
+    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
+    }
+
+
+dummySidebarEffects : Bool -> Sidebar.Effects Msg
+dummySidebarEffects isOpen =
+    { configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClickerByIndex = always NoOp
+    }
+
+Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)""" <|
+            Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
         ]
 
 
@@ -1385,6 +1435,14 @@ dummySidebarProps isOpen numColumns =
     in
     { configOpen = isOpen
     , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
+    }
+
+
+dummySidebarEffects : Bool -> Sidebar.Effects Msg
+dummySidebarEffects isOpen =
+    { configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClickerByIndex = always NoOp
     }
 
 
@@ -1441,12 +1499,33 @@ Pref.render { onZephyrModeChange = Toggle, onShowColumnButtonClick = always NoOp
         ]
 
 
-dummySidebarEffects : Bool -> Sidebar.Effects Msg
-dummySidebarEffects isOpen =
-    { configOpener = Toggle (not isOpen)
-    , columnAdder = AddColumn
-    , columnButtonClickerByIndex = always NoOp
-    }
+configStatus : Model -> Html Msg
+configStatus m =
+    section []
+        [ h1 [ sizeSection ] [ t "Config.Status" ]
+        , withSource """Status.render
+    { itemBrokerCapacity = 5000
+    , columnItemLimit = 2000
+    , numColumns = m.numColumns
+    , numVisible = m.numColumns
+    , numPinned = 0
+    , clientHeight = 900
+    , clientWidth = 1600
+    , serviceWorkerAvailable = m.toggle
+    , indexedDBAvailable = m.toggle
+    }""" <|
+            Status.render
+                { itemBrokerCapacity = 5000
+                , columnItemLimit = 2000
+                , numColumns = m.numColumns
+                , numVisible = m.numColumns
+                , numPinned = 0
+                , clientHeight = 900
+                , clientWidth = 1600
+                , serviceWorkerAvailable = m.toggle
+                , indexedDBAvailable = m.toggle
+                }
+        ]
 
 
 mainTemplate : Model -> List (Html Msg)

@@ -1,11 +1,11 @@
 module View.Atom.TextBlock exposing
-    ( forceBreak
+    ( forceBreak, selectAll
     , styles, forceBreakStyle
     )
 
 {-| Text Block Atoms.
 
-@docs forceBreak
+@docs forceBreak, selectAll
 @docs styles, forceBreakStyle
 
 -}
@@ -21,10 +21,16 @@ forceBreak =
     class forceBreakClass
 
 
+selectAll : Attribute msg
+selectAll =
+    class selectAllClass
+
+
 styles : List Style
 styles =
     [ baseTextBlockStyle
     , forceBreakStyle
+    , s (c selectAllClass) [ ( "user-select", "all" ) ]
     , preStyle
     ]
 
@@ -51,3 +57,8 @@ preStyle : Style
 preStyle =
     derive "pre" Typography.monospaceStyle
         |> inject forceBreakStyle
+
+
+selectAllClass : String
+selectAllClass =
+    "slctall"
