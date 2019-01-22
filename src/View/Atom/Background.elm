@@ -1,11 +1,11 @@
 module View.Atom.Background exposing
-    ( colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr
+    ( colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
     , styles, oneDarkMainStyle, aubergineMainStyle
     )
 
 {-| Background Atoms.
 
-@docs colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr
+@docs colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
 @docs styles, oneDarkMainStyle, aubergineMainStyle
 
 -}
@@ -61,6 +61,11 @@ colorErr =
     Attributes.class colorErrClass
 
 
+transparent : Attribute msg
+transparent =
+    Attributes.class transparentClass
+
+
 
 -- Styles
 
@@ -77,6 +82,7 @@ styles =
     , bg oneDarkClass colorSuccClass oneDarkTheme.succ
     , bg oneDarkClass colorWarnClass oneDarkTheme.warn
     , bg oneDarkClass colorErrClass oneDarkTheme.err
+    , scoped (c oneDarkClass) (c transparentClass) [ ( "background-color", "transparent" ) ]
     , aubergineMainStyle
     , bg aubergineClass colorBgClass aubergineTheme.bg
     , bg aubergineClass colorMainClass aubergineTheme.main
@@ -86,6 +92,7 @@ styles =
     , bg aubergineClass colorSuccClass aubergineTheme.succ
     , bg aubergineClass colorWarnClass aubergineTheme.warn
     , bg aubergineClass colorErrClass aubergineTheme.err
+    , scoped (c aubergineClass) (c transparentClass) [ ( "background-color", "transparent" ) ]
     ]
 
 
@@ -142,3 +149,8 @@ colorWarnClass =
 colorErrClass : String
 colorErrClass =
     "bgcerr"
+
+
+transparentClass : String
+transparentClass =
+    "bgtrans"
