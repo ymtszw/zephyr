@@ -9,7 +9,7 @@ import View.Atom.Border as Border
 import View.Atom.Input as Input
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (aubergine)
-import View.Atom.Typography exposing (colorNote, serif, sizeTitle, t)
+import View.Atom.Typography exposing (..)
 import View.ConfigPane.DiscordConfig as Discord
 import View.Style exposing (..)
 
@@ -102,6 +102,7 @@ shadowColumnRowKey slotsAvailable ( scp, sc ) =
                     noAttr
             ]
             [ shadowColumnIcon scp.description sc
+            , div [ flexGrow, bold ] [ t scp.description ]
             ]
 
 
