@@ -1388,6 +1388,14 @@ dummySidebarProps isOpen numColumns =
     }
 
 
+dummySidebarEffects : Bool -> Sidebar.Effects Msg
+dummySidebarEffects isOpen =
+    { configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClickerByIndex = always NoOp
+    }
+
+
 configPref : Model -> Html Msg
 configPref m =
     section []
@@ -1439,14 +1447,6 @@ Pref.render { onZephyrModeChange = Toggle, onShowColumnButtonClick = always NoOp
                 , logging = m.toggle
                 }
         ]
-
-
-dummySidebarEffects : Bool -> Sidebar.Effects Msg
-dummySidebarEffects isOpen =
-    { configOpener = Toggle (not isOpen)
-    , columnAdder = AddColumn
-    , columnButtonClickerByIndex = always NoOp
-    }
 
 
 mainTemplate : Model -> List (Html Msg)
