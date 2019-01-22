@@ -1392,8 +1392,16 @@ configPref : Model -> Html Msg
 configPref m =
     section []
         [ h1 [ sizeSection ] [ t "Config.Pref" ]
-        , withSource """Pref.render""" <|
-            Pref.render
+        , withSource """Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
+    { zephyrMode = m.toggle
+    , evictThreshold = 5
+    , logging = m.toggle
+    }""" <|
+            Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
+                { zephyrMode = m.toggle
+                , evictThreshold = 5
+                , logging = m.toggle
+                }
         ]
 
 
