@@ -1408,7 +1408,7 @@ configPref m =
                 , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
                 )
 in
-Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
+Pref.render { onZephyrModeChange = Toggle, onShowColumnButtonClick = always NoOp, onLoggingChange = Toggle }
     { zephyrMode = m.toggle
     , evictThreshold = 5
     , columnSlotsAvailable = m.toggle
@@ -1431,7 +1431,7 @@ Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
                             , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
                             )
             in
-            Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
+            Pref.render { onZephyrModeChange = Toggle, onShowColumnButtonClick = always NoOp, onLoggingChange = Toggle }
                 { zephyrMode = m.toggle
                 , evictThreshold = 5
                 , columnSlotsAvailable = m.toggle

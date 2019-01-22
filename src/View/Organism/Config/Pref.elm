@@ -1,14 +1,19 @@
 module View.Organism.Config.Pref exposing (Effects, Props, ShadowColumn(..), ShadowColumnProps, render, styles)
 
+import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Html, div, h3, img, p)
-import Html.Attributes exposing (alt, class, src)
+import Html exposing (Html, button, div, h3, img, p)
+import Html.Attributes exposing (alt, class, disabled, src)
+import Html.Events exposing (onClick)
 import Html.Keyed
+import Octicons
+import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Image exposing (octicon, octiconPathStyle)
 import View.Atom.Input as Input
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (aubergine)
+import View.Atom.Theme exposing (..)
 import View.Atom.Typography exposing (..)
 import View.ConfigPane.DiscordConfig as Discord
 import View.Style exposing (..)
@@ -16,6 +21,7 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onZephyrModeChange : Bool -> msg
+    , onShowColumnButtonClick : String -> msg
     , onLoggingChange : Bool -> msg
     }
 
@@ -42,7 +48,7 @@ render eff props =
                     ]
                 ]
         , prefRow "Shadow Columns" [ "Columns currently aren't displayed. Automatically reappear when new messages arrived." ] <|
-            shadowColumnsTable props.columnSlotsAvailable props.shadowColumns
+            shadowColumnsTable eff props.columnSlotsAvailable props.shadowColumns
         , prefRow "Logging" [ "Enables Elm events inspector at the bottom of this pane. This will SIGNIFICANTLY degrade application performance!" ] <|
             div [] [ Input.toggle [] { onChange = eff.onLoggingChange, checked = props.logging } ]
         ]
@@ -74,19 +80,19 @@ type alias ShadowColumnProps =
     { id : String, description : String }
 
 
-shadowColumnsTable : Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
-shadowColumnsTable slotsAvailable shadowColumns =
+shadowColumnsTable : Effects msg -> Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
+shadowColumnsTable eff slotsAvailable shadowColumns =
     Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
         case shadowColumns of
             [] ->
                 [ ( "shadowColumnEmpty", desc [ t "(Empty)" ] ) ]
 
             _ ->
-                List.map (shadowColumnRowKey slotsAvailable) shadowColumns
+                List.map (shadowColumnRowKey eff slotsAvailable) shadowColumns
 
 
-shadowColumnRowKey : Bool -> ( ShadowColumnProps, ShadowColumn ) -> ( String, Html msg )
-shadowColumnRowKey slotsAvailable ( scp, sc ) =
+shadowColumnRowKey : Effects msg -> Bool -> ( ShadowColumnProps, ShadowColumn ) -> ( String, Html msg )
+shadowColumnRowKey eff slotsAvailable ( scp, sc ) =
     Tuple.pair scp.id <|
         div
             [ flexRow
@@ -103,6 +109,7 @@ shadowColumnRowKey slotsAvailable ( scp, sc ) =
             ]
             [ shadowColumnIcon scp.description sc
             , div [ flexGrow, bold ] [ t scp.description ]
+            , showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
             ]
 
 
@@ -182,6 +189,19 @@ slackBadge =
     imageBadge "Slack logo" <| Slack.defaultIconUrl (Just shadowColumnIconBadgeSize)
 
 
+showColumnButton : msg -> Bool -> Html msg
+showColumnButton onShowColumnButtonClick slotsAvailable =
+    button
+        [ class showColumnButtonClass
+        , flexItem
+        , padding2
+        , Background.colorPrim
+        , disabled (not slotsAvailable)
+        , onClick onShowColumnButtonClick
+        ]
+        [ octicon { size = showColumnButtonOcticonSize, shape = Octicons.arrowRight }, t " Show" ]
+
+
 styles : List Style
 styles =
     [ s (c shadowColumnIconClass)
@@ -193,6 +213,12 @@ styles =
         [ ( "width", px shadowColumnIconBadgeSize )
         , ( "height", px shadowColumnIconBadgeSize )
         ]
+    , s (c showColumnButtonClass)
+        [ ( "width", px showColumnButtonWidth )
+        , ( "flex-basis", "auto" )
+        ]
+    , octiconPathStyle (c oneDarkClass ++ " " ++ c showColumnButtonClass) [ ( "fill", cssRgba oneDarkTheme.text ) ]
+    , octiconPathStyle (c aubergineClass ++ " " ++ c showColumnButtonClass) [ ( "fill", cssRgba aubergineTheme.text ) ]
     ]
 
 
@@ -215,3 +241,18 @@ shadowColumnIconBadgeClass =
 shadowColumnIconBadgeSize : Int
 shadowColumnIconBadgeSize =
     shadowColumnIconSize // 3
+
+
+showColumnButtonClass : String
+showColumnButtonClass =
+    "scshowbtn"
+
+
+showColumnButtonWidth : Int
+showColumnButtonWidth =
+    70
+
+
+showColumnButtonOcticonSize : Int
+showColumnButtonOcticonSize =
+    14
