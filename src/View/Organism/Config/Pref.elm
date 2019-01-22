@@ -16,12 +16,14 @@ import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (..)
 import View.Atom.Typography exposing (..)
 import View.ConfigPane.DiscordConfig as Discord
+import View.Molecule.Icon as Icon
 import View.Style exposing (..)
 
 
 type alias Effects msg =
     { onZephyrModeChange : Bool -> msg
     , onShowColumnButtonClick : String -> msg
+    , onDeleteColumnButtonClick : String -> msg
     , onLoggingChange : Bool -> msg
     }
 
@@ -110,6 +112,7 @@ shadowColumnRowKey eff slotsAvailable ( scp, sc ) =
             [ shadowColumnIcon scp.description sc
             , div [ flexGrow, bold ] [ t scp.description ]
             , showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
+            , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
             ]
 
 
@@ -194,12 +197,27 @@ showColumnButton onShowColumnButtonClick slotsAvailable =
     button
         [ class showColumnButtonClass
         , flexItem
+        , flexRow
+        , flexCenter
         , padding2
         , Background.colorPrim
         , disabled (not slotsAvailable)
         , onClick onShowColumnButtonClick
         ]
         [ octicon { size = showColumnButtonOcticonSize, shape = Octicons.arrowRight }, t " Show" ]
+
+
+deleteColumnButton : msg -> Html msg
+deleteColumnButton onDeleteColumnButtonClick =
+    Icon.octiconButton [ class deleteColumnButtonClass, flexItem, flexBasisAuto, Background.transparent ]
+        { onPress = onDeleteColumnButtonClick
+        , size = shadowColumnIconSize
+        , shape = Octicons.trashcan
+        }
+
+
+
+-- STYLES
 
 
 styles : List Style
@@ -215,10 +233,18 @@ styles =
         ]
     , s (c showColumnButtonClass)
         [ ( "width", px showColumnButtonWidth )
+        , ( "height", px shadowColumnIconSize )
+        , ( "justify-content", "center" )
         , ( "flex-basis", "auto" )
         ]
     , octiconPathStyle (c oneDarkClass ++ " " ++ c showColumnButtonClass) [ ( "fill", cssRgba oneDarkTheme.text ) ]
     , octiconPathStyle (c aubergineClass ++ " " ++ c showColumnButtonClass) [ ( "fill", cssRgba aubergineTheme.text ) ]
+    , s (c deleteColumnButtonClass)
+        [ ( "width", px shadowColumnIconSize )
+        , ( "height", px shadowColumnIconSize )
+        ]
+    , octiconPathStyle (c oneDarkClass ++ " " ++ c deleteColumnButtonClass) [ ( "fill", cssRgba oneDarkTheme.err ) ]
+    , octiconPathStyle (c aubergineClass ++ " " ++ c deleteColumnButtonClass) [ ( "fill", cssRgba aubergineTheme.err ) ]
     ]
 
 
@@ -256,3 +282,8 @@ showColumnButtonWidth =
 showColumnButtonOcticonSize : Int
 showColumnButtonOcticonSize =
     14
+
+
+deleteColumnButtonClass : String
+deleteColumnButtonClass =
+    "scdelbtn"
