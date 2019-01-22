@@ -21,6 +21,7 @@ import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Organism.Config.Pref as Pref
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)
 import View.Stylesheet
@@ -62,6 +63,7 @@ type Route
     | Input
     | Icon
     | Sidebar
+    | ConfigPref
     | MainTemplate
 
 
@@ -94,6 +96,7 @@ urlToRoute url =
                 , U.map Input (U.s "input")
                 , U.map Icon (U.s "icon")
                 , U.map Sidebar (U.s "sidebar")
+                , U.map ConfigPref (U.s "config_pref")
                 , U.map MainTemplate (U.s "main_template")
                 ]
     in
@@ -189,6 +192,9 @@ view m =
                 Sidebar ->
                     pLab [ sidebar m ]
 
+                ConfigPref ->
+                    pLab [ configPref m ]
+
                 MainTemplate ->
                     mainTemplate m
     }
@@ -216,6 +222,7 @@ navi r =
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
             , naviButton r Sidebar "Sidebar"
+            , naviButton r ConfigPref "Config.Pref"
             ]
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
@@ -277,6 +284,9 @@ routeToString r =
 
         Sidebar ->
             abs_ [ "sidebar" ]
+
+        ConfigPref ->
+            abs_ [ "config_pref" ]
 
         MainTemplate ->
             abs_ [ "main_template" ]
@@ -1376,6 +1386,15 @@ dummySidebarProps isOpen numColumns =
     { configOpen = isOpen
     , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
     }
+
+
+configPref : Model -> Html Msg
+configPref m =
+    section []
+        [ h1 [ sizeSection ] [ t "Config.Pref" ]
+        , withSource """Pref.render""" <|
+            Pref.render
+        ]
 
 
 dummySidebarEffects : Bool -> Sidebar.Effects Msg
