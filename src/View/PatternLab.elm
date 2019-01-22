@@ -336,7 +336,7 @@ import View.Atom.Image as Image
 import View.Atom.Input as Input
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
-import View.Atom.TextBlock exposing (forceBreak)
+import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
@@ -405,7 +405,7 @@ withSource : String -> Html Msg -> Html Msg
 withSource source toRender =
     div [ growRow, flexCenter, widthFill, spacingRow15 ]
         [ div [] [ toRender ]
-        , pre [] [ t source ]
+        , pre [ padding5, selectAll, Border.round5, Background.colorSub ] [ t source ]
         ]
 
 
