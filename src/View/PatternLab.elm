@@ -328,6 +328,7 @@ introduction =
             , pre [ padding10, Border.round5, Border.w1, Border.solid ]
                 [ t """import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -338,7 +339,11 @@ import View.Atom.Layout exposing (..)
 import View.Atom.TextBlock exposing (forceBreak)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
-import View.Style exposing (px)"""
+import View.Molecule.Icon as Icon
+import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Status as Status
+import View.Organism.Sidebar as Sidebar
+import View.Style exposing (none, px)"""
                 ]
             ]
         ]
