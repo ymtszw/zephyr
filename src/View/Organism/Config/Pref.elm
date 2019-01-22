@@ -1,4 +1,4 @@
-module View.Organism.Config.Pref exposing (Effects, Props, ShadowColumn(..), render, styles)
+module View.Organism.Config.Pref exposing (Effects, Props, ShadowColumn(..), ShadowColumnProps, render, styles)
 
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -24,7 +24,7 @@ type alias Props =
     { zephyrMode : Bool
     , evictThreshold : Int
     , columnSlotsAvailable : Bool
-    , shadowColumns : List ShadowColumn
+    , shadowColumns : List ( ShadowColumnProps, ShadowColumn )
     , logging : Bool
     }
 
@@ -65,25 +65,16 @@ desc texts =
 
 
 type ShadowColumn
-    = FallbackSC { id : String, description : String }
-    | DiscordSC { id : String, mainChannelName : String, description : String, guildIcon : Maybe String }
-    | SlackSC { id : String, mainConvName : String, description : String, teamIcon : Maybe String }
+    = FallbackSC
+    | DiscordSC { mainChannelName : String, guildIcon : Maybe String }
+    | SlackSC { mainConvName : String, teamIcon : Maybe String }
 
 
-scId : ShadowColumn -> String
-scId sc =
-    case sc of
-        FallbackSC { id } ->
-            id
-
-        DiscordSC { id } ->
-            id
-
-        SlackSC { id } ->
-            id
+type alias ShadowColumnProps =
+    { id : String, description : String }
 
 
-shadowColumnsTable : Bool -> List ShadowColumn -> Html msg
+shadowColumnsTable : Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
 shadowColumnsTable slotsAvailable shadowColumns =
     Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
         case shadowColumns of
@@ -94,9 +85,9 @@ shadowColumnsTable slotsAvailable shadowColumns =
                 List.map (shadowColumnRowKey slotsAvailable) shadowColumns
 
 
-shadowColumnRowKey : Bool -> ShadowColumn -> ( String, Html msg )
-shadowColumnRowKey slotsAvailable sc =
-    Tuple.pair (scId sc) <|
+shadowColumnRowKey : Bool -> ( ShadowColumnProps, ShadowColumn ) -> ( String, Html msg )
+shadowColumnRowKey slotsAvailable ( scp, sc ) =
+    Tuple.pair scp.id <|
         div
             [ flexRow
             , flexBasisAuto
@@ -110,14 +101,14 @@ shadowColumnRowKey slotsAvailable sc =
                 _ ->
                     noAttr
             ]
-            [ shadowColumnIcon sc
+            [ shadowColumnIcon scp.description sc
             ]
 
 
-shadowColumnIcon : ShadowColumn -> Html msg
-shadowColumnIcon sc =
+shadowColumnIcon : String -> ShadowColumn -> Html msg
+shadowColumnIcon description sc =
     case sc of
-        FallbackSC { description } ->
+        FallbackSC ->
             abbrIcon description
 
         DiscordSC { mainChannelName, guildIcon } ->

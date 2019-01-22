@@ -1396,13 +1396,17 @@ configPref m =
     dummyShadowColumn index =
         case modBy 3 index of
             0 ->
-                Pref.FallbackSC { id = String.fromInt index, description = "Zephyr" }
+                ( { id = String.fromInt index, description = "Zephyr" }, Pref.FallbackSC )
 
             1 ->
-                Pref.DiscordSC { id = String.fromInt index, mainChannelName = "Discord", description = "#Discord", guildIcon = Just (Image.ph 48 48) }
+                ( { id = String.fromInt index, description = "#Discord" }
+                , Pref.DiscordSC { mainChannelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+                )
 
             _ ->
-                Pref.SlackSC { id = String.fromInt index, mainConvName = "Slack", description = "#Slack", teamIcon = Just (Image.ph 50 50) }
+                ( { id = String.fromInt index, description = "#Slack" }
+                , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
+                )
 in
 Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
     { zephyrMode = m.toggle
@@ -1415,13 +1419,17 @@ Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
                 dummyShadowColumn index =
                     case modBy 3 index of
                         0 ->
-                            Pref.FallbackSC { id = String.fromInt index, description = "Zephyr" }
+                            ( { id = String.fromInt index, description = "Zephyr" }, Pref.FallbackSC )
 
                         1 ->
-                            Pref.DiscordSC { id = String.fromInt index, mainChannelName = "Discord", description = "#Discord", guildIcon = Just (Image.ph 48 48) }
+                            ( { id = String.fromInt index, description = "#Discord" }
+                            , Pref.DiscordSC { mainChannelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+                            )
 
                         _ ->
-                            Pref.SlackSC { id = String.fromInt index, mainConvName = "Slack", description = "#Slack", teamIcon = Just (Image.ph 50 50) }
+                            ( { id = String.fromInt index, description = "#Slack" }
+                            , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
+                            )
             in
             Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
                 { zephyrMode = m.toggle
