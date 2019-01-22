@@ -1392,14 +1392,42 @@ configPref : Model -> Html Msg
 configPref m =
     section []
         [ h1 [ sizeSection ] [ t "Config.Pref" ]
-        , withSource """Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
+        , withSource """let
+    dummyShadowColumn index =
+        case modBy 3 index of
+            0 ->
+                Pref.FallbackSC { id = String.fromInt index, description = "Zephyr" }
+
+            1 ->
+                Pref.DiscordSC { id = String.fromInt index, mainChannelName = "Discord", description = "#Discord", guildIcon = Just (Image.ph 48 48) }
+
+            _ ->
+                Pref.SlackSC { id = String.fromInt index, mainConvName = "Slack", description = "#Slack", teamIcon = Just (Image.ph 50 50) }
+in
+Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
     { zephyrMode = m.toggle
     , evictThreshold = 5
+    , columnSlotsAvailable = m.toggle
+    , shadowColumns = List.range 0 6 |> List.map dummyShadowColumn
     , logging = m.toggle
     }""" <|
+            let
+                dummyShadowColumn index =
+                    case modBy 3 index of
+                        0 ->
+                            Pref.FallbackSC { id = String.fromInt index, description = "Zephyr" }
+
+                        1 ->
+                            Pref.DiscordSC { id = String.fromInt index, mainChannelName = "Discord", description = "#Discord", guildIcon = Just (Image.ph 48 48) }
+
+                        _ ->
+                            Pref.SlackSC { id = String.fromInt index, mainConvName = "Slack", description = "#Slack", teamIcon = Just (Image.ph 50 50) }
+            in
             Pref.render { onZephyrModeChange = Toggle, onLoggingChange = Toggle }
                 { zephyrMode = m.toggle
                 , evictThreshold = 5
+                , columnSlotsAvailable = m.toggle
+                , shadowColumns = List.range 0 6 |> List.map dummyShadowColumn
                 , logging = m.toggle
                 }
         ]

@@ -1,9 +1,16 @@
-module View.Organism.Config.Pref exposing (render, styles)
+module View.Organism.Config.Pref exposing (Effects, Props, ShadowColumn(..), render, styles)
 
-import Html exposing (Html, div, h3, p)
+import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
+import Html exposing (Html, div, h3, img, p)
+import Html.Attributes exposing (alt, class, src)
+import Html.Keyed
+import View.Atom.Border as Border
 import View.Atom.Input as Input
 import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (colorNote, sizeTitle, t)
+import View.Atom.Theme exposing (aubergine)
+import View.Atom.Typography exposing (colorNote, serif, sizeTitle, t)
+import View.ConfigPane.DiscordConfig as Discord
 import View.Style exposing (..)
 
 
@@ -16,6 +23,8 @@ type alias Effects msg =
 type alias Props =
     { zephyrMode : Bool
     , evictThreshold : Int
+    , columnSlotsAvailable : Bool
+    , shadowColumns : List ShadowColumn
     , logging : Bool
     }
 
@@ -32,6 +41,8 @@ render eff props =
                     , t "If you pinned columns more than this limit, shadow columns do not automatically reappear."
                     ]
                 ]
+        , prefRow "Shadow Columns" [ "Columns currently aren't displayed. Automatically reappear when new messages arrived." ] <|
+            shadowColumnsTable props.columnSlotsAvailable props.shadowColumns
         , prefRow "Logging" [ "Enables Elm events inspector at the bottom of this pane. This will SIGNIFICANTLY degrade application performance!" ] <|
             div [] [ Input.toggle [] { onChange = eff.onLoggingChange, checked = props.logging } ]
         ]
@@ -53,6 +64,162 @@ desc texts =
     p [ colorNote ] texts
 
 
+type ShadowColumn
+    = FallbackSC { id : String, description : String }
+    | DiscordSC { id : String, mainChannelName : String, description : String, guildIcon : Maybe String }
+    | SlackSC { id : String, mainConvName : String, description : String, teamIcon : Maybe String }
+
+
+scId : ShadowColumn -> String
+scId sc =
+    case sc of
+        FallbackSC { id } ->
+            id
+
+        DiscordSC { id } ->
+            id
+
+        SlackSC { id } ->
+            id
+
+
+shadowColumnsTable : Bool -> List ShadowColumn -> Html msg
+shadowColumnsTable slotsAvailable shadowColumns =
+    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
+        case shadowColumns of
+            [] ->
+                [ ( "shadowColumnEmpty", desc [ t "(Empty)" ] ) ]
+
+            _ ->
+                List.map (shadowColumnRowKey slotsAvailable) shadowColumns
+
+
+shadowColumnRowKey : Bool -> ShadowColumn -> ( String, Html msg )
+shadowColumnRowKey slotsAvailable sc =
+    Tuple.pair (scId sc) <|
+        div
+            [ flexRow
+            , flexBasisAuto
+            , flexCenter
+            , padding2
+            , spacingRow5
+            , case sc of
+                SlackSC _ ->
+                    aubergine
+
+                _ ->
+                    noAttr
+            ]
+            [ shadowColumnIcon sc
+            ]
+
+
+shadowColumnIcon : ShadowColumn -> Html msg
+shadowColumnIcon sc =
+    case sc of
+        FallbackSC { description } ->
+            abbrIcon description
+
+        DiscordSC { mainChannelName, guildIcon } ->
+            badgedIcon discordBadge <|
+                case guildIcon of
+                    Just src ->
+                        imageIcon src "Discord guild icon"
+
+                    Nothing ->
+                        abbrIcon mainChannelName
+
+        SlackSC { mainConvName, teamIcon } ->
+            badgedIcon slackBadge <|
+                case teamIcon of
+                    Just src ->
+                        imageIcon src "Slack team icon"
+
+                    Nothing ->
+                        abbrIcon mainConvName
+
+
+badgedIcon : Html msg -> Html msg -> Html msg
+badgedIcon badge icon =
+    withBadge []
+        { topRight = Nothing
+        , bottomRight = Just badge
+        , content = icon -- No inset
+        }
+
+
+abbrIcon : String -> Html msg
+abbrIcon text =
+    div
+        [ class shadowColumnIconClass
+        , flexColumn
+        , flexCenter
+        , flexBasisAuto
+        , serif
+        , Border.round2
+        , Border.solid
+        , Border.w1
+        ]
+        [ div [] [ t (String.left 1 text) ]
+        ]
+
+
+imageIcon : String -> String -> Html msg
+imageIcon src_ alt_ =
+    img
+        [ class shadowColumnIconClass
+        , Border.round2
+        , src src_
+        , alt alt_
+        ]
+        []
+
+
+discordBadge : Html msg
+discordBadge =
+    imageBadge "Discord logo" <| Discord.defaultIconUrl (Just shadowColumnIconBadgeSize)
+
+
+imageBadge : String -> String -> Html msg
+imageBadge alt_ src_ =
+    img [ class shadowColumnIconBadgeClass, src src_, alt alt_ ] []
+
+
+slackBadge : Html msg
+slackBadge =
+    imageBadge "Slack logo" <| Slack.defaultIconUrl (Just shadowColumnIconBadgeSize)
+
+
 styles : List Style
 styles =
-    []
+    [ s (c shadowColumnIconClass)
+        [ ( "width", px shadowColumnIconSize )
+        , ( "height", px shadowColumnIconSize )
+        , ( "justify-content", "center" )
+        ]
+    , s (c shadowColumnIconBadgeClass)
+        [ ( "width", px shadowColumnIconBadgeSize )
+        , ( "height", px shadowColumnIconBadgeSize )
+        ]
+    ]
+
+
+shadowColumnIconClass : String
+shadowColumnIconClass =
+    "scicon"
+
+
+shadowColumnIconSize : Int
+shadowColumnIconSize =
+    -- Bigger than base font size
+    20
+
+
+shadowColumnIconBadgeClass : String
+shadowColumnIconBadgeClass =
+    "scbadge"
+
+
+shadowColumnIconBadgeSize : Int
+shadowColumnIconBadgeSize =
+    shadowColumnIconSize // 3
