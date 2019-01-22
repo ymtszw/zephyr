@@ -17,7 +17,7 @@ import View.Atom.Image as Image
 import View.Atom.Input as Input
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
-import View.Atom.TextBlock exposing (forceBreak)
+import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
@@ -533,6 +533,16 @@ textBlock =
                 , code [] [ t "forceBreak" ]
                 , t ", even significantly long alphanumeric strings are contained within their parent blocks like so:\n"
                 , t (String.repeat 100 "abcd0123")
+                ]
+        , withSource """p [ selectAll ]
+    [ t "Text block with "
+    , code [] [ t "selectAll" ]
+    , t " attribute will cause user clicks to select all texts in it."
+    ]""" <|
+            p [ selectAll ]
+                [ t "Text block with "
+                , code [] [ t "selectAll" ]
+                , t " attribute will cause user clicks to select all texts in it."
                 ]
         , withSource """pre []
     [ t "In <pre>, texts have monospace font.\\n"
