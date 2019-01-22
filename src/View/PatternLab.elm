@@ -1369,11 +1369,36 @@ sidebar : Model -> Html Msg
 sidebar m =
     section []
         [ h1 [ sizeSection ] [ t "Sidebar" ]
-        , Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
-        , p []
-            [ t "Shown to the left. This is a position-width-fixed organism. "
-            , t "Msg is not yet wired!"
-            ]
+        , withSource """dummySidebarProps : Bool -> Int -> Sidebar.Props
+dummySidebarProps isOpen numColumns =
+    let
+        dummyColumnButton i =
+            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
+            , case modBy 3 i of
+                0 ->
+                    Sidebar.Fallback "Zehpyr"
+
+                1 ->
+                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+
+                _ ->
+                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
+            )
+    in
+    { configOpen = isOpen
+    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
+    }
+
+
+dummySidebarEffects : Bool -> Sidebar.Effects Msg
+dummySidebarEffects isOpen =
+    { configOpener = Toggle (not isOpen)
+    , columnAdder = AddColumn
+    , columnButtonClickerByIndex = always NoOp
+    }
+
+Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)""" <|
+            Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
         ]
 
 
