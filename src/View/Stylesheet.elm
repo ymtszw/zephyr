@@ -12,6 +12,7 @@ import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
 import View.Molecule.Icon as Icon
 import View.Molecule.Wallpaper as Wallpaper
+import View.Organism.Config.Pref as Pref
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (..)
 import View.Template.Main
@@ -42,6 +43,7 @@ rendered =
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Sidebar.styles
+                ++ Pref.styles
                 ++ View.Template.Main.styles
 
 
