@@ -22,6 +22,7 @@ import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)
 import View.Stylesheet
@@ -64,6 +65,7 @@ type Route
     | Icon
     | Sidebar
     | ConfigPref
+    | ConfigStatus
     | MainTemplate
 
 
@@ -97,6 +99,7 @@ urlToRoute url =
                 , U.map Icon (U.s "icon")
                 , U.map Sidebar (U.s "sidebar")
                 , U.map ConfigPref (U.s "config_pref")
+                , U.map ConfigStatus (U.s "config_status")
                 , U.map MainTemplate (U.s "main_template")
                 ]
     in
@@ -195,6 +198,9 @@ view m =
                 ConfigPref ->
                     pLab [ configPref m ]
 
+                ConfigStatus ->
+                    pLab [ configStatus m ]
+
                 MainTemplate ->
                     mainTemplate m
     }
@@ -223,6 +229,7 @@ navi r =
             [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
             , naviButton r Sidebar "Sidebar"
             , naviButton r ConfigPref "Config.Pref"
+            , naviButton r ConfigStatus "Config.Status"
             ]
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
@@ -287,6 +294,9 @@ routeToString r =
 
         ConfigPref ->
             abs_ [ "config_pref" ]
+
+        ConfigStatus ->
+            abs_ [ "config_status" ]
 
         MainTemplate ->
             abs_ [ "main_template" ]
@@ -1445,6 +1455,35 @@ Pref.render { onZephyrModeChange = Toggle, onShowColumnButtonClick = always NoOp
                 , columnSlotsAvailable = m.toggle
                 , shadowColumns = List.range 0 6 |> List.map dummyShadowColumn
                 , logging = m.toggle
+                }
+        ]
+
+
+configStatus : Model -> Html Msg
+configStatus m =
+    section []
+        [ h1 [ sizeSection ] [ t "Config.Status" ]
+        , withSource """Status.render
+    { itemBrokerCapacity = 5000
+    , columnItemLimit = 2000
+    , numColumns = m.numColumns
+    , numVisible = m.numColumns
+    , numPinned = 0
+    , clientHeight = 900
+    , clientWidth = 1600
+    , serviceWorkerAvailable = m.toggle
+    , indexedDBAvailable = m.toggle
+    }""" <|
+            Status.render
+                { itemBrokerCapacity = 5000
+                , columnItemLimit = 2000
+                , numColumns = m.numColumns
+                , numVisible = m.numColumns
+                , numPinned = 0
+                , clientHeight = 900
+                , clientWidth = 1600
+                , serviceWorkerAvailable = m.toggle
+                , indexedDBAvailable = m.toggle
                 }
         ]
 
