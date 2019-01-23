@@ -151,18 +151,7 @@ pinBadge =
 
 abbrIcon : String -> Html msg
 abbrIcon desc =
-    div
-        [ class innerFaceClass
-        , flexColumn
-        , flexCenter
-        , serif
-        , sizeTitle
-        , Border.round5
-        , Border.solid
-        , Border.w1
-        ]
-        [ div [] [ t (String.left 1 desc) ]
-        ]
+    Icon.abbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] desc
 
 
 imageIcon : String -> String -> Html msg
@@ -260,7 +249,6 @@ styles =
     , s (c sidebarClass ++ " " ++ c innerFaceClass)
         [ ( "width", px innerFaceSize )
         , ( "height", px innerFaceSize )
-        , ( "justify-content", "center" )
         ]
     , s (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.bg ) ]

@@ -152,18 +152,7 @@ badgedIcon badge icon =
 
 abbrIcon : String -> Html msg
 abbrIcon text =
-    div
-        [ class shadowColumnIconClass
-        , flexColumn
-        , flexCenter
-        , flexBasisAuto
-        , serif
-        , Border.round2
-        , Border.solid
-        , Border.w1
-        ]
-        [ div [] [ t (String.left 1 text) ]
-        ]
+    Icon.abbr [ class shadowColumnIconClass, serif, Border.round2 ] text
 
 
 imageIcon : String -> String -> Html msg
@@ -225,7 +214,6 @@ styles =
     [ s (c shadowColumnIconClass)
         [ ( "width", px shadowColumnIconSize )
         , ( "height", px shadowColumnIconSize )
-        , ( "justify-content", "center" )
         ]
     , s (c shadowColumnIconBadgeClass)
         [ ( "width", px shadowColumnIconBadgeSize )

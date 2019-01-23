@@ -71,7 +71,7 @@ styles : List Style
 styles =
     [ s (c iconClass)
         [ ( "overflow", "hidden" )
-        , ( "flex-basis", "auto" )
+        , ( "flex-basis", "auto!important" )
         , ( "justify-content", "center" )
         ]
     ]
