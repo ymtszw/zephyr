@@ -1,6 +1,7 @@
 module View.Stylesheet exposing (length, render)
 
 import Html
+import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -41,6 +42,7 @@ rendered =
                 ++ Background.styles
                 ++ Layout.styles
                 ++ Image.styles
+                ++ Animation.styles
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Sidebar.styles

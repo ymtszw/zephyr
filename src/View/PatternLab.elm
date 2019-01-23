@@ -10,6 +10,7 @@ import StringExtra
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
+import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -63,6 +64,7 @@ type Route
     | Image
     | Button
     | Input
+    | Animation
     | Icon
     | Sidebar
     | ConfigPref
@@ -98,6 +100,7 @@ urlToRoute url =
                 , U.map Image (U.s "image")
                 , U.map Button (U.s "button")
                 , U.map Input (U.s "input")
+                , U.map Animation (U.s "animation")
                 , U.map Icon (U.s "icon")
                 , U.map Sidebar (U.s "sidebar")
                 , U.map ConfigPref (U.s "config_pref")
@@ -192,6 +195,9 @@ view m =
                 Input ->
                     pLab [ input_ m ]
 
+                Animation ->
+                    pLab [ animation ]
+
                 Icon ->
                     pLab [ icon ]
 
@@ -226,6 +232,7 @@ navi r =
             , naviButton r Image "Image"
             , naviButton r Button "Button"
             , naviButton r Input "Input"
+            , naviButton r Animation "Animation"
             ]
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Molecules" ]
@@ -292,6 +299,9 @@ routeToString r =
 
         Input ->
             abs_ [ "input" ]
+
+        Animation ->
+            abs_ [ "animation" ]
 
         Icon ->
             abs_ [ "icon" ]
@@ -1364,6 +1374,15 @@ select_ ss selected =
                     , optionHtml = text
                     }
                 ]
+        ]
+
+
+animation : Html Msg
+animation =
+    section []
+        [ h1 [ sizeSection ] [ t "Animation" ]
+        , withSource """img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
+            img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
         ]
 
 
