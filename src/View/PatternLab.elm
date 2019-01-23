@@ -782,6 +782,12 @@ flexBox =
                 , div [ Border.solid, Border.w1 ] [ t lorem ]
                 , div [ Border.solid, Border.w1 ] [ t iroha ]
                 ]
+        , withSource """div [ flexRow, flexWrap ] <|
+    List.repeat 10 <|
+        div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "This is a wrapping row, we are being wrapped!" ]""" <|
+            div [ flexRow, flexWrap ] <|
+                List.repeat 10 <|
+                    div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "This is a wrapping row, we are being wrapped!" ]
         ]
 
 
@@ -866,6 +872,12 @@ spacing =
                 , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
                 , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
+        , withSource """div [ flexRow, flexWrap, spacingWrapped5, Border.solid, Border.w1 ] <|
+    List.repeat 10 <|
+        div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]""" <|
+            div [ flexRow, flexWrap, spacingWrapped5, Border.solid, Border.w1 ] <|
+                List.repeat 10 <|
+                    div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]
         ]
 
 

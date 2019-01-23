@@ -538,7 +538,7 @@ spacingWrappedParentStyle space =
     s (c (spacingWrappedClass space))
         [ -- A trick also used in elm-ui; currently wrapping flex items cannot have easy "gap" in both row and column directions.
           -- So, (1) have margins around items, and (2) compensate edge margins by translating container box
-          ( "transform", "translate(-" ++ halfPx space ++ ",-" ++ halfPx space ++ ")" )
+          ( "margin", "-" ++ halfPx space )
         ]
 
 
