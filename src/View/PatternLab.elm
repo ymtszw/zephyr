@@ -1609,11 +1609,18 @@ Discord.render
                     , avatar = Nothing
                     }
 
+                dummyGuild index =
+                    let
+                        id =
+                            "DUMMYGUILDID" ++ String.fromInt index
+                    in
+                    ( id, { id = id, name = String.fromInt index ++ "GUILD", icon = Nothing } )
+
                 dummyPOV =
                     { user = dummyUser
                     , token = "LIVINGTOKEN"
+                    , guilds = List.range 0 10 |> List.map dummyGuild |> Dict.fromList
                     , channels = Dict.empty
-                    , guilds = Dict.empty
                     }
             in
             Discord.render

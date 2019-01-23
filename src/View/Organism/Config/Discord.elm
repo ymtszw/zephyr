@@ -2,9 +2,11 @@ module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, 
 
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
+import Dict
 import Html exposing (Html, button, div, h3, img, input, label, p, strong)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
+import Html.Keyed
 import Octicons
 import View.Atom.Animation as Animation
 import View.Atom.Background as Background
@@ -13,7 +15,7 @@ import View.Atom.Image exposing (octiconPathStyle)
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (oneDarkTheme)
 import View.Atom.Typography exposing (..)
-import View.Molecule.Icon exposing (octiconButton)
+import View.Molecule.Icon as Icon
 import View.Style exposing (..)
 
 
@@ -100,6 +102,7 @@ currentState eff props =
         HydratedOnce rehydrating pov ->
             div [ flexColumn, spacingColumn5 ]
                 [ userNameAndAvatar eff.onRehydrateButtonClick rehydrating pov.user
+                , guilds pov
                 ]
 
 
@@ -107,9 +110,9 @@ userNameAndAvatar : msg -> Bool -> Discord.User -> Html msg
 userNameAndAvatar onRehydrateButtonClick rehydrating user =
     div [ flexRow, spacingRow5 ]
         [ img
-            [ class userAvatarClass
+            [ class icon40Class
             , flexItem
-            , src (Discord.imageUrlWithFallback (Just userAvatarSize) user.discriminator user.avatar)
+            , src (Discord.imageUrlWithFallback (Just icon40Size) user.discriminator user.avatar)
             , alt user.username
             , Border.round5
             ]
@@ -124,7 +127,7 @@ userNameAndAvatar onRehydrateButtonClick rehydrating user =
 
 rehydrateButton : msg -> Bool -> Html msg
 rehydrateButton onRehydrateButtonClick rehydrating =
-    octiconButton
+    Icon.octiconButton
         [ class rehydrateButtonClass
         , disabled rehydrating
         , Border.elliptic
@@ -146,6 +149,27 @@ rehydrateButtonSize =
     20
 
 
+guilds : Discord.POV -> Html msg
+guilds pov =
+    Html.Keyed.node "div" [ flexRow, flexWrap, spacingWrapped5 ] <|
+        if Dict.isEmpty pov.guilds then
+            [ ( "discordGuildEmpty", p [ colorNote, flexGrow ] [ t "(No Servers)" ] ) ]
+
+        else
+            Dict.foldr (\_ g a -> guildIconKey g :: a) [] pov.guilds
+
+
+guildIconKey : Discord.Guild -> ( String, Html msg )
+guildIconKey g =
+    Tuple.pair g.id <|
+        case Maybe.map (Discord.imageUrlNoFallback (Just icon40Size)) g.icon of
+            Just src_ ->
+                img [ class icon40Class, Border.round5, src src_, alt g.name ] []
+
+            Nothing ->
+                Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
+
+
 
 -- STYLES
 
@@ -153,7 +177,7 @@ rehydrateButtonSize =
 styles : List Style
 styles =
     [ s (c tokenSubmitButtonClass) [ ( "align-self", "flex-end" ) ]
-    , s (c userAvatarClass) [ ( "width", px userAvatarSize ), ( "height", px userAvatarSize ) ]
+    , s (c icon40Class) [ ( "width", px icon40Size ), ( "height", px icon40Size ), ( "flex-basis", "auto" ) ]
     , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
     , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
     ]
@@ -164,13 +188,13 @@ tokenSubmitButtonClass =
     "discordtokenbtn"
 
 
-userAvatarClass : String
-userAvatarClass =
-    "discordavatar"
+icon40Class : String
+icon40Class =
+    "discordicon40"
 
 
-userAvatarSize : Int
-userAvatarSize =
+icon40Size : Int
+icon40Size =
     40
 
 
