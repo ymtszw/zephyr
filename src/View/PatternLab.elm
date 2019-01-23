@@ -21,6 +21,7 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
 import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
@@ -66,6 +67,7 @@ type Route
     | Sidebar
     | ConfigPref
     | ConfigStatus
+    | ConfigDiscord
     | MainTemplate
 
 
@@ -100,6 +102,7 @@ urlToRoute url =
                 , U.map Sidebar (U.s "sidebar")
                 , U.map ConfigPref (U.s "config_pref")
                 , U.map ConfigStatus (U.s "config_status")
+                , U.map ConfigDiscord (U.s "config_discord")
                 , U.map MainTemplate (U.s "main_template")
                 ]
     in
@@ -201,6 +204,9 @@ view m =
                 ConfigStatus ->
                     pLab [ configStatus m ]
 
+                ConfigDiscord ->
+                    pLab [ configDiscord m ]
+
                 MainTemplate ->
                     mainTemplate m
     }
@@ -230,6 +236,7 @@ navi r =
             , naviButton r Sidebar "Sidebar"
             , naviButton r ConfigPref "Config.Pref"
             , naviButton r ConfigStatus "Config.Status"
+            , naviButton r ConfigDiscord "Config.Discord"
             ]
         , div [ flexRow, flexCenter, spacingRow15 ]
             [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
@@ -297,6 +304,9 @@ routeToString r =
 
         ConfigStatus ->
             abs_ [ "config_status" ]
+
+        ConfigDiscord ->
+            abs_ [ "config_discord" ]
 
         MainTemplate ->
             abs_ [ "main_template" ]
@@ -1534,6 +1544,29 @@ configStatus m =
                 , clientWidth = 1600
                 , serviceWorkerAvailable = m.toggle
                 , indexedDBAvailable = m.toggle
+                }
+        ]
+
+
+configDiscord : Model -> Html Msg
+configDiscord m =
+    section []
+        [ h1 [ sizeSection ] [ t "Config.Discord" ]
+        , withSource """Discord.render
+    { onTokenInput = TextInput
+    , onTokenSubmit = NoOp
+    }
+    { token = m.textInput
+    , tokenSubmitButtonText = "Submit"
+    , tokenSubmittable = True
+    }""" <|
+            Discord.render
+                { onTokenInput = TextInput
+                , onTokenSubmit = NoOp
+                }
+                { token = m.textInput
+                , tokenSubmitButtonText = "Submit"
+                , tokenSubmittable = True
                 }
         ]
 
