@@ -2,6 +2,7 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -1571,21 +1572,55 @@ configDiscord : Model -> Html Msg
 configDiscord m =
     section []
         [ h1 [ sizeSection ] [ t "Config.Discord" ]
-        , withSource """Discord.render
+        , withSource """let
+    dummyUser =
+        { id = "DUMMYUSERID"
+        , username = "Discord User"
+        , discriminator = "1111"
+        , avatar = Nothing
+        }
+
+    dummyPOV =
+        { user = dummyUser
+        , token = "LIVINGTOKEN"
+        , channels = Dict.empty
+        , guilds = Dict.empty
+        }
+in
+Discord.render
     { onTokenInput = TextInput
-    , onTokenSubmit = NoOp
+    , onTokenSubmit = Toggle False
+    , onRehydrateButtonClick = Toggle (not m.toggle)
     }
     { token = m.textInput
     , tokenSubmitButtonText = "Submit"
     , tokenSubmittable = True
+    , currentState = Discord.HydratedOnce m.toggle dummyPOV
     }""" <|
+            let
+                dummyUser =
+                    { id = "DUMMYUSERID"
+                    , username = "Discord User"
+                    , discriminator = "1111"
+                    , avatar = Nothing
+                    }
+
+                dummyPOV =
+                    { user = dummyUser
+                    , token = "LIVINGTOKEN"
+                    , channels = Dict.empty
+                    , guilds = Dict.empty
+                    }
+            in
             Discord.render
                 { onTokenInput = TextInput
-                , onTokenSubmit = NoOp
+                , onTokenSubmit = Toggle False
+                , onRehydrateButtonClick = Toggle (not m.toggle)
                 }
                 { token = m.textInput
                 , tokenSubmitButtonText = "Submit"
                 , tokenSubmittable = True
+                , currentState = Discord.HydratedOnce m.toggle dummyPOV
                 }
         ]
 

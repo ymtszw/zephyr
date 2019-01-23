@@ -1,18 +1,26 @@
-module View.Organism.Config.Discord exposing (Effects, Props, render, styles)
+module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, render, styles)
 
-import Html exposing (Html, button, div, input, label, p, strong)
+import Color exposing (cssRgba)
+import Data.Producer.Discord as Discord
+import Html exposing (Html, button, div, h3, img, input, label, p, strong)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
+import Octicons
+import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
+import View.Atom.Image exposing (octiconPathStyle)
 import View.Atom.Layout exposing (..)
+import View.Atom.Theme exposing (oneDarkTheme)
 import View.Atom.Typography exposing (..)
-import View.Style exposing (Style, c, s)
+import View.Molecule.Icon exposing (octiconButton)
+import View.Style exposing (..)
 
 
 type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
+    , onRehydrateButtonClick : msg
     }
 
 
@@ -20,6 +28,7 @@ type alias Props =
     { token : String
     , tokenSubmitButtonText : String
     , tokenSubmittable : Bool
+    , currentState : CurrentState
     }
 
 
@@ -30,7 +39,8 @@ render eff props =
         , padding5
         , spacingColumn5
         ]
-        [ tokenForm eff props
+        [ currentState eff props
+        , tokenForm eff props
         ]
 
 
@@ -72,12 +82,98 @@ tokenForm eff props =
         ]
 
 
+type CurrentState
+    = NotIdentified
+    | NowHydrating Discord.User
+    | HydratedOnce Bool Discord.POV
+
+
+currentState : Effects msg -> Props -> Html msg
+currentState eff props =
+    case props.currentState of
+        NotIdentified ->
+            none
+
+        NowHydrating user ->
+            div [] [ userNameAndAvatar eff.onRehydrateButtonClick False user ]
+
+        HydratedOnce rehydrating pov ->
+            div [ flexColumn, spacingColumn5 ]
+                [ userNameAndAvatar eff.onRehydrateButtonClick rehydrating pov.user
+                ]
+
+
+userNameAndAvatar : msg -> Bool -> Discord.User -> Html msg
+userNameAndAvatar onRehydrateButtonClick rehydrating user =
+    div [ flexRow, spacingRow5 ]
+        [ img
+            [ class userAvatarClass
+            , flexItem
+            , src (Discord.imageUrlWithFallback (Just userAvatarSize) user.discriminator user.avatar)
+            , alt user.username
+            , Border.round5
+            ]
+            []
+        , div [ flexGrow ]
+            [ h3 [ sizeHeadline, bold ] [ t user.username ]
+            , p [ colorNote ] [ t ("#" ++ user.discriminator) ]
+            ]
+        , rehydrateButton onRehydrateButtonClick rehydrating
+        ]
+
+
+rehydrateButton : msg -> Bool -> Html msg
+rehydrateButton onRehydrateButtonClick rehydrating =
+    octiconButton
+        [ class rehydrateButtonClass
+        , disabled rehydrating
+        , Border.elliptic
+        , Background.transparent
+        , if rehydrating then
+            Animation.rotating
+
+          else
+            noAttr
+        ]
+        { onPress = onRehydrateButtonClick
+        , size = rehydrateButtonSize
+        , shape = Octicons.sync
+        }
+
+
+rehydrateButtonSize : Int
+rehydrateButtonSize =
+    20
+
+
+
+-- STYLES
+
+
 styles : List Style
 styles =
     [ s (c tokenSubmitButtonClass) [ ( "align-self", "flex-end" ) ]
+    , s (c userAvatarClass) [ ( "width", px userAvatarSize ), ( "height", px userAvatarSize ) ]
+    , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
+    , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
     ]
 
 
 tokenSubmitButtonClass : String
 tokenSubmitButtonClass =
     "discordtokenbtn"
+
+
+userAvatarClass : String
+userAvatarClass =
+    "discordavatar"
+
+
+userAvatarSize : Int
+userAvatarSize =
+    40
+
+
+rehydrateButtonClass : String
+rehydrateButtonClass =
+    "discordrehy"
