@@ -1399,6 +1399,10 @@ icon =
             Icon.link [] { url = "https://example.com", src = Image.ph 50 50, alt = "50x50 icon" }
         , withSource """Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }""" <|
             Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }
+        , withSource """Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr\"""" <|
+            Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr"
+        , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr\"""" <|
+            Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr"
         , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
             Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
         , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|
