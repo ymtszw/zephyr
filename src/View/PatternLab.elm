@@ -24,6 +24,7 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
 import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
 import View.Organism.Config.Status as Status
@@ -86,6 +87,7 @@ routes =
     , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
     , R "animation" "Atoms" "Animation" <| pLab [ animation ]
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
+    , R "table" "Molecules" "Table" <| pLab [ table_ ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
@@ -1323,6 +1325,112 @@ icon =
             Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }
         , withSource """Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }""" <|
             Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }
+        ]
+
+
+table_ : Html Msg
+table_ =
+    section []
+        [ h1 [ sizeSection ] [ t "Table" ]
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Number"
+          , cell = \\i -> t (String.fromInt i)
+          }
+        , { header = "Multiplied and Punctuated"
+          , cell = \\i -> t (StringExtra.punctuateNumber (i * 999))
+          }
+        ]
+    , rowKey = String.fromInt
+    , data = List.range 0 10
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Number"
+                      , cell = \i -> t (String.fromInt i)
+                      }
+                    , { header = "Multiplied and Punctuated"
+                      , cell = \i -> t (StringExtra.punctuateNumber (i * 999))
+                      }
+                    , { header = "Multiplied, Punctuated and Reversed"
+                      , cell = \i -> t (String.reverse (StringExtra.punctuateNumber (i * 999)))
+                      }
+                    ]
+                , rowKey = String.fromInt
+                , data = List.range 0 10
+                }
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Image"
+          , cell = \\( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+          }
+        , { header = "Size"
+          , cell = \\( size, _ ) -> t (px size)
+          }
+        , { header = "Source URL"
+          , cell = \\( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+          }
+        , { header = "Description"
+          , cell = \\_ -> p [] [ t iroha, t " ", t lorem ]
+          }
+        ]
+    , rowKey = \\( size, _ ) -> "imageSize_" ++ String.fromInt size
+    , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Image"
+                      , cell = \( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+                      }
+                    , { header = "Size"
+                      , cell = \( size, _ ) -> t (px size)
+                      }
+                    , { header = "Source URL"
+                      , cell = \( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+                      }
+                    , { header = "Description"
+                      , cell = \_ -> p [] [ t iroha, t " ", t lorem ]
+                      }
+                    ]
+                , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
+                , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+                }
+        , withSource """Table.render [ Table.layoutFixed ]
+    { columns =
+        [ { header = "Image"
+          , cell = \\( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+          }
+        , { header = "Size"
+          , cell = \\( size, _ ) -> t (px size)
+          }
+        , { header = "Source URL"
+          , cell = \\( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+          }
+        , { header = "Description"
+          , cell = \\_ -> p [] [ t iroha, t " ", t lorem ]
+          }
+        ]
+    , rowKey = \\( size, _ ) -> "imageSize_" ++ String.fromInt size
+    , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+    }""" <|
+            Table.render [ Table.layoutFixed ]
+                { columns =
+                    [ { header = "Image"
+                      , cell = \( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+                      }
+                    , { header = "Size"
+                      , cell = \( size, _ ) -> t (px size)
+                      }
+                    , { header = "Source URL"
+                      , cell = \( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+                      }
+                    , { header = "Description"
+                      , cell = \_ -> p [] [ t iroha, t " ", t lorem ]
+                      }
+                    ]
+                , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
+                , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+                }
         ]
 
 
