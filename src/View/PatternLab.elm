@@ -6,6 +6,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import ListExtra
 import Octicons
 import StringExtra
 import Url exposing (Url)
@@ -55,23 +56,42 @@ type alias Model =
     }
 
 
-type Route
-    = Top
-    | Typography
-    | TextBlock
-    | Border
-    | Background
-    | Layout
-    | Image
-    | Button
-    | Input
-    | Animation
-    | Icon
-    | Sidebar
-    | ConfigPref
-    | ConfigStatus
-    | ConfigDiscord
-    | MainTemplate
+type alias Route =
+    String
+
+
+type alias R =
+    { path : Route
+    , layer : String
+    , btnLabel : String
+    , view : Model -> List (Html Msg)
+    }
+
+
+routes : List R
+routes =
+    -- Type-unsafe static route list; introduced in order to reduce repeated pattern matches
+    let
+        pLab contents m =
+            [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
+    in
+    [ R "" "Atoms" "Top" <| pLab [ introduction, theme ]
+    , R "typography" "Atoms" "Typography" <| pLab [ typography ]
+    , R "text_block" "Atoms" "TextBlock" <| pLab [ textBlock ]
+    , R "border" "Atoms" "Border" <| pLab [ border ]
+    , R "background" "Atoms" "Background" <| pLab [ background ]
+    , R "layout" "Atoms" "Layout" <| pLab [ layout ]
+    , R "image" "Atoms" "Image" <| pLab [ image ]
+    , R "button" "Atoms" "Button" <| pLab [ button_ ]
+    , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
+    , R "animation" "Atoms" "Animation" <| pLab [ animation ]
+    , R "icon" "Molecules" "Icon" <| pLab [ icon ]
+    , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
+    , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
+    , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
+    , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
+    , R "main_template" "Templates" "Main" <| mainTemplate
+    ]
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -92,25 +112,17 @@ urlToRoute : Url -> Route
 urlToRoute url =
     let
         urlParser =
-            U.oneOf
-                [ U.map Typography (U.s "typography")
-                , U.map TextBlock (U.s "text_block")
-                , U.map Border (U.s "border")
-                , U.map Background (U.s "background")
-                , U.map Layout (U.s "layout")
-                , U.map Image (U.s "image")
-                , U.map Button (U.s "button")
-                , U.map Input (U.s "input")
-                , U.map Animation (U.s "animation")
-                , U.map Icon (U.s "icon")
-                , U.map Sidebar (U.s "sidebar")
-                , U.map ConfigPref (U.s "config_pref")
-                , U.map ConfigStatus (U.s "config_status")
-                , U.map ConfigDiscord (U.s "config_discord")
-                , U.map MainTemplate (U.s "main_template")
-                ]
+            U.map matchFirstPath U.string
+
+        matchFirstPath firstPath =
+            case ListExtra.findOne (\r -> r.path == firstPath) routes of
+                Just _ ->
+                    firstPath
+
+                Nothing ->
+                    ""
     in
-    Maybe.withDefault Top (U.parse urlParser url)
+    Maybe.withDefault "" (U.parse urlParser url)
 
 
 type Msg
@@ -161,166 +173,48 @@ update msg m =
 
 view : Model -> { title : String, body : List (Html Msg) }
 view m =
-    let
-        pLab contents =
-            [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
-    in
     { title = "Zephyr: Pattern Lab"
     , body =
-        (::) View.Stylesheet.render <|
-            case m.route of
-                Top ->
-                    pLab [ introduction, theme ]
+        case ListExtra.findOne (\r -> r.path == m.route) routes of
+            Just r ->
+                View.Stylesheet.render :: r.view m
 
-                Typography ->
-                    pLab [ typography ]
-
-                TextBlock ->
-                    pLab [ textBlock ]
-
-                Border ->
-                    pLab [ border ]
-
-                Background ->
-                    pLab [ background ]
-
-                Layout ->
-                    pLab [ layout ]
-
-                Image ->
-                    pLab [ image ]
-
-                Button ->
-                    pLab [ button_ ]
-
-                Input ->
-                    pLab [ input_ m ]
-
-                Animation ->
-                    pLab [ animation ]
-
-                Icon ->
-                    pLab [ icon ]
-
-                Sidebar ->
-                    pLab [ sidebar m ]
-
-                ConfigPref ->
-                    pLab [ configPref m ]
-
-                ConfigStatus ->
-                    pLab [ configStatus m ]
-
-                ConfigDiscord ->
-                    pLab [ configDiscord m ]
-
-                MainTemplate ->
-                    mainTemplate m
+            Nothing ->
+                []
     }
 
 
 navi : Route -> Html Msg
-navi r =
-    div [ flexColumn, flexCenter, spacingColumn10, padding15 ]
-        [ div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
-            , naviButton r Top "Top"
-            , naviButton r Typography "Typography"
-            , naviButton r TextBlock "TextBlock"
-            , naviButton r Border "Border"
-            , naviButton r Background "Background"
-            , naviButton r Layout "Layout"
-            , naviButton r Image "Image"
-            , naviButton r Button "Button"
-            , naviButton r Input "Input"
-            , naviButton r Animation "Animation"
-            ]
-        , div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Molecules" ]
-            , naviButton r Icon "Icon"
-            ]
-        , div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
-            , naviButton r Sidebar "Sidebar"
-            , naviButton r ConfigPref "Config.Pref"
-            , naviButton r ConfigStatus "Config.Status"
-            , naviButton r ConfigDiscord "Config.Discord"
-            ]
-        , div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
-            , naviButton r MainTemplate "Main"
-            ]
+navi current =
+    div [ flexColumn, flexCenter, spacingColumn10, padding15 ] <|
+        List.map (naviRow current) <|
+            ListExtra.groupWhile (\r1 r2 -> r1.layer == r2.layer) routes
+
+
+naviRow : Route -> List R -> Html Msg
+naviRow current rs =
+    div [ flexRow, flexCenter, spacingRow15 ]
+        [ h2 [ sizeHeadline, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
+        , div [ flexRow, flexGrow, flexWrap, flexCenter, spacingWrapped10 ] <|
+            List.map (naviButton current) rs
         ]
 
 
-naviButton : Route -> Route -> String -> Html Msg
-naviButton current hit btnLabel =
-    let
-        c =
-            if current == hit then
-                Background.colorSucc
+naviButton : Route -> R -> Html Msg
+naviButton current r =
+    Button.link
+        [ sizeHeadline
+        , padding10
+        , flexItem
+        , if current == r.path then
+            Background.colorSucc
 
-            else
-                Background.colorPrim
-    in
-    Button.link [ sizeHeadline, padding10, flexItem, c ]
-        { url = routeToString hit, children = [ t btnLabel ] }
-
-
-routeToString : Route -> String
-routeToString r =
-    let
-        abs_ path =
-            Url.Builder.absolute path []
-    in
-    case r of
-        Top ->
-            abs_ []
-
-        Typography ->
-            abs_ [ "typography" ]
-
-        TextBlock ->
-            abs_ [ "text_block" ]
-
-        Border ->
-            abs_ [ "border" ]
-
-        Background ->
-            abs_ [ "background" ]
-
-        Layout ->
-            abs_ [ "layout" ]
-
-        Image ->
-            abs_ [ "image" ]
-
-        Button ->
-            abs_ [ "button" ]
-
-        Input ->
-            abs_ [ "input" ]
-
-        Animation ->
-            abs_ [ "animation" ]
-
-        Icon ->
-            abs_ [ "icon" ]
-
-        Sidebar ->
-            abs_ [ "sidebar" ]
-
-        ConfigPref ->
-            abs_ [ "config_pref" ]
-
-        ConfigStatus ->
-            abs_ [ "config_status" ]
-
-        ConfigDiscord ->
-            abs_ [ "config_discord" ]
-
-        MainTemplate ->
-            abs_ [ "main_template" ]
+          else
+            Background.colorPrim
+        ]
+        { url = Url.Builder.absolute [ r.path ] []
+        , children = [ t r.btnLabel ]
+        }
 
 
 introduction : Html Msg
