@@ -1668,11 +1668,24 @@ configDiscord m =
         , avatar = Nothing
         }
 
-    dummyPOV =
-        { user = dummyUser
-        , token = "LIVINGTOKEN"
-        , channels = Dict.empty
-        , guilds = Dict.empty
+    dummyGuild index =
+        { id = "DUMMYGUILDID" ++ String.fromInt index
+        , name = String.fromInt index ++ "GUILD"
+        , icon = Nothing
+        }
+
+    dummyChannel index =
+        { id = "DUMMYCHANNELID" ++ String.fromInt index
+        , name = "Channel" ++ String.fromInt index
+        , guildMaybe = Just (dummyGuild (modBy 3 index))
+        }
+
+    dummyOpts =
+        { timezone = Time.utc
+        , rehydrating = m.toggle
+        , user = dummyUser
+        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , subbedChannels = List.range 0 15 |> List.map dummyChannel
         }
 in
 Discord.render
@@ -1683,7 +1696,7 @@ Discord.render
     { token = m.textInput
     , tokenSubmitButtonText = "Submit"
     , tokenSubmittable = True
-    , currentState = Discord.HydratedOnce m.toggle dummyPOV
+    , currentState = Discord.HydratedOnce dummyOpts
     }""" <|
             let
                 dummyUser =
@@ -1694,17 +1707,22 @@ Discord.render
                     }
 
                 dummyGuild index =
-                    let
-                        id =
-                            "DUMMYGUILDID" ++ String.fromInt index
-                    in
-                    ( id, { id = id, name = String.fromInt index ++ "GUILD", icon = Nothing } )
+                    { id = "DUMMYGUILDID" ++ String.fromInt index
+                    , name = String.fromInt index ++ "GUILD"
+                    , icon = Nothing
+                    }
 
-                dummyPOV =
-                    { user = dummyUser
-                    , token = "LIVINGTOKEN"
-                    , guilds = List.range 0 10 |> List.map dummyGuild |> Dict.fromList
-                    , channels = Dict.empty
+                dummyChannel index =
+                    { id = "DUMMYCHANNELID" ++ String.fromInt index
+                    , name = "Channel" ++ String.fromInt index
+                    , guildMaybe = Just (dummyGuild (modBy 3 index))
+                    }
+
+                dummyOpts =
+                    { rehydrating = m.toggle
+                    , user = dummyUser
+                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , subbedChannels = List.range 0 15 |> List.map dummyChannel
                     }
             in
             Discord.render
@@ -1715,7 +1733,7 @@ Discord.render
                 { token = m.textInput
                 , tokenSubmitButtonText = "Submit"
                 , tokenSubmittable = True
-                , currentState = Discord.HydratedOnce m.toggle dummyPOV
+                , currentState = Discord.HydratedOnce dummyOpts
                 }
         ]
 

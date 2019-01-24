@@ -2,7 +2,7 @@ module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, 
 
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
-import Dict
+import Dict exposing (Dict)
 import Html exposing (Html, button, div, h3, img, input, label, p, strong)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -16,6 +16,7 @@ import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
 import View.Style exposing (..)
 
 
@@ -87,7 +88,19 @@ tokenForm eff props =
 type CurrentState
     = NotIdentified
     | NowHydrating Discord.User
-    | HydratedOnce Bool Discord.POV
+    | HydratedOnce
+        { rehydrating : Bool
+        , user : Discord.User
+        , guilds : Dict String Discord.Guild
+        , subbedChannels : List ChannelGlance -- Must be sorted already
+        }
+
+
+type alias ChannelGlance =
+    { id : String
+    , name : String
+    , guildMaybe : Maybe Discord.Guild
+    }
 
 
 currentState : Effects msg -> Props -> Html msg
@@ -99,10 +112,11 @@ currentState eff props =
         NowHydrating user ->
             div [] [ userNameAndAvatar eff.onRehydrateButtonClick False user ]
 
-        HydratedOnce rehydrating pov ->
+        HydratedOnce opts ->
             div [ flexColumn, spacingColumn5 ]
-                [ userNameAndAvatar eff.onRehydrateButtonClick rehydrating pov.user
-                , guilds pov
+                [ userNameAndAvatar eff.onRehydrateButtonClick opts.rehydrating opts.user
+                , guilds opts.guilds
+                , channels opts.subbedChannels
                 ]
 
 
@@ -149,14 +163,14 @@ rehydrateButtonSize =
     20
 
 
-guilds : Discord.POV -> Html msg
-guilds pov =
+guilds : Dict String Discord.Guild -> Html msg
+guilds guilds_ =
     Html.Keyed.node "div" [ flexRow, flexWrap, spacingWrapped5 ] <|
-        if Dict.isEmpty pov.guilds then
+        if Dict.isEmpty guilds_ then
             [ ( "discordGuildEmpty", p [ colorNote, flexGrow ] [ t "(No Servers)" ] ) ]
 
         else
-            Dict.foldr (\_ g a -> guildIconKey g :: a) [] pov.guilds
+            Dict.foldr (\_ g a -> guildIconKey g :: a) [] guilds_
 
 
 guildIconKey : Discord.Guild -> ( String, Html msg )
@@ -170,6 +184,31 @@ guildIconKey g =
                 Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
 
 
+channels : List ChannelGlance -> Html msg
+channels subbedChannels =
+    let
+        nameCell c =
+            ( [], [ div [ flexRow, flexCenter, spacingRow2 ] [ guildIcon c, div [ flexGrow ] [ t ("# " ++ c.name) ] ] ] )
+
+        guildIcon c =
+            case c.guildMaybe of
+                Just g ->
+                    Icon.imgOrAbbr [ class channelIconClass, flexItem, Border.round2 ] g.name <|
+                        Maybe.map (Discord.imageUrlNoFallback (Just channelIconSize)) g.icon
+
+                Nothing ->
+                    -- TODO DM/GroupDMs should have appropriate icons
+                    none
+    in
+    Table.render [ Table.layoutFixed ]
+        { columns =
+            [ { header = "Name", cell = nameCell }
+            ]
+        , rowKey = .id
+        , data = subbedChannels
+        }
+
+
 
 -- STYLES
 
@@ -180,6 +219,7 @@ styles =
     , s (c icon40Class) [ ( "width", px icon40Size ), ( "height", px icon40Size ), ( "flex-basis", "auto" ) ]
     , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
     , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
+    , s (c channelIconClass) [ ( "width", px channelIconSize ), ( "height", px channelIconSize ), ( "flex-basis", "auto" ) ]
     ]
 
 
@@ -201,3 +241,13 @@ icon40Size =
 rehydrateButtonClass : String
 rehydrateButtonClass =
     "discordrehy"
+
+
+channelIconClass : String
+channelIconClass =
+    "discordchicon"
+
+
+channelIconSize : Int
+channelIconSize =
+    20
