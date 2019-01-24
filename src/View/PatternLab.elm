@@ -1320,6 +1320,10 @@ icon =
             Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr"
         , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr\"""" <|
             Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr"
+        , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))""" <|
+            Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))
+        , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing""" <|
+            Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing
         , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
             Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
         , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|

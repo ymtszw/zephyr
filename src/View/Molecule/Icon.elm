@@ -1,12 +1,12 @@
 module View.Molecule.Icon exposing
-    ( button, link, abbr
+    ( button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
     , styles
     )
 
 {-| Icon Molecules.
 
-@docs button, link, abbr
+@docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
 @docs styles
 
@@ -51,6 +51,16 @@ abbr attrs desc =
         )
         [ div [] [ t (String.left 1 desc) ]
         ]
+
+
+imgOrAbbr : List (Attribute msg) -> String -> Maybe String -> Html msg
+imgOrAbbr attrs desc urlMaybe =
+    case urlMaybe of
+        Just url ->
+            img ([ class iconClass, src url, alt desc ] ++ attrs) []
+
+        Nothing ->
+            abbr attrs desc
 
 
 octiconButton : List (Attribute msg) -> { onPress : msg, size : Int, shape : Octicons.Options -> Html msg } -> Html msg
