@@ -188,7 +188,7 @@ channels : List ChannelGlance -> Html msg
 channels subbedChannels =
     let
         nameCell c =
-            ( [], [ div [ flexRow, flexCenter, spacingRow2 ] [ guildIcon c, div [ flexGrow ] [ t ("# " ++ c.name) ] ] ] )
+            ( [], [ div [ flexRow, flexCenter, spacingRow2 ] [ guildIcon c, div [ flexGrow ] [ t ("#" ++ c.name) ] ] ] )
 
         guildIcon c =
             case c.guildMaybe of
