@@ -772,6 +772,12 @@ spacing =
             div [ flexRow, flexWrap, spacingWrapped5, Border.solid, Border.w1 ] <|
                 List.repeat 10 <|
                     div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]
+        , withSource """div [ flexRow, flexWrap, spacingWrapped10, Border.solid, Border.w1 ] <|
+        List.repeat 10 <|
+            div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]""" <|
+            div [ flexRow, flexWrap, spacingWrapped10, Border.solid, Border.w1 ] <|
+                List.repeat 10 <|
+                    div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]
         ]
 
 

@@ -4,7 +4,7 @@ module View.Atom.Layout exposing
     , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
-    , spacingWrapped5
+    , spacingWrapped5, spacingWrapped10
     , withBadge
     , styles, paddingInlineStyle
     )
@@ -16,7 +16,7 @@ module View.Atom.Layout exposing
 @docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
-@docs spacingWrapped5
+@docs spacingWrapped5, spacingWrapped10
 @docs withBadge
 @docs styles, paddingInlineStyle
 
@@ -210,6 +210,11 @@ spacingWrapped5 =
     class (spacingWrappedClass 5)
 
 
+spacingWrapped10 : Attribute msg
+spacingWrapped10 =
+    class (spacingWrappedClass 10)
+
+
 withBadge :
     List (Attribute msg)
     ->
@@ -275,6 +280,8 @@ styles =
     , spacingColumnStyle 15
     , spacingWrappedParentStyle 5
     , spacingWrappedChildrenStyle 5
+    , spacingWrappedParentStyle 10
+    , spacingWrappedChildrenStyle 10
     ]
         ++ badgeStyles
 
