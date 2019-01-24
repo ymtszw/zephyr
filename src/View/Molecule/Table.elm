@@ -10,7 +10,7 @@ import View.Style exposing (..)
 
 
 type alias Props a msg =
-    { columns : List { header : String, cell : a -> Html msg }
+    { columns : List { header : String, cell : a -> ( List (Attribute msg), List (Html msg) ) }
     , rowKey : a -> String
     , data : List a
     }
@@ -30,8 +30,11 @@ render attrs props =
 
         rowKey d =
             ( props.rowKey d
-            , tr [] (List.map (\c -> td [] [ c.cell d ]) props.columns)
+            , tr [] (List.map (\c -> td_ (c.cell d)) props.columns)
             )
+
+        td_ ( tdAttrs, kids ) =
+            td tdAttrs kids
     in
     table (widthFill :: attrs)
         [ thead [] [ tr [ bold ] (List.map headerCell props.columns) ]

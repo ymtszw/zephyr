@@ -1348,25 +1348,31 @@ table_ =
     section []
         [ h1 [ sizeSection ] [ t "Table" ]
         , withSource """Table.render []
-    { columns = [ { header = "Empty Table Column1", cell = t }, { header = "Empty Table Column2", cell = t } ]
+    { columns =
+        [ { header = "Empty Table Column1", cell = always ( [], [] ) }
+        , { header = "Empty Table Column2", cell = always ( [], [] ) }
+        ]
     , rowKey = identity
     , data = []
     }""" <|
             Table.render []
-                { columns = [ { header = "Empty Table Column1", cell = t }, { header = "Empty Table Column2", cell = t } ]
+                { columns =
+                    [ { header = "Empty Table Column1", cell = always ( [], [] ) }
+                    , { header = "Empty Table Column2", cell = always ( [], [] ) }
+                    ]
                 , rowKey = identity
                 , data = []
                 }
         , withSource """Table.render []
     { columns =
         [ { header = "Number"
-          , cell = \\i -> t (String.fromInt i)
+          , cell = \\i -> ( [], [ t (String.fromInt i) ] )
           }
         , { header = "Multiplied and Punctuated"
-          , cell = \\i -> t (StringExtra.punctuateNumber (i * 999))
+          , cell = \\i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
           }
         , { header = "Multiplied, Punctuated and Reversed"
-          , cell = \\i -> t (String.reverse (StringExtra.punctuateNumber (i * 999)))
+          , cell = \\i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
           }
         ]
     , rowKey = String.fromInt
@@ -1375,13 +1381,43 @@ table_ =
             Table.render []
                 { columns =
                     [ { header = "Number"
-                      , cell = \i -> t (String.fromInt i)
+                      , cell = \i -> ( [], [ t (String.fromInt i) ] )
                       }
                     , { header = "Multiplied and Punctuated"
-                      , cell = \i -> t (StringExtra.punctuateNumber (i * 999))
+                      , cell = \i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
                       }
                     , { header = "Multiplied, Punctuated and Reversed"
-                      , cell = \i -> t (String.reverse (StringExtra.punctuateNumber (i * 999)))
+                      , cell = \i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
+                      }
+                    ]
+                , rowKey = String.fromInt
+                , data = List.range 0 10
+                }
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Can set attributes to cell (though widthFill only works for a single column)"
+          , cell = \\i -> ( [ widthFill ], [ t (String.fromInt i) ] )
+          }
+        , { header = "Multiplied and Punctuated"
+          , cell = \\i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
+          }
+        , { header = "Multiplied, Punctuated and Reversed"
+          , cell = \\i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
+          }
+        ]
+    , rowKey = String.fromInt
+    , data = List.range 0 10
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Can set attributes to cell (though widthFill only works for a single column)"
+                      , cell = \i -> ( [ widthFill ], [ t (String.fromInt i) ] )
+                      }
+                    , { header = "Multiplied and Punctuated"
+                      , cell = \i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
+                      }
+                    , { header = "Multiplied, Punctuated and Reversed"
+                      , cell = \i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
                       }
                     ]
                 , rowKey = String.fromInt
@@ -1390,16 +1426,16 @@ table_ =
         , withSource """Table.render []
     { columns =
         [ { header = "Image"
-          , cell = \\( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+          , cell = \\( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
           }
         , { header = "Size"
-          , cell = \\( size, _ ) -> t (px size)
+          , cell = \\( size, _ ) -> ( [], [ t (px size) ] )
           }
         , { header = "Source URL"
-          , cell = \\( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+          , cell = \\( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
           }
         , { header = "Description"
-          , cell = \\_ -> p [] [ t iroha, t " ", t lorem ]
+          , cell = \\_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
           }
         ]
     , rowKey = \\( size, _ ) -> "imageSize_" ++ String.fromInt size
@@ -1408,16 +1444,16 @@ table_ =
             Table.render []
                 { columns =
                     [ { header = "Image"
-                      , cell = \( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+                      , cell = \( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
                       }
                     , { header = "Size"
-                      , cell = \( size, _ ) -> t (px size)
+                      , cell = \( size, _ ) -> ( [], [ t (px size) ] )
                       }
                     , { header = "Source URL"
-                      , cell = \( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+                      , cell = \( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
                       }
                     , { header = "Description"
-                      , cell = \_ -> p [] [ t iroha, t " ", t lorem ]
+                      , cell = \_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
                       }
                     ]
                 , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
@@ -1426,16 +1462,16 @@ table_ =
         , withSource """Table.render [ Table.layoutFixed ]
     { columns =
         [ { header = "Image"
-          , cell = \\( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+          , cell = \\( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
           }
         , { header = "Size"
-          , cell = \\( size, _ ) -> t (px size)
+          , cell = \\( size, _ ) -> ( [], [ t (px size) ] )
           }
         , { header = "Source URL"
-          , cell = \\( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+          , cell = \\( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
           }
         , { header = "Description"
-          , cell = \\_ -> p [] [ t iroha, t " ", t lorem ]
+          , cell = \\_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
           }
         ]
     , rowKey = \\( size, _ ) -> "imageSize_" ++ String.fromInt size
@@ -1444,16 +1480,16 @@ table_ =
             Table.render [ Table.layoutFixed ]
                 { columns =
                     [ { header = "Image"
-                      , cell = \( size, src_ ) -> img [ src src_, alt (String.fromInt size ++ "px image") ] []
+                      , cell = \( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
                       }
                     , { header = "Size"
-                      , cell = \( size, _ ) -> t (px size)
+                      , cell = \( size, _ ) -> ( [], [ t (px size) ] )
                       }
                     , { header = "Source URL"
-                      , cell = \( _, src_ ) -> link [] { url = src_, children = [ t src_ ] }
+                      , cell = \( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
                       }
                     , { header = "Description"
-                      , cell = \_ -> p [] [ t iroha, t " ", t lorem ]
+                      , cell = \_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
                       }
                     ]
                 , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
