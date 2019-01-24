@@ -243,12 +243,12 @@ introduction =
                 , t (StringExtra.punctuateNumber View.Stylesheet.length)
                 ]
             ]
-        , div [ padding10 ]
-            [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
-            , pre [ padding10, Border.round5, Border.w1, Border.solid ]
-                [ t """import Html exposing (..)
+        , section []
+            [ h2 [ sizeHeadline ] [ t "Imports" ]
+            , sourceBlock """import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -260,13 +260,34 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
+import View.Molecule.Wallpaper as Wallpaper
+import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
 import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)"""
-                ]
             ]
         ]
+
+
+sourceBlock : String -> Html Msg
+sourceBlock source =
+    let
+        sourceLineCount =
+            List.length (String.split "\n" source)
+    in
+    textarea
+        [ monospace
+        , widthFill
+        , padding5
+        , Border.round5
+        , Background.colorSub
+        , readonly True
+        , rows sourceLineCount
+        , wrap "off"
+        ]
+        [ t source ]
 
 
 section : List (Attribute Msg) -> List (Html Msg) -> Html Msg
@@ -297,6 +318,14 @@ theme =
         ]
 
 
+withSource : String -> Html Msg -> Html Msg
+withSource source toRender =
+    div [ growRow, flexCenter, widthFill, spacingRow15 ]
+        [ div [] [ toRender ]
+        , sourceBlock source
+        ]
+
+
 typography : Html Msg
 typography =
     section []
@@ -318,14 +347,6 @@ fontFamilies =
             p [ serif ] [ t "This paragraph uses a serif font. あいうえお水兵リーベ" ]
         , withSource "p [ monospace ] [ t \"This paragraph uses a monospace font. あいうえお水兵リーベ\" ]" <|
             p [ monospace ] [ t "This paragraph uses a monospace font. あいうえお水兵リーベ" ]
-        ]
-
-
-withSource : String -> Html Msg -> Html Msg
-withSource source toRender =
-    div [ growRow, flexCenter, widthFill, spacingRow15 ]
-        [ div [] [ toRender ]
-        , pre [ padding5, selectAll, Border.round5, Background.colorSub ] [ t source ]
         ]
 
 
