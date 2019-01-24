@@ -72,7 +72,7 @@ flexWrap =
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<blockquote>`, or `<table>`.
 -}
 flexItem : Attribute msg
 flexItem =
@@ -80,7 +80,7 @@ flexItem =
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `growRow` or `growColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<blockquote>`, or `<table>`.
 -}
 growItem : Attribute msg
 growItem =
@@ -349,7 +349,7 @@ autoFlexItemStyle =
 
 autoFlexItemSelectors : List String
 autoFlexItemSelectors =
-    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote" ]
+    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "table" ]
 
 
 flexItemStyle : Style
