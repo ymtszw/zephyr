@@ -17,6 +17,7 @@ import View.Atom.Theme exposing (..)
 import View.Atom.Typography exposing (..)
 import View.ConfigPane.DiscordConfig as Discord
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
 import View.Style exposing (..)
 
 
@@ -84,36 +85,43 @@ type alias ShadowColumnProps =
 
 shadowColumnsTable : Effects msg -> Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
 shadowColumnsTable eff slotsAvailable shadowColumns =
-    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
-        case shadowColumns of
-            [] ->
-                [ ( "shadowColumnEmpty", desc [ t "(Empty)" ] ) ]
-
-            _ ->
-                List.map (shadowColumnRowKey eff slotsAvailable) shadowColumns
-
-
-shadowColumnRowKey : Effects msg -> Bool -> ( ShadowColumnProps, ShadowColumn ) -> ( String, Html msg )
-shadowColumnRowKey eff slotsAvailable ( scp, sc ) =
-    Tuple.pair scp.id <|
-        div
-            [ flexRow
-            , flexBasisAuto
-            , flexCenter
-            , padding2
-            , spacingRow5
-            , case sc of
+    let
+        theme sc =
+            case sc of
                 SlackSC _ ->
                     aubergine
 
                 _ ->
                     noAttr
+    in
+    Table.render []
+        { columns =
+            [ { header = "Column"
+              , cell =
+                    \( scp, sc ) ->
+                        ( [ widthFill, theme sc ]
+                        , [ div [ flexRow, flexCenter, spacingRow5 ]
+                                [ shadowColumnIcon scp.description sc
+                                , div [ bold ] [ t scp.description ]
+                                ]
+                          ]
+                        )
+              }
+            , { header = "Action"
+              , cell =
+                    \( scp, sc ) ->
+                        ( [ theme sc ]
+                        , [ div [ flexRow, flexCenter, spacingRow5 ]
+                                [ showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
+                                , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
+                                ]
+                          ]
+                        )
+              }
             ]
-            [ shadowColumnIcon scp.description sc
-            , div [ flexGrow, bold ] [ t scp.description ]
-            , showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
-            , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
-            ]
+        , rowKey = \( scp, _ ) -> scp.id
+        , data = shadowColumns
+        }
 
 
 shadowColumnIcon : String -> ShadowColumn -> Html msg
