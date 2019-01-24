@@ -1,11 +1,11 @@
 module View.Molecule.Table exposing (Props, layoutFixed, render, styles)
 
 import Html exposing (Attribute, Html, table, tbody, td, th, thead, tr)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, colspan)
 import Html.Keyed
 import View.Atom.Background as Background
 import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (bold, t)
+import View.Atom.Typography exposing (bold, colorNote, t)
 import View.Style exposing (..)
 
 
@@ -16,20 +16,32 @@ type alias Props a msg =
     }
 
 
+{-| Renders a simple table.
+
+Uses `Html.Keyed.node` internally.
+If `props.data` is empty, a row with "empty" message is inserted.
+
+-}
 render : List (Attribute msg) -> Props a msg -> Html msg
 render attrs props =
     let
         headerCell c =
-            th [ padding2, Background.colorNote ] [ t c.header ]
+            th [ Background.colorNote ] [ t c.header ]
 
         rowKey d =
             ( props.rowKey d
-            , tr [] (List.map (\c -> td [ padding2 ] [ c.cell d ]) props.columns)
+            , tr [] (List.map (\c -> td [] [ c.cell d ]) props.columns)
             )
     in
     table (widthFill :: attrs)
         [ thead [] [ tr [ bold ] (List.map headerCell props.columns) ]
-        , Html.Keyed.node "tbody" [] (List.map rowKey props.data)
+        , Html.Keyed.node "tbody" [] <|
+            case props.data of
+                [] ->
+                    [ ( "emptyTable", tr [] [ td [ class emptyClass, colorNote, colspan 1000 ] [ t "(Empty)" ] ] ) ]
+
+                nonEmptyData ->
+                    List.map rowKey nonEmptyData
         ]
 
 
@@ -50,14 +62,20 @@ styles =
         ]
     , s "td,th" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
     , s (c layoutFixedClass) [ ( "table-layout", "fixed" ) ]
+    , s (c emptyClass) [ ( "text-align", "center" ) ]
     ]
 
 
 defaultBorderSpacing : Int
 defaultBorderSpacing =
-    2
+    3
 
 
 layoutFixedClass : String
 layoutFixedClass =
     "tblf"
+
+
+emptyClass : String
+emptyClass =
+    "tbemp"
