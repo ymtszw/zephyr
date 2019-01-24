@@ -86,6 +86,24 @@ type alias ShadowColumnProps =
 shadowColumnsTable : Effects msg -> Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
 shadowColumnsTable eff slotsAvailable shadowColumns =
     let
+        columnCell ( scp, sc ) =
+            ( [ widthFill, theme sc ]
+            , [ div [ flexRow, flexCenter, spacingRow5 ]
+                    [ shadowColumnIcon scp.description sc
+                    , div [ bold ] [ t scp.description ]
+                    ]
+              ]
+            )
+
+        actionCell ( scp, sc ) =
+            ( [ theme sc ]
+            , [ div [ flexRow, flexCenter, spacingRow5 ]
+                    [ showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
+                    , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
+                    ]
+              ]
+            )
+
         theme sc =
             case sc of
                 SlackSC _ ->
@@ -95,30 +113,7 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
                     noAttr
     in
     Table.render []
-        { columns =
-            [ { header = "Column"
-              , cell =
-                    \( scp, sc ) ->
-                        ( [ widthFill, theme sc ]
-                        , [ div [ flexRow, flexCenter, spacingRow5 ]
-                                [ shadowColumnIcon scp.description sc
-                                , div [ bold ] [ t scp.description ]
-                                ]
-                          ]
-                        )
-              }
-            , { header = "Action"
-              , cell =
-                    \( scp, sc ) ->
-                        ( [ theme sc ]
-                        , [ div [ flexRow, flexCenter, spacingRow5 ]
-                                [ showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
-                                , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
-                                ]
-                          ]
-                        )
-              }
-            ]
+        { columns = [ { header = "Column", cell = columnCell }, { header = "Action", cell = actionCell } ]
         , rowKey = \( scp, _ ) -> scp.id
         , data = shadowColumns
         }
