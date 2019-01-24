@@ -36,12 +36,12 @@ render attrs props =
         td_ ( tdAttrs, kids ) =
             td tdAttrs kids
     in
-    table (widthFill :: attrs)
+    table attrs
         [ thead [] [ tr [ bold ] (List.map headerCell props.columns) ]
         , Html.Keyed.node "tbody" [] <|
             case props.data of
                 [] ->
-                    [ ( "emptyTable", tr [] [ td [ class emptyClass, colorNote, colspan 1000 ] [ t "(Empty)" ] ] ) ]
+                    [ ( "emptyTable", tr [] [ td [ class emptyClass, colorNote ] [ t "(Empty)" ] ] ) ]
 
                 nonEmptyData ->
                     List.map rowKey nonEmptyData
@@ -62,6 +62,9 @@ styles =
     [ s "table"
         [ ( "border-collapse", "separate" )
         , ( "border-spacing", px defaultBorderSpacing )
+        , -- Same trick used in flex-wrap spacing; compensating border-spacing
+          ( "transform", "translate(" ++ px (negate defaultBorderSpacing) ++ "," ++ px (negate defaultBorderSpacing) ++ ")" )
+        , ( "width", "calc(100% + " ++ px (defaultBorderSpacing * 2) ++ ")" )
         ]
     , s "td,th" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
     , s (c layoutFixedClass) [ ( "table-layout", "fixed" ) ]
