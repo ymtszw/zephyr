@@ -120,25 +120,15 @@ shadowColumnIcon : String -> ShadowColumn -> Html msg
 shadowColumnIcon description sc =
     case sc of
         FallbackSC ->
-            abbrIcon description
+            Icon.abbr [ class shadowColumnIconClass, serif, Border.round2 ] description
 
         DiscordSC { mainChannelName, guildIcon } ->
             badgedIcon discordBadge <|
-                case guildIcon of
-                    Just src ->
-                        imageIcon src "Discord guild icon"
-
-                    Nothing ->
-                        abbrIcon mainChannelName
+                Icon.imgOrAbbr [ class shadowColumnIconClass, serif, Border.round2 ] "Discord guild icon" guildIcon
 
         SlackSC { mainConvName, teamIcon } ->
             badgedIcon slackBadge <|
-                case teamIcon of
-                    Just src ->
-                        imageIcon src "Slack team icon"
-
-                    Nothing ->
-                        abbrIcon mainConvName
+                Icon.imgOrAbbr [ class shadowColumnIconClass, serif, Border.round2 ] "Slack team icon" teamIcon
 
 
 badgedIcon : Html msg -> Html msg -> Html msg
@@ -148,22 +138,6 @@ badgedIcon badge icon =
         , bottomRight = Just badge
         , content = icon -- No inset
         }
-
-
-abbrIcon : String -> Html msg
-abbrIcon text =
-    Icon.abbr [ class shadowColumnIconClass, serif, Border.round2 ] text
-
-
-imageIcon : String -> String -> Html msg
-imageIcon src_ alt_ =
-    img
-        [ class shadowColumnIconClass
-        , Border.round2
-        , src src_
-        , alt alt_
-        ]
-        []
 
 
 discordBadge : Html msg

@@ -109,25 +109,17 @@ columnButtonFace pinned cb =
     withPin pinned <|
         case cb of
             Fallback desc ->
-                ( Nothing, abbrIcon desc )
+                ( Nothing, Icon.abbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] desc )
 
             DiscordButton opts ->
-                Tuple.pair (Just discordBadge) <|
-                    case opts.guildIcon of
-                        Just src ->
-                            imageIcon src "discord guild icon"
-
-                        Nothing ->
-                            abbrIcon opts.channelName
+                ( Just discordBadge
+                , Icon.imgOrAbbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] opts.channelName opts.guildIcon
+                )
 
             SlackButton opts ->
-                Tuple.pair (Just slackBadge) <|
-                    case opts.teamIcon of
-                        Just src ->
-                            imageIcon src "slack team icon"
-
-                        Nothing ->
-                            abbrIcon opts.convName
+                ( Just slackBadge
+                , Icon.imgOrAbbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] opts.convName opts.teamIcon
+                )
 
 
 withPin : Bool -> ( Maybe (Html msg), Html msg ) -> Html msg
@@ -147,22 +139,6 @@ withPin pinned ( bottomRight, content ) =
 pinBadge : Html msg
 pinBadge =
     div [ class badgeClass ] [ Image.octicon { size = badgeSize, shape = Octicons.pin } ]
-
-
-abbrIcon : String -> Html msg
-abbrIcon desc =
-    Icon.abbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] desc
-
-
-imageIcon : String -> String -> Html msg
-imageIcon src_ alt_ =
-    img
-        [ class innerFaceClass
-        , Border.round5
-        , src src_
-        , alt alt_
-        ]
-        []
 
 
 discordBadge : Html msg
