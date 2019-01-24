@@ -12,6 +12,7 @@ import View.Atom.Layout as Layout
 import View.Atom.TextBlock as TextBlock
 import View.Atom.Typography as Typography
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
@@ -45,6 +46,7 @@ rendered =
                 ++ Animation.styles
                 ++ Icon.styles
                 ++ Wallpaper.styles
+                ++ Table.styles
                 ++ Sidebar.styles
                 ++ Pref.styles
                 ++ Discord.styles

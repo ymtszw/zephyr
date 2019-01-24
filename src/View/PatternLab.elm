@@ -25,6 +25,7 @@ import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Molecule.Table as Table
+import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
 import View.Organism.Config.Status as Status
@@ -72,10 +73,6 @@ type alias R =
 routes : List R
 routes =
     -- Type-unsafe static route list; introduced in order to reduce repeated pattern matches
-    let
-        pLab contents m =
-            [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
-    in
     [ R "" "Atoms" "Top" <| pLab [ introduction, theme ]
     , R "typography" "Atoms" "Typography" <| pLab [ typography ]
     , R "text_block" "Atoms" "TextBlock" <| pLab [ textBlock ]
@@ -87,6 +84,7 @@ routes =
     , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
     , R "animation" "Atoms" "Animation" <| pLab [ animation ]
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
+    , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
@@ -104,7 +102,7 @@ init () url key =
       , toggle = False
       , select = Select.AllClosed
       , selected = Nothing
-      , numColumns = 10
+      , numColumns = 2
       }
     , Cmd.none
     )
@@ -184,6 +182,11 @@ view m =
             Nothing ->
                 []
     }
+
+
+pLab : List (Html Msg) -> Model -> List (Html Msg)
+pLab contents m =
+    [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
 
 
 navi : Route -> Html Msg
@@ -1325,6 +1328,14 @@ icon =
             Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }
         , withSource """Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }""" <|
             Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }
+        ]
+
+
+wallpaper : Html Msg
+wallpaper =
+    section []
+        [ h1 [ sizeSection ] [ t "Wallpaper" ]
+        , withSource "Wallpaper.zephyr" Wallpaper.zephyr
         ]
 
 

@@ -29,6 +29,9 @@ styles : List Style
 styles =
     [ s (c zephyrClass)
         [ ( "position", "fixed" )
+        , ( "left", "0" )
+        , ( "top", "0" )
+        , ( "z-index", "-1" )
         , ( "width", "100vw" )
         , ( "height", "100vh" )
         , ( "justify-content", "center" )
