@@ -1,19 +1,19 @@
 module View.Organism.Sidebar exposing
     ( Props, ColumnProps, ColumnButton(..), Effects, render
-    , styles, sidebarWidth
+    , styles, sidebarWidth, sidebarExpansionWidth
     )
 
 {-| Sidebar Organism.
 
 @docs Props, ColumnProps, ColumnButton, Props, Effects, render
-@docs styles, sidebarWidth
+@docs styles, sidebarWidth, sidebarExpansionWidth
 
 -}
 
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Html, button, div, img, nav)
+import Html exposing (Html, button, div, img, nav, span)
 import Html.Attributes exposing (alt, class, src)
 import Html.Events exposing (onClick)
 import Html.Keyed
@@ -46,19 +46,25 @@ render eff p =
     nav
         [ class sidebarClass
         , flexColumn
+        , flexCenter
         , spacingColumn15
         , oneDark
         , Background.colorBg
+        , if p.configOpen then
+            class configOpenClass
+
+          else
+            noAttr
         ]
-        [ addColumnButton eff.columnAdder
+        [ withTooltip (span [ colorNote ] [ t "Add Column" ]) <| addColumnButton eff.columnAdder
         , columnButtons eff.columnButtonClickerByIndex p.columns
-        , otherButtons eff.configOpener p.configOpen
+        , otherButtons eff.configOpener
         ]
 
 
 columnButtons : (Int -> msg) -> List ( ColumnProps, ColumnButton ) -> Html msg
 columnButtons columnButtonClickerByIndex columns =
-    Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, spacingColumn10 ] <|
+    Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, padding5, spacingColumn10 ] <|
         List.indexedMap (colummButtonKey columnButtonClickerByIndex) columns
 
 
@@ -79,6 +85,24 @@ addColumnButton columnAdder =
         }
 
 
+withTooltip : Html msg -> Html msg -> Html msg
+withTooltip tooltip content =
+    div [ flexRow, flexBasisAuto, spacingRow5 ]
+        [ content
+        , div
+            [ class sidebarTooltipClass
+            , flexRow
+            , flexCenter
+            , flexBasisAuto
+            , padding5
+            , sizeHeadline
+            , Background.colorSub
+            , Border.round5
+            ]
+            [ tooltip ]
+        ]
+
+
 type ColumnButton
     = Fallback String
     | DiscordButton { channelName : String, guildIcon : Maybe String }
@@ -91,17 +115,30 @@ type alias ColumnProps =
 
 colummButtonKey : (Int -> msg) -> Int -> ( ColumnProps, ColumnButton ) -> ( String, Html msg )
 colummButtonKey columnButtonClicker index ( cp, cb ) =
-    ( "columnButton_" ++ cp.id
-    , button
-        [ class buttonClass
-        , flexItem
-        , noPadding
-        , Border.round5
-        , onClick (columnButtonClicker index)
-        ]
-        [ columnButtonFace cp.pinned cb
-        ]
-    )
+    let
+        tooltip =
+            span [ bold ] <|
+                case cb of
+                    Fallback desc ->
+                        [ t desc ]
+
+                    DiscordButton opts ->
+                        [ t ("#" ++ opts.channelName) ]
+
+                    SlackButton opts ->
+                        [ t ("#" ++ opts.convName) ]
+    in
+    Tuple.pair ("columnButton_" ++ cp.id) <|
+        withTooltip tooltip <|
+            button
+                [ class buttonClass
+                , flexItem
+                , noPadding
+                , Border.round5
+                , onClick (columnButtonClicker index)
+                ]
+                [ columnButtonFace cp.pinned cb
+                ]
 
 
 columnButtonFace : Bool -> ColumnButton -> Html msg
@@ -124,7 +161,7 @@ columnButtonFace pinned cb =
 
 withPin : Bool -> ( Maybe (Html msg), Html msg ) -> Html msg
 withPin pinned ( bottomRight, content ) =
-    withBadge []
+    withBadge [ badgeOutset ]
         { topRight =
             if pinned then
                 Just pinBadge
@@ -132,7 +169,7 @@ withPin pinned ( bottomRight, content ) =
             else
                 Nothing
         , bottomRight = bottomRight
-        , content = div [ padding2, growColumn ] [ content ] -- Insetting by 2px
+        , content = content
         }
 
 
@@ -148,7 +185,7 @@ discordBadge =
 
 imageBadge : String -> String -> Html msg
 imageBadge alt_ src_ =
-    img [ class badgeClass, Border.round2, src src_, alt alt_ ] []
+    img [ class badgeClass, block, Border.round2, src src_, alt alt_ ] []
 
 
 slackBadge : Html msg
@@ -156,37 +193,39 @@ slackBadge =
     imageBadge "Slack logo" <| Slack.defaultIconUrl (Just badgeSize)
 
 
-otherButtons : msg -> Bool -> Html msg
-otherButtons configOpener configOpen =
+otherButtons : msg -> Html msg
+otherButtons configOpener =
+    let
+        note x =
+            span [ bold, colorNote ] [ t x ]
+    in
     div [ flexColumn, flexBasisAuto, spacingColumn10 ]
-        [ Icon.octiconButton
-            [ class buttonClass
-            , class octiconButtonClass
-            , flexItem
-            , padding5
-            , Border.round5
-            , if configOpen then
-                class configOpenClass
-
-              else
-                noAttr
-            ]
-            { onPress = configOpener
-            , size = octiconSize
-            , shape = Octicons.gear
-            }
-        , Icon.octiconLink
-            [ newTab
-            , class buttonClass
-            , class octiconButtonClass
-            , flexItem
-            , padding5
-            , Border.round5
-            ]
-            { url = "https://github.com/ymtszw/zephyr"
-            , size = octiconSize
-            , shape = Octicons.markGithub
-            }
+        [ withTooltip (note "Zephyr Config") <|
+            Icon.octiconButton
+                [ class buttonClass
+                , class octiconButtonClass
+                , class configToggleButtonClass
+                , flexItem
+                , padding5
+                , Border.round5
+                ]
+                { onPress = configOpener
+                , size = octiconSize
+                , shape = Octicons.gear
+                }
+        , withTooltip (note "Source") <|
+            Icon.octiconLink
+                [ newTab
+                , class buttonClass
+                , class octiconButtonClass
+                , flexItem
+                , padding5
+                , Border.round5
+                ]
+                { url = "https://github.com/ymtszw/zephyr"
+                , size = octiconSize
+                , shape = Octicons.markGithub
+                }
         ]
 
 
@@ -202,8 +241,26 @@ styles =
         , ( "top", "0" )
         , ( "width", px sidebarWidth )
         , ( "height", "100vh" )
-        , ( "padding", px paddingY ++ " " ++ px paddingX )
+        , ( "padding-top", px paddingY )
+        , ( "padding-bottom", px paddingY )
         ]
+    , s (c sidebarClass ++ ":hover," ++ c sidebarClass ++ c configOpenClass)
+        [ ( "width", px (sidebarWidth + sidebarExpansionWidth) )
+        ]
+    , s (c sidebarTooltipClass)
+        [ ( "width", px (sidebarExpansionWidth - paddingX) )
+        , ( "max-width", px (sidebarExpansionWidth - paddingX) )
+        , ( "height", px buttonSize )
+        , ( "max-height", px buttonSize )
+        , ( "display", "none" )
+        ]
+    , s
+        (String.join ","
+            [ c sidebarClass ++ ":hover " ++ c sidebarTooltipClass
+            , c sidebarClass ++ c configOpenClass ++ " " ++ c sidebarTooltipClass
+            ]
+        )
+        [ ( "display", "flex" ) ]
     , s (c sidebarClass ++ " " ++ c columnButtonsClass)
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
         , ( "overflow-y", "auto" )
@@ -223,18 +280,18 @@ styles =
         [ ( "transform", "rotate(-45deg)" )
         ]
     , s (c sidebarClass ++ " " ++ c innerFaceClass)
-        [ ( "width", px innerFaceSize )
-        , ( "height", px innerFaceSize )
+        [ ( "width", px buttonSize )
+        , ( "height", px buttonSize )
         ]
     , s (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.bg ) ]
     , hov (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
-    , s (c sidebarClass ++ " " ++ c octiconButtonClass ++ c configOpenClass)
+    , s (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
     , s (c sidebarClass ++ " " ++ c badgeClass ++ " " ++ c "pin" ++ " path")
         [ ( "fill", cssRgba oneDarkTheme.warn ) ]
-    , Image.octiconPathStyle (c sidebarClass ++ " " ++ c octiconButtonClass ++ c configOpenClass)
+    , Image.octiconPathStyle (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
         [ ( "fill", cssRgba oneDarkTheme.text ) ]
     ]
 
@@ -249,6 +306,11 @@ sidebarWidth =
     buttonSize + paddingX * 2
 
 
+sidebarExpansionWidth : Int
+sidebarExpansionWidth =
+    130
+
+
 paddingX : Int
 paddingX =
     5
@@ -257,6 +319,16 @@ paddingX =
 paddingY : Int
 paddingY =
     20
+
+
+configOpenClass : String
+configOpenClass =
+    "sbarcopen"
+
+
+sidebarTooltipClass : String
+sidebarTooltipClass =
+    "sbarttip"
 
 
 columnButtonsClass : String
@@ -281,17 +353,12 @@ badgeClass =
 
 badgeSize : Int
 badgeSize =
-    12
+    14
 
 
 innerFaceClass : String
 innerFaceClass =
     "sbarcbtninner"
-
-
-innerFaceSize : Int
-innerFaceSize =
-    buttonSize - (2 * 2)
 
 
 octiconButtonClass : String
@@ -304,6 +371,6 @@ octiconSize =
     buttonSize - (paddingX * 2)
 
 
-configOpenClass : String
-configOpenClass =
-    "sbarcopen"
+configToggleButtonClass : String
+configToggleButtonClass =
+    "sbarctoggle"

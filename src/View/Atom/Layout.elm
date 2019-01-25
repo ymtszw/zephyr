@@ -5,7 +5,7 @@ module View.Atom.Layout exposing
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
     , spacingWrapped5, spacingWrapped10
-    , withBadge
+    , withBadge, badgeOutset
     , styles, paddingInlineStyle
     )
 
@@ -17,7 +17,7 @@ module View.Atom.Layout exposing
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
 @docs spacingWrapped5, spacingWrapped10
-@docs withBadge
+@docs withBadge, badgeOutset
 @docs styles, paddingInlineStyle
 
 -}
@@ -240,6 +240,11 @@ withBadge userAttrs opts =
             Nothing ->
                 none
         ]
+
+
+badgeOutset : Attribute msg
+badgeOutset =
+    class badgeOutsetClass
 
 
 
@@ -582,11 +587,15 @@ badgeStyles =
         , ( "align-self", "flex-start" )
         , ( "overflow", "hidden" )
         ]
+    , s (c badgeOutsetClass ++ " " ++ c badgeTopRightClass)
+        [ ( "transform", "translate(" ++ px badgeOutsetSize ++ "," ++ px (negate badgeOutsetSize) ++ ")" ) ]
     , s (c badgeBottomRightClass)
         [ ( "position", "absolute" )
         , ( "align-self", "flex-end" )
         , ( "overflow", "hidden" )
         ]
+    , s (c badgeOutsetClass ++ " " ++ c badgeBottomRightClass)
+        [ ( "transform", "translate(" ++ px badgeOutsetSize ++ "," ++ px badgeOutsetSize ++ ")" ) ]
     ]
 
 
@@ -603,3 +612,13 @@ badgeTopRightClass =
 badgeBottomRightClass : String
 badgeBottomRightClass =
     "badgebotr"
+
+
+badgeOutsetClass : String
+badgeOutsetClass =
+    "badgeoutset"
+
+
+badgeOutsetSize : Int
+badgeOutsetSize =
+    2

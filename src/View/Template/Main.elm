@@ -34,7 +34,7 @@ import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Wallpaper as Wallpaper
-import View.Organism.Sidebar as Sidebar exposing (sidebarWidth)
+import View.Organism.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
 
 
@@ -116,7 +116,6 @@ configDrawer isOpen cc =
             noAttr
         , oneDark
         , flexColumn
-        , padding15
         , spacingColumn15
         , Background.colorBg
         ]
@@ -300,11 +299,15 @@ styles : List Style
 styles =
     [ s (c configDrawerClass)
         [ ( "position", "fixed" )
-        , ( "left", px sidebarWidth )
+        , ( "left", px (sidebarWidth + sidebarExpansionWidth) )
         , ( "top", "0" )
         , ( "width", px configDrawerWidth )
         , ( "height", "100vh" )
         , ( "max-height", "100vh" )
+        , ( "padding-top", px configDrawerPaddingY )
+        , ( "padding-left", px configDrawerPaddingLeft )
+        , ( "padding-right", px configDrawerPaddingRight )
+        , ( "padding-bottom", px configDrawerPaddingY )
         , ( "overflow-y", "auto" )
         , ( "transition", "all 0.15s" )
         , -- Default hidden
@@ -362,6 +365,21 @@ configDrawerClass =
 configDrawerWidth : Int
 configDrawerWidth =
     640
+
+
+configDrawerPaddingY : Int
+configDrawerPaddingY =
+    20
+
+
+configDrawerPaddingLeft : Int
+configDrawerPaddingLeft =
+    5
+
+
+configDrawerPaddingRight : Int
+configDrawerPaddingRight =
+    10
 
 
 drawerOpenClass : String

@@ -150,7 +150,7 @@ discordBadge =
 
 imageBadge : String -> String -> Html msg
 imageBadge alt_ src_ =
-    img [ class shadowColumnIconBadgeClass, src src_, alt alt_ ] []
+    img [ class shadowColumnIconBadgeClass, block, src src_, alt alt_ ] []
 
 
 slackBadge : Html msg
@@ -231,7 +231,7 @@ shadowColumnIconBadgeClass =
 
 shadowColumnIconBadgeSize : Int
 shadowColumnIconBadgeSize =
-    shadowColumnIconSize // 3
+    shadowColumnIconSize // 2
 
 
 showColumnButtonClass : String
