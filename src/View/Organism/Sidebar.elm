@@ -183,7 +183,7 @@ discordBadge =
 
 imageBadge : String -> String -> Html msg
 imageBadge alt_ src_ =
-    img [ class badgeClass, Border.round2, src src_, alt alt_ ] []
+    img [ class badgeClass, block, Border.round2, src src_, alt alt_ ] []
 
 
 slackBadge : Html msg
