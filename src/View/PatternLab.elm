@@ -1187,7 +1187,7 @@ select_ ss selected =
         [ h2 [ sizeTitle ] [ t "Select" ]
         , withSource """div []
     [ t "By default these are block elements."
-    , Select.select []
+    , Select.render []
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s1"
@@ -1201,7 +1201,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "By default these are block elements."
-                , Select.select []
+                , Select.render []
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s1"
@@ -1215,7 +1215,7 @@ select_ ss selected =
                 ]
         , withSource """div [ growRow, spacingRow10 ]
     [ p [] [ t "Width can be contained externally. Be warned though, flex calculation with padding is complicated, and may not work as you intended!" ]
-    , Select.select [ style "max-width" "300px" ]
+    , Select.render [ style "max-width" "300px" ]
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s2"
@@ -1229,7 +1229,7 @@ select_ ss selected =
     ]""" <|
             div [ growRow, spacingRow10 ]
                 [ p [] [ t "Width can be contained externally. Though, flex calculation with padding may not work as you intended!" ]
-                , Select.select [ style "max-width" "300px" ]
+                , Select.render [ style "max-width" "300px" ]
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s2"
@@ -1243,7 +1243,7 @@ select_ ss selected =
                 ]
         , withSource """div []
     [ t "Can be thinned."
-    , Select.select []
+    , Select.render []
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s3"
@@ -1257,7 +1257,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "Can be thinned."
-                , Select.select []
+                , Select.render []
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s3"
@@ -1271,7 +1271,7 @@ select_ ss selected =
                 ]
         , withSource """div []
     [ t "Can have filter box."
-    , Select.select []
+    , Select.render []
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s4"
@@ -1285,7 +1285,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "Can have filter box."
-                , Select.select []
+                , Select.render []
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s4"
@@ -1299,7 +1299,7 @@ select_ ss selected =
                 ]
         , withSource """div []
     [ t "Can be themed."
-    , Select.select [ aubergine ]
+    , Select.render [ aubergine ]
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s5"
@@ -1313,7 +1313,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "Can be themed."
-                , Select.select [ aubergine ]
+                , Select.render [ aubergine ]
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s5"

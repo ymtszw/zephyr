@@ -1,6 +1,6 @@
 module View.Atom.Input.Select exposing
     ( State(..), Msg(..), update, sub
-    , Options, select, styles
+    , Options, render, styles
     )
 
 {-| Select Input Atom.
@@ -10,7 +10,7 @@ it is a component with State and Msg, in order to control its toggle state,
 and filtering feature.
 
 @docs State, Msg, update, sub
-@docs Options, select, styles
+@docs Options, render, styles
 
 -}
 
@@ -203,8 +203,8 @@ Also, it uess Html.Keyed.
 By default it is a block element.
 
 -}
-select : List (Attribute msg) -> Options a msg -> Html msg
-select userAttrs opts =
+render : List (Attribute msg) -> Options a msg -> Html msg
+render userAttrs opts =
     let
         opened =
             isOpen opts.id opts.state
