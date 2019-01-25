@@ -90,6 +90,7 @@ routes =
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
     , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
+    , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -1780,6 +1781,13 @@ Discord.render
                 , tokenSubmittable = True
                 , currentState = Discord.HydratedOnce dummyOpts
                 }
+        ]
+
+
+configSlack : Model -> Html Msg
+configSlack m =
+    section []
+        [ h1 [ sizeSection ] [ t "Config.Slack" ]
         ]
 
 
