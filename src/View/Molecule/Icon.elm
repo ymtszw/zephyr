@@ -83,6 +83,7 @@ styles =
         [ ( "overflow", "hidden" )
         , ( "flex-basis", "auto!important" )
         , ( "justify-content", "center" )
+        , ( "user-select", "none" )
         ]
     ]
 
