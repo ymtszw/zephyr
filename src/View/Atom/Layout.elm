@@ -1,9 +1,10 @@
 module View.Atom.Layout exposing
     ( widthFill, block
-    , flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+    , flexRow, growRow, flexColumn, growColumn, flexWrap, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
     , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
+    , spacingWrapped5, spacingWrapped10
     , withBadge
     , styles, paddingInlineStyle
     )
@@ -11,10 +12,11 @@ module View.Atom.Layout exposing
 {-| Essential layouting Atoms.
 
 @docs widthFill, block
-@docs flexRow, growRow, flexColumn, growColumn, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+@docs flexRow, growRow, flexColumn, growColumn, flexWrap, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
 @docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
+@docs spacingWrapped5, spacingWrapped10
 @docs withBadge
 @docs styles, paddingInlineStyle
 
@@ -64,8 +66,13 @@ growColumn =
     class growColumnClass
 
 
+flexWrap : Attribute msg
+flexWrap =
+    class flexWrapClass
+
+
 {-| Styles equivalent to this class are automatically applied to direct children of `flexRow` or `flexColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<blockquote>`, `<textarea>`, or `<table>`.
 -}
 flexItem : Attribute msg
 flexItem =
@@ -73,7 +80,7 @@ flexItem =
 
 
 {-| Styles equivalent to this class are automatically applied to direct children of `growRow` or `growColumn`
-if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>` or `<blockquote>`.
+if they are either `<div>`,`<pre>`,`<p>`,`<h1>` to `<h6>`, `<blockquote>`, `<textarea>`, or `<table>`.
 -}
 growItem : Attribute msg
 growItem =
@@ -198,6 +205,16 @@ spacingColumn15 =
     class (spacingColumnClass 15)
 
 
+spacingWrapped5 : Attribute msg
+spacingWrapped5 =
+    class (spacingWrappedClass 5)
+
+
+spacingWrapped10 : Attribute msg
+spacingWrapped10 =
+    class (spacingWrappedClass 10)
+
+
 withBadge :
     List (Attribute msg)
     ->
@@ -236,8 +253,9 @@ styles =
     , s (c blockClass) [ ( "display", "block" ) ]
     , flexRowStyle
     , flexColumnStyle
-    , derive ("." ++ growRowClass) flexRowStyle
-    , derive ("." ++ growColumnClass) flexColumnStyle
+    , derive (c growRowClass) flexRowStyle
+    , derive (c growColumnClass) flexColumnStyle
+    , s (c flexWrapClass) [ ( "flex-wrap", "wrap" ) ]
     , autoFlexItemStyle
     , autoGrowItemStyle
     , flexItemStyle
@@ -260,6 +278,10 @@ styles =
     , spacingColumnStyle 5
     , spacingColumnStyle 10
     , spacingColumnStyle 15
+    , spacingWrappedParentStyle 5
+    , spacingWrappedChildrenStyle 5
+    , spacingWrappedParentStyle 10
+    , spacingWrappedChildrenStyle 10
     ]
         ++ badgeStyles
 
@@ -304,6 +326,11 @@ growColumnClass =
     "grc"
 
 
+flexWrapClass : String
+flexWrapClass =
+    "flw"
+
+
 autoFlexItemStyle : Style
 autoFlexItemStyle =
     let
@@ -322,7 +349,7 @@ autoFlexItemStyle =
 
 autoFlexItemSelectors : List String
 autoFlexItemSelectors =
-    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote" ]
+    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "table", "textarea" ]
 
 
 flexItemStyle : Style
@@ -511,6 +538,37 @@ spacingColumnStyle space =
 spacingColumnClass : Int -> String
 spacingColumnClass space =
     "spc" ++ String.fromInt space
+
+
+spacingWrappedParentStyle : Int -> Style
+spacingWrappedParentStyle space =
+    s (c (spacingWrappedClass space))
+        [ -- A trick also used in elm-ui; currently wrapping flex items cannot have easy "gap" in both row and column directions.
+          -- So, (1) have margins around items, and (2) compensate edge margins by translating container box
+          ( "margin", "-" ++ halfPx space )
+        ]
+
+
+spacingWrappedClass : Int -> String
+spacingWrappedClass space =
+    "spw" ++ String.fromInt space
+
+
+halfPx : Int -> String
+halfPx space =
+    String.fromFloat (toFloat space / 2) ++ "px"
+
+
+spacingWrappedChildrenStyle : Int -> Style
+spacingWrappedChildrenStyle space =
+    let
+        spacedItemsSelector =
+            String.join "," <| List.map child <| flexItems
+
+        child selector =
+            c (spacingWrappedClass space) ++ ">" ++ selector
+    in
+    s spacedItemsSelector [ ( "margin", halfPx space ) ]
 
 
 badgeStyles : List Style

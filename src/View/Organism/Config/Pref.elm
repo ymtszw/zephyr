@@ -17,6 +17,7 @@ import View.Atom.Theme exposing (..)
 import View.Atom.Typography exposing (..)
 import View.ConfigPane.DiscordConfig as Discord
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
 import View.Style exposing (..)
 
 
@@ -84,61 +85,53 @@ type alias ShadowColumnProps =
 
 shadowColumnsTable : Effects msg -> Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
 shadowColumnsTable eff slotsAvailable shadowColumns =
-    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
-        case shadowColumns of
-            [] ->
-                [ ( "shadowColumnEmpty", desc [ t "(Empty)" ] ) ]
+    let
+        columnCell ( scp, sc ) =
+            ( [ widthFill, theme sc ]
+            , [ div [ flexRow, flexCenter, spacingRow5 ]
+                    [ shadowColumnIcon scp.description sc
+                    , div [ bold ] [ t scp.description ]
+                    ]
+              ]
+            )
 
-            _ ->
-                List.map (shadowColumnRowKey eff slotsAvailable) shadowColumns
+        actionCell ( scp, sc ) =
+            ( [ theme sc ]
+            , [ div [ flexRow, flexCenter, spacingRow2 ]
+                    [ showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
+                    , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
+                    ]
+              ]
+            )
 
-
-shadowColumnRowKey : Effects msg -> Bool -> ( ShadowColumnProps, ShadowColumn ) -> ( String, Html msg )
-shadowColumnRowKey eff slotsAvailable ( scp, sc ) =
-    Tuple.pair scp.id <|
-        div
-            [ flexRow
-            , flexBasisAuto
-            , flexCenter
-            , padding2
-            , spacingRow5
-            , case sc of
+        theme sc =
+            case sc of
                 SlackSC _ ->
                     aubergine
 
                 _ ->
                     noAttr
-            ]
-            [ shadowColumnIcon scp.description sc
-            , div [ flexGrow, bold ] [ t scp.description ]
-            , showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
-            , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
-            ]
+    in
+    Table.render []
+        { columns = [ { header = "Column", cell = columnCell }, { header = "Action", cell = actionCell } ]
+        , rowKey = \( scp, _ ) -> scp.id
+        , data = shadowColumns
+        }
 
 
 shadowColumnIcon : String -> ShadowColumn -> Html msg
 shadowColumnIcon description sc =
     case sc of
         FallbackSC ->
-            abbrIcon description
+            Icon.abbr [ class shadowColumnIconClass, serif, Border.round2 ] description
 
         DiscordSC { mainChannelName, guildIcon } ->
             badgedIcon discordBadge <|
-                case guildIcon of
-                    Just src ->
-                        imageIcon src "Discord guild icon"
-
-                    Nothing ->
-                        abbrIcon mainChannelName
+                Icon.imgOrAbbr [ class shadowColumnIconClass, serif, Border.round2 ] "Discord guild icon" guildIcon
 
         SlackSC { mainConvName, teamIcon } ->
             badgedIcon slackBadge <|
-                case teamIcon of
-                    Just src ->
-                        imageIcon src "Slack team icon"
-
-                    Nothing ->
-                        abbrIcon mainConvName
+                Icon.imgOrAbbr [ class shadowColumnIconClass, serif, Border.round2 ] "Slack team icon" teamIcon
 
 
 badgedIcon : Html msg -> Html msg -> Html msg
@@ -148,33 +141,6 @@ badgedIcon badge icon =
         , bottomRight = Just badge
         , content = icon -- No inset
         }
-
-
-abbrIcon : String -> Html msg
-abbrIcon text =
-    div
-        [ class shadowColumnIconClass
-        , flexColumn
-        , flexCenter
-        , flexBasisAuto
-        , serif
-        , Border.round2
-        , Border.solid
-        , Border.w1
-        ]
-        [ div [] [ t (String.left 1 text) ]
-        ]
-
-
-imageIcon : String -> String -> Html msg
-imageIcon src_ alt_ =
-    img
-        [ class shadowColumnIconClass
-        , Border.round2
-        , src src_
-        , alt alt_
-        ]
-        []
 
 
 discordBadge : Html msg
@@ -225,7 +191,6 @@ styles =
     [ s (c shadowColumnIconClass)
         [ ( "width", px shadowColumnIconSize )
         , ( "height", px shadowColumnIconSize )
-        , ( "justify-content", "center" )
         ]
     , s (c shadowColumnIconBadgeClass)
         [ ( "width", px shadowColumnIconBadgeSize )

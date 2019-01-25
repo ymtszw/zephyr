@@ -368,7 +368,7 @@ inlineCodeStyles =
 linkStyles : List Style
 linkStyles =
     [ s "a:link" [ ( "text-decoration", "none" ) ] -- Cancelling UA's default decorations
-    , s "a:link:hover" [ ( "text-decoration", "underline" ) ]
+    , hov "a:link" [ ( "text-decoration", "underline" ) ]
     , scoped (c oneDarkClass) "a:link" [ ( "color", cssRgba oneDarkTheme.link ) ]
     , scoped (c oneDarkClass) "a:visited" [ ( "color", cssRgba oneDarkTheme.link ) ]
     , scoped (c aubergineClass) "a:link" [ ( "color", cssRgba aubergineTheme.link ) ]

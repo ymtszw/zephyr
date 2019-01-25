@@ -2,14 +2,17 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import ListExtra
 import Octicons
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
+import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -21,6 +24,9 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
+import View.Molecule.Wallpaper as Wallpaper
+import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
 import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
@@ -52,21 +58,40 @@ type alias Model =
     }
 
 
-type Route
-    = Top
-    | Typography
-    | TextBlock
-    | Border
-    | Background
-    | Layout
-    | Image
-    | Button
-    | Input
-    | Icon
-    | Sidebar
-    | ConfigPref
-    | ConfigStatus
-    | MainTemplate
+type alias Route =
+    String
+
+
+type alias R =
+    { path : Route
+    , layer : String
+    , btnLabel : String
+    , view : Model -> List (Html Msg)
+    }
+
+
+routes : List R
+routes =
+    -- Type-unsafe static route list; introduced in order to reduce repeated pattern matches
+    [ R "" "Atoms" "Top" <| pLab [ introduction, theme ]
+    , R "typography" "Atoms" "Typography" <| pLab [ typography ]
+    , R "text_block" "Atoms" "TextBlock" <| pLab [ textBlock ]
+    , R "border" "Atoms" "Border" <| pLab [ border ]
+    , R "background" "Atoms" "Background" <| pLab [ background ]
+    , R "layout" "Atoms" "Layout" <| pLab [ layout ]
+    , R "image" "Atoms" "Image" <| pLab [ image ]
+    , R "button" "Atoms" "Button" <| pLab [ button_ ]
+    , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
+    , R "animation" "Atoms" "Animation" <| pLab [ animation ]
+    , R "icon" "Molecules" "Icon" <| pLab [ icon ]
+    , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
+    , R "table" "Molecules" "Table" <| pLab [ table_ ]
+    , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
+    , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
+    , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
+    , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
+    , R "main_template" "Templates" "Main" <| mainTemplate
+    ]
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -77,7 +102,7 @@ init () url key =
       , toggle = False
       , select = Select.AllClosed
       , selected = Nothing
-      , numColumns = 10
+      , numColumns = 2
       }
     , Cmd.none
     )
@@ -87,23 +112,17 @@ urlToRoute : Url -> Route
 urlToRoute url =
     let
         urlParser =
-            U.oneOf
-                [ U.map Typography (U.s "typography")
-                , U.map TextBlock (U.s "text_block")
-                , U.map Border (U.s "border")
-                , U.map Background (U.s "background")
-                , U.map Layout (U.s "layout")
-                , U.map Image (U.s "image")
-                , U.map Button (U.s "button")
-                , U.map Input (U.s "input")
-                , U.map Icon (U.s "icon")
-                , U.map Sidebar (U.s "sidebar")
-                , U.map ConfigPref (U.s "config_pref")
-                , U.map ConfigStatus (U.s "config_status")
-                , U.map MainTemplate (U.s "main_template")
-                ]
+            U.map matchFirstPath U.string
+
+        matchFirstPath firstPath =
+            case ListExtra.findOne (\r -> r.path == firstPath) routes of
+                Just _ ->
+                    firstPath
+
+                Nothing ->
+                    ""
     in
-    Maybe.withDefault Top (U.parse urlParser url)
+    Maybe.withDefault "" (U.parse urlParser url)
 
 
 type Msg
@@ -154,152 +173,53 @@ update msg m =
 
 view : Model -> { title : String, body : List (Html Msg) }
 view m =
-    let
-        pLab contents =
-            [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
-    in
     { title = "Zephyr: Pattern Lab"
     , body =
-        (::) View.Stylesheet.render <|
-            case m.route of
-                Top ->
-                    pLab [ introduction, theme ]
+        case ListExtra.findOne (\r -> r.path == m.route) routes of
+            Just r ->
+                View.Stylesheet.render :: r.view m
 
-                Typography ->
-                    pLab [ typography ]
-
-                TextBlock ->
-                    pLab [ textBlock ]
-
-                Border ->
-                    pLab [ border ]
-
-                Background ->
-                    pLab [ background ]
-
-                Layout ->
-                    pLab [ layout ]
-
-                Image ->
-                    pLab [ image ]
-
-                Button ->
-                    pLab [ button_ ]
-
-                Input ->
-                    pLab [ input_ m ]
-
-                Icon ->
-                    pLab [ icon ]
-
-                Sidebar ->
-                    pLab [ sidebar m ]
-
-                ConfigPref ->
-                    pLab [ configPref m ]
-
-                ConfigStatus ->
-                    pLab [ configStatus m ]
-
-                MainTemplate ->
-                    mainTemplate m
+            Nothing ->
+                []
     }
 
 
+pLab : List (Html Msg) -> Model -> List (Html Msg)
+pLab contents m =
+    [ div [ flexColumn, widthFill, spacingColumn15, oneDark ] (navi m.route :: contents) ]
+
+
 navi : Route -> Html Msg
-navi r =
-    div [ flexColumn, flexCenter, spacingColumn10, padding15 ]
-        [ div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Atoms" ]
-            , naviButton r Top "Top"
-            , naviButton r Typography "Typography"
-            , naviButton r TextBlock "TextBlock"
-            , naviButton r Border "Border"
-            , naviButton r Background "Background"
-            , naviButton r Layout "Layout"
-            , naviButton r Image "Image"
-            , naviButton r Button "Button"
-            , naviButton r Input "Input"
-            ]
-        , div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Molecules" ]
-            , naviButton r Icon "Icon"
-            ]
-        , div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Organisms" ]
-            , naviButton r Sidebar "Sidebar"
-            , naviButton r ConfigPref "Config.Pref"
-            , naviButton r ConfigStatus "Config.Status"
-            ]
-        , div [ flexRow, flexCenter, spacingRow15 ]
-            [ h2 [ sizeHeadline, bold ] [ t "Templates" ]
-            , naviButton r MainTemplate "Main"
-            ]
+navi current =
+    div [ flexColumn, flexCenter, spacingColumn10, padding15 ] <|
+        List.map (naviRow current) <|
+            ListExtra.groupWhile (\r1 r2 -> r1.layer == r2.layer) routes
+
+
+naviRow : Route -> List R -> Html Msg
+naviRow current rs =
+    div [ flexRow, flexCenter, spacingRow15 ]
+        [ h2 [ sizeHeadline, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
+        , div [ flexRow, flexGrow, flexWrap, flexCenter, spacingWrapped10 ] <|
+            List.map (naviButton current) rs
         ]
 
 
-naviButton : Route -> Route -> String -> Html Msg
-naviButton current hit btnLabel =
-    let
-        c =
-            if current == hit then
-                Background.colorSucc
+naviButton : Route -> R -> Html Msg
+naviButton current r =
+    Button.link
+        [ sizeHeadline
+        , padding10
+        , flexItem
+        , if current == r.path then
+            Background.colorSucc
 
-            else
-                Background.colorPrim
-    in
-    Button.link [ sizeHeadline, padding10, flexItem, c ]
-        { url = routeToString hit, children = [ t btnLabel ] }
-
-
-routeToString : Route -> String
-routeToString r =
-    let
-        abs_ path =
-            Url.Builder.absolute path []
-    in
-    case r of
-        Top ->
-            abs_ []
-
-        Typography ->
-            abs_ [ "typography" ]
-
-        TextBlock ->
-            abs_ [ "text_block" ]
-
-        Border ->
-            abs_ [ "border" ]
-
-        Background ->
-            abs_ [ "background" ]
-
-        Layout ->
-            abs_ [ "layout" ]
-
-        Image ->
-            abs_ [ "image" ]
-
-        Button ->
-            abs_ [ "button" ]
-
-        Input ->
-            abs_ [ "input" ]
-
-        Icon ->
-            abs_ [ "icon" ]
-
-        Sidebar ->
-            abs_ [ "sidebar" ]
-
-        ConfigPref ->
-            abs_ [ "config_pref" ]
-
-        ConfigStatus ->
-            abs_ [ "config_status" ]
-
-        MainTemplate ->
-            abs_ [ "main_template" ]
+          else
+            Background.colorPrim
+        ]
+        { url = Url.Builder.absolute [ r.path ] []
+        , children = [ t r.btnLabel ]
+        }
 
 
 introduction : Html Msg
@@ -323,12 +243,12 @@ introduction =
                 , t (StringExtra.punctuateNumber View.Stylesheet.length)
                 ]
             ]
-        , div [ padding10 ]
-            [ h2 [ sizeHeadline ] [ t "Imports in code samples:" ]
-            , pre [ padding10, Border.round5, Border.w1, Border.solid ]
-                [ t """import Html exposing (..)
+        , section []
+            [ h2 [ sizeHeadline ] [ t "Imports" ]
+            , sourceBlock """import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
@@ -340,13 +260,34 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.Table as Table
+import View.Molecule.Wallpaper as Wallpaper
+import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
 import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)"""
-                ]
             ]
         ]
+
+
+sourceBlock : String -> Html Msg
+sourceBlock source =
+    let
+        sourceLineCount =
+            List.length (String.split "\n" source)
+    in
+    textarea
+        [ monospace
+        , widthFill
+        , padding5
+        , Border.round5
+        , Background.colorSub
+        , readonly True
+        , rows sourceLineCount
+        , wrap "off"
+        ]
+        [ t source ]
 
 
 section : List (Attribute Msg) -> List (Html Msg) -> Html Msg
@@ -377,6 +318,14 @@ theme =
         ]
 
 
+withSource : String -> Html Msg -> Html Msg
+withSource source toRender =
+    div [ growRow, flexCenter, widthFill, spacingRow15 ]
+        [ div [] [ toRender ]
+        , sourceBlock source
+        ]
+
+
 typography : Html Msg
 typography =
     section []
@@ -398,14 +347,6 @@ fontFamilies =
             p [ serif ] [ t "This paragraph uses a serif font. あいうえお水兵リーベ" ]
         , withSource "p [ monospace ] [ t \"This paragraph uses a monospace font. あいうえお水兵リーベ\" ]" <|
             p [ monospace ] [ t "This paragraph uses a monospace font. あいうえお水兵リーベ" ]
-        ]
-
-
-withSource : String -> Html Msg -> Html Msg
-withSource source toRender =
-    div [ growRow, flexCenter, widthFill, spacingRow15 ]
-        [ div [] [ toRender ]
-        , pre [ padding5, selectAll, Border.round5, Background.colorSub ] [ t source ]
         ]
 
 
@@ -761,6 +702,12 @@ flexBox =
                 , div [ Border.solid, Border.w1 ] [ t lorem ]
                 , div [ Border.solid, Border.w1 ] [ t iroha ]
                 ]
+        , withSource """div [ flexRow, flexWrap ] <|
+    List.repeat 10 <|
+        div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "This is a wrapping row, we are being wrapped!" ]""" <|
+            div [ flexRow, flexWrap ] <|
+                List.repeat 10 <|
+                    div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "This is a wrapping row, we are being wrapped!" ]
         ]
 
 
@@ -845,6 +792,18 @@ spacing =
                 , div [ Border.solid, Border.w1 ] [ t "I'm the second one. Second and thereafter have top margins." ]
                 , div [ Border.solid, Border.w1 ] [ t "I'm the third one." ]
                 ]
+        , withSource """div [ flexRow, flexWrap, spacingWrapped5, Border.solid, Border.w1 ] <|
+    List.repeat 10 <|
+        div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]""" <|
+            div [ flexRow, flexWrap, spacingWrapped5, Border.solid, Border.w1 ] <|
+                List.repeat 10 <|
+                    div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]
+        , withSource """div [ flexRow, flexWrap, spacingWrapped10, Border.solid, Border.w1 ] <|
+        List.repeat 10 <|
+            div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]""" <|
+            div [ flexRow, flexWrap, spacingWrapped10, Border.solid, Border.w1 ] <|
+                List.repeat 10 <|
+                    div [ flexBasis (px 100), Border.solid, Border.w1 ] [ t "In a wrapping row, spacing implementation slightly differs!" ]
         ]
 
 
@@ -1357,6 +1316,17 @@ select_ ss selected =
         ]
 
 
+animation : Html Msg
+animation =
+    section []
+        [ h1 [ sizeSection ] [ t "Animation" ]
+        , withSource """img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
+            img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
+        , withSource """img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
+            img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []
+        ]
+
+
 icon : Html Msg
 icon =
     section []
@@ -1369,6 +1339,14 @@ icon =
             Icon.link [] { url = "https://example.com", src = Image.ph 50 50, alt = "50x50 icon" }
         , withSource """Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }""" <|
             Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }
+        , withSource """Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr\"""" <|
+            Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr"
+        , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr\"""" <|
+            Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr"
+        , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))""" <|
+            Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))
+        , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing""" <|
+            Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing
         , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
             Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
         , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|
@@ -1377,6 +1355,169 @@ icon =
             Icon.octiconLink [] { size = 50, url = "https://example.com", shape = Octicons.rocket }
         , withSource """Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }""" <|
             Icon.octiconLink [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, url = "https://example.com", shape = Octicons.rocket }
+        ]
+
+
+wallpaper : Html Msg
+wallpaper =
+    section []
+        [ h1 [ sizeSection ] [ t "Wallpaper" ]
+        , withSource "Wallpaper.zephyr" Wallpaper.zephyr
+        ]
+
+
+table_ : Html Msg
+table_ =
+    section []
+        [ h1 [ sizeSection ] [ t "Table" ]
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Empty Table Column1", cell = always ( [], [] ) }
+        , { header = "Empty Table Column2", cell = always ( [], [] ) }
+        ]
+    , rowKey = identity
+    , data = []
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Empty Table Column1", cell = always ( [], [] ) }
+                    , { header = "Empty Table Column2", cell = always ( [], [] ) }
+                    ]
+                , rowKey = identity
+                , data = []
+                }
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Number"
+          , cell = \\i -> ( [], [ t (String.fromInt i) ] )
+          }
+        , { header = "Multiplied and Punctuated"
+          , cell = \\i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
+          }
+        , { header = "Multiplied, Punctuated and Reversed"
+          , cell = \\i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
+          }
+        ]
+    , rowKey = String.fromInt
+    , data = List.range 0 10
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Number"
+                      , cell = \i -> ( [], [ t (String.fromInt i) ] )
+                      }
+                    , { header = "Multiplied and Punctuated"
+                      , cell = \i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
+                      }
+                    , { header = "Multiplied, Punctuated and Reversed"
+                      , cell = \i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
+                      }
+                    ]
+                , rowKey = String.fromInt
+                , data = List.range 0 10
+                }
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Can set attributes to cell (though widthFill only works for a single column)"
+          , cell = \\i -> ( [ widthFill ], [ t (String.fromInt i) ] )
+          }
+        , { header = "Multiplied and Punctuated"
+          , cell = \\i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
+          }
+        , { header = "Multiplied, Punctuated and Reversed"
+          , cell = \\i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
+          }
+        ]
+    , rowKey = String.fromInt
+    , data = List.range 0 10
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Can set attributes to cell (though widthFill only works for a single column)"
+                      , cell = \i -> ( [ widthFill ], [ t (String.fromInt i) ] )
+                      }
+                    , { header = "Multiplied and Punctuated"
+                      , cell = \i -> ( [], [ t (StringExtra.punctuateNumber (i * 999)) ] )
+                      }
+                    , { header = "Multiplied, Punctuated and Reversed"
+                      , cell = \i -> ( [], [ t (String.reverse (StringExtra.punctuateNumber (i * 999))) ] )
+                      }
+                    ]
+                , rowKey = String.fromInt
+                , data = List.range 0 10
+                }
+        , withSource """Table.render []
+    { columns =
+        [ { header = "Image"
+          , cell = \\( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
+          }
+        , { header = "Size"
+          , cell = \\( size, _ ) -> ( [], [ t (px size) ] )
+          }
+        , { header = "Source URL"
+          , cell = \\( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
+          }
+        , { header = "Description"
+          , cell = \\_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
+          }
+        ]
+    , rowKey = \\( size, _ ) -> "imageSize_" ++ String.fromInt size
+    , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+    }""" <|
+            Table.render []
+                { columns =
+                    [ { header = "Image"
+                      , cell = \( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
+                      }
+                    , { header = "Size"
+                      , cell = \( size, _ ) -> ( [], [ t (px size) ] )
+                      }
+                    , { header = "Source URL"
+                      , cell = \( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
+                      }
+                    , { header = "Description"
+                      , cell = \_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
+                      }
+                    ]
+                , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
+                , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+                }
+        , withSource """Table.render [ Table.layoutFixed ]
+    { columns =
+        [ { header = "Image"
+          , cell = \\( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
+          }
+        , { header = "Size"
+          , cell = \\( size, _ ) -> ( [], [ t (px size) ] )
+          }
+        , { header = "Source URL"
+          , cell = \\( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
+          }
+        , { header = "Description"
+          , cell = \\_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
+          }
+        ]
+    , rowKey = \\( size, _ ) -> "imageSize_" ++ String.fromInt size
+    , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+    }""" <|
+            Table.render [ Table.layoutFixed ]
+                { columns =
+                    [ { header = "Image"
+                      , cell = \( size, src_ ) -> ( [], [ img [ src src_, alt (String.fromInt size ++ "px image") ] [] ] )
+                      }
+                    , { header = "Size"
+                      , cell = \( size, _ ) -> ( [], [ t (px size) ] )
+                      }
+                    , { header = "Source URL"
+                      , cell = \( _, src_ ) -> ( [], [ link [] { url = src_, children = [ t src_ ] } ] )
+                      }
+                    , { header = "Description"
+                      , cell = \_ -> ( [], [ p [] [ t iroha, t " ", t lorem ] ] )
+                      }
+                    ]
+                , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
+                , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+                }
         ]
 
 
@@ -1534,6 +1675,98 @@ configStatus m =
                 , clientWidth = 1600
                 , serviceWorkerAvailable = m.toggle
                 , indexedDBAvailable = m.toggle
+                }
+        ]
+
+
+configDiscord : Model -> Html Msg
+configDiscord m =
+    section []
+        [ h1 [ sizeSection ] [ t "Config.Discord" ]
+        , withSource """let
+    dummyUser =
+        { id = "DUMMYUSERID"
+        , username = "Discord User"
+        , discriminator = "1111"
+        , avatar = Nothing
+        }
+
+    dummyGuild index =
+        { id = "DUMMYGUILDID" ++ String.fromInt index
+        , name = String.fromInt index ++ "GUILD"
+        , icon = Nothing
+        }
+
+    dummyChannel index =
+        { id = "DUMMYCHANNELID" ++ String.fromInt index
+        , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
+        , guildMaybe = Just (dummyGuild (modBy 3 index))
+        , fetching = modBy 2 index == 0
+        , subscribed = index /= 0
+        }
+
+    dummyOpts =
+        { timezone = Time.utc
+        , rehydrating = m.toggle
+        , user = dummyUser
+        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , subbedChannels = List.range 0 15 |> List.map dummyChannel
+        }
+in
+Discord.render
+    { onTokenInput = TextInput
+    , onTokenSubmit = Toggle False
+    , onRehydrateButtonClick = Toggle (not m.toggle)
+    , onForceFetchButtonClick = always NoOp
+    , onCreateColumnButtonClick = always NoOp
+    , onUnsubscribeButtonClick = always NoOp
+    }
+    { token = m.textInput
+    , tokenSubmitButtonText = "Submit"
+    , tokenSubmittable = True
+    , currentState = Discord.HydratedOnce dummyOpts
+    }""" <|
+            let
+                dummyUser =
+                    { id = "DUMMYUSERID"
+                    , username = "Discord User"
+                    , discriminator = "1111"
+                    , avatar = Nothing
+                    }
+
+                dummyGuild index =
+                    { id = "DUMMYGUILDID" ++ String.fromInt index
+                    , name = String.fromInt index ++ "GUILD"
+                    , icon = Nothing
+                    }
+
+                dummyChannel index =
+                    { id = "DUMMYCHANNELID" ++ String.fromInt index
+                    , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
+                    , guildMaybe = Just (dummyGuild (modBy 3 index))
+                    , fetching = modBy 2 index == 0
+                    , subscribed = index /= 0
+                    }
+
+                dummyOpts =
+                    { rehydrating = m.toggle
+                    , user = dummyUser
+                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , subbedChannels = List.range 0 15 |> List.map dummyChannel
+                    }
+            in
+            Discord.render
+                { onTokenInput = TextInput
+                , onTokenSubmit = Toggle False
+                , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onForceFetchButtonClick = always NoOp
+                , onCreateColumnButtonClick = always NoOp
+                , onUnsubscribeButtonClick = always NoOp
+                }
+                { token = m.textInput
+                , tokenSubmitButtonText = "Submit"
+                , tokenSubmittable = True
+                , currentState = Discord.HydratedOnce dummyOpts
                 }
         ]
 

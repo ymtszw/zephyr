@@ -1,5 +1,5 @@
 module View.Style exposing
-    ( Style, toString, s, kf, pure, derive, inject, scoped
+    ( Style, toString, s, kf, pure, derive, inject, scoped, hov
     , c, px, scaleByQuarter, scale12, none, noAttr
     )
 
@@ -7,7 +7,7 @@ module View.Style exposing
 
 Provides necessary types and helper functions.
 
-@docs Style, toString, s, kf, pure, derive, inject, scoped
+@docs Style, toString, s, kf, pure, derive, inject, scoped, hov
 @docs c, px, scaleByQuarter, scale12, none, noAttr
 
 -}
@@ -138,6 +138,13 @@ scoped scopeSelector targetSelector props =
                 ]
     in
     s selector props
+
+
+{-| Generates a style for `:hover` pseudo-class of a selector.
+-}
+hov : String -> List ( String, String ) -> Style
+hov selector =
+    s (selector ++ ":hover")
 
 
 {-| Renders a `Style` into bare string.
