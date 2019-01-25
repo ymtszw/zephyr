@@ -66,7 +66,7 @@ styles =
           ( "transform", "translate(" ++ px (negate defaultBorderSpacing) ++ "," ++ px (negate defaultBorderSpacing) ++ ")" )
         , ( "width", "calc(100% + " ++ px (defaultBorderSpacing * 2) ++ ")" )
         ]
-    , s "td,th" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
+    , s "td" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
     , s (c layoutFixedClass) [ ( "table-layout", "fixed" ) ]
     , s (c emptyClass) [ ( "text-align", "center" ) ]
     ]
