@@ -1722,7 +1722,7 @@ configDiscord m =
         , rehydrating = m.toggle
         , user = dummyUser
         , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
-        , subbableChannels = []
+        , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
         , subbedChannels = List.range 0 15 |> List.map dummyChannel
         }
 in
@@ -1730,6 +1730,7 @@ Discord.render
     { onTokenInput = TextInput
     , onTokenSubmit = Toggle False
     , onRehydrateButtonClick = Toggle (not m.toggle)
+    , onChannelSelected = always NoOp
     , onForceFetchButtonClick = always NoOp
     , onCreateColumnButtonClick = always NoOp
     , onUnsubscribeButtonClick = always NoOp
@@ -1738,6 +1739,8 @@ Discord.render
     , tokenSubmitButtonText = "Submit"
     , tokenSubmittable = True
     , currentState = Discord.HydratedOnce dummyOpts
+    , selectMsgTagger = SelectCtrl
+    , selectState = m.select
     }""" <|
             let
                 dummyUser =
@@ -1765,7 +1768,7 @@ Discord.render
                     { rehydrating = m.toggle
                     , user = dummyUser
                     , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
-                    , subbableChannels = []
+                    , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
                     , subbedChannels = List.range 0 15 |> List.map dummyChannel
                     }
             in
@@ -1773,6 +1776,7 @@ Discord.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onChannelSelected = always NoOp
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
@@ -1781,6 +1785,8 @@ Discord.render
                 , tokenSubmitButtonText = "Submit"
                 , tokenSubmittable = True
                 , currentState = Discord.HydratedOnce dummyOpts
+                , selectMsgTagger = SelectCtrl
+                , selectState = m.select
                 }
         ]
 

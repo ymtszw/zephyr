@@ -12,6 +12,7 @@ import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Image exposing (octicon, octiconPathStyle)
+import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (oneDarkTheme)
 import View.Atom.Typography exposing (..)
@@ -24,21 +25,24 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
+    , onChannelSelected : String -> msg
     , onForceFetchButtonClick : String -> msg
     , onCreateColumnButtonClick : String -> msg
     , onUnsubscribeButtonClick : String -> msg
     }
 
 
-type alias Props =
+type alias Props msg =
     { token : String
     , tokenSubmitButtonText : String
     , tokenSubmittable : Bool
     , currentState : CurrentState
+    , selectMsgTagger : Select.Msg msg -> msg
+    , selectState : Select.State
     }
 
 
-render : Effects msg -> Props -> Html msg
+render : Effects msg -> Props msg -> Html msg
 render eff props =
     div
         [ flexColumn
@@ -50,7 +54,7 @@ render eff props =
         ]
 
 
-tokenForm : Effects msg -> Props -> Html msg
+tokenForm : Effects msg -> Props msg -> Html msg
 tokenForm eff props =
     let
         tokenInputId =
@@ -116,7 +120,7 @@ type alias SubbedChannel =
     }
 
 
-currentState : Effects msg -> Props -> Html msg
+currentState : Effects msg -> Props msg -> Html msg
 currentState eff props =
     case props.currentState of
         NotIdentified ->
@@ -129,6 +133,7 @@ currentState eff props =
             div [ flexColumn, spacingColumn5 ]
                 [ userNameAndAvatar eff.onRehydrateButtonClick opts.rehydrating opts.user
                 , guilds opts.guilds
+                , subscribeChannelInput eff.onChannelSelected props opts.subbableChannels
                 , subbedChannelTable eff opts.subbedChannels
                 ]
 
@@ -195,6 +200,24 @@ guildIconKey g =
 
             Nothing ->
                 Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
+
+
+subscribeChannelInput : (String -> msg) -> Props msg -> List SubbableChannel -> Html msg
+subscribeChannelInput onSelect props subbableChannels =
+    div [ flexRow, flexCenter, spacingRow5 ]
+        [ div [ sizeHeadline ] [ t "Subscribe:" ]
+        , Select.render [ class subscribeChannelInputClass, flexBasisAuto ]
+            { state = props.selectState
+            , msgTagger = props.selectMsgTagger
+            , id = "discordChannelSubscribeInput"
+            , thin = True
+            , onSelect = .id >> onSelect
+            , selectedOption = Nothing
+            , filterMatch = Just Discord.channelFilter
+            , options = List.map (\c -> ( c.id, c )) subbableChannels
+            , optionHtml = channelSummary
+            }
+        ]
 
 
 channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg
@@ -301,6 +324,7 @@ styles =
     , s (c icon40Class) [ ( "width", px icon40Size ), ( "height", px icon40Size ), ( "flex-basis", "auto" ) ]
     , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
     , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
+    , s (c subscribeChannelInputClass) [ ( "width", px subscribeChannelInputWidth ) ]
     , octiconPathStyle (c fetchStatusAndforceFetchButtonClass ++ ":hover") [ ( "fill", cssRgba oneDarkTheme.succ ) ]
     , s (c channelIconClass) [ ( "width", px channelIconSize ), ( "height", px channelIconSize ), ( "flex-basis", "auto" ) ]
     , octiconPathStyle (c unsubscribeButtonClass ++ ":hover") [ ( "fill", cssRgba oneDarkTheme.err ) ]
@@ -326,6 +350,16 @@ icon40Size =
 rehydrateButtonClass : String
 rehydrateButtonClass =
     "discordrehy"
+
+
+subscribeChannelInputClass : String
+subscribeChannelInputClass =
+    "discordsubchinput"
+
+
+subscribeChannelInputWidth : Int
+subscribeChannelInputWidth =
+    250
 
 
 channelIconClass : String
