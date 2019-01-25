@@ -49,10 +49,15 @@ render eff p =
         , spacingColumn15
         , oneDark
         , Background.colorBg
+        , if p.configOpen then
+            class configOpenClass
+
+          else
+            noAttr
         ]
-        [ addColumnButton eff.columnAdder
+        [ withTooltip (t "Add Column") <| addColumnButton eff.columnAdder
         , columnButtons eff.columnButtonClickerByIndex p.columns
-        , otherButtons eff.configOpener p.configOpen
+        , otherButtons eff.configOpener
         ]
 
 
@@ -77,6 +82,14 @@ addColumnButton columnAdder =
         , size = octiconSize - 2 -- Subtract border width
         , shape = Octicons.plus
         }
+
+
+withTooltip : Html msg -> Html msg -> Html msg
+withTooltip tooltip content =
+    div []
+        [ div [ class sidebarTooltipClass ] [ tooltip ]
+        , content
+        ]
 
 
 type ColumnButton
@@ -156,20 +169,16 @@ slackBadge =
     imageBadge "Slack logo" <| Slack.defaultIconUrl (Just badgeSize)
 
 
-otherButtons : msg -> Bool -> Html msg
-otherButtons configOpener configOpen =
+otherButtons : msg -> Html msg
+otherButtons configOpener =
     div [ flexColumn, flexBasisAuto, spacingColumn10 ]
         [ Icon.octiconButton
             [ class buttonClass
             , class octiconButtonClass
+            , class configToggleButtonClass
             , flexItem
             , padding5
             , Border.round5
-            , if configOpen then
-                class configOpenClass
-
-              else
-                noAttr
             ]
             { onPress = configOpener
             , size = octiconSize
@@ -204,8 +213,28 @@ styles =
         , ( "height", "100vh" )
         , ( "padding", px paddingY ++ " " ++ px paddingX )
         ]
-    , hov (c sidebarClass)
+    , s (c sidebarClass ++ ":hover," ++ c sidebarClass ++ c configOpenClass)
         [ ( "width", px (sidebarWidth + sidebarExpansionWidth) )
+        ]
+    , s (c sidebarTooltipClass)
+        [ ( "position", "absolute" )
+        , ( "left", px (buttonSize + paddingX) )
+        , ( "width", px (sidebarExpansionWidth - paddingX) )
+        , ( "max-width", px (sidebarExpansionWidth - paddingX) )
+        , ( "height", px buttonSize )
+        , ( "max-height", px buttonSize )
+        , ( "overflow", "hidden" )
+        , ( "opacity", "0" )
+        , ( "visibility", "hidden" )
+        ]
+    , s
+        (String.join ","
+            [ c sidebarClass ++ ":hover " ++ c sidebarTooltipClass
+            , c sidebarClass ++ c configOpenClass ++ " " ++ c sidebarTooltipClass
+            ]
+        )
+        [ ( "opacity", "1" )
+        , ( "visibility", "visible" )
         ]
     , s (c sidebarClass ++ " " ++ c columnButtonsClass)
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
@@ -233,11 +262,11 @@ styles =
         [ ( "background-color", cssRgba oneDarkTheme.bg ) ]
     , hov (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
-    , s (c sidebarClass ++ " " ++ c octiconButtonClass ++ c configOpenClass)
+    , s (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
     , s (c sidebarClass ++ " " ++ c badgeClass ++ " " ++ c "pin" ++ " path")
         [ ( "fill", cssRgba oneDarkTheme.warn ) ]
-    , Image.octiconPathStyle (c sidebarClass ++ " " ++ c octiconButtonClass ++ c configOpenClass)
+    , Image.octiconPathStyle (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
         [ ( "fill", cssRgba oneDarkTheme.text ) ]
     ]
 
@@ -265,6 +294,16 @@ paddingX =
 paddingY : Int
 paddingY =
     20
+
+
+configOpenClass : String
+configOpenClass =
+    "sbarcopen"
+
+
+sidebarTooltipClass : String
+sidebarTooltipClass =
+    "sbarttip"
 
 
 columnButtonsClass : String
@@ -312,6 +351,6 @@ octiconSize =
     buttonSize - (paddingX * 2)
 
 
-configOpenClass : String
-configOpenClass =
-    "sbarcopen"
+configToggleButtonClass : String
+configToggleButtonClass =
+    "sbarctoggle"
