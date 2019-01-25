@@ -185,7 +185,9 @@ sub msgTagger state =
 type alias Options a msg =
     { state : State
     , msgTagger : Msg msg -> msg
-    , id : String
+    , -- This `id` is not actually set as `id` attribute, since handmade select inputs are not "labelable" elements.
+      -- They cannot be associated with `<label for="id">` elements, therefore there's no point in actually setting them.
+      id : String
     , thin : Bool
     , onSelect : a -> msg
     , selectedOption : Maybe a
@@ -335,7 +337,6 @@ optionRowKey opts ( optionKey, option ) =
         div
             [ class optionRowClass
             , Layout.flexItem
-            , Layout.padding5
             , attribute "role" "option"
             , tabindex 0
             , stopPropagationOn "click" (succeed ( onSelect, True ))
@@ -364,6 +365,7 @@ styles =
         , ( "padding-left", px headerTextPaddingX )
         , ( "padding-right", px headerTextPaddingX )
         , ( "min-width", "0" )
+        , ( "user-select", "none" )
         ]
     , s_ (c headerChevronClass)
         [ ( "width", px headerChevronSize )
@@ -382,7 +384,10 @@ styles =
         , ( "min-width", px optionListMinWidth )
         , ( "max-width", "50vw" )
         ]
-    , s_ (c optionRowClass) [ ( "cursor", "pointer" ) ]
+    , s_ (c optionRowClass)
+        [ ( "padding", px optionRowPaddingY ++ " " ++ px headerTextPaddingX )
+        , ( "cursor", "pointer" )
+        ]
     ]
         ++ themedStyles oneDarkClass oneDarkTheme
         ++ themedStyles aubergineClass aubergineTheme
@@ -470,6 +475,11 @@ optionListClass =
 optionRowClass : String
 optionRowClass =
     "slopro"
+
+
+optionRowPaddingY : Int
+optionRowPaddingY =
+    2
 
 
 optionActiveClass : String
