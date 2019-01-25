@@ -1,11 +1,11 @@
 module View.Atom.Animation exposing
-    ( rotating
+    ( rotating, slideDown
     , styles
     )
 
-{-| Animation Atom.
+{-| Perpetual animation Atoms.
 
-@docs rotating
+@docs rotating, slideDown
 @docs styles
 
 -}
@@ -17,24 +17,39 @@ import View.Style exposing (..)
 
 rotating : Attribute msg
 rotating =
-    class rotatingClass
+    class (animClass rotatingKeyframesName)
+
+
+slideDown : Attribute msg
+slideDown =
+    class (animClass slideDownKeyframesName)
 
 
 styles : List Style
 styles =
-    [ s (c rotatingClass) [ ( "animation", "1.5s linear 0s infinite " ++ rotatingKeyframesName ) ]
+    [ s (c (animClass rotatingKeyframesName)) [ ( "animation", "1.5s linear 0s infinite " ++ rotatingKeyframesName ) ]
     , kf rotatingKeyframesName
         [ ( "from", [ ( "transform", "rotate(0turn)" ) ] )
         , ( "to", [ ( "transform", "rotate(1turn)" ) ] )
         ]
+    , s (c (animClass slideDownKeyframesName)) [ ( "animation", "1s ease-out 0s infinite " ++ slideDownKeyframesName ) ]
+    , kf slideDownKeyframesName
+        [ ( "from", [ ( "transform", "translateY(-100%)" ) ] )
+        , ( "to", [ ( "transform", "translateY(0)" ) ] )
+        ]
     ]
 
 
-rotatingClass : String
-rotatingClass =
-    "anim-rotating"
+animClass : String -> String
+animClass kfName =
+    "anim-" ++ kfName
 
 
 rotatingKeyframesName : String
 rotatingKeyframesName =
     "rotating"
+
+
+slideDownKeyframesName : String
+slideDownKeyframesName =
+    "slideDown"

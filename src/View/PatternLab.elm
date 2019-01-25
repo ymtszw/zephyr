@@ -1322,6 +1322,8 @@ animation =
         [ h1 [ sizeSection ] [ t "Animation" ]
         , withSource """img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
             img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
+        , withSource """img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
+            img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []
         ]
 
 
