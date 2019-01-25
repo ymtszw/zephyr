@@ -813,9 +813,7 @@ badge =
         [ h2 [ sizeTitle ] [ t "Badge" ]
         , withSource """withBadge []
     { content =
-        div [ padding2 ]
-            [ div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
-            ]
+        div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
     , topRight =
         Just (div [ Background.colorSucc ] [ t "I'm top-right badge!" ])
     , bottomRight =
@@ -823,33 +821,47 @@ badge =
     }""" <|
             withBadge []
                 { content =
-                    div [ padding2 ]
-                        [ div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
-                        ]
+                    div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
                 , topRight =
                     Just (div [ Background.colorSucc ] [ t "I'm top-right badge!" ])
                 , bottomRight =
                     Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
                 }
         , withSource """withBadge []
-    { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+    { content = div [ Background.colorNote, padding10 ] [ t lorem ]
     , topRight = Just (div [ Background.colorSucc ] [ t "Top-right only" ])
     , bottomRight = Nothing
     }""" <|
             withBadge []
-                { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+                { content = div [ Background.colorNote, padding10 ] [ t lorem ]
                 , topRight = Just (div [ Background.colorSucc ] [ t "Top-right only" ])
                 , bottomRight = Nothing
                 }
         , withSource """withBadge []
-    { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+    { content = div [ Background.colorNote, padding10 ] [ t lorem ]
     , topRight = Nothing
     , bottomRight = Just (div [ Background.colorErr ] [ t "Bottom-right only" ])
     }""" <|
             withBadge []
-                { content = div [ padding2 ] [ div [ Background.colorNote, padding10 ] [ t lorem ] ]
+                { content = div [ Background.colorNote, padding10 ] [ t lorem ]
                 , topRight = Nothing
                 , bottomRight = Just (div [ Background.colorErr ] [ t "Bottom-right only" ])
+                }
+        , withSource """withBadge [ badgeOutset ]
+    { content =
+        div [ Background.colorNote, padding10 ] [ t "With ", code [] [ t "badgeOutset" ], t ", badges are pushed outward. ", t lorem ]
+    , topRight =
+        Just (div [ Background.colorSucc ] [ t "I'm top-right badge!" ])
+    , bottomRight =
+        Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
+    }""" <|
+            withBadge [ badgeOutset ]
+                { content =
+                    div [ Background.colorNote, padding10 ] [ t "With ", code [] [ t "badgeOutset" ], t ", badges are pushed outward. ", t lorem ]
+                , topRight =
+                    Just (div [ Background.colorSucc ] [ t "I'm top-right badge!" ])
+                , bottomRight =
+                    Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
                 }
         ]
 
