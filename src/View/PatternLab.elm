@@ -1722,6 +1722,7 @@ configDiscord m =
         , rehydrating = m.toggle
         , user = dummyUser
         , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , subbableChannels = []
         , subbedChannels = List.range 0 15 |> List.map dummyChannel
         }
 in
@@ -1764,6 +1765,7 @@ Discord.render
                     { rehydrating = m.toggle
                     , user = dummyUser
                     , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , subbableChannels = []
                     , subbedChannels = List.range 0 15 |> List.map dummyChannel
                     }
             in

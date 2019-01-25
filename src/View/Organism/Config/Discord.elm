@@ -95,11 +95,19 @@ type CurrentState
         { rehydrating : Bool
         , user : Discord.User
         , guilds : Dict String Discord.Guild
-        , subbedChannels : List ChannelGlance -- Must be sorted already
+        , subbableChannels : List SubbableChannel
+        , subbedChannels : List SubbedChannel -- Must be sorted already
         }
 
 
-type alias ChannelGlance =
+type alias SubbableChannel =
+    { id : String
+    , name : String
+    , guildMaybe : Maybe Discord.Guild
+    }
+
+
+type alias SubbedChannel =
     { id : String
     , name : String
     , guildMaybe : Maybe Discord.Guild
@@ -189,15 +197,10 @@ guildIconKey g =
                 Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
 
 
-subbedChannelTable : Effects msg -> List ChannelGlance -> Html msg
-subbedChannelTable eff subbedChannels =
+channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg
+channelSummary c =
     let
-        nameCell c =
-            ( [ widthFill ]
-            , [ div [ flexRow, flexCenter, spacingRow5 ] [ guildIcon c, div [ flexGrow ] [ t ("#" ++ c.name) ] ] ]
-            )
-
-        guildIcon c =
+        guildIcon =
             case c.guildMaybe of
                 Just g ->
                     Icon.imgOrAbbr [ class channelIconClass, flexItem, Border.round2 ] g.name <|
@@ -206,6 +209,15 @@ subbedChannelTable eff subbedChannels =
                 Nothing ->
                     -- TODO DM/GroupDMs should have appropriate icons
                     none
+    in
+    div [ flexRow, flexCenter, spacingRow5 ] [ guildIcon, div [ flexGrow ] [ t ("#" ++ c.name) ] ]
+
+
+subbedChannelTable : Effects msg -> List SubbedChannel -> Html msg
+subbedChannelTable eff subbedChannels =
+    let
+        nameCell c =
+            ( [ widthFill ], [ channelSummary c ] )
 
         actionCell c =
             ( []
@@ -251,7 +263,7 @@ fetchStatusAndforceFetchButton onPress fetching =
         ]
 
 
-createColumnButton : msg -> ChannelGlance -> Html msg
+createColumnButton : msg -> SubbedChannel -> Html msg
 createColumnButton onPress c =
     button
         [ class createColumnButtonClass
