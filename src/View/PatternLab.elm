@@ -1187,7 +1187,7 @@ select_ ss selected =
         [ h2 [ sizeTitle ] [ t "Select" ]
         , withSource """div []
     [ t "By default these are block elements."
-    , Select.select []
+    , Select.render []
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s1"
@@ -1201,7 +1201,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "By default these are block elements."
-                , Select.select []
+                , Select.render []
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s1"
@@ -1215,7 +1215,7 @@ select_ ss selected =
                 ]
         , withSource """div [ growRow, spacingRow10 ]
     [ p [] [ t "Width can be contained externally. Be warned though, flex calculation with padding is complicated, and may not work as you intended!" ]
-    , Select.select [ style "max-width" "300px" ]
+    , Select.render [ style "max-width" "300px" ]
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s2"
@@ -1229,7 +1229,7 @@ select_ ss selected =
     ]""" <|
             div [ growRow, spacingRow10 ]
                 [ p [] [ t "Width can be contained externally. Though, flex calculation with padding may not work as you intended!" ]
-                , Select.select [ style "max-width" "300px" ]
+                , Select.render [ style "max-width" "300px" ]
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s2"
@@ -1243,7 +1243,7 @@ select_ ss selected =
                 ]
         , withSource """div []
     [ t "Can be thinned."
-    , Select.select []
+    , Select.render []
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s3"
@@ -1257,7 +1257,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "Can be thinned."
-                , Select.select []
+                , Select.render []
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s3"
@@ -1271,7 +1271,7 @@ select_ ss selected =
                 ]
         , withSource """div []
     [ t "Can have filter box."
-    , Select.select []
+    , Select.render []
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s4"
@@ -1285,7 +1285,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "Can have filter box."
-                , Select.select []
+                , Select.render []
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s4"
@@ -1299,7 +1299,7 @@ select_ ss selected =
                 ]
         , withSource """div []
     [ t "Can be themed."
-    , Select.select [ aubergine ]
+    , Select.render [ aubergine ]
         { state = ss
         , msgTagger = SelectCtrl
         , id = "s5"
@@ -1313,7 +1313,7 @@ select_ ss selected =
     ]""" <|
             div []
                 [ t "Can be themed."
-                , Select.select [ aubergine ]
+                , Select.render [ aubergine ]
                     { state = ss
                     , msgTagger = SelectCtrl
                     , id = "s5"
@@ -1722,6 +1722,7 @@ configDiscord m =
         , rehydrating = m.toggle
         , user = dummyUser
         , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
         , subbedChannels = List.range 0 15 |> List.map dummyChannel
         }
 in
@@ -1729,6 +1730,7 @@ Discord.render
     { onTokenInput = TextInput
     , onTokenSubmit = Toggle False
     , onRehydrateButtonClick = Toggle (not m.toggle)
+    , onChannelSelected = always NoOp
     , onForceFetchButtonClick = always NoOp
     , onCreateColumnButtonClick = always NoOp
     , onUnsubscribeButtonClick = always NoOp
@@ -1737,6 +1739,8 @@ Discord.render
     , tokenSubmitButtonText = "Submit"
     , tokenSubmittable = True
     , currentState = Discord.HydratedOnce dummyOpts
+    , selectMsgTagger = SelectCtrl
+    , selectState = m.select
     }""" <|
             let
                 dummyUser =
@@ -1757,13 +1761,14 @@ Discord.render
                     , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
                     , guildMaybe = Just (dummyGuild (modBy 3 index))
                     , fetching = modBy 2 index == 0
-                    , subscribed = index /= 0
+                    , producing = index /= 0
                     }
 
                 dummyOpts =
                     { rehydrating = m.toggle
                     , user = dummyUser
                     , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
                     , subbedChannels = List.range 0 15 |> List.map dummyChannel
                     }
             in
@@ -1771,6 +1776,7 @@ Discord.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onChannelSelected = always NoOp
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
@@ -1779,6 +1785,8 @@ Discord.render
                 , tokenSubmitButtonText = "Submit"
                 , tokenSubmittable = True
                 , currentState = Discord.HydratedOnce dummyOpts
+                , selectMsgTagger = SelectCtrl
+                , selectState = m.select
                 }
         ]
 
