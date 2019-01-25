@@ -46,6 +46,7 @@ render eff p =
     nav
         [ class sidebarClass
         , flexColumn
+        , flexCenter
         , spacingColumn15
         , oneDark
         , Background.colorBg
@@ -63,7 +64,7 @@ render eff p =
 
 columnButtons : (Int -> msg) -> List ( ColumnProps, ColumnButton ) -> Html msg
 columnButtons columnButtonClickerByIndex columns =
-    Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, spacingColumn10 ] <|
+    Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, padding5, spacingColumn10 ] <|
         List.indexedMap (colummButtonKey columnButtonClickerByIndex) columns
 
 
@@ -86,18 +87,19 @@ addColumnButton columnAdder =
 
 withTooltip : Html msg -> Html msg -> Html msg
 withTooltip tooltip content =
-    div []
-        [ div
+    div [ flexRow, flexBasisAuto, spacingRow5 ]
+        [ content
+        , div
             [ class sidebarTooltipClass
             , flexRow
             , flexCenter
+            , flexBasisAuto
             , padding5
             , sizeHeadline
             , Background.colorSub
             , Border.round5
             ]
             [ tooltip ]
-        , content
         ]
 
 
@@ -159,7 +161,7 @@ columnButtonFace pinned cb =
 
 withPin : Bool -> ( Maybe (Html msg), Html msg ) -> Html msg
 withPin pinned ( bottomRight, content ) =
-    withBadge []
+    withBadge [ badgeOutset ]
         { topRight =
             if pinned then
                 Just pinBadge
@@ -167,7 +169,7 @@ withPin pinned ( bottomRight, content ) =
             else
                 Nothing
         , bottomRight = bottomRight
-        , content = div [ padding2, growColumn ] [ content ] -- Insetting by 2px
+        , content = content
         }
 
 
@@ -239,21 +241,18 @@ styles =
         , ( "top", "0" )
         , ( "width", px sidebarWidth )
         , ( "height", "100vh" )
-        , ( "padding", px paddingY ++ " " ++ px paddingX )
+        , ( "padding-top", px paddingY )
+        , ( "padding-bottom", px paddingY )
         ]
     , s (c sidebarClass ++ ":hover," ++ c sidebarClass ++ c configOpenClass)
         [ ( "width", px (sidebarWidth + sidebarExpansionWidth) )
         ]
     , s (c sidebarTooltipClass)
-        [ ( "position", "absolute" )
-        , ( "left", px (buttonSize + paddingX) )
-        , ( "width", px (sidebarExpansionWidth - paddingX) )
+        [ ( "width", px (sidebarExpansionWidth - paddingX) )
         , ( "max-width", px (sidebarExpansionWidth - paddingX) )
         , ( "height", px buttonSize )
         , ( "max-height", px buttonSize )
-        , ( "overflow", "hidden" )
-        , ( "opacity", "0" )
-        , ( "visibility", "hidden" )
+        , ( "display", "none" )
         ]
     , s
         (String.join ","
@@ -261,9 +260,7 @@ styles =
             , c sidebarClass ++ c configOpenClass ++ " " ++ c sidebarTooltipClass
             ]
         )
-        [ ( "opacity", "1" )
-        , ( "visibility", "visible" )
-        ]
+        [ ( "display", "flex" ) ]
     , s (c sidebarClass ++ " " ++ c columnButtonsClass)
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
         , ( "overflow-y", "auto" )
@@ -283,8 +280,8 @@ styles =
         [ ( "transform", "rotate(-45deg)" )
         ]
     , s (c sidebarClass ++ " " ++ c innerFaceClass)
-        [ ( "width", px innerFaceSize )
-        , ( "height", px innerFaceSize )
+        [ ( "width", px buttonSize )
+        , ( "height", px buttonSize )
         ]
     , s (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.bg ) ]
@@ -356,17 +353,12 @@ badgeClass =
 
 badgeSize : Int
 badgeSize =
-    12
+    14
 
 
 innerFaceClass : String
 innerFaceClass =
     "sbarcbtninner"
-
-
-innerFaceSize : Int
-innerFaceSize =
-    buttonSize - (2 * 2)
 
 
 octiconButtonClass : String
