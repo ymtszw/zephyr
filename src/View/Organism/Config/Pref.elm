@@ -97,7 +97,7 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
 
         actionCell ( scp, sc ) =
             ( [ theme sc ]
-            , [ div [ flexRow, flexCenter, spacingRow5 ]
+            , [ div [ flexRow, flexCenter, spacingRow2 ]
                     [ showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
                     , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
                     ]

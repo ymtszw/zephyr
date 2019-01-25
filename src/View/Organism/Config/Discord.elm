@@ -24,6 +24,8 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
+    , onCreateColumnButtonClick : String -> msg
+    , onUnsubscribeButtonClick : String -> msg
     }
 
 
@@ -100,6 +102,8 @@ type alias ChannelGlance =
     { id : String
     , name : String
     , guildMaybe : Maybe Discord.Guild
+    , fetching : Bool -- May include InitialFetching
+    , subscribed : Bool -- Meaning, the channel is successfully fetched at least once
     }
 
 
@@ -116,7 +120,7 @@ currentState eff props =
             div [ flexColumn, spacingColumn5 ]
                 [ userNameAndAvatar eff.onRehydrateButtonClick opts.rehydrating opts.user
                 , guilds opts.guilds
-                , channels opts.subbedChannels
+                , channels eff opts.subbedChannels
                 ]
 
 
@@ -184,11 +188,13 @@ guildIconKey g =
                 Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
 
 
-channels : List ChannelGlance -> Html msg
-channels subbedChannels =
+channels : Effects msg -> List ChannelGlance -> Html msg
+channels eff subbedChannels =
     let
         nameCell c =
-            ( [], [ div [ flexRow, flexCenter, spacingRow2 ] [ guildIcon c, div [ flexGrow ] [ t ("#" ++ c.name) ] ] ] )
+            ( []
+            , [ div [ flexRow, flexCenter, spacingRow5 ] [ guildIcon c, div [ flexGrow ] [ t ("#" ++ c.name) ] ] ]
+            )
 
         guildIcon c =
             case c.guildMaybe of
@@ -199,14 +205,36 @@ channels subbedChannels =
                 Nothing ->
                     -- TODO DM/GroupDMs should have appropriate icons
                     none
+
+        actionCell c =
+            ( []
+            , [ div [ flexRow, flexCenter, spacingRow2 ]
+                    [ createColumnButton (eff.onCreateColumnButtonClick c.id) c
+                    ]
+              ]
+            )
     in
     Table.render [ Table.layoutFixed ]
         { columns =
             [ { header = "Name", cell = nameCell }
+            , { header = "Action", cell = actionCell }
             ]
         , rowKey = .id
         , data = subbedChannels
         }
+
+
+createColumnButton : msg -> ChannelGlance -> Html msg
+createColumnButton onPress c =
+    button
+        [ flexItem
+        , flexGrow
+        , padding2
+        , Background.colorPrim
+        , disabled (not c.subscribed)
+        , onClick onPress
+        ]
+        [ t "Create Column" ]
 
 
 

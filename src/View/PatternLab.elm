@@ -1699,6 +1699,8 @@ configDiscord m =
         { id = "DUMMYCHANNELID" ++ String.fromInt index
         , name = "Channel" ++ String.fromInt index
         , guildMaybe = Just (dummyGuild (modBy 3 index))
+        , fetching = modBy 2 index == 0
+        , subscribed = index /= 0
         }
 
     dummyOpts =
@@ -1713,6 +1715,8 @@ Discord.render
     { onTokenInput = TextInput
     , onTokenSubmit = Toggle False
     , onRehydrateButtonClick = Toggle (not m.toggle)
+    , onCreateColumnButtonClick = always NoOp
+    , onUnsubscribeButtonClick = always NoOp
     }
     { token = m.textInput
     , tokenSubmitButtonText = "Submit"
@@ -1737,6 +1741,8 @@ Discord.render
                     { id = "DUMMYCHANNELID" ++ String.fromInt index
                     , name = "Channel" ++ String.fromInt index
                     , guildMaybe = Just (dummyGuild (modBy 3 index))
+                    , fetching = modBy 2 index == 0
+                    , subscribed = index /= 0
                     }
 
                 dummyOpts =
@@ -1750,6 +1756,8 @@ Discord.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onCreateColumnButtonClick = always NoOp
+                , onUnsubscribeButtonClick = always NoOp
                 }
                 { token = m.textInput
                 , tokenSubmitButtonText = "Submit"
