@@ -26,7 +26,7 @@ render : List (Attribute msg) -> Props a msg -> Html msg
 render attrs props =
     let
         headerCell c =
-            th [ Background.colorNote ] [ t c.header ]
+            th [ padding2, Background.colorNote ] [ t c.header ]
 
         rowKey d =
             ( props.rowKey d
@@ -66,7 +66,7 @@ styles =
           ( "transform", "translate(" ++ px (negate defaultBorderSpacing) ++ "," ++ px (negate defaultBorderSpacing) ++ ")" )
         , ( "width", "calc(100% + " ++ px (defaultBorderSpacing * 2) ++ ")" )
         ]
-    , s "td,th" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
+    , s "td" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
     , s (c layoutFixedClass) [ ( "table-layout", "fixed" ) ]
     , s (c emptyClass) [ ( "text-align", "center" ) ]
     ]
