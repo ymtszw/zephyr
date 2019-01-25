@@ -204,6 +204,9 @@ styles =
         , ( "height", "100vh" )
         , ( "padding", px paddingY ++ " " ++ px paddingX )
         ]
+    , hov (c sidebarClass)
+        [ ( "width", px (sidebarWidth + sidebarExpansionWidth) )
+        ]
     , s (c sidebarClass ++ " " ++ c columnButtonsClass)
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
         , ( "overflow-y", "auto" )
@@ -247,6 +250,11 @@ sidebarClass =
 sidebarWidth : Int
 sidebarWidth =
     buttonSize + paddingX * 2
+
+
+sidebarExpansionWidth : Int
+sidebarExpansionWidth =
+    150
 
 
 paddingX : Int
