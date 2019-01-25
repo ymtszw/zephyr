@@ -157,13 +157,13 @@ rehydrateButton onRehydrateButtonClick rehydrating =
             noAttr
         ]
         { onPress = onRehydrateButtonClick
-        , size = rehydrateButtonSize
+        , size = roundButtonSize
         , shape = Octicons.sync
         }
 
 
-rehydrateButtonSize : Int
-rehydrateButtonSize =
+roundButtonSize : Int
+roundButtonSize =
     20
 
 
@@ -192,7 +192,7 @@ channels : Effects msg -> List ChannelGlance -> Html msg
 channels eff subbedChannels =
     let
         nameCell c =
-            ( []
+            ( [ widthFill ]
             , [ div [ flexRow, flexCenter, spacingRow5 ] [ guildIcon c, div [ flexGrow ] [ t ("#" ++ c.name) ] ] ]
             )
 
@@ -210,11 +210,12 @@ channels eff subbedChannels =
             ( []
             , [ div [ flexRow, flexCenter, spacingRow2 ]
                     [ createColumnButton (eff.onCreateColumnButtonClick c.id) c
+                    , unsubscribeButton (eff.onUnsubscribeButtonClick c.id)
                     ]
               ]
             )
     in
-    Table.render [ Table.layoutFixed ]
+    Table.render []
         { columns =
             [ { header = "Name", cell = nameCell }
             , { header = "Action", cell = actionCell }
@@ -227,7 +228,8 @@ channels eff subbedChannels =
 createColumnButton : msg -> ChannelGlance -> Html msg
 createColumnButton onPress c =
     button
-        [ flexItem
+        [ class createColumnButtonClass
+        , flexItem
         , flexGrow
         , padding2
         , Background.colorPrim
@@ -235,6 +237,20 @@ createColumnButton onPress c =
         , onClick onPress
         ]
         [ t "Create Column" ]
+
+
+unsubscribeButton : msg -> Html msg
+unsubscribeButton onPress =
+    Icon.octiconButton
+        [ class unsubscribeButtonClass
+        , flexItem
+        , Border.elliptic
+        , Background.transparent
+        ]
+        { onPress = onPress
+        , size = roundButtonSize
+        , shape = Octicons.circleSlash
+        }
 
 
 
@@ -248,6 +264,8 @@ styles =
     , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
     , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
     , s (c channelIconClass) [ ( "width", px channelIconSize ), ( "height", px channelIconSize ), ( "flex-basis", "auto" ) ]
+    , octiconPathStyle (c unsubscribeButtonClass) [ ( "fill", cssRgba oneDarkTheme.err ) ]
+    , s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ), ( "flex-basis", "auto" ) ]
     ]
 
 
@@ -279,3 +297,18 @@ channelIconClass =
 channelIconSize : Int
 channelIconSize =
     20
+
+
+createColumnButtonClass : String
+createColumnButtonClass =
+    "discordcreatec"
+
+
+createColumnButtonWidth : Int
+createColumnButtonWidth =
+    150
+
+
+unsubscribeButtonClass : String
+unsubscribeButtonClass =
+    "discordunsub"
