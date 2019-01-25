@@ -34,7 +34,7 @@ import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Wallpaper as Wallpaper
-import View.Organism.Sidebar as Sidebar exposing (sidebarWidth)
+import View.Organism.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
 
 
@@ -300,7 +300,7 @@ styles : List Style
 styles =
     [ s (c configDrawerClass)
         [ ( "position", "fixed" )
-        , ( "left", px sidebarWidth )
+        , ( "left", px (sidebarWidth + sidebarExpansionWidth) )
         , ( "top", "0" )
         , ( "width", px configDrawerWidth )
         , ( "height", "100vh" )

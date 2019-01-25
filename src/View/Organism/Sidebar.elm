@@ -1,12 +1,12 @@
 module View.Organism.Sidebar exposing
     ( Props, ColumnProps, ColumnButton(..), Effects, render
-    , styles, sidebarWidth
+    , styles, sidebarWidth, sidebarExpansionWidth
     )
 
 {-| Sidebar Organism.
 
 @docs Props, ColumnProps, ColumnButton, Props, Effects, render
-@docs styles, sidebarWidth
+@docs styles, sidebarWidth, sidebarExpansionWidth
 
 -}
 
@@ -283,7 +283,7 @@ sidebarWidth =
 
 sidebarExpansionWidth : Int
 sidebarExpansionWidth =
-    150
+    120
 
 
 paddingX : Int
