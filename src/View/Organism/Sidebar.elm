@@ -228,7 +228,7 @@ styles =
         ]
     , s (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.bg ) ]
-    , s (c sidebarClass ++ " " ++ c octiconButtonClass ++ ":hover")
+    , hov (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
     , s (c sidebarClass ++ " " ++ c octiconButtonClass ++ c configOpenClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]

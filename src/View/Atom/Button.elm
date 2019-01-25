@@ -49,7 +49,7 @@ standardStyles =
         ]
         |> inject Layout.paddingInlineStyle
         |> inject oneDarkDefaultFaceStyle
-    , s "button:hover" [ ( "opacity", "0.9" ) ]
+    , hov "button" [ ( "opacity", "0.9" ) ]
     , s "button:disabled" [ ( "opacity", "0.7" ), ( "cursor", "default" ) ]
     ]
 
@@ -85,7 +85,7 @@ linkButtonStyles =
         ]
         |> inject Layout.paddingInlineStyle
         |> inject oneDarkDefaultFaceStyle
-    , s (c (linkButtonClass ++ ":hover")) [ ( "opacity", "0.9" ) ]
+    , hov (c linkButtonClass) [ ( "opacity", "0.9" ) ]
     , s linkSelectors [ ( "color", "inherit" ), ( "text-decoration", "none" ) ] -- Cancelling default link decorations
     ]
 
