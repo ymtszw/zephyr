@@ -121,7 +121,7 @@ currentState eff props =
             div [ flexColumn, spacingColumn5 ]
                 [ userNameAndAvatar eff.onRehydrateButtonClick opts.rehydrating opts.user
                 , guilds opts.guilds
-                , channels eff opts.subbedChannels
+                , subbedChannelTable eff opts.subbedChannels
                 ]
 
 
@@ -189,8 +189,8 @@ guildIconKey g =
                 Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
 
 
-channels : Effects msg -> List ChannelGlance -> Html msg
-channels eff subbedChannels =
+subbedChannelTable : Effects msg -> List ChannelGlance -> Html msg
+subbedChannelTable eff subbedChannels =
     let
         nameCell c =
             ( [ widthFill ]
