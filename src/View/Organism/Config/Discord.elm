@@ -11,7 +11,7 @@ import Octicons
 import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
-import View.Atom.Image exposing (octiconPathStyle)
+import View.Atom.Image exposing (octicon, octiconPathStyle)
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (oneDarkTheme)
 import View.Atom.Typography exposing (..)
@@ -24,6 +24,7 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
+    , onForceFetchButtonClick : String -> msg
     , onCreateColumnButtonClick : String -> msg
     , onUnsubscribeButtonClick : String -> msg
     }
@@ -157,13 +158,13 @@ rehydrateButton onRehydrateButtonClick rehydrating =
             noAttr
         ]
         { onPress = onRehydrateButtonClick
-        , size = roundButtonSize
+        , size = octiconButtonSize
         , shape = Octicons.sync
         }
 
 
-roundButtonSize : Int
-roundButtonSize =
+octiconButtonSize : Int
+octiconButtonSize =
     20
 
 
@@ -209,7 +210,8 @@ channels eff subbedChannels =
         actionCell c =
             ( []
             , [ div [ flexRow, flexCenter, spacingRow2 ]
-                    [ createColumnButton (eff.onCreateColumnButtonClick c.id) c
+                    [ fetchStatusAndforceFetchButton (eff.onForceFetchButtonClick c.id) c.fetching
+                    , createColumnButton (eff.onCreateColumnButtonClick c.id) c
                     , unsubscribeButton (eff.onUnsubscribeButtonClick c.id)
                     ]
               ]
@@ -223,6 +225,29 @@ channels eff subbedChannels =
         , rowKey = .id
         , data = subbedChannels
         }
+
+
+fetchStatusAndforceFetchButton : msg -> Bool -> Html msg
+fetchStatusAndforceFetchButton onPress fetching =
+    button
+        [ class fetchStatusAndforceFetchButtonClass
+        , flexItem
+        , flexBasisAuto
+        , Border.round2
+        , Background.transparent
+        , onClick onPress
+        ]
+        [ div
+            [ -- Animate inner contents, not the button itself, to keep the clickable area stable
+              if fetching then
+                Animation.slideDown
+
+              else
+                noAttr
+            ]
+            [ octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
+            ]
+        ]
 
 
 createColumnButton : msg -> ChannelGlance -> Html msg
@@ -248,7 +273,7 @@ unsubscribeButton onPress =
         , Background.transparent
         ]
         { onPress = onPress
-        , size = roundButtonSize
+        , size = octiconButtonSize
         , shape = Octicons.circleSlash
         }
 
@@ -263,8 +288,9 @@ styles =
     , s (c icon40Class) [ ( "width", px icon40Size ), ( "height", px icon40Size ), ( "flex-basis", "auto" ) ]
     , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
     , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
+    , octiconPathStyle (c fetchStatusAndforceFetchButtonClass ++ ":hover") [ ( "fill", cssRgba oneDarkTheme.succ ) ]
     , s (c channelIconClass) [ ( "width", px channelIconSize ), ( "height", px channelIconSize ), ( "flex-basis", "auto" ) ]
-    , octiconPathStyle (c unsubscribeButtonClass) [ ( "fill", cssRgba oneDarkTheme.err ) ]
+    , octiconPathStyle (c unsubscribeButtonClass ++ ":hover") [ ( "fill", cssRgba oneDarkTheme.err ) ]
     , s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ), ( "flex-basis", "auto" ) ]
     ]
 
@@ -299,9 +325,14 @@ channelIconSize =
     20
 
 
+fetchStatusAndforceFetchButtonClass : String
+fetchStatusAndforceFetchButtonClass =
+    "discordfetchbtn"
+
+
 createColumnButtonClass : String
 createColumnButtonClass =
-    "discordcreatec"
+    "discordcreatebtn"
 
 
 createColumnButtonWidth : Int
@@ -311,4 +342,4 @@ createColumnButtonWidth =
 
 unsubscribeButtonClass : String
 unsubscribeButtonClass =
-    "discordunsub"
+    "discordunsubbtn"

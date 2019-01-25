@@ -1717,6 +1717,7 @@ Discord.render
     { onTokenInput = TextInput
     , onTokenSubmit = Toggle False
     , onRehydrateButtonClick = Toggle (not m.toggle)
+    , onForceFetchButtonClick = always NoOp
     , onCreateColumnButtonClick = always NoOp
     , onUnsubscribeButtonClick = always NoOp
     }
@@ -1758,6 +1759,7 @@ Discord.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
                 }
