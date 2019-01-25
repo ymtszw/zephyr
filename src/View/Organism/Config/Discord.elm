@@ -233,6 +233,7 @@ fetchStatusAndforceFetchButton onPress fetching =
         [ class fetchStatusAndforceFetchButtonClass
         , flexItem
         , flexBasisAuto
+        , noPadding
         , Border.round2
         , Background.transparent
         , onClick onPress
