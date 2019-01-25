@@ -116,7 +116,6 @@ configDrawer isOpen cc =
             noAttr
         , oneDark
         , flexColumn
-        , padding15
         , spacingColumn15
         , Background.colorBg
         ]
@@ -305,6 +304,10 @@ styles =
         , ( "width", px configDrawerWidth )
         , ( "height", "100vh" )
         , ( "max-height", "100vh" )
+        , ( "padding-top", px configDrawerPaddingY )
+        , ( "padding-left", px configDrawerPaddingLeft )
+        , ( "padding-right", px configDrawerPaddingRight )
+        , ( "padding-bottom", px configDrawerPaddingY )
         , ( "overflow-y", "auto" )
         , ( "transition", "all 0.15s" )
         , -- Default hidden
@@ -362,6 +365,21 @@ configDrawerClass =
 configDrawerWidth : Int
 configDrawerWidth =
     640
+
+
+configDrawerPaddingY : Int
+configDrawerPaddingY =
+    20
+
+
+configDrawerPaddingLeft : Int
+configDrawerPaddingLeft =
+    5
+
+
+configDrawerPaddingRight : Int
+configDrawerPaddingRight =
+    10
 
 
 drawerOpenClass : String

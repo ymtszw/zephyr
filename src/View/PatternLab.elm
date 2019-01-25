@@ -102,7 +102,7 @@ init () url key =
       , toggle = False
       , select = Select.AllClosed
       , selected = Nothing
-      , numColumns = 2
+      , numColumns = 4
       }
     , Cmd.none
     )

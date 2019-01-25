@@ -13,7 +13,7 @@ module View.Organism.Sidebar exposing
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Html, button, div, img, nav)
+import Html exposing (Html, button, div, img, nav, span)
 import Html.Attributes exposing (alt, class, src)
 import Html.Events exposing (onClick)
 import Html.Keyed
@@ -55,7 +55,7 @@ render eff p =
           else
             noAttr
         ]
-        [ withTooltip (t "Add Column") <| addColumnButton eff.columnAdder
+        [ withTooltip (span [ colorNote ] [ t "Add Column" ]) <| addColumnButton eff.columnAdder
         , columnButtons eff.columnButtonClickerByIndex p.columns
         , otherButtons eff.configOpener
         ]
@@ -87,7 +87,16 @@ addColumnButton columnAdder =
 withTooltip : Html msg -> Html msg -> Html msg
 withTooltip tooltip content =
     div []
-        [ div [ class sidebarTooltipClass ] [ tooltip ]
+        [ div
+            [ class sidebarTooltipClass
+            , flexRow
+            , flexCenter
+            , padding5
+            , sizeHeadline
+            , Background.colorSub
+            , Border.round5
+            ]
+            [ tooltip ]
         , content
         ]
 
@@ -104,17 +113,30 @@ type alias ColumnProps =
 
 colummButtonKey : (Int -> msg) -> Int -> ( ColumnProps, ColumnButton ) -> ( String, Html msg )
 colummButtonKey columnButtonClicker index ( cp, cb ) =
-    ( "columnButton_" ++ cp.id
-    , button
-        [ class buttonClass
-        , flexItem
-        , noPadding
-        , Border.round5
-        , onClick (columnButtonClicker index)
-        ]
-        [ columnButtonFace cp.pinned cb
-        ]
-    )
+    let
+        tooltip =
+            span [ bold ] <|
+                case cb of
+                    Fallback desc ->
+                        [ t desc ]
+
+                    DiscordButton opts ->
+                        [ t ("#" ++ opts.channelName) ]
+
+                    SlackButton opts ->
+                        [ t ("#" ++ opts.convName) ]
+    in
+    Tuple.pair ("columnButton_" ++ cp.id) <|
+        withTooltip tooltip <|
+            button
+                [ class buttonClass
+                , flexItem
+                , noPadding
+                , Border.round5
+                , onClick (columnButtonClicker index)
+                ]
+                [ columnButtonFace cp.pinned cb
+                ]
 
 
 columnButtonFace : Bool -> ColumnButton -> Html msg
@@ -171,31 +193,37 @@ slackBadge =
 
 otherButtons : msg -> Html msg
 otherButtons configOpener =
+    let
+        note x =
+            span [ bold, colorNote ] [ t x ]
+    in
     div [ flexColumn, flexBasisAuto, spacingColumn10 ]
-        [ Icon.octiconButton
-            [ class buttonClass
-            , class octiconButtonClass
-            , class configToggleButtonClass
-            , flexItem
-            , padding5
-            , Border.round5
-            ]
-            { onPress = configOpener
-            , size = octiconSize
-            , shape = Octicons.gear
-            }
-        , Icon.octiconLink
-            [ newTab
-            , class buttonClass
-            , class octiconButtonClass
-            , flexItem
-            , padding5
-            , Border.round5
-            ]
-            { url = "https://github.com/ymtszw/zephyr"
-            , size = octiconSize
-            , shape = Octicons.markGithub
-            }
+        [ withTooltip (note "Zephyr Config") <|
+            Icon.octiconButton
+                [ class buttonClass
+                , class octiconButtonClass
+                , class configToggleButtonClass
+                , flexItem
+                , padding5
+                , Border.round5
+                ]
+                { onPress = configOpener
+                , size = octiconSize
+                , shape = Octicons.gear
+                }
+        , withTooltip (note "Source") <|
+            Icon.octiconLink
+                [ newTab
+                , class buttonClass
+                , class octiconButtonClass
+                , flexItem
+                , padding5
+                , Border.round5
+                ]
+                { url = "https://github.com/ymtszw/zephyr"
+                , size = octiconSize
+                , shape = Octicons.markGithub
+                }
         ]
 
 
@@ -283,7 +311,7 @@ sidebarWidth =
 
 sidebarExpansionWidth : Int
 sidebarExpansionWidth =
-    120
+    130
 
 
 paddingX : Int
