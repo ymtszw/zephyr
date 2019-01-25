@@ -1757,7 +1757,7 @@ Discord.render
                     , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
                     , guildMaybe = Just (dummyGuild (modBy 3 index))
                     , fetching = modBy 2 index == 0
-                    , subscribed = index /= 0
+                    , producing = index /= 0
                     }
 
                 dummyOpts =

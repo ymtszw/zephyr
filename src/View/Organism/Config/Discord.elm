@@ -104,7 +104,7 @@ type alias ChannelGlance =
     , name : String
     , guildMaybe : Maybe Discord.Guild
     , fetching : Bool -- May include InitialFetching
-    , subscribed : Bool -- Meaning, the channel is successfully fetched at least once
+    , producing : Bool -- Meaning, the channel is successfully fetched at least once
     }
 
 
@@ -259,7 +259,7 @@ createColumnButton onPress c =
         , flexGrow
         , padding2
         , Background.colorPrim
-        , disabled (not c.subscribed)
+        , disabled (not c.producing)
         , onClick onPress
         ]
         [ t "Create Column" ]
