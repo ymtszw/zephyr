@@ -13,14 +13,12 @@ at application load, without waiting for loading ProducerRegistry.
 
 -}
 
-import Data.Filter as Filter exposing (FilterAtom)
 import Data.Producer exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Json.EncodeExtra as E
-import ListExtra
 
 
 type alias FilterAtomMaterial =

@@ -2,22 +2,19 @@ module View.NewMessageEditor exposing (newMessageEditorEl)
 
 import Data.ColorTheme exposing (ColorTheme)
 import Data.Column as Column
-import Data.ColumnEditor exposing (ColumnEditor(..), CommonEditorOpts)
+import Data.ColumnEditor exposing (ColumnEditor(..))
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
 import Data.Msg exposing (Msg(..))
-import Data.Producer.Discord as Discord
 import Element exposing (..)
 import Element.Background as BG
 import Element.Border as BD
-import Element.Events exposing (onFocus, onLoseFocus)
+import Element.Events exposing (onFocus)
 import Element.Font as Font
 import Element.Input
-import Element.Keyed
 import File exposing (File)
-import Html.Attributes exposing (placeholder)
 import ListExtra
 import Octicons
-import SelectArray exposing (SelectArray)
+import SelectArray
 import StringExtra
 import View.Parts exposing (..)
 import View.Select as Select
@@ -100,7 +97,7 @@ onEditorSelect cId selectedIndex ( index, _ ) =
 editorSelectOptionEl : FilterAtomMaterial -> ( Int, ColumnEditor ) -> Element Msg
 editorSelectOptionEl fam ( _, ce ) =
     case ce of
-        DiscordMessageEditor { channelId } _ ->
+        DiscordMessageEditor { channelId } ->
             fam.ofDiscordChannel
                 |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
                 |> Maybe.map (\c -> discordChannelEl [] { size = editorFontSize, channel = c })
@@ -152,7 +149,7 @@ editorDismissButtonEl theme cId =
 textAreaInputEl : ColorTheme -> Column.Column -> ColumnEditor -> Element Msg
 textAreaInputEl theme c ce =
     case ce of
-        DiscordMessageEditor _ opts ->
+        DiscordMessageEditor opts ->
             messageInputBaseEl []
                 { columnId = c.id
                 , seq = c.editorSeq
@@ -161,9 +158,9 @@ textAreaInputEl theme c ce =
                 , isActive = c.editorActive
                 , theme = theme
                 }
-                opts
+                opts.buffer
 
-        LocalMessageEditor opts ->
+        LocalMessageEditor buffer ->
             messageInputBaseEl []
                 { columnId = c.id
                 , seq = c.editorSeq
@@ -172,7 +169,7 @@ textAreaInputEl theme c ce =
                 , isActive = c.editorActive
                 , theme = theme
                 }
-                opts
+                buffer
 
 
 messageInputBaseEl :
@@ -185,9 +182,9 @@ messageInputBaseEl :
         , isActive : Bool
         , theme : ColorTheme
         }
-    -> CommonEditorOpts
+    -> String
     -> Element Msg
-messageInputBaseEl attrs opts { buffer } =
+messageInputBaseEl attrs opts buffer =
     let
         msgTagger =
             ColumnCtrl opts.columnId
@@ -238,7 +235,7 @@ messageInputBaseEl attrs opts { buffer } =
 selectedFilesEl : ColorTheme -> Column.Column -> ColumnEditor -> Element Msg
 selectedFilesEl theme c ce =
     case ( c.editorActive, ce ) of
-        ( True, DiscordMessageEditor { file } _ ) ->
+        ( True, DiscordMessageEditor { file } ) ->
             case file of
                 Just ( f, dataUrl ) ->
                     previewWrapperEl theme c.id f <|
@@ -334,7 +331,7 @@ previewOverlayEl theme cId f =
 editorButtonsEl : ColorTheme -> Bool -> String -> ColumnEditor -> Element Msg
 editorButtonsEl theme isActive cId ce =
     let
-        rowAttrs opts =
+        rowAttrs =
             [ width fill
             , spacing spacingUnit
             , visible isActive
@@ -342,19 +339,19 @@ editorButtonsEl theme isActive cId ce =
             ]
     in
     case ce of
-        DiscordMessageEditor { file } opts ->
+        DiscordMessageEditor opts ->
             let
                 submittable =
-                    not (String.isEmpty opts.buffer) || file /= Nothing
+                    not (String.isEmpty opts.buffer) || opts.file /= Nothing
             in
-            row (rowAttrs opts)
+            row rowAttrs
                 [ selectFileButtonEl theme cId
                 , submitButtonEl theme cId submittable
                 ]
 
-        LocalMessageEditor opts ->
-            row (rowAttrs opts)
-                [ submitButtonEl theme cId (not (String.isEmpty opts.buffer))
+        LocalMessageEditor buffer ->
+            row rowAttrs
+                [ submitButtonEl theme cId (not (String.isEmpty buffer))
                 ]
 
 

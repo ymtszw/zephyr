@@ -488,7 +488,7 @@ testSlackParse : String -> List (Block () ()) -> Test
 testSlackParse initial expected =
     test ("should parse: " ++ initial ++ "") <|
         \_ ->
-            TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) initial
+            TextParser.parse Slack.parseOptions initial
                 |> Expect.equal (Parsed expected)
 
 

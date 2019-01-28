@@ -1,46 +1,36 @@
 module Data.ColumnEditor exposing
-    ( ColumnEditor(..), CommonEditorOpts, defaultEditors
+    ( ColumnEditor(..), defaultEditors
     , filtersToEditors, updateBuffer, reset, updateFile
     )
 
 {-| Editor data for Columns.
 
-@docs ColumnEditor, CommonEditorOpts, defaultEditors
+@docs ColumnEditor, defaultEditors
 @docs filtersToEditors, updateBuffer, reset, updateFile
 
 -}
 
 import Array exposing (Array)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..))
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial)
-import Data.Producer.Discord as Discord
 import File exposing (File)
 import SelectArray exposing (SelectArray)
 
 
 type ColumnEditor
-    = DiscordMessageEditor DiscordOpts CommonEditorOpts
-    | LocalMessageEditor CommonEditorOpts
-
-
-type alias CommonEditorOpts =
-    { buffer : String }
+    = DiscordMessageEditor DiscordOpts
+    | LocalMessageEditor String
 
 
 type alias DiscordOpts =
     { channelId : String
+    , buffer : String
     , file : Maybe ( File, String )
     }
 
 
 localMessageEditor : ColumnEditor
 localMessageEditor =
-    LocalMessageEditor defaultOpts
-
-
-defaultOpts : CommonEditorOpts
-defaultOpts =
-    { buffer = "" }
+    LocalMessageEditor ""
 
 
 filtersToEditors : Array Filter -> SelectArray ColumnEditor
@@ -52,7 +42,7 @@ filtersToEditors filters =
         leftFilterReducer fa accList =
             case fa of
                 OfDiscordChannel cId ->
-                    DiscordMessageEditor (DiscordOpts cId Nothing) defaultOpts :: accList
+                    DiscordMessageEditor (DiscordOpts cId "" Nothing) :: accList
 
                 _ ->
                     accList
@@ -73,31 +63,28 @@ defaultEditors =
 updateBuffer : String -> ColumnEditor -> ColumnEditor
 updateBuffer input ce =
     case ce of
-        DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor dOpts { opts | buffer = input }
+        DiscordMessageEditor opts ->
+            DiscordMessageEditor { opts | buffer = input }
 
-        LocalMessageEditor opts ->
-            LocalMessageEditor { opts | buffer = input }
+        LocalMessageEditor _ ->
+            LocalMessageEditor input
 
 
 reset : ColumnEditor -> ColumnEditor
 reset ce =
     case ce of
-        DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor
-                { dOpts | file = Nothing }
-                { opts | buffer = "" }
+        DiscordMessageEditor opts ->
+            DiscordMessageEditor { opts | buffer = "", file = Nothing }
 
-        LocalMessageEditor opts ->
-            LocalMessageEditor
-                { opts | buffer = "" }
+        LocalMessageEditor _ ->
+            LocalMessageEditor ""
 
 
 updateFile : Maybe ( File, String ) -> ColumnEditor -> ColumnEditor
 updateFile file ce =
     case ce of
-        DiscordMessageEditor dOpts opts ->
-            DiscordMessageEditor { dOpts | file = file } opts
+        DiscordMessageEditor opts ->
+            DiscordMessageEditor { opts | file = file }
 
-        LocalMessageEditor opts ->
-            LocalMessageEditor opts
+        LocalMessageEditor _ ->
+            ce

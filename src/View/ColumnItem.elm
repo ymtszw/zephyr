@@ -7,13 +7,10 @@ import Data.Item exposing (Item(..), extIsImage, extIsVideo, mimeIsImage, mimeIs
 import Data.Msg exposing (Msg(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Dict
 import Element exposing (Color, Element)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Lazy exposing (..)
-import Markdown.Block as Block exposing (Block, ListBlock, ListType(..))
-import Markdown.Inline as Inline exposing (Inline)
 import Octicons
 import TextParser exposing (Parsed(..))
 import Time
@@ -64,10 +61,10 @@ columnItemKey closeItems =
                     Product offset _ ->
                         Broker.offsetToString offset
 
-                    System id _ ->
+                    SystemMessage { id } ->
                         id
 
-                    LocalMessage id _ ->
+                    LocalMessage { id } ->
                         id
             )
         |> String.join "-"
@@ -122,10 +119,10 @@ itemAvatarEl theme item =
                 , size = columnItemAvatarSize
                 }
 
-        System _ _ ->
+        SystemMessage _ ->
             octiconAvatarEl theme Octicons.info
 
-        LocalMessage _ _ ->
+        LocalMessage _ ->
             octiconAvatarEl theme Octicons.note
 
 
@@ -199,10 +196,10 @@ itemContentsEl theme tz item closeItems =
                 |> List.filterMap unwrap
                 |> slackMessageEl tz ( slackMessage, offset )
 
-        System _ { message, mediaMaybe } ->
+        SystemMessage { message, mediaMaybe } ->
             lazy3 defaultItemEl theme message mediaMaybe
 
-        LocalMessage _ { message } ->
+        LocalMessage { message } ->
             lazy3 defaultItemEl theme message Nothing
 
 
@@ -566,7 +563,7 @@ slackParagraphs mediaWidth raw =
         { theme = aubergine
         , fontSize = baseFontSize
         , maxMediaWidth = mediaWidth
-        , parsed = TextParser.parse (Slack.parseOptions Dict.empty Dict.empty) raw
+        , parsed = TextParser.parse Slack.parseOptions raw
         }
 
 

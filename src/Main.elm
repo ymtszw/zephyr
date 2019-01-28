@@ -15,12 +15,12 @@ The application's Model starts with almost-empty initial model.
 
 -}
 
-import Broker exposing (Broker)
+import Broker
 import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav exposing (Key)
-import Data.Column as Column exposing (Column)
+import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)

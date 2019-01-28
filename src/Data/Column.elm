@@ -57,8 +57,21 @@ type alias Column =
 
 type ColumnItem
     = Product Offset Item
-    | System String { message : String, mediaMaybe : Maybe Media }
-    | LocalMessage String { message : String }
+    | SystemMessage SystemMessageRecord
+    | LocalMessage LocalMessageRecord
+
+
+type alias SystemMessageRecord =
+    { id : String
+    , message : String
+    , mediaMaybe : Maybe Media
+    }
+
+
+type alias LocalMessageRecord =
+    { id : String
+    , message : String
+    }
 
 
 type Media
@@ -83,17 +96,19 @@ encodeColumnItem cItem =
         Product offset item ->
             E.tagged2 "Product" (offset |> Broker.offsetToString |> E.string) (Item.encode item)
 
-        System id { message, mediaMaybe } ->
-            E.tagged2 "System" (E.string id) <|
+        SystemMessage { id, message, mediaMaybe } ->
+            E.tagged "SystemMessage" <|
                 E.object
-                    [ ( "message", E.string message )
+                    [ ( "id", E.string id )
+                    , ( "message", E.string message )
                     , ( "media", E.maybe encodeMedia mediaMaybe )
                     ]
 
-        LocalMessage id { message } ->
-            E.tagged2 "LocalMessage" (E.string id) <|
+        LocalMessage { id, message } ->
+            E.tagged "LocalMessage" <|
                 E.object
-                    [ ( "message", E.string message )
+                    [ ( "id", E.string id )
+                    , ( "message", E.string message )
                     ]
 
 
@@ -147,13 +162,27 @@ columnItemDecoder : Decoder ColumnItem
 columnItemDecoder =
     D.oneOf
         [ D.tagged2 "Product" Product offsetDecoder Item.decoder
-        , D.tagged2 "System" System D.string <|
-            D.map2 (\a b -> { message = a, mediaMaybe = b })
+        , D.tagged "SystemMessage" SystemMessage <|
+            D.map3 SystemMessageRecord
+                (D.field "id" D.string)
                 (D.field "message" D.string)
                 (D.field "media" (D.maybe mediaDecoder))
-        , D.tagged2 "LocalMessage" LocalMessage D.string <|
-            D.map (\a -> { message = a })
+        , D.tagged "LocalMessage" LocalMessage <|
+            D.map2 LocalMessageRecord
+                (D.field "id" D.string)
                 (D.field "message" D.string)
+        , -- Old formats
+          let
+            fromOld id ( ms, md ) =
+                SystemMessage { id = id, message = ms, mediaMaybe = md }
+          in
+          D.tagged2 "System" fromOld D.string <|
+            D.map2 Tuple.pair (D.field "message" D.string) (D.field "media" (D.maybe mediaDecoder))
+        , let
+            fromOld id ms =
+                LocalMessage { id = id, message = ms }
+          in
+          D.tagged2 "LocalMessage" fromOld D.string (D.field "message" D.string)
         ]
 
 
@@ -242,14 +271,14 @@ tierRatio =
 
 systemMessage : String -> String -> ColumnItem
 systemMessage message id =
-    System id { message = message, mediaMaybe = Nothing }
+    SystemMessage { id = id, message = message, mediaMaybe = Nothing }
 
 
 welcomeItem : String -> ColumnItem
 welcomeItem id =
-    System
-        id
-        { message = "Welcome to Zephyr app! 🚀\n\nThis is Elm-powered multi-service feed reader!\n\nLet's start with configuring column filters above!"
+    SystemMessage
+        { id = id
+        , message = "Welcome to Zephyr app! 🚀\n\nThis is Elm-powered multi-service feed reader!\n\nLet's start with configuring column filters above!"
         , mediaMaybe =
             Just <|
                 Image
@@ -560,7 +589,7 @@ applyFilters filters ( item, offset ) =
 editorSubmit : Column -> ( Column, PostProcess )
 editorSubmit c =
     case SelectArray.selected c.editors of
-        DiscordMessageEditor { channelId, file } { buffer } ->
+        DiscordMessageEditor { channelId, buffer, file } ->
             if String.isEmpty buffer && file == Nothing then
                 pure c
 
@@ -582,7 +611,7 @@ editorSubmit c =
                 , { postProcess | catchUpId = Just c.id, producerMsg = Just postMsg }
                 )
 
-        LocalMessageEditor { buffer } ->
+        LocalMessageEditor buffer ->
             if String.isEmpty buffer then
                 pure c
 
@@ -598,10 +627,10 @@ saveLocalMessage buffer c =
                 ( Just (Product offset _), _ ) ->
                     Broker.offsetToString offset
 
-                ( Just (System id _), _ ) ->
+                ( Just (SystemMessage { id }), _ ) ->
                     id
 
-                ( Just (LocalMessage id _), _ ) ->
+                ( Just (LocalMessage { id }), _ ) ->
                     id
 
                 ( Nothing, _ ) ->
@@ -624,7 +653,7 @@ saveLocalMessage buffer c =
 
 localMessage : String -> String -> ColumnItem
 localMessage prevId message =
-    LocalMessage (localMessageId prevId) { message = message }
+    LocalMessage { id = localMessageId prevId, message = message }
 
 
 localMessageId : String -> String
