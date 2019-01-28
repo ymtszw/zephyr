@@ -125,7 +125,7 @@ currentState eff props =
             none
 
         NowHydrating user ->
-            div [] [ userNameAndAvatar eff.onRehydrateButtonClick False user ]
+            div [] [ userNameAndAvatar eff.onRehydrateButtonClick True user ]
 
         HydratedOnce opts ->
             div [ flexColumn, spacingColumn5 ]
