@@ -32,8 +32,8 @@ type TeamState
     | HydratedOnce
         { rehydrating : Bool
         , user : UserSnip
-        , subbableConvs : List ConvSnip
-        , subbedConvs : List ConvSnip
+        , subbableConvs : List SubbableConv
+        , subbedConvs : List SubbedConv
         }
 
 
@@ -52,8 +52,20 @@ type alias UserSnip =
     }
 
 
-type alias ConvSnip =
-    {}
+type alias SubbableConv =
+    { id : String
+    , name : String
+    , isPrivate : Bool
+    }
+
+
+type alias SubbedConv =
+    { id : String
+    , name : String
+    , isPrivate : Bool
+    , fetching : Bool -- May include InitialFetching
+    , producing : Bool -- Meaning, the conversation is successfully fetched at least once
+    }
 
 
 render : Effects msg -> Props -> Html msg
