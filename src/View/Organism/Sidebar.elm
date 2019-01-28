@@ -285,7 +285,7 @@ styles =
         ]
     , s (c sidebarClass ++ " " ++ c octiconButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.bg ) ]
-    , hov (c sidebarClass ++ " " ++ c octiconButtonClass)
+    , s (hov (c sidebarClass ++ " " ++ c octiconButtonClass))
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
     , s (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
         [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
