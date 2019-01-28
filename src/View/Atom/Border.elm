@@ -2,7 +2,7 @@ module View.Atom.Border exposing
     ( solid, dotted, dashed
     , w1, y1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
     , color, colorBd, colorBg, colorSub, colorNote
-    , styles, round5Style
+    , styles, round2Style, round5Style
     )
 
 {-| Border Atoms.
@@ -10,7 +10,7 @@ module View.Atom.Border exposing
 @docs solid, dotted, dashed
 @docs w1, y1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
 @docs color, colorBd, colorBg, colorSub, colorNote
-@docs styles, round5Style
+@docs styles, round2Style, round5Style
 
 -}
 
@@ -121,7 +121,7 @@ styles =
     , s (c w1Class) [ ( "border-width", "1px" ) ]
     , s (c y1Class) [ ( "border-top-width", "1px" ), ( "border-bottom-width", "1px" ) ]
     , s (c noRoundClass) [ ( "border-radius", "0px" ) ]
-    , s (c round2Class) [ ( "border-radius", "2px" ) ]
+    , round2Style
     , round5Style
     , s (c ellipticClass) [ ( "border-radius", "50%" ) ]
     , s (c leftRound5Class)
@@ -176,6 +176,11 @@ y1Class =
 noRoundClass : String
 noRoundClass =
     "bonor"
+
+
+round2Style : Style
+round2Style =
+    s (c round2Class) [ ( "border-radius", "2px" ) ]
 
 
 round2Class : String

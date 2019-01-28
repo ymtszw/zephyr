@@ -1,5 +1,5 @@
 module View.Molecule.Icon exposing
-    ( rounded40, size40
+    ( rounded20, rounded40, size20, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
     , styles
@@ -7,7 +7,7 @@ module View.Molecule.Icon exposing
 
 {-| Icon Molecules.
 
-@docs rounded40, size40
+@docs rounded20, rounded40, size20, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
 @docs styles
@@ -26,11 +26,25 @@ import View.Atom.Typography exposing (serif, sizeTitle, t)
 import View.Style exposing (..)
 
 
+{-| Border-rounded 20x20 sized icon. Widely used.
+-}
+rounded20 : Attribute msg
+rounded20 =
+    class rounded20Class
+
+
 {-| Border-rounded 40x40 sized icon. Widely used.
 -}
 rounded40 : Attribute msg
 rounded40 =
     class rounded40Class
+
+
+{-| Constant of `Just 20`, should be inserted to CDN APIs.
+-}
+size20 : Maybe Int
+size20 =
+    Just rounded20Size
 
 
 {-| Constant of `Just 40`, should be inserted to CDN APIs.
@@ -101,6 +115,12 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
+    , s (c rounded20Class)
+        [ ( "width", px rounded20Size )
+        , ( "height", px rounded20Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
     , s (c rounded40Class)
         [ ( "width", px rounded40Size )
         , ( "height", px rounded40Size )
@@ -123,3 +143,13 @@ rounded40Class =
 rounded40Size : Int
 rounded40Size =
     40
+
+
+rounded20Class : String
+rounded20Class =
+    "iconr20"
+
+
+rounded20Size : Int
+rounded20Size =
+    20
