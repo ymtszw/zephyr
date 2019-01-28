@@ -117,7 +117,7 @@ rehydrateButton : msg -> Bool -> Html msg
 rehydrateButton onPress rehydrating =
     let
         rehydrateButtonSize =
-            20
+            26
     in
     octiconButton
         [ alignStart

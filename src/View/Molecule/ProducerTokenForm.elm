@@ -50,6 +50,7 @@ render eff props =
             , sizeHeadline
             , padding10
             , Background.colorPrim
+            , Border.round5
             , disabled (not props.submittable)
             , onClick eff.onSubmit
             ]
