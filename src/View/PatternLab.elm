@@ -24,6 +24,7 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.ProducerTokenForm as ProducerTokenForm
 import View.Molecule.Table as Table
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
@@ -87,6 +88,7 @@ routes =
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
+    , R "producer_token_form" "Molecules" "ProducerTokenForm" <| \m -> pLab [ producerTokenForm m ] m
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
@@ -1559,6 +1561,33 @@ table_ =
                     ]
                 , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
                 , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
+                }
+        ]
+
+
+producerTokenForm : Model -> Html Msg
+producerTokenForm m =
+    section []
+        [ h1 [ sizeSection ] [ t "ProducerTokenForm" ]
+        , withSource """ProducerTokenForm.render
+    { onInput = TextInput
+    , onSubmit = NoOp
+    }
+    { id = "tokenFormId"
+    , token = m.textInput
+    , submittable = True
+    , submitButtonText = "Register"
+    , apiDomain = "api.example.com"
+    }""" <|
+            ProducerTokenForm.render
+                { onInput = TextInput
+                , onSubmit = NoOp
+                }
+                { id = "tokenFormId"
+                , token = m.textInput
+                , submittable = True
+                , submitButtonText = "Register"
+                , apiDomain = "api.example.com"
                 }
         ]
 

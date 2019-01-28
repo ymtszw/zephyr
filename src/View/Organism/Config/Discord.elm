@@ -2,9 +2,9 @@ module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, 
 
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, h3, img, input, label, p, strong)
+import Html exposing (Html, button, div, h3, img, p)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick)
 import Html.Keyed
 import Octicons
 import View.Atom.Animation as Animation
@@ -15,6 +15,7 @@ import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.ProducerTokenForm as ProducerTokenForm
 import View.Molecule.Table as Table
 import View.Style exposing (..)
 
@@ -48,45 +49,13 @@ render eff props =
         , spacingColumn5
         ]
         [ currentState eff props
-        , tokenForm eff props
-        ]
-
-
-tokenForm : Effects msg -> Props msg -> Html msg
-tokenForm eff props =
-    let
-        tokenInputId =
-            "discordTokenInput"
-    in
-    div [ flexColumn, spacingColumn2 ]
-        [ label [ flexItem, sizeTitle, bold, for tokenInputId ] [ t "Token" ]
-        , p [ colorNote ] [ t "Some shady works required to acquire Discord personal access token. Do not talk about it." ]
-        , p [ colorNote ]
-            [ t "Tokens are stored in IndexedDB of your web browser, and only sent to 'discordapp.com'. Otherwise it "
-            , strong [ bold ] [ t "never" ]
-            , t " get out of your web browser."
-            ]
-        , input
-            [ type_ "text"
-            , value props.token
-            , id tokenInputId
-            , onInput eff.onTokenInput
-            , flexItem
-            , sizeHeadline
-            , padding5
-            , Border.round5
-            ]
-            []
-        , button
-            [ flexItem
-            , alignEnd
-            , sizeHeadline
-            , padding10
-            , Background.colorPrim
-            , disabled (not props.tokenSubmittable)
-            , onClick eff.onTokenSubmit
-            ]
-            [ t props.tokenSubmitButtonText ]
+        , ProducerTokenForm.render { onInput = eff.onTokenInput, onSubmit = eff.onTokenSubmit }
+            { id = "discordTokenInput"
+            , token = props.token
+            , submittable = props.tokenSubmittable
+            , submitButtonText = props.tokenSubmitButtonText
+            , apiDomain = "api.discordapp.com"
+            }
         ]
 
 
