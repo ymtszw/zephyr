@@ -1,11 +1,13 @@
 module View.Molecule.Icon exposing
-    ( button, link, abbr, imgOrAbbr
+    ( rounded40
+    , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
     , styles
     )
 
 {-| Icon Molecules.
 
+@docs rounded40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
 @docs styles
@@ -22,6 +24,13 @@ import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (serif, sizeTitle, t)
 import View.Style exposing (..)
+
+
+{-| Border-rounded 40x40 sized icon. Widely used.
+-}
+rounded40 : Attribute msg
+rounded40 =
+    class rounded40Class
 
 
 button : List (Attribute msg) -> { onPress : msg, src : String, alt : String } -> Html msg
@@ -85,9 +94,21 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
+    , s (c rounded40Class) [ ( "width", px rounded40Size ), ( "height", px rounded40Size ) ]
+        |> inject Border.round5Style
     ]
 
 
 iconClass : String
 iconClass =
     "icon"
+
+
+rounded40Class : String
+rounded40Class =
+    "iconr40"
+
+
+rounded40Size : Int
+rounded40Size =
+    40
