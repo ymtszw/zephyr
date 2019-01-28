@@ -1,12 +1,12 @@
 module View.Atom.Background exposing
-    ( colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
+    ( colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
     , hovSub
     , styles, oneDarkMainStyle, aubergineMainStyle
     )
 
 {-| Background Atoms.
 
-@docs colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
+@docs colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
 @docs hovSub
 @docs styles, oneDarkMainStyle, aubergineMainStyle
 
@@ -36,6 +36,11 @@ colorMain =
 colorSub : Attribute msg
 colorSub =
     class colorSubClass
+
+
+colorText : Attribute msg
+colorText =
+    class colorTextClass
 
 
 colorNote : Attribute msg
@@ -84,6 +89,7 @@ styles =
     , bg oneDarkClass colorBgClass oneDarkTheme.bg
     , bg oneDarkClass colorMainClass oneDarkTheme.main
     , bg oneDarkClass colorSubClass oneDarkTheme.sub
+    , bg oneDarkClass colorTextClass oneDarkTheme.text
     , bg oneDarkClass colorNoteClass oneDarkTheme.note
     , bg oneDarkClass colorPrimClass oneDarkTheme.prim
     , bg oneDarkClass colorSuccClass oneDarkTheme.succ
@@ -95,6 +101,7 @@ styles =
     , bg aubergineClass colorBgClass aubergineTheme.bg
     , bg aubergineClass colorMainClass aubergineTheme.main
     , bg aubergineClass colorSubClass aubergineTheme.sub
+    , bg aubergineClass colorTextClass aubergineTheme.text
     , bg aubergineClass colorNoteClass aubergineTheme.note
     , bg aubergineClass colorPrimClass aubergineTheme.prim
     , bg aubergineClass colorSuccClass aubergineTheme.succ
@@ -133,6 +140,11 @@ colorMainClass =
 colorSubClass : String
 colorSubClass =
     "bgcsub"
+
+
+colorTextClass : String
+colorTextClass =
+    "bgctext"
 
 
 colorNoteClass : String
