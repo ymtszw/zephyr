@@ -2459,7 +2459,7 @@ logoCdnUrl sizeMaybe path =
     "https://cdn.brandfolder.io/5H442O3W/as" ++ path ++ query
 
 
-teamUrl : Team -> Url
+teamUrl : { x | domain : String } -> Url
 teamUrl team =
     { protocol = Url.Https
     , host = team.domain ++ ".slack.com"
