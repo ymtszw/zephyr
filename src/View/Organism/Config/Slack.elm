@@ -9,16 +9,21 @@ import View.Atom.Border as Border
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.ProducerTokenForm as ProducerTokenForm
 import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { onRehydrateButtonClick : msg
+    { onTokenInput : String -> msg
+    , onTokenSubmit : msg
+    , onRehydrateButtonClick : msg
     }
 
 
 type alias Props =
-    { teamStates : List ( TeamSnip, TeamState ) -- Should be sorted already
+    { token : String
+    , tokenSubmittable : Bool
+    , teamStates : List ( TeamSnip, TeamState ) -- Should be sorted already
     }
 
 
@@ -56,9 +61,25 @@ render eff props =
     let
         teamStates =
             List.map (teamState eff) props.teamStates
+
+        tokenFormKey =
+            let
+                id =
+                    "slackTokenInput"
+            in
+            ( id
+            , ProducerTokenForm.render { onInput = eff.onTokenInput, onSubmit = eff.onTokenSubmit }
+                { id = id
+                , token = props.token
+                , submittable = props.tokenSubmittable
+                , submitButtonText = "Register"
+                , apiDomain = "slack.com"
+                }
+            )
     in
     Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
         teamStates
+            ++ [ tokenFormKey ]
 
 
 teamState : Effects msg -> ( TeamSnip, TeamState ) -> ( String, Html msg )

@@ -1897,8 +1897,14 @@ configSlack m =
         }
 in
 Slack.render
-    { onRehydrateButtonClick = (Toggle (not m.toggle)) }
-    { teamStates = List.range 0 2 |> List.map dummyTeamState }""" <|
+    { onTokenInput = TextInput
+    , onTokenSubmit = NoOp
+    , onRehydrateButtonClick = (Toggle (not m.toggle))
+    }
+    { token = m.textInput
+    , tokenSubmittable = True
+    , teamStates = List.range 0 2 |> List.map dummyTeamState
+    }""" <|
             let
                 dummyTeamState index =
                     if index == 0 then
@@ -1942,8 +1948,14 @@ Slack.render
                     }
             in
             Slack.render
-                { onRehydrateButtonClick = Toggle (not m.toggle) }
-                { teamStates = List.range 0 2 |> List.map dummyTeamState }
+                { onTokenInput = TextInput
+                , onTokenSubmit = NoOp
+                , onRehydrateButtonClick = Toggle (not m.toggle)
+                }
+                { token = m.textInput
+                , tokenSubmittable = True
+                , teamStates = List.range 0 2 |> List.map dummyTeamState
+                }
         ]
 
 
