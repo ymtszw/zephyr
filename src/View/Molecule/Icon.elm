@@ -2,6 +2,7 @@ module View.Molecule.Icon exposing
     ( rounded20, rounded40, size20, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
+    , rehydrateButton
     , styles
     )
 
@@ -10,14 +11,17 @@ module View.Molecule.Icon exposing
 @docs rounded20, rounded40, size20, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
+@docs rehydrateButton
 @docs styles
 
 -}
 
 import Html exposing (Attribute, Html, div, img)
-import Html.Attributes exposing (alt, class, src)
+import Html.Attributes exposing (alt, class, disabled, src)
 import Html.Events exposing (onClick)
 import Octicons
+import View.Atom.Animation as Animation
+import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
@@ -105,6 +109,36 @@ octiconLink attrs opts =
         { url = opts.url
         , children = [ Image.octicon { size = opts.size, shape = opts.shape } ]
         }
+
+
+{-| Used in Producers' Organisms. Fixed 20px size.
+-}
+rehydrateButton : msg -> Bool -> Html msg
+rehydrateButton onPress rehydrating =
+    let
+        rehydrateButtonSize =
+            20
+    in
+    octiconButton
+        [ alignStart
+        , disabled rehydrating
+        , Border.elliptic
+        , Background.transparent
+        , Image.fillPrim
+        , if rehydrating then
+            Animation.rotating
+
+          else
+            noAttr
+        ]
+        { onPress = onPress
+        , size = rehydrateButtonSize
+        , shape = Octicons.sync
+        }
+
+
+
+-- STYLES
 
 
 styles : List Style

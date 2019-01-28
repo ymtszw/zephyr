@@ -150,33 +150,8 @@ userNameAndAvatar onRehydrateButtonClick rehydrating user =
             [ h3 [ sizeHeadline, bold ] [ t user.username ]
             , p [ colorNote ] [ t ("#" ++ user.discriminator) ]
             ]
-        , rehydrateButton onRehydrateButtonClick rehydrating
+        , Icon.rehydrateButton onRehydrateButtonClick rehydrating
         ]
-
-
-rehydrateButton : msg -> Bool -> Html msg
-rehydrateButton onRehydrateButtonClick rehydrating =
-    Icon.octiconButton
-        [ alignStart
-        , disabled rehydrating
-        , Border.elliptic
-        , Background.transparent
-        , Image.fillPrim
-        , if rehydrating then
-            Animation.rotating
-
-          else
-            noAttr
-        ]
-        { onPress = onRehydrateButtonClick
-        , size = octiconButtonSize
-        , shape = Octicons.sync
-        }
-
-
-octiconButtonSize : Int
-octiconButtonSize =
-    20
 
 
 guilds : Dict String Discord.Guild -> Html msg
@@ -282,6 +257,11 @@ fetchStatusAndforceFetchButton onPress fetching =
             [ Image.octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
             ]
         ]
+
+
+octiconButtonSize : Int
+octiconButtonSize =
+    20
 
 
 createColumnButton : msg -> SubbedChannel -> Html msg
