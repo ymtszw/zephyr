@@ -950,13 +950,41 @@ image =
                 ]
         , withSource """div []
     [ t "Octicon fill colors depend on upstream theme and custom styles. "
-    , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
-    , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+    , div [ oneDark ]
+        [ Image.octicon { size = 30, shape = Octicons.star }
+        , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        ]
+    , div [ aubergine ]
+        [ Image.octicon { size = 30, shape = Octicons.star }
+        , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        ]
     ]""" <|
             div []
                 [ t "Octicon fill colors depend on upstream theme and custom styles. "
-                , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
-                , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                , div [ oneDark ]
+                    [ Image.octicon { size = 30, shape = Octicons.star }
+                    , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    ]
+                , div [ aubergine ]
+                    [ Image.octicon { size = 30, shape = Octicons.star }
+                    , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    ]
                 ]
         ]
 
