@@ -1,5 +1,5 @@
 module View.Molecule.Icon exposing
-    ( rounded40
+    ( rounded40, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
     , styles
@@ -7,7 +7,7 @@ module View.Molecule.Icon exposing
 
 {-| Icon Molecules.
 
-@docs rounded40
+@docs rounded40, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
 @docs styles
@@ -31,6 +31,13 @@ import View.Style exposing (..)
 rounded40 : Attribute msg
 rounded40 =
     class rounded40Class
+
+
+{-| Constant of `Just 40`, should be inserted to CDN APIs.
+-}
+size40 : Maybe Int
+size40 =
+    Just rounded40Size
 
 
 button : List (Attribute msg) -> { onPress : msg, src : String, alt : String } -> Html msg
@@ -94,7 +101,11 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
-    , s (c rounded40Class) [ ( "width", px rounded40Size ), ( "height", px rounded40Size ) ]
+    , s (c rounded40Class)
+        [ ( "width", px rounded40Size )
+        , ( "height", px rounded40Size )
+        , ( "flex-basis", "auto" )
+        ]
         |> inject Border.round5Style
     ]
 

@@ -142,11 +142,10 @@ userNameAndAvatar : msg -> Bool -> Discord.User -> Html msg
 userNameAndAvatar onRehydrateButtonClick rehydrating user =
     div [ flexRow, spacingRow5 ]
         [ img
-            [ class icon40Class
-            , flexItem
-            , src (Discord.imageUrlWithFallback (Just icon40Size) user.discriminator user.avatar)
+            [ flexItem
+            , Icon.rounded40
+            , src (Discord.imageUrlWithFallback Icon.size40 user.discriminator user.avatar)
             , alt user.username
-            , Border.round5
             ]
             []
         , div [ flexGrow ]
@@ -194,12 +193,12 @@ guilds guilds_ =
 guildIconKey : Discord.Guild -> ( String, Html msg )
 guildIconKey g =
     Tuple.pair g.id <|
-        case Maybe.map (Discord.imageUrlNoFallback (Just icon40Size)) g.icon of
+        case Maybe.map (Discord.imageUrlNoFallback Icon.size40) g.icon of
             Just src_ ->
-                img [ class icon40Class, Border.round5, src src_, alt g.name ] []
+                img [ Icon.rounded40, src src_, alt g.name ] []
 
             Nothing ->
-                Icon.abbr [ class icon40Class, Border.round5, serif, sizeTitle ] g.name
+                Icon.abbr [ Icon.rounded40, serif, sizeTitle ] g.name
 
 
 subscribeChannelInput : (String -> msg) -> Props msg -> List SubbableChannel -> Html msg
@@ -321,7 +320,6 @@ unsubscribeButton onPress =
 styles : List Style
 styles =
     [ s (c tokenSubmitButtonClass) [ ( "align-self", "flex-end" ) ]
-    , s (c icon40Class) [ ( "width", px icon40Size ), ( "height", px icon40Size ), ( "flex-basis", "auto" ) ]
     , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
     , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
     , s (c subscribeChannelInputClass) [ ( "width", px subscribeChannelInputWidth ) ]
@@ -335,16 +333,6 @@ styles =
 tokenSubmitButtonClass : String
 tokenSubmitButtonClass =
     "discordtokenbtn"
-
-
-icon40Class : String
-icon40Class =
-    "discordicon40"
-
-
-icon40Size : Int
-icon40Size =
-    40
 
 
 rehydrateButtonClass : String
