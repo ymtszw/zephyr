@@ -28,6 +28,7 @@ import View.Molecule.Table as Table
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Slack as Slack
 import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)
@@ -1796,14 +1797,139 @@ configSlack : Model -> Html Msg
 configSlack m =
     section []
         [ h1 [ sizeSection ] [ t "Config.Slack" ]
+        , withSource """let
+    dummyTeamState index =
+        if index == 0 then
+            ( dummyTeam index, Slack.NowHydrating (dummyUser index) )
+
+        else
+            ( dummyTeam index
+            , Slack.HydratedOnce { user = dummyUser index, subbableConvs = [], subbedConvs = [] }
+            )
+
+    dummyTeam index =
+        { id = "DUMMYTEAMID" ++ String.fromInt index
+        , name = String.fromInt index ++ "TEAM"
+        , domain = String.fromInt index ++ "team.slack.com"
+        , icon =
+            if modBy 2 index == 0 then
+                Just (Image.ph 50 50)
+
+            else
+                Nothing
+        }
+
+    dummyUser index =
+        { realName = "REAL NAME"
+        , displayName =
+            case modBy 3 index of
+                0 ->
+                    Just "nickname"
+
+                1 ->
+                    Just (String.join " " (List.repeat 5 "longnickname"))
+
+                _ ->
+                    Nothing
+        , image48 = Image.ph 48 48
+        }
+in
+Slack.render
+    { onRehydrateButtonClick = NoOp }
+    { teamStates = List.range 0 2 |> List.map dummyTeamState }""" <|
+            let
+                dummyTeamState index =
+                    if index == 0 then
+                        ( dummyTeam index, Slack.NowHydrating (dummyUser index) )
+
+                    else
+                        ( dummyTeam index
+                        , Slack.HydratedOnce { user = dummyUser index, subbableConvs = [], subbedConvs = [] }
+                        )
+
+                dummyTeam index =
+                    { id = "DUMMYTEAMID" ++ String.fromInt index
+                    , name = String.fromInt index ++ "TEAM"
+                    , domain = String.fromInt index ++ "team.slack.com"
+                    , icon =
+                        if modBy 2 index == 0 then
+                            Just (Image.ph 50 50)
+
+                        else
+                            Nothing
+                    }
+
+                dummyUser index =
+                    { realName = "REAL NAME"
+                    , displayName =
+                        case modBy 3 index of
+                            0 ->
+                                Just "nickname"
+
+                            1 ->
+                                Just (String.join " " (List.repeat 5 "longnickname"))
+
+                            _ ->
+                                Nothing
+                    , image48 = Image.ph 48 48
+                    }
+            in
+            Slack.render
+                { onRehydrateButtonClick = NoOp }
+                { teamStates = List.range 0 2 |> List.map dummyTeamState }
         ]
 
 
 mainTemplate : Model -> List (Html Msg)
 mainTemplate m =
-    View.Template.Main.render
-        (mainEffects m)
-        (mainProps m)
+    let
+        mainEffects =
+            { sidebarEffects = dummySidebarEffects m.toggle
+            , columnCtnrEffects =
+                { columnDragEnd = NoOp
+                , columnDragStart = \_ _ -> NoOp
+                , columnDragEnter = \_ -> NoOp
+                , columnDragOver = NoOp
+                }
+            }
+
+        mainProps =
+            { sidebarProps = dummySidebarProps m.toggle m.numColumns
+            , configDrawerIsOpen = m.toggle
+            , columnCtnrProps =
+                { visibleColumns = List.repeat m.numColumns ()
+                , dragStatus =
+                    \index _ ->
+                        case modBy 4 index of
+                            0 ->
+                                Settled
+
+                            1 ->
+                                Undroppable
+
+                            2 ->
+                                Droppable
+
+                            _ ->
+                                Grabbed
+                }
+            }
+
+        dummyItem index =
+            case modBy 4 index of
+                0 ->
+                    div [ flexBasis "50px", Background.colorPrim ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+                1 ->
+                    div [ flexBasis "100px", Background.colorSucc ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+                2 ->
+                    div [ flexBasis "200px", Background.colorWarn ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+                _ ->
+                    div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+    in
+    View.Template.Main.render mainEffects mainProps <|
         { configContents =
             { pref = div [ flexBasis "400px" ] [ t "PREFERENCE[PH]" ]
             , slack = div [ flexBasis "400px" ] [ t "SLACK[PH]" ]
@@ -1829,55 +1955,3 @@ mainTemplate m =
             , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
             }
         }
-
-
-dummyItem : Int -> Html Msg
-dummyItem index =
-    case modBy 4 index of
-        0 ->
-            div [ flexBasis "50px", Background.colorPrim ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-        1 ->
-            div [ flexBasis "100px", Background.colorSucc ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-        2 ->
-            div [ flexBasis "200px", Background.colorWarn ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-        _ ->
-            div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-
-mainProps : Model -> View.Template.Main.Props ()
-mainProps m =
-    { sidebarProps = dummySidebarProps m.toggle m.numColumns
-    , configDrawerIsOpen = m.toggle
-    , columnCtnrProps =
-        { visibleColumns = List.repeat m.numColumns ()
-        , dragStatus =
-            \index _ ->
-                case modBy 4 index of
-                    0 ->
-                        Settled
-
-                    1 ->
-                        Undroppable
-
-                    2 ->
-                        Droppable
-
-                    _ ->
-                        Grabbed
-        }
-    }
-
-
-mainEffects : Model -> View.Template.Main.Effects () Msg
-mainEffects m =
-    { sidebarEffects = dummySidebarEffects m.toggle
-    , columnCtnrEffects =
-        { columnDragEnd = NoOp
-        , columnDragStart = \_ _ -> NoOp
-        , columnDragEnter = \_ -> NoOp
-        , columnDragOver = NoOp
-        }
-    }
