@@ -138,11 +138,12 @@ styles =
 
 octiconPaths : List String
 octiconPaths =
-    [ c octiconClass ++ " path", c octiconClass ++ " polygon" ]
+    List.map (descOf (c octiconClass)) [ "path", "polygon" ]
 
 
 octiconClass : String
 octiconClass =
+    -- Introduced by elm-octicons
     "octicon"
 
 
@@ -151,15 +152,14 @@ octiconPathStyle scopeSelector props =
     let
         selector =
             String.join "," <|
-                List.map ((++) (scopeSelector ++ " ")) <|
-                    octiconPaths
+                List.map (descOf scopeSelector) octiconPaths
     in
     s selector props
 
 
 scopedFillStyle : String -> String -> Color -> Style
 scopedFillStyle themeSelector targetSelector color =
-    octiconPathStyle (themeSelector ++ " " ++ targetSelector) [ ( "fill", cssRgba color ) ]
+    octiconPathStyle (descOf themeSelector targetSelector) [ ( "fill", cssRgba color ) ]
 
 
 fillPrimClass : String

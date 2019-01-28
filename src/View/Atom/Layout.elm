@@ -613,14 +613,14 @@ badgeStyles =
         , ( "align-self", "flex-start" )
         , ( "overflow", "hidden" )
         ]
-    , s (c badgeOutsetClass ++ " " ++ c badgeTopRightClass)
+    , s (descOf (c badgeOutsetClass) (c badgeTopRightClass))
         [ ( "transform", "translate(" ++ px badgeOutsetSize ++ "," ++ px (negate badgeOutsetSize) ++ ")" ) ]
     , s (c badgeBottomRightClass)
         [ ( "position", "absolute" )
         , ( "align-self", "flex-end" )
         , ( "overflow", "hidden" )
         ]
-    , s (c badgeOutsetClass ++ " " ++ c badgeBottomRightClass)
+    , s (descOf (c badgeOutsetClass) (c badgeBottomRightClass))
         [ ( "transform", "translate(" ++ px badgeOutsetSize ++ "," ++ px badgeOutsetSize ++ ")" ) ]
     ]
 

@@ -341,7 +341,7 @@ optionRowKey opts ( optionKey, option ) =
             , stopPropagationOn "click" (succeed ( onSelect, True ))
             , onEnterKeyDown onSelect
             , if opts.selectedOption == Just option then
-                class optionActiveClass
+                Background.colorPrim
 
               else
                 noAttr
@@ -403,11 +403,9 @@ themedStyles themeClass theme =
     , let
         focusSelector =
             String.join "," <|
-                List.map ((++) (c themeClass ++ " " ++ c optionRowClass)) <|
-                    [ ":hover", ":focus" ]
+                List.map (\pseudo -> descOf (c themeClass) (c optionRowClass) ++ pseudo) [ ":hover", ":focus" ]
       in
       s_ focusSelector [ ( "background-color", cssRgba theme.sub ) ]
-    , s_ (c themeClass ++ " " ++ c optionActiveClass) [ ( "background-color", cssRgba theme.prim ) ]
     ]
 
 
@@ -479,8 +477,3 @@ optionRowClass =
 optionRowPaddingY : Int
 optionRowPaddingY =
     2
-
-
-optionActiveClass : String
-optionActiveClass =
-    "slopac"
