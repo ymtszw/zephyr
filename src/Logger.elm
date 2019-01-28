@@ -8,7 +8,6 @@ import Element.Border as BD
 import Element.Font as Font exposing (bold)
 import Element.Input
 import Element.Keyed
-import Element.Lazy exposing (lazy)
 import Html
 import Html.Attributes
 import Logger.Entry exposing (Entry)

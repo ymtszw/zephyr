@@ -30,7 +30,7 @@ groupWhile checkFromPrev list =
                             -- This should not actually happen
                             [ item ] :: groups
 
-                        x :: xs ->
+                        x :: _ ->
                             if checkFromPrev x item then
                                 (item :: group) :: groups
 

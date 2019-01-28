@@ -45,8 +45,8 @@ findIndex check array =
 
 findIndexImpl : (a -> Bool) -> Int -> Array a -> Maybe Int
 findIndexImpl check index array =
-    case get index array of
-        Just item ->
+    let
+        try item =
             if check item then
                 Just index
 
@@ -55,10 +55,8 @@ findIndexImpl check index array =
 
             else
                 Nothing
-
-        Nothing ->
-            -- Should not happen
-            Nothing
+    in
+    Maybe.andThen try (get index array)
 
 
 any : (a -> Bool) -> Array a -> Bool

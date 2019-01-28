@@ -8,7 +8,6 @@ Make sure latest one is always saved in Model after pushed/popped.
 -}
 
 import Deque exposing (Deque)
-import Logger.Entry exposing (Entry)
 
 
 type Worque

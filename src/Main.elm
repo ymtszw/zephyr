@@ -250,7 +250,7 @@ update msg m_ =
         DomOp (Ok ()) ->
             pure m
 
-        DomOp (Err e) ->
+        DomOp (Err _) ->
             pure m
 
         PrefCtrl pMsg ->
@@ -521,7 +521,7 @@ sub m =
     Sub.batch
         [ Browser.Events.onResize Resize
         , if m.env.indexedDBAvailable then
-            IndexedDb.load m.env m.idGen
+            IndexedDb.load m.env
 
           else
             Sub.none

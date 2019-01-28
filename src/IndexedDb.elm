@@ -17,13 +17,13 @@ Follow the best practices!!
 
 import Data.ColumnStore as ColumnStore
 import Data.ItemBroker as ItemBroker
-import Data.Model as Model exposing (Env, Model)
+import Data.Model exposing (Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref
 import Data.ProducerRegistry as ProducerRegistry
 import Data.SavedState as SavedState
 import Data.Storable as Storable exposing (Storable)
-import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import Data.UniqueIdGen as UniqueIdGen
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -34,13 +34,13 @@ import Ports exposing (loadFromJs, sendToJs)
 -- Load State
 
 
-load : Env -> UniqueIdGen -> Sub Msg
-load env idGen =
-    loadFromJs (loadMsg env idGen)
+load : Env -> Sub Msg
+load env =
+    loadFromJs (loadMsg env)
 
 
-loadMsg : Env -> UniqueIdGen -> E.Value -> Msg
-loadMsg env idGen value =
+loadMsg : Env -> E.Value -> Msg
+loadMsg env value =
     case D.decodeValue (stateDecoder env) value of
         Ok msg ->
             msg

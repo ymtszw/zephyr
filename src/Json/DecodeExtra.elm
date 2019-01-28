@@ -74,7 +74,7 @@ leakyList decoder =
                 Ok a ->
                     Just a
 
-                Err e ->
+                Err _ ->
                     -- Debug here when necessary
                     Nothing
     in
