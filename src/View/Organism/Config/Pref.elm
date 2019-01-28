@@ -1,16 +1,13 @@
 module View.Organism.Config.Pref exposing (Effects, Props, ShadowColumn(..), ShadowColumnProps, render, styles)
 
-import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Html exposing (Html, button, div, h3, img, p)
 import Html.Attributes exposing (alt, class, disabled, src)
 import Html.Events exposing (onClick)
-import Html.Keyed
 import Octicons
 import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Image exposing (octicon, octiconPathStyle)
+import View.Atom.Image as Image
 import View.Atom.Input as Input
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (..)
@@ -80,7 +77,9 @@ type ShadowColumn
 
 
 type alias ShadowColumnProps =
-    { id : String, description : String }
+    { id : String
+    , description : String
+    }
 
 
 shadowColumnsTable : Effects msg -> Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
@@ -123,15 +122,15 @@ shadowColumnIcon : String -> ShadowColumn -> Html msg
 shadowColumnIcon description sc =
     case sc of
         FallbackSC ->
-            Icon.abbr [ class shadowColumnIconClass, serif, Border.round2 ] description
+            Icon.abbr [ Icon.rounded20, serif ] description
 
-        DiscordSC { mainChannelName, guildIcon } ->
+        DiscordSC { guildIcon } ->
             badgedIcon discordBadge <|
-                Icon.imgOrAbbr [ class shadowColumnIconClass, serif, Border.round2 ] "Discord guild icon" guildIcon
+                Icon.imgOrAbbr [ Icon.rounded20, serif ] "Discord guild icon" guildIcon
 
-        SlackSC { mainConvName, teamIcon } ->
+        SlackSC { teamIcon } ->
             badgedIcon slackBadge <|
-                Icon.imgOrAbbr [ class shadowColumnIconClass, serif, Border.round2 ] "Slack team icon" teamIcon
+                Icon.imgOrAbbr [ Icon.rounded20, serif ] "Slack team icon" teamIcon
 
 
 badgedIcon : Html msg -> Html msg -> Html msg
@@ -160,6 +159,10 @@ slackBadge =
 
 showColumnButton : msg -> Bool -> Html msg
 showColumnButton onShowColumnButtonClick slotsAvailable =
+    let
+        showColumnButtonOcticonSize =
+            14
+    in
     button
         [ class showColumnButtonClass
         , flexItem
@@ -167,15 +170,18 @@ showColumnButton onShowColumnButtonClick slotsAvailable =
         , flexCenter
         , padding2
         , Background.colorPrim
+        , Image.fillText
         , disabled (not slotsAvailable)
         , onClick onShowColumnButtonClick
         ]
-        [ octicon { size = showColumnButtonOcticonSize, shape = Octicons.arrowRight }, t " Show" ]
+        [ Image.octicon { size = showColumnButtonOcticonSize, shape = Octicons.arrowRight }
+        , t " Show"
+        ]
 
 
 deleteColumnButton : msg -> Html msg
 deleteColumnButton onDeleteColumnButtonClick =
-    Icon.octiconButton [ class deleteColumnButtonClass, flexItem, flexBasisAuto, Background.transparent ]
+    Icon.octiconButton [ flexItem, Icon.rounded20, Image.fillErr, Background.transparent ]
         { onPress = onDeleteColumnButtonClick
         , size = shadowColumnIconSize
         , shape = Octicons.trashcan
@@ -188,11 +194,7 @@ deleteColumnButton onDeleteColumnButtonClick =
 
 styles : List Style
 styles =
-    [ s (c shadowColumnIconClass)
-        [ ( "width", px shadowColumnIconSize )
-        , ( "height", px shadowColumnIconSize )
-        ]
-    , s (c shadowColumnIconBadgeClass)
+    [ s (c shadowColumnIconBadgeClass)
         [ ( "width", px shadowColumnIconBadgeSize )
         , ( "height", px shadowColumnIconBadgeSize )
         ]
@@ -202,20 +204,7 @@ styles =
         , ( "justify-content", "center" )
         , ( "flex-basis", "auto" )
         ]
-    , octiconPathStyle (c oneDarkClass ++ " " ++ c showColumnButtonClass) [ ( "fill", cssRgba oneDarkTheme.text ) ]
-    , octiconPathStyle (c aubergineClass ++ " " ++ c showColumnButtonClass) [ ( "fill", cssRgba aubergineTheme.text ) ]
-    , s (c deleteColumnButtonClass)
-        [ ( "width", px shadowColumnIconSize )
-        , ( "height", px shadowColumnIconSize )
-        ]
-    , octiconPathStyle (c oneDarkClass ++ " " ++ c deleteColumnButtonClass) [ ( "fill", cssRgba oneDarkTheme.err ) ]
-    , octiconPathStyle (c aubergineClass ++ " " ++ c deleteColumnButtonClass) [ ( "fill", cssRgba aubergineTheme.err ) ]
     ]
-
-
-shadowColumnIconClass : String
-shadowColumnIconClass =
-    "scicon"
 
 
 shadowColumnIconSize : Int
@@ -242,13 +231,3 @@ showColumnButtonClass =
 showColumnButtonWidth : Int
 showColumnButtonWidth =
     70
-
-
-showColumnButtonOcticonSize : Int
-showColumnButtonOcticonSize =
-    14
-
-
-deleteColumnButtonClass : String
-deleteColumnButtonClass =
-    "scdelbtn"
