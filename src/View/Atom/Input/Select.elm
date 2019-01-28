@@ -22,10 +22,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onInput, stopPropagationOn)
 import Html.Keyed
-import Json.Decode exposing (at, fail, field, string, succeed)
+import Json.Decode exposing (at, field, string, succeed)
 import Json.DecodeExtra exposing (when)
 import Octicons
-import Task
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Image as Image

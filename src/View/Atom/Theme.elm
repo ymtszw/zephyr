@@ -15,7 +15,6 @@ module View.Atom.Theme exposing
 import Color exposing (Color, fromHexUnsafe)
 import Html exposing (Attribute)
 import Html.Attributes exposing (class)
-import View.Style exposing (Style)
 
 
 type alias Theme =

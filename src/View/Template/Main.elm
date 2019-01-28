@@ -33,6 +33,7 @@ import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
+import View.Molecule.Icon as Icon
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
@@ -149,49 +150,48 @@ configSectionWrapper maybeTheme title content =
 prefTitle : Html msg
 prefTitle =
     titleTemplate "Preference" <|
-        span [ class prefOcticonClass ] [ Image.octicon { size = titleIconSize, shape = Octicons.settings } ]
+        span [ Image.fillText ] [ Image.octicon { size = titleIconSize, shape = Octicons.settings } ]
 
 
 titleTemplate : String -> Html msg -> Html msg
 titleTemplate text icon =
-    h2
-        [ class configTitleClass
+    div
+        [ flexRow
+        , flexCenter
+        , spacingRow5
         , padding5
-        , bold
-        , sizeTitle
         , Border.solid
+        , Border.bot1
         ]
         [ icon
-        , t " "
-        , t text
+        , h2 [ bold, sizeTitle ] [ t text ]
         ]
 
 
 titleIconSize : Int
 titleIconSize =
-    -- same as sizeTitle
-    18
+    20
 
 
 slackTitle : Html msg
 slackTitle =
-    titleTemplate "Slack" <| imageIcon "Slack logo" <| Slack.defaultIconUrl (Just titleIconSize)
+    titleTemplate "Slack" <| imageIcon "Slack logo" <| Slack.defaultIconUrl Icon.size20
 
 
 imageIcon : String -> String -> Html msg
 imageIcon alt_ src_ =
-    img [ class configIconClass, Border.round2, src src_, alt alt_ ] []
+    img [ Icon.rounded20, src src_, alt alt_ ] []
 
 
 discordTitle : Html msg
 discordTitle =
-    titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl (Just titleIconSize)
+    titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl Icon.size20
 
 
 statusTitle : Html msg
 statusTitle =
     titleTemplate "Status" <|
-        span [ class statusOcticonClass ] [ Image.octicon { size = titleIconSize, shape = Octicons.pulse } ]
+        span [ Image.fillSucc ] [ Image.octicon { size = titleIconSize, shape = Octicons.pulse } ]
 
 
 columnContainer :
@@ -321,13 +321,6 @@ styles =
         , ( "opacity", "1" )
         , ( "transform", "translateX(0px)" )
         ]
-    , s (c configDrawerClass ++ " " ++ c configTitleClass) [ ( "border-bottom-width", "1px" ) ]
-    , s (c configDrawerClass ++ " " ++ c configIconClass)
-        [ ( "width", px titleIconSize )
-        , ( "height", px titleIconSize )
-        ]
-    , Image.octiconPathStyle (c configDrawerClass ++ " " ++ c prefOcticonClass) [ ( "fill", cssRgba oneDarkTheme.text ) ]
-    , Image.octiconPathStyle (c configDrawerClass ++ " " ++ c statusOcticonClass) [ ( "fill", cssRgba oneDarkTheme.succ ) ]
     , s (c columnCtnrClass)
         [ ( "position", "fixed" )
         , ( "left", px sidebarWidth )
@@ -351,8 +344,7 @@ styles =
     , s (c droppableClass) [ ( "transform", "scale(0.98)" ) ]
     , s (c undroppableClass) [ ( "opacity", "0.2" ) ]
     , s (c itemsWrapperClass)
-        [ ( "max-height", "" )
-        , ( "overflow-y", "auto" )
+        [ ( "overflow-y", "auto" )
         ]
     ]
 
@@ -385,26 +377,6 @@ configDrawerPaddingRight =
 drawerOpenClass : String
 drawerOpenClass =
     "drwropen"
-
-
-configTitleClass : String
-configTitleClass =
-    "cnftitle"
-
-
-configIconClass : String
-configIconClass =
-    "cnficon"
-
-
-prefOcticonClass : String
-prefOcticonClass =
-    "cnfprefoct"
-
-
-statusOcticonClass : String
-statusOcticonClass =
-    "cnfstatusoct"
 
 
 columnCtnrClass : String

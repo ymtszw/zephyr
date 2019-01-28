@@ -22,7 +22,7 @@ import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (serif, sizeTitle, t)
+import View.Atom.Typography exposing (t)
 import View.Style exposing (..)
 
 

@@ -1967,7 +1967,7 @@ mainTemplate m =
         , columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
             , config =
-                \index _ ->
+                \_ _ ->
                     if m.toggle then
                         div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
 

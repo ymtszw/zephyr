@@ -1,6 +1,5 @@
 module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, render, styles)
 
-import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
 import Html exposing (Html, button, div, h3, img, input, label, p, strong)
@@ -11,10 +10,9 @@ import Octicons
 import View.Atom.Animation as Animation
 import View.Atom.Background as Background
 import View.Atom.Border as Border
-import View.Atom.Image exposing (octicon, octiconPathStyle)
+import View.Atom.Image as Image
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Molecule.Table as Table
@@ -80,8 +78,8 @@ tokenForm eff props =
             ]
             []
         , button
-            [ class tokenSubmitButtonClass
-            , flexItem
+            [ flexItem
+            , alignEnd
             , sizeHeadline
             , padding10
             , Background.colorPrim
@@ -159,10 +157,11 @@ userNameAndAvatar onRehydrateButtonClick rehydrating user =
 rehydrateButton : msg -> Bool -> Html msg
 rehydrateButton onRehydrateButtonClick rehydrating =
     Icon.octiconButton
-        [ class rehydrateButtonClass
+        [ alignStart
         , disabled rehydrating
         , Border.elliptic
         , Background.transparent
+        , Image.fillPrim
         , if rehydrating then
             Animation.rotating
 
@@ -225,8 +224,8 @@ channelSummary c =
         guildIcon =
             case c.guildMaybe of
                 Just g ->
-                    Icon.imgOrAbbr [ class channelIconClass, flexItem, Border.round2 ] g.name <|
-                        Maybe.map (Discord.imageUrlNoFallback (Just channelIconSize)) g.icon
+                    Icon.imgOrAbbr [ flexItem, Icon.rounded20 ] g.name <|
+                        Maybe.map (Discord.imageUrlNoFallback Icon.size20) g.icon
 
                 Nothing ->
                     -- TODO DM/GroupDMs should have appropriate icons
@@ -264,10 +263,10 @@ subbedChannelTable eff subbedChannels =
 fetchStatusAndforceFetchButton : msg -> Bool -> Html msg
 fetchStatusAndforceFetchButton onPress fetching =
     button
-        [ class fetchStatusAndforceFetchButtonClass
-        , flexItem
+        [ flexItem
         , flexBasisAuto
         , noPadding
+        , Image.hovSucc
         , Border.round2
         , Background.transparent
         , onClick onPress
@@ -280,7 +279,7 @@ fetchStatusAndforceFetchButton onPress fetching =
               else
                 noAttr
             ]
-            [ octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
+            [ Image.octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
             ]
         ]
 
@@ -291,6 +290,7 @@ createColumnButton onPress c =
         [ class createColumnButtonClass
         , flexItem
         , flexGrow
+        , flexBasisAuto
         , padding2
         , Background.colorPrim
         , disabled (not c.producing)
@@ -302,8 +302,8 @@ createColumnButton onPress c =
 unsubscribeButton : msg -> Html msg
 unsubscribeButton onPress =
     Icon.octiconButton
-        [ class unsubscribeButtonClass
-        , flexItem
+        [ flexItem
+        , Image.hovErr
         , Border.elliptic
         , Background.transparent
         ]
@@ -319,25 +319,9 @@ unsubscribeButton onPress =
 
 styles : List Style
 styles =
-    [ s (c tokenSubmitButtonClass) [ ( "align-self", "flex-end" ) ]
-    , s (c rehydrateButtonClass) [ ( "align-self", "flex-start" ) ]
-    , octiconPathStyle (c rehydrateButtonClass) [ ( "fill", cssRgba oneDarkTheme.prim ) ]
-    , s (c subscribeChannelInputClass) [ ( "width", px subscribeChannelInputWidth ) ]
-    , octiconPathStyle (c fetchStatusAndforceFetchButtonClass ++ ":hover") [ ( "fill", cssRgba oneDarkTheme.succ ) ]
-    , s (c channelIconClass) [ ( "width", px channelIconSize ), ( "height", px channelIconSize ), ( "flex-basis", "auto" ) ]
-    , octiconPathStyle (c unsubscribeButtonClass ++ ":hover") [ ( "fill", cssRgba oneDarkTheme.err ) ]
-    , s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ), ( "flex-basis", "auto" ) ]
+    [ s (c subscribeChannelInputClass) [ ( "width", px subscribeChannelInputWidth ) ]
+    , s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ) ]
     ]
-
-
-tokenSubmitButtonClass : String
-tokenSubmitButtonClass =
-    "discordtokenbtn"
-
-
-rehydrateButtonClass : String
-rehydrateButtonClass =
-    "discordrehy"
 
 
 subscribeChannelInputClass : String
@@ -350,21 +334,6 @@ subscribeChannelInputWidth =
     250
 
 
-channelIconClass : String
-channelIconClass =
-    "discordchicon"
-
-
-channelIconSize : Int
-channelIconSize =
-    20
-
-
-fetchStatusAndforceFetchButtonClass : String
-fetchStatusAndforceFetchButtonClass =
-    "discordfetchbtn"
-
-
 createColumnButtonClass : String
 createColumnButtonClass =
     "discordcreatebtn"
@@ -373,8 +342,3 @@ createColumnButtonClass =
 createColumnButtonWidth : Int
 createColumnButtonWidth =
     150
-
-
-unsubscribeButtonClass : String
-unsubscribeButtonClass =
-    "discordunsubbtn"

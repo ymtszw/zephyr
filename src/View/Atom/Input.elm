@@ -11,7 +11,6 @@ module View.Atom.Input exposing
 -}
 
 import Color exposing (cssRgba, setAlpha)
-import Element.Background as Background
 import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
