@@ -254,6 +254,12 @@ otherButtons configOpener configOpen =
 
 styles : List Style
 styles =
+    let
+        openedSidebars =
+            [ hov (c sidebarClass)
+            , c sidebarClass ++ c configOpenClass
+            ]
+    in
     [ s (c sidebarClass)
         [ ( "position", "fixed" )
         , ( "left", "0" )
@@ -263,7 +269,7 @@ styles =
         , ( "padding-top", px paddingY )
         , ( "padding-bottom", px paddingY )
         ]
-    , s (String.join "," [ hov (c sidebarClass), c sidebarClass ++ c configOpenClass ])
+    , s (String.join "," openedSidebars)
         [ ( "width", px (sidebarWidth + sidebarExpansionWidth) )
         ]
     , s (c sidebarTooltipClass)
@@ -273,18 +279,13 @@ styles =
         , ( "max-height", px buttonSize )
         , ( "display", "none" )
         ]
-    , s
-        (String.join ","
-            [ hov (c sidebarClass) ++ " " ++ c sidebarTooltipClass
-            , c sidebarClass ++ c configOpenClass ++ " " ++ c sidebarTooltipClass
-            ]
-        )
+    , s (String.join "," (List.map (\anc -> descOf anc (c sidebarTooltipClass)) openedSidebars))
         [ ( "display", "flex" ) ]
-    , s (c sidebarClass ++ " " ++ c columnButtonsClass)
+    , s (c columnButtonsClass)
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
         , ( "overflow-y", "auto" )
         ]
-    , s (c sidebarClass ++ " " ++ c badgeClass)
+    , s (c badgeClass)
         [ ( "width", px badgeSize )
         , ( "height", px badgeSize )
         , ( "overflow", "hidden" )

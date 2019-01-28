@@ -1,6 +1,6 @@
 module View.Style exposing
     ( Style, toString, s, kf, pure, derive, inject, scoped
-    , c, hov, px, scaleByQuarter, scale12, none, noAttr
+    , c, hov, descOf, px, scaleByQuarter, scale12, none, noAttr
     )
 
 {-| Style entry type and its manipulations.
@@ -8,7 +8,7 @@ module View.Style exposing
 Provides necessary types and helper functions.
 
 @docs Style, toString, s, kf, pure, derive, inject, scoped
-@docs c, hov, px, scaleByQuarter, scale12, none, noAttr
+@docs c, hov, descOf, px, scaleByQuarter, scale12, none, noAttr
 
 -}
 
@@ -134,7 +134,7 @@ scoped scopeSelector targetSelector props =
                   else
                     -- targetSelector is a tag, must come first
                     targetSelector ++ scopeSelector
-                , scopeSelector ++ " " ++ targetSelector -- Descendants
+                , descOf scopeSelector targetSelector -- Descendants
                 ]
     in
     s selector props
@@ -182,6 +182,11 @@ c className =
 hov : String -> String
 hov selector =
     selector ++ ":hover"
+
+
+descOf : String -> String -> String
+descOf ancestor descendant =
+    ancestor ++ " " ++ descendant
 
 
 px : Int -> String
