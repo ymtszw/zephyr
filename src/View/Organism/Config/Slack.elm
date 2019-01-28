@@ -7,6 +7,7 @@ import Html.Attributes exposing (..)
 import Html.Keyed
 import View.Atom.Border as Border
 import View.Atom.Layout exposing (..)
+import View.Atom.Theme exposing (aubergine)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Style exposing (..)
@@ -20,16 +21,6 @@ type alias Effects msg =
 type alias Props =
     { teamStates : List ( TeamSnip, TeamState ) -- Should be sorted already
     }
-
-
-render : Effects msg -> Props -> Html msg
-render eff props =
-    let
-        teamStates =
-            List.map (teamState eff) props.teamStates
-    in
-    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
-        teamStates
 
 
 type TeamState
@@ -60,10 +51,20 @@ type alias ConvSnip =
     {}
 
 
+render : Effects msg -> Props -> Html msg
+render eff props =
+    let
+        teamStates =
+            List.map (teamState eff) props.teamStates
+    in
+    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
+        teamStates
+
+
 teamState : Effects msg -> ( TeamSnip, TeamState ) -> ( String, Html msg )
 teamState eff ( team, ts ) =
     Tuple.pair team.id <|
-        div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1 ] <|
+        div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1, Border.solid ] <|
             case ts of
                 NowHydrating user ->
                     [ teamAndUser eff.onRehydrateButtonClick False team.id team user ]

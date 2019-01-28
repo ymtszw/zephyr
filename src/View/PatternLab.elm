@@ -1795,7 +1795,7 @@ Discord.render
 
 configSlack : Model -> Html Msg
 configSlack m =
-    section []
+    section [ aubergine ]
         [ h1 [ sizeSection ] [ t "Config.Slack" ]
         , withSource """let
     dummyTeamState index =
