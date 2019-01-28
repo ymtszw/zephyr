@@ -1,6 +1,8 @@
 module View.Atom.Image exposing
     ( ph
     , octicon, octiconPathStyle, fillPrim, fillSucc, fillWarn, fillErr, fillText
+    , hovPrim, hovSucc, hovWarn, hovErr, hovText
+    , rotate45
     , styles
     )
 
@@ -8,6 +10,8 @@ module View.Atom.Image exposing
 
 @docs ph
 @docs octicon, octiconPathStyle, fillPrim, fillSucc, fillWarn, fillErr, fillText
+@docs hovPrim, hovSucc, hovWarn, hovErr, hovText
+@docs rotate45
 @docs styles
 
 -}
@@ -67,6 +71,36 @@ fillText =
     class fillTextClass
 
 
+hovPrim : Attribute msg
+hovPrim =
+    class hovPrimClass
+
+
+hovSucc : Attribute msg
+hovSucc =
+    class hovSuccClass
+
+
+hovWarn : Attribute msg
+hovWarn =
+    class hovWarnClass
+
+
+hovErr : Attribute msg
+hovErr =
+    class hovErrClass
+
+
+hovText : Attribute msg
+hovText =
+    class hovTextClass
+
+
+rotate45 : Attribute msg
+rotate45 =
+    class rotate45Class
+
+
 
 -- STYLES
 
@@ -88,6 +122,17 @@ styles =
     , scopedFillStyle (c aubergineClass) (c fillWarnClass) aubergineTheme.warn
     , scopedFillStyle (c aubergineClass) (c fillErrClass) aubergineTheme.err
     , scopedFillStyle (c aubergineClass) (c fillTextClass) aubergineTheme.text
+    , scopedFillStyle (c oneDarkClass) (hov (c hovPrimClass)) oneDarkTheme.prim
+    , scopedFillStyle (c oneDarkClass) (hov (c hovSuccClass)) oneDarkTheme.succ
+    , scopedFillStyle (c oneDarkClass) (hov (c hovWarnClass)) oneDarkTheme.warn
+    , scopedFillStyle (c oneDarkClass) (hov (c hovErrClass)) oneDarkTheme.err
+    , scopedFillStyle (c oneDarkClass) (hov (c hovTextClass)) oneDarkTheme.text
+    , scopedFillStyle (c aubergineClass) (hov (c hovPrimClass)) aubergineTheme.prim
+    , scopedFillStyle (c aubergineClass) (hov (c hovSuccClass)) aubergineTheme.succ
+    , scopedFillStyle (c aubergineClass) (hov (c hovWarnClass)) aubergineTheme.warn
+    , scopedFillStyle (c aubergineClass) (hov (c hovErrClass)) aubergineTheme.err
+    , scopedFillStyle (c aubergineClass) (hov (c hovTextClass)) aubergineTheme.text
+    , s (c rotate45Class) [ ( "transform", "rotate(-45deg)" ) ]
     ]
 
 
@@ -119,24 +164,54 @@ scopedFillStyle themeSelector targetSelector color =
 
 fillPrimClass : String
 fillPrimClass =
-    "octiconprim"
+    "octiconfillprim"
 
 
 fillSuccClass : String
 fillSuccClass =
-    "octiconsucc"
+    "octiconfillsucc"
 
 
 fillWarnClass : String
 fillWarnClass =
-    "octiconwarn"
+    "octiconfillwarn"
 
 
 fillErrClass : String
 fillErrClass =
-    "octiconerr"
+    "octiconfillerr"
 
 
 fillTextClass : String
 fillTextClass =
-    "octicontext"
+    "octiconfilltext"
+
+
+hovPrimClass : String
+hovPrimClass =
+    "octiconhovprim"
+
+
+hovSuccClass : String
+hovSuccClass =
+    "octiconhovsucc"
+
+
+hovWarnClass : String
+hovWarnClass =
+    "octiconhovwarn"
+
+
+hovErrClass : String
+hovErrClass =
+    "octiconhoverr"
+
+
+hovTextClass : String
+hovTextClass =
+    "octiconhovtext"
+
+
+rotate45Class : String
+rotate45Class =
+    "rot45"
