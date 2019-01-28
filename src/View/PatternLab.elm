@@ -1832,7 +1832,12 @@ configSlack m =
 
         else
             ( dummyTeam index
-            , Slack.HydratedOnce { user = dummyUser index, subbableConvs = [], subbedConvs = [] }
+            , Slack.HydratedOnce
+                { rehydrating = m.toggle
+                , user = dummyUser index
+                , subbableConvs = []
+                , subbedConvs = []
+                }
             )
 
     dummyTeam index =
@@ -1863,7 +1868,7 @@ configSlack m =
         }
 in
 Slack.render
-    { onRehydrateButtonClick = NoOp }
+    { onRehydrateButtonClick = (Toggle (not m.toggle)) }
     { teamStates = List.range 0 2 |> List.map dummyTeamState }""" <|
             let
                 dummyTeamState index =
@@ -1872,16 +1877,21 @@ Slack.render
 
                     else
                         ( dummyTeam index
-                        , Slack.HydratedOnce { user = dummyUser index, subbableConvs = [], subbedConvs = [] }
+                        , Slack.HydratedOnce
+                            { rehydrating = m.toggle
+                            , user = dummyUser index
+                            , subbableConvs = []
+                            , subbedConvs = []
+                            }
                         )
 
                 dummyTeam index =
                     { id = "DUMMYTEAMID" ++ String.fromInt index
                     , name = String.fromInt index ++ "TEAM"
-                    , domain = String.fromInt index ++ "team.slack.com"
-                    , icon =
+                    , domain = String.fromInt index ++ "team"
+                    , image48 =
                         if modBy 2 index == 0 then
-                            Just (Image.ph 50 50)
+                            Just (Image.ph 48 48)
 
                         else
                             Nothing
@@ -1903,7 +1913,7 @@ Slack.render
                     }
             in
             Slack.render
-                { onRehydrateButtonClick = NoOp }
+                { onRehydrateButtonClick = Toggle (not m.toggle) }
                 { teamStates = List.range 0 2 |> List.map dummyTeamState }
         ]
 

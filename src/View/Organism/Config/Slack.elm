@@ -1,13 +1,12 @@
 module View.Organism.Config.Slack exposing (Effects, Props, TeamState(..), render, styles)
 
 import Data.Producer.Slack as Slack
-import Dict exposing (Dict)
 import Html exposing (Html, div, h3, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
+import Url
 import View.Atom.Border as Border
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (aubergine)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Style exposing (..)
@@ -26,7 +25,8 @@ type alias Props =
 type TeamState
     = NowHydrating UserSnip
     | HydratedOnce
-        { user : UserSnip
+        { rehydrating : Bool
+        , user : UserSnip
         , subbableConvs : List ConvSnip
         , subbedConvs : List ConvSnip
         }
@@ -36,7 +36,7 @@ type alias TeamSnip =
     { id : String
     , name : String
     , domain : String
-    , icon : Maybe String
+    , image48 : Maybe String
     }
 
 
@@ -67,16 +67,33 @@ teamState eff ( team, ts ) =
         div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1, Border.solid ] <|
             case ts of
                 NowHydrating user ->
-                    [ teamAndUser eff.onRehydrateButtonClick False team.id team user ]
+                    [ teamAndUser eff.onRehydrateButtonClick True team user ]
 
                 HydratedOnce opts ->
-                    [ teamAndUser eff.onRehydrateButtonClick False team.id team opts.user ]
+                    [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user ]
 
 
-teamAndUser : msg -> Bool -> String -> TeamSnip -> UserSnip -> Html msg
-teamAndUser onRehydrateButtonClick rehydrating teamIdStr team user =
+teamAndUser : msg -> Bool -> TeamSnip -> UserSnip -> Html msg
+teamAndUser onRehydrateButtonClick rehydrating team user =
     div [ flexRow, spacingRow5 ]
-        [ userNameAndAvatar user
+        [ teamNameAndIcon team
+        , userNameAndAvatar user
+        , Icon.rehydrateButton onRehydrateButtonClick rehydrating
+        ]
+
+
+teamNameAndIcon : TeamSnip -> Html msg
+teamNameAndIcon team =
+    div [ flexRow, flexGrow, spacingRow5 ]
+        [ Icon.imgOrAbbr [ flexItem, serif, sizeTitle, Icon.rounded40 ] team.name team.image48
+        , div [ flexGrow ] <|
+            let
+                teamUrl =
+                    Slack.teamUrl team
+            in
+            [ h3 [ sizeHeadline, bold ] [ t team.name ]
+            , ntLink [] { url = Url.toString teamUrl, children = [ t teamUrl.host ] }
+            ]
         ]
 
 
