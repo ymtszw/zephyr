@@ -13,7 +13,7 @@ import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
-import View.Molecule.ProducerTokenForm as ProducerTokenForm
+import View.Molecule.ProducerConfig as ProducerConfig
 import View.Style exposing (..)
 
 
@@ -87,7 +87,7 @@ render eff props =
                     "slackTokenInput"
             in
             ( id
-            , ProducerTokenForm.render { onInput = eff.onTokenInput, onSubmit = eff.onTokenSubmit }
+            , ProducerConfig.tokenForm { onInput = eff.onTokenInput, onSubmit = eff.onTokenSubmit }
                 { id = id
                 , token = props.token
                 , submittable = props.tokenSubmittable

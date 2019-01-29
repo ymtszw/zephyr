@@ -24,7 +24,7 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
-import View.Molecule.ProducerTokenForm as ProducerTokenForm
+import View.Molecule.ProducerConfig as ProducerConfig
 import View.Molecule.Table as Table
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
@@ -88,7 +88,7 @@ routes =
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
-    , R "producer_token_form" "Molecules" "ProducerTokenForm" <| \m -> pLab [ producerTokenForm m ] m
+    , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
@@ -1565,11 +1565,11 @@ table_ =
         ]
 
 
-producerTokenForm : Model -> Html Msg
-producerTokenForm m =
+producerConfig : Model -> Html Msg
+producerConfig m =
     section []
-        [ h1 [ sizeSection ] [ t "ProducerTokenForm" ]
-        , withSource """ProducerTokenForm.render
+        [ h1 [ sizeSection ] [ t "ProducerConfig" ]
+        , withSource """ProducerConfig.tokenForm
     { onInput = TextInput
     , onSubmit = NoOp
     }
@@ -1579,7 +1579,7 @@ producerTokenForm m =
     , submitButtonText = "Register"
     , apiDomain = "api.example.com"
     }""" <|
-            ProducerTokenForm.render
+            ProducerConfig.tokenForm
                 { onInput = TextInput
                 , onSubmit = NoOp
                 }

@@ -15,7 +15,7 @@ import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
-import View.Molecule.ProducerTokenForm as ProducerTokenForm
+import View.Molecule.ProducerConfig as ProducerConfig
 import View.Molecule.Table as Table
 import View.Style exposing (..)
 
@@ -49,7 +49,7 @@ render eff props =
         , spacingColumn5
         ]
         [ currentState eff props
-        , ProducerTokenForm.render { onInput = eff.onTokenInput, onSubmit = eff.onTokenSubmit }
+        , ProducerConfig.tokenForm { onInput = eff.onTokenInput, onSubmit = eff.onTokenSubmit }
             { id = "discordTokenInput"
             , token = props.token
             , submittable = props.tokenSubmittable
