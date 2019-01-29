@@ -16,6 +16,7 @@ import View.Molecule.Table as Table
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Slack as Slack
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (..)
 import View.Template.Main
@@ -50,6 +51,7 @@ rendered =
                 ++ Sidebar.styles
                 ++ Pref.styles
                 ++ Discord.styles
+                ++ Slack.styles
                 ++ View.Template.Main.styles
 
 

@@ -4,8 +4,12 @@ import Data.Producer.Slack as Slack
 import Html exposing (Html, div, h3, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
+import Octicons
+import StringExtra
 import Url
 import View.Atom.Border as Border
+import View.Atom.Image as Image
+import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
@@ -17,13 +21,16 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
+    , onConvSelect : String -> msg
     }
 
 
-type alias Props =
+type alias Props msg =
     { token : String
     , tokenSubmittable : Bool
     , teamStates : List ( TeamSnip, TeamState ) -- Should be sorted already
+    , selectMsgTagger : Select.Msg msg -> msg
+    , selectState : Select.State
     }
 
 
@@ -68,11 +75,11 @@ type alias SubbedConv =
     }
 
 
-render : Effects msg -> Props -> Html msg
+render : Effects msg -> Props msg -> Html msg
 render eff props =
     let
         teamStates =
-            List.map (teamState eff) props.teamStates
+            List.map (teamState eff props) props.teamStates
 
         tokenFormKey =
             let
@@ -94,8 +101,8 @@ render eff props =
             ++ [ tokenFormKey ]
 
 
-teamState : Effects msg -> ( TeamSnip, TeamState ) -> ( String, Html msg )
-teamState eff ( team, ts ) =
+teamState : Effects msg -> Props msg -> ( TeamSnip, TeamState ) -> ( String, Html msg )
+teamState eff props ( team, ts ) =
     Tuple.pair team.id <|
         div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1, Border.solid ] <|
             case ts of
@@ -103,7 +110,9 @@ teamState eff ( team, ts ) =
                     [ teamAndUser eff.onRehydrateButtonClick True team user ]
 
                 HydratedOnce opts ->
-                    [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user ]
+                    [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user
+                    , subscribeConvInput eff.onConvSelect props opts.subbableConvs
+                    ]
 
 
 teamAndUser : msg -> Bool -> TeamSnip -> UserSnip -> Html msg
@@ -150,10 +159,57 @@ userNameAndAvatar user =
         ]
 
 
+subscribeConvInput : (String -> msg) -> Props msg -> List SubbableConv -> Html msg
+subscribeConvInput onSelect props subbableConvs =
+    div [ flexRow, flexCenter, spacingRow5 ]
+        [ div [ sizeHeadline ] [ t "Subscribe:" ]
+        , Select.render [ class subscribeConvInputClass, flexBasisAuto ]
+            { state = props.selectState
+            , msgTagger = props.selectMsgTagger
+            , id = "slackConvSubscribeInput"
+            , thin = True
+            , onSelect = .id >> onSelect
+            , selectedOption = Nothing
+            , filterMatch = Just (\f conv -> StringExtra.containsCaseIgnored f conv.name)
+            , options = List.map (\c -> ( c.id, c )) subbableConvs
+            , optionHtml = convSummary
+            }
+        ]
+
+
+convSummary : { c | name : String, isPrivate : Bool } -> Html msg
+convSummary c =
+    let
+        icon =
+            if c.isPrivate then
+                div [ Image.fillText ] [ Image.octicon { size = tableRowIconSize, shape = Octicons.lock } ]
+
+            else
+                div [ sizeTitle ] [ t "#" ]
+    in
+    div [ flexRow, flexCenter, spacingRow5 ] [ icon, div [ flexGrow ] [ t c.name ] ]
+
+
+tableRowIconSize : Int
+tableRowIconSize =
+    20
+
+
 
 -- STYLES
 
 
 styles : List Style
 styles =
-    []
+    [ s (c subscribeConvInputClass) [ ( "width", px subscribeConvInputWidth ) ]
+    ]
+
+
+subscribeConvInputClass : String
+subscribeConvInputClass =
+    "slacksubcvinput"
+
+
+subscribeConvInputWidth : Int
+subscribeConvInputWidth =
+    250

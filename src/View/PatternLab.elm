@@ -1900,10 +1900,13 @@ Slack.render
     { onTokenInput = TextInput
     , onTokenSubmit = NoOp
     , onRehydrateButtonClick = (Toggle (not m.toggle))
+    , onConvSelect = always NoOp
     }
     { token = m.textInput
     , tokenSubmittable = True
     , teamStates = List.range 0 2 |> List.map dummyTeamState
+    , selectMsgTagger = SelectCtrl
+    , selectState = m.select
     }""" <|
             let
                 dummyTeamState index =
@@ -1951,10 +1954,13 @@ Slack.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = NoOp
                 , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onConvSelect = always NoOp
                 }
                 { token = m.textInput
                 , tokenSubmittable = True
                 , teamStates = List.range 0 2 |> List.map dummyTeamState
+                , selectMsgTagger = SelectCtrl
+                , selectState = m.select
                 }
         ]
 
