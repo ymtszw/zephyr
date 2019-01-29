@@ -1340,7 +1340,7 @@ calculateFAM sr =
 subscribedConvsAcrossTeams : Dict TeamIdStr Slack -> List ConversationCache
 subscribedConvsAcrossTeams dict =
     let
-        reducer teamIdStr slack acc =
+        reducer _ slack acc =
             let
                 accumSubbed team _ conv accInner =
                     if not conv.isArchived && FetchStatus.subscribed conv.fetchStatus then
@@ -1530,7 +1530,7 @@ handleUTokenCommit sr =
 
 
 handleUAPIFailure : RpcFailure -> SlackRegistry -> ( SlackRegistry, Yield )
-handleUAPIFailure f sr =
+handleUAPIFailure _ sr =
     case sr.unidentified of
         TokenWritable _ ->
             pure sr
@@ -1695,13 +1695,6 @@ handleISubscribe convIdStr slack =
         _ ->
             -- Otherwise not allowed (invluding Revisit)
             ( slack, sYield )
-
-
-type alias ConvYield =
-    { persist : Bool
-    , items : List Message -- Must be sorted from oldest to latest (Broker-ready)
-    , updateFAM : Bool
-    }
 
 
 withConversation :
@@ -1934,12 +1927,12 @@ updatePovOnIApiFailure : (POV -> Slack) -> (POV -> Slack) -> Maybe ConversationI
 updatePovOnIApiFailure unauthorizedTagger tagger convIdMaybe f pov =
     case ( f, convIdMaybe ) of
         -- Slack API basically returns 200 OK, so we consider HttpFailure as transient
-        ( HttpFailure hf, Just fetchedConvIdStr ) ->
+        ( HttpFailure _, Just fetchedConvIdStr ) ->
             -- Fail on history fetch
             withConversation tagger fetchedConvIdStr pov (Just Worque.SlackFetch) <|
                 updateFetchStatus FetchStatus.Fail
 
-        ( HttpFailure hf, Nothing ) ->
+        ( HttpFailure _, Nothing ) ->
             -- Fail on other
             ( tagger pov, sYield )
 
@@ -2173,7 +2166,7 @@ fetchMessagesAndBots pov (TeamId teamIdStr) conv =
             conv.id
     in
     rpcTry (IFetched teamIdStr) (IAPIFailure teamIdStr (Just convIdStr)) <|
-        doT (conversationHistoryTask pov convIdStr conv.lastRead Initial) <|
+        doT (conversationHistoryTask pov convIdStr conv.lastRead) <|
             \messages ->
                 doT (collectMissingInfoTask pov.token messages) <|
                     \( users, bots ) ->
@@ -2247,8 +2240,8 @@ scrollableDecoder dec =
             ]
 
 
-conversationHistoryTask : POV -> ConversationIdStr -> Maybe LastRead -> CursorIn Message -> Task RpcFailure (List Message)
-conversationHistoryTask pov convIdStr lrMaybe cursorIn =
+conversationHistoryTask : POV -> ConversationIdStr -> Maybe LastRead -> Task RpcFailure (List Message)
+conversationHistoryTask pov convIdStr lrMaybe =
     let
         baseParams =
             -- Recommended to be no more than 200; https://api.slack.com/methods/conversations.history
@@ -2459,7 +2452,7 @@ logoCdnUrl sizeMaybe path =
     "https://cdn.brandfolder.io/5H442O3W/as" ++ path ++ query
 
 
-teamUrl : Team -> Url
+teamUrl : { x | domain : String } -> Url
 teamUrl team =
     { protocol = Url.Https
     , host = team.domain ++ ".slack.com"
@@ -2481,8 +2474,8 @@ dummyConversationId =
 -- Message formatting
 
 
-parseOptions : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> TextParser.ParseOptions
-parseOptions convs users =
+parseOptions : TextParser.ParseOptions
+parseOptions =
     { markdown = True
     , autoLink = False
     , unescapeTags = True

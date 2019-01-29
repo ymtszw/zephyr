@@ -3,13 +3,11 @@ module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, ma
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Element.Font
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 import StringExtra
-import Url
 
 
 type Item
@@ -46,7 +44,7 @@ matchAtom item filterAtom =
         ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
             cId == channelId
 
-        ( OfDiscordChannel cId, _ ) ->
+        ( OfDiscordChannel _, _ ) ->
             False
 
         ( OfSlackConversation cId, SlackItem { conversation } ) ->

@@ -810,15 +810,23 @@ type Msg
 
 
 type alias FetchSuccess =
-    { channelId : String, messages : List Message, posix : Posix }
+    { channelId : String
+    , messages : List Message
+    , posix : Posix
+    }
 
 
 type alias PostOpts =
-    { channelId : String, message : Maybe String, file : Maybe File }
+    { channelId : String
+    , message : Maybe String
+    , file : Maybe File
+    }
 
 
 type alias PostSuccess =
-    { channelId : String, posix : Posix }
+    { channelId : String
+    , posix : Posix
+    }
 
 
 update : Msg -> Discord -> ( Discord, Yield )
@@ -1298,14 +1306,14 @@ handleChannelAPIError cId ( httpError, req ) discord =
         ( Rehydrating t pov, _ ) ->
             updatePovOnChannelAPIError (Rehydrating t) cId httpError req pov
 
-        ( Expired t pov, Unauthorized _ ) ->
+        ( Expired _ _, Unauthorized _ ) ->
             pure discord
 
         ( Expired t pov, _ ) ->
             -- Late arrival?
             updatePovOnChannelAPIError (Expired t) cId httpError req pov
 
-        ( Switching newSession pov, Unauthorized _ ) ->
+        ( Switching _ _, Unauthorized _ ) ->
             -- Hydrate should be going at the same time
             pure discord
 

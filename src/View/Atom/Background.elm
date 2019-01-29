@@ -1,18 +1,20 @@
 module View.Atom.Background exposing
-    ( colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
+    ( colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
+    , hovSub
     , styles, oneDarkMainStyle, aubergineMainStyle
     )
 
 {-| Background Atoms.
 
-@docs colorBg, colorMain, colorSub, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
+@docs colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
+@docs hovSub
 @docs styles, oneDarkMainStyle, aubergineMainStyle
 
 -}
 
 import Color exposing (Color, cssRgba)
 import Html exposing (Attribute)
-import Html.Attributes as Attributes
+import Html.Attributes exposing (class)
 import View.Atom.Theme exposing (..)
 import View.Style exposing (..)
 
@@ -23,47 +25,57 @@ import View.Style exposing (..)
 
 colorBg : Attribute msg
 colorBg =
-    Attributes.class colorBgClass
+    class colorBgClass
 
 
 colorMain : Attribute msg
 colorMain =
-    Attributes.class colorMainClass
+    class colorMainClass
 
 
 colorSub : Attribute msg
 colorSub =
-    Attributes.class colorSubClass
+    class colorSubClass
+
+
+colorText : Attribute msg
+colorText =
+    class colorTextClass
 
 
 colorNote : Attribute msg
 colorNote =
-    Attributes.class colorNoteClass
+    class colorNoteClass
 
 
 colorPrim : Attribute msg
 colorPrim =
-    Attributes.class colorPrimClass
+    class colorPrimClass
 
 
 colorSucc : Attribute msg
 colorSucc =
-    Attributes.class colorSuccClass
+    class colorSuccClass
 
 
 colorWarn : Attribute msg
 colorWarn =
-    Attributes.class colorWarnClass
+    class colorWarnClass
 
 
 colorErr : Attribute msg
 colorErr =
-    Attributes.class colorErrClass
+    class colorErrClass
 
 
 transparent : Attribute msg
 transparent =
-    Attributes.class transparentClass
+    class transparentClass
+
+
+hovSub : Attribute msg
+hovSub =
+    class hovSubClass
 
 
 
@@ -77,21 +89,25 @@ styles =
     , bg oneDarkClass colorBgClass oneDarkTheme.bg
     , bg oneDarkClass colorMainClass oneDarkTheme.main
     , bg oneDarkClass colorSubClass oneDarkTheme.sub
+    , bg oneDarkClass colorTextClass oneDarkTheme.text
     , bg oneDarkClass colorNoteClass oneDarkTheme.note
     , bg oneDarkClass colorPrimClass oneDarkTheme.prim
     , bg oneDarkClass colorSuccClass oneDarkTheme.succ
     , bg oneDarkClass colorWarnClass oneDarkTheme.warn
     , bg oneDarkClass colorErrClass oneDarkTheme.err
+    , hovBg oneDarkClass hovSubClass oneDarkTheme.sub
     , scoped (c oneDarkClass) (c transparentClass) [ ( "background-color", "transparent" ) ]
     , aubergineMainStyle
     , bg aubergineClass colorBgClass aubergineTheme.bg
     , bg aubergineClass colorMainClass aubergineTheme.main
     , bg aubergineClass colorSubClass aubergineTheme.sub
+    , bg aubergineClass colorTextClass aubergineTheme.text
     , bg aubergineClass colorNoteClass aubergineTheme.note
     , bg aubergineClass colorPrimClass aubergineTheme.prim
     , bg aubergineClass colorSuccClass aubergineTheme.succ
     , bg aubergineClass colorWarnClass aubergineTheme.warn
     , bg aubergineClass colorErrClass aubergineTheme.err
+    , hovBg aubergineClass hovSubClass aubergineTheme.sub
     , scoped (c aubergineClass) (c transparentClass) [ ( "background-color", "transparent" ) ]
     ]
 
@@ -126,6 +142,11 @@ colorSubClass =
     "bgcsub"
 
 
+colorTextClass : String
+colorTextClass =
+    "bgctext"
+
+
 colorNoteClass : String
 colorNoteClass =
     "bgcnote"
@@ -154,3 +175,13 @@ colorErrClass =
 transparentClass : String
 transparentClass =
     "bgtrans"
+
+
+hovBg : String -> String -> Color -> Style
+hovBg themeClass modeClass color =
+    scoped (c themeClass) (hov (c modeClass)) [ ( "background-color", cssRgba color ) ]
+
+
+hovSubClass : String
+hovSubClass =
+    "bghovsub"

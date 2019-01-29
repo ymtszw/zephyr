@@ -24,10 +24,12 @@ import View.Atom.TextBlock exposing (forceBreak, selectAll)
 import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
+import View.Molecule.ProducerConfig as ProducerConfig
 import View.Molecule.Table as Table
 import View.Molecule.Wallpaper as Wallpaper
 import View.Organism.Config.Discord as Discord
 import View.Organism.Config.Pref as Pref
+import View.Organism.Config.Slack as Slack
 import View.Organism.Config.Status as Status
 import View.Organism.Sidebar as Sidebar
 import View.Style exposing (none, px)
@@ -86,10 +88,12 @@ routes =
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
+    , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
     , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
+    , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -948,13 +952,41 @@ image =
                 ]
         , withSource """div []
     [ t "Octicon fill colors depend on upstream theme and custom styles. "
-    , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
-    , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+    , div [ oneDark ]
+        [ Image.octicon { size = 30, shape = Octicons.star }
+        , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        ]
+    , div [ aubergine ]
+        [ Image.octicon { size = 30, shape = Octicons.star }
+        , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+        ]
     ]""" <|
             div []
                 [ t "Octicon fill colors depend on upstream theme and custom styles. "
-                , div [ oneDark ] [ Image.octicon { size = 30, shape = Octicons.star } ]
-                , div [ aubergine ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                , div [ oneDark ]
+                    [ Image.octicon { size = 30, shape = Octicons.star }
+                    , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    ]
+                , div [ aubergine ]
+                    [ Image.octicon { size = 30, shape = Octicons.star }
+                    , span [ Image.fillPrim ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillSucc ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillWarn ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillErr ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    , span [ Image.fillText ] [ Image.octicon { size = 30, shape = Octicons.star } ]
+                    ]
                 ]
         ]
 
@@ -1533,6 +1565,77 @@ table_ =
         ]
 
 
+producerConfig : Model -> Html Msg
+producerConfig m =
+    section []
+        [ h1 [ sizeSection ] [ t "ProducerConfig" ]
+        , withSource """ProducerConfig.tokenForm
+    { onInput = TextInput
+    , onSubmit = NoOp
+    }
+    { id = "tokenFormId"
+    , token = m.textInput
+    , submittable = True
+    , submitButtonText = "Register"
+    , apiDomain = "api.example.com"
+    }""" <|
+            ProducerConfig.tokenForm
+                { onInput = TextInput
+                , onSubmit = NoOp
+                }
+                { id = "tokenFormId"
+                , token = m.textInput
+                , submittable = True
+                , submitButtonText = "Register"
+                , apiDomain = "api.example.com"
+                }
+        , withSource """ProducerConfig.subSelect (always NoOp)
+    { id = "subSelectId"
+    , selectMsgTagger = SelectCtrl
+    , selectState = m.select
+    , options =
+        [ { id = "Subbable1", name = "Name1" }
+        , { id = "Subbable2", name = String.repeat 3 "Name2" }
+        ]
+    , filterMatch = \\query e -> String.contains query e.name
+    , optionHtml = \\e -> t e.name
+    }""" <|
+            ProducerConfig.subSelect (always NoOp)
+                { id = "subSelectId"
+                , selectMsgTagger = SelectCtrl
+                , selectState = m.select
+                , options =
+                    [ { id = "Subbable1", name = "Name1" }
+                    , { id = "Subbable2", name = String.repeat 3 "Name2" }
+                    ]
+                , filterMatch = \query e -> String.contains query e.name
+                , optionHtml = \e -> t e.name
+                }
+        , withSource """ProducerConfig.subbedTable
+    { onCreateColumnButtonClick = always NoOp
+    , onForceFetchButtonClick = always (Toggle (not m.toggle))
+    , onUnsubscribeButtonClick = always NoOp
+    }
+    { items =
+        [ { id = "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
+        , { id = "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
+        ]
+    , itemHtml = \\i -> t i.name
+    }""" <|
+            ProducerConfig.subbedTable
+                { onCreateColumnButtonClick = always NoOp
+                , onForceFetchButtonClick = always (Toggle (not m.toggle))
+                , onUnsubscribeButtonClick = always NoOp
+                }
+                { items =
+                    [ { id = "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
+                    , { id = "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
+                    ]
+                , itemHtml = \i -> t i.name
+                }
+        ]
+
+
 sidebar : Model -> Html Msg
 sidebar m =
     section []
@@ -1696,6 +1799,14 @@ configDiscord m =
     section []
         [ h1 [ sizeSection ] [ t "Config.Discord" ]
         , withSource """let
+    dummyOpts =
+        { rehydrating = m.toggle
+        , user = dummyUser
+        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , subbableChannels = List.range 0 20 |> List.map subbableChannel
+        , subbedChannels = List.range 0 15 |> List.map dummyChannel
+        }
+
     dummyUser =
         { id = "DUMMYUSERID"
         , username = "Discord User"
@@ -1714,23 +1825,18 @@ configDiscord m =
         , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
         , guildMaybe = Just (dummyGuild (modBy 3 index))
         , fetching = modBy 2 index == 0
-        , subscribed = index /= 0
+        , producing = index /= 0
         }
 
-    dummyOpts =
-        { timezone = Time.utc
-        , rehydrating = m.toggle
-        , user = dummyUser
-        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
-        , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
-        , subbedChannels = List.range 0 15 |> List.map dummyChannel
-        }
+    subbableChannel index =
+        dummyChannel index
+            |> (\\{ id, name, guildMaybe } -> { id = id, name = name, guildMaybe = guildMaybe })
 in
 Discord.render
     { onTokenInput = TextInput
     , onTokenSubmit = Toggle False
     , onRehydrateButtonClick = Toggle (not m.toggle)
-    , onChannelSelected = always NoOp
+    , onChannelSelect = always NoOp
     , onForceFetchButtonClick = always NoOp
     , onCreateColumnButtonClick = always NoOp
     , onUnsubscribeButtonClick = always NoOp
@@ -1743,6 +1849,14 @@ Discord.render
     , selectState = m.select
     }""" <|
             let
+                dummyOpts =
+                    { rehydrating = m.toggle
+                    , user = dummyUser
+                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , subbableChannels = List.range 0 20 |> List.map subbableChannel
+                    , subbedChannels = List.range 0 15 |> List.map dummyChannel
+                    }
+
                 dummyUser =
                     { id = "DUMMYUSERID"
                     , username = "Discord User"
@@ -1764,19 +1878,15 @@ Discord.render
                     , producing = index /= 0
                     }
 
-                dummyOpts =
-                    { rehydrating = m.toggle
-                    , user = dummyUser
-                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
-                    , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
-                    , subbedChannels = List.range 0 15 |> List.map dummyChannel
-                    }
+                subbableChannel index =
+                    dummyChannel index
+                        |> (\{ id, name, guildMaybe } -> { id = id, name = name, guildMaybe = guildMaybe })
             in
             Discord.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
-                , onChannelSelected = always NoOp
+                , onChannelSelect = always NoOp
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
@@ -1791,11 +1901,201 @@ Discord.render
         ]
 
 
+configSlack : Model -> Html Msg
+configSlack m =
+    section [ aubergine ]
+        [ h1 [ sizeSection ] [ t "Config.Slack" ]
+        , withSource """let
+    dummyTeamState index =
+        if index == 0 then
+            ( dummyTeam index, Slack.NowHydrating (dummyUser index) )
+
+        else
+            ( dummyTeam index
+            , Slack.HydratedOnce
+                { rehydrating = m.toggle
+                , user = dummyUser index
+                , subbableConvs = List.range 0 (index * 3) |> List.map subbableConv
+                , subbedConvs = List.range 0 (index * 3) |> List.map dummyConv
+                }
+            )
+
+    dummyTeam index =
+        { id = "DUMMYTEAMID" ++ String.fromInt index
+        , name = String.fromInt index ++ "TEAM"
+        , domain = String.fromInt index ++ "team"
+        , image48 =
+            if modBy 2 index == 0 then
+                Just (Image.ph 48 48)
+
+            else
+                Nothing
+        }
+
+    dummyUser index =
+        { realName = "REAL NAME"
+        , displayName =
+            case modBy 3 index of
+                0 ->
+                    Just "nickname"
+
+                1 ->
+                    Just (String.join " " (List.repeat 5 "longnickname"))
+
+                _ ->
+                    Nothing
+        , image48 = Image.ph 48 48
+        }
+
+    dummyConv index =
+        { id = "DUMMYCONVID" ++ String.fromInt index
+        , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
+        , isPrivate = modBy 4 index == 0
+        , fetching = modBy 2 index == 0
+        , producing = index /= 0
+        }
+
+    subbableConv index =
+        dummyConv index
+            |> (\\{ id, name, isPrivate } -> { id = id, name = name, isPrivate = isPrivate })
+in
+Slack.render
+    { onTokenInput = TextInput
+    , onTokenSubmit = Toggle False
+    , onRehydrateButtonClick = Toggle (not m.toggle)
+    , onConvSelect = always NoOp
+    , onForceFetchButtonClick = always NoOp
+    , onCreateColumnButtonClick = always NoOp
+    , onUnsubscribeButtonClick = always NoOp
+    }
+    { token = m.textInput
+    , tokenSubmittable = True
+    , teamStates = List.range 0 2 |> List.map dummyTeamState
+    , selectMsgTagger = SelectCtrl
+    , selectState = m.select
+    }""" <|
+            let
+                dummyTeamState index =
+                    if index == 0 then
+                        ( dummyTeam index, Slack.NowHydrating (dummyUser index) )
+
+                    else
+                        ( dummyTeam index
+                        , Slack.HydratedOnce
+                            { rehydrating = m.toggle
+                            , user = dummyUser index
+                            , subbableConvs = List.range 0 (index * 3) |> List.map subbableConv
+                            , subbedConvs = List.range 0 (index * 3) |> List.map dummyConv
+                            }
+                        )
+
+                dummyTeam index =
+                    { id = "DUMMYTEAMID" ++ String.fromInt index
+                    , name = String.fromInt index ++ "TEAM"
+                    , domain = String.fromInt index ++ "team"
+                    , image48 =
+                        if modBy 2 index == 0 then
+                            Just (Image.ph 48 48)
+
+                        else
+                            Nothing
+                    }
+
+                dummyUser index =
+                    { realName = "REAL NAME"
+                    , displayName =
+                        case modBy 3 index of
+                            0 ->
+                                Just "nickname"
+
+                            1 ->
+                                Just (String.join " " (List.repeat 5 "longnickname"))
+
+                            _ ->
+                                Nothing
+                    , image48 = Image.ph 48 48
+                    }
+
+                dummyConv index =
+                    { id = "DUMMYCONVID" ++ String.fromInt index
+                    , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
+                    , isPrivate = modBy 4 index == 0
+                    , fetching = modBy 2 index == 0
+                    , producing = index /= 0
+                    }
+
+                subbableConv index =
+                    dummyConv index
+                        |> (\{ id, name, isPrivate } -> { id = id, name = name, isPrivate = isPrivate })
+            in
+            Slack.render
+                { onTokenInput = TextInput
+                , onTokenSubmit = Toggle False
+                , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onConvSelect = always NoOp
+                , onForceFetchButtonClick = always NoOp
+                , onCreateColumnButtonClick = always NoOp
+                , onUnsubscribeButtonClick = always NoOp
+                }
+                { token = m.textInput
+                , tokenSubmittable = True
+                , teamStates = List.range 0 2 |> List.map dummyTeamState
+                , selectMsgTagger = SelectCtrl
+                , selectState = m.select
+                }
+        ]
+
+
 mainTemplate : Model -> List (Html Msg)
 mainTemplate m =
-    View.Template.Main.render
-        (mainEffects m)
-        (mainProps m)
+    let
+        mainEffects =
+            { sidebarEffects = dummySidebarEffects m.toggle
+            , columnCtnrEffects =
+                { columnDragEnd = NoOp
+                , columnDragStart = \_ _ -> NoOp
+                , columnDragEnter = \_ -> NoOp
+                , columnDragOver = NoOp
+                }
+            }
+
+        mainProps =
+            { sidebarProps = dummySidebarProps m.toggle m.numColumns
+            , configDrawerIsOpen = m.toggle
+            , columnCtnrProps =
+                { visibleColumns = List.repeat m.numColumns ()
+                , dragStatus =
+                    \index _ ->
+                        case modBy 4 index of
+                            0 ->
+                                Settled
+
+                            1 ->
+                                Undroppable
+
+                            2 ->
+                                Droppable
+
+                            _ ->
+                                Grabbed
+                }
+            }
+
+        dummyItem index =
+            case modBy 4 index of
+                0 ->
+                    div [ flexBasis "50px", Background.colorPrim ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+                1 ->
+                    div [ flexBasis "100px", Background.colorSucc ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+                2 ->
+                    div [ flexBasis "200px", Background.colorWarn ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+
+                _ ->
+                    div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
+    in
+    View.Template.Main.render mainEffects mainProps <|
         { configContents =
             { pref = div [ flexBasis "400px" ] [ t "PREFERENCE[PH]" ]
             , slack = div [ flexBasis "400px" ] [ t "SLACK[PH]" ]
@@ -1805,7 +2105,7 @@ mainTemplate m =
         , columnContents =
             { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
             , config =
-                \index _ ->
+                \_ _ ->
                     if m.toggle then
                         div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
 
@@ -1821,55 +2121,3 @@ mainTemplate m =
             , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
             }
         }
-
-
-dummyItem : Int -> Html Msg
-dummyItem index =
-    case modBy 4 index of
-        0 ->
-            div [ flexBasis "50px", Background.colorPrim ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-        1 ->
-            div [ flexBasis "100px", Background.colorSucc ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-        2 ->
-            div [ flexBasis "200px", Background.colorWarn ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-        _ ->
-            div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
-
-
-mainProps : Model -> View.Template.Main.Props ()
-mainProps m =
-    { sidebarProps = dummySidebarProps m.toggle m.numColumns
-    , configDrawerIsOpen = m.toggle
-    , columnCtnrProps =
-        { visibleColumns = List.repeat m.numColumns ()
-        , dragStatus =
-            \index _ ->
-                case modBy 4 index of
-                    0 ->
-                        Settled
-
-                    1 ->
-                        Undroppable
-
-                    2 ->
-                        Droppable
-
-                    _ ->
-                        Grabbed
-        }
-    }
-
-
-mainEffects : Model -> View.Template.Main.Effects () Msg
-mainEffects m =
-    { sidebarEffects = dummySidebarEffects m.toggle
-    , columnCtnrEffects =
-        { columnDragEnd = NoOp
-        , columnDragStart = \_ _ -> NoOp
-        , columnDragEnter = \_ -> NoOp
-        , columnDragOver = NoOp
-        }
-    }

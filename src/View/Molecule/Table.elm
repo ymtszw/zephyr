@@ -1,7 +1,7 @@
 module View.Molecule.Table exposing (Props, layoutFixed, render, styles)
 
-import Html exposing (Attribute, Html, table, tbody, td, th, thead, tr)
-import Html.Attributes exposing (class, colspan)
+import Html exposing (Attribute, Html, table, td, th, thead, tr)
+import Html.Attributes exposing (class)
 import Html.Keyed
 import View.Atom.Background as Background
 import View.Atom.Layout exposing (..)
@@ -10,7 +10,11 @@ import View.Style exposing (..)
 
 
 type alias Props a msg =
-    { columns : List { header : String, cell : a -> ( List (Attribute msg), List (Html msg) ) }
+    { columns :
+        List
+            { header : String
+            , cell : a -> ( List (Attribute msg), List (Html msg) )
+            }
     , rowKey : a -> String
     , data : List a
     }

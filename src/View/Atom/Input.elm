@@ -11,10 +11,10 @@ module View.Atom.Input exposing
 -}
 
 import Color exposing (cssRgba, setAlpha)
-import Element.Background as Background
 import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
+import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Theme exposing (..)
 import View.Style exposing (..)
@@ -22,20 +22,23 @@ import View.Style exposing (..)
 
 toggle : List (Attribute msg) -> { onChange : Bool -> msg, checked : Bool } -> Html msg
 toggle userAttrs opts =
-    button
-        ([ class toggleClass
-         , Border.round5
-         , attribute "role" "switch"
-         , if opts.checked then
-            class toggleCheckedClass
+    let
+        baseAttrs =
+            [ class toggleClass
+            , Border.round5
+            , attribute "role" "switch"
+            , onClick (opts.onChange (not opts.checked))
+            ]
 
-           else
-            noAttr
-         , onClick (opts.onChange (not opts.checked))
-         ]
-            ++ userAttrs
-        )
-        [ div [ class toggleHandleClass, Border.round5 ] []
+        statefulAttrs =
+            if opts.checked then
+                [ class toggleCheckedClass, Background.colorSucc ]
+
+            else
+                [ Background.colorNote ]
+    in
+    button (baseAttrs ++ statefulAttrs ++ userAttrs)
+        [ div [ class toggleHandleClass, Border.round5, Background.colorText ] []
         ]
 
 
@@ -62,24 +65,15 @@ styles =
         [ ( "width", px (toggleHeight * 2) )
         , ( "height", px toggleHeight )
         , ( "padding", px togglePadding )
+        , ( "transition", "background-color " ++ toggleTransitionDuration )
         ]
-    , s (c oneDarkClass ++ " " ++ c toggleClass)
-        [ ( "background-color", cssRgba oneDarkTheme.note ) ]
-    , s (c aubergineClass ++ " " ++ c toggleClass)
-        [ ( "background-color", cssRgba aubergineTheme.note ) ]
-    , s (c oneDarkClass ++ " " ++ c toggleClass ++ c toggleCheckedClass)
-        [ ( "background-color", cssRgba oneDarkTheme.succ ) ]
-    , s (c aubergineClass ++ " " ++ c toggleClass ++ c toggleCheckedClass)
-        [ ( "background-color", cssRgba aubergineTheme.succ ) ]
     , s (c toggleHandleClass)
         [ ( "width", px toggleHandleHeight )
         , ( "height", px toggleHandleHeight )
         , ( "transform", "translateX(0px)" )
-        , ( "transition", "transform 0.25s" )
+        , ( "transition", "transform " ++ toggleTransitionDuration )
         ]
-    , s (c oneDarkClass ++ " " ++ c toggleHandleClass) [ ( "background-color", cssRgba oneDarkTheme.text ) ]
-    , s (c aubergineClass ++ " " ++ c toggleHandleClass) [ ( "background-color", cssRgba aubergineTheme.text ) ]
-    , s (c toggleCheckedClass ++ " " ++ c toggleHandleClass)
+    , s (descOf (c toggleCheckedClass) (c toggleHandleClass))
         [ ( "transform", "translateX(" ++ px (toggleHandleHeight + 1) ++ ")" )
         ]
     ]
@@ -98,6 +92,11 @@ toggleHeight =
 togglePadding : Int
 togglePadding =
     1
+
+
+toggleTransitionDuration : String
+toggleTransitionDuration =
+    "0.25s"
 
 
 toggleCheckedClass : String

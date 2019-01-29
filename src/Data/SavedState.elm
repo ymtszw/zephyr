@@ -3,7 +3,6 @@ module Data.SavedState exposing (SavedState, decoder)
 -- DEPRACATED; may remove after migration
 
 import Broker exposing (Broker)
-import Data.Column as Column exposing (Column)
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker

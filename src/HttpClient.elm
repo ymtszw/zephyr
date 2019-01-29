@@ -10,7 +10,6 @@ module HttpClient exposing
 
 -}
 
-import Dict
 import Http
 import Json.Decode exposing (Decoder, Value)
 import Task exposing (Task)

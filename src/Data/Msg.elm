@@ -235,7 +235,7 @@ selectMsgToEntry sMsg =
         Select.FilterSettle filter ->
             Entry "Select.FilterSettle" [ filter ]
 
-        Select.DebounceMsg msgDebounce ->
+        Select.DebounceMsg _ ->
             Entry "Select.DebounceMsg" [ "<Debounce>" ]
 
 
@@ -362,7 +362,7 @@ producerMsgToEntry pMsg =
                         , E.encode 2 (Slack.encodeTeam team)
                         ]
 
-                Slack.IHydrate teamIdStr convs users ->
+                Slack.IHydrate teamIdStr _ _ ->
                     Entry "Slack.IHydrate" [ teamIdStr, "<IHydrate>" ]
 
                 Slack.IRehydrate teamIdStr ->

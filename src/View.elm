@@ -1,17 +1,13 @@
 module View exposing (body)
 
 import Data.ColorTheme exposing (oneDark)
-import Data.Model exposing (ColumnSwap, Model)
+import Data.Model exposing (Model)
 import Data.Msg exposing (Msg(..))
 import Element exposing (..)
 import Element.Background as BG
-import Element.Border as BD
 import Element.Font as Font
 import Html
-import Html.Events
-import Json.Decode as D exposing (Decoder)
 import View.ColumnArea exposing (columnAreaEl)
-import View.ConfigPane exposing (configPaneEl)
 import View.Parts exposing (..)
 import View.Sidebar exposing (sidebarEl)
 

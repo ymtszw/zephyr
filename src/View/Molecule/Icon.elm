@@ -1,27 +1,61 @@
 module View.Molecule.Icon exposing
-    ( button, link, abbr, imgOrAbbr
+    ( rounded20, rounded40, size20, size40
+    , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
+    , rehydrateButton
     , styles
     )
 
 {-| Icon Molecules.
 
+@docs rounded20, rounded40, size20, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
+@docs rehydrateButton
 @docs styles
 
 -}
 
 import Html exposing (Attribute, Html, div, img)
-import Html.Attributes exposing (alt, class, src)
+import Html.Attributes exposing (alt, class, disabled, src)
 import Html.Events exposing (onClick)
 import Octicons
+import View.Atom.Animation as Animation
+import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Button as Button
 import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (serif, sizeTitle, t)
+import View.Atom.Typography exposing (t)
 import View.Style exposing (..)
+
+
+{-| Border-rounded 20x20 sized icon. Widely used.
+-}
+rounded20 : Attribute msg
+rounded20 =
+    class rounded20Class
+
+
+{-| Border-rounded 40x40 sized icon. Widely used.
+-}
+rounded40 : Attribute msg
+rounded40 =
+    class rounded40Class
+
+
+{-| Constant of `Just 20`, should be inserted to CDN APIs.
+-}
+size20 : Maybe Int
+size20 =
+    Just rounded20Size
+
+
+{-| Constant of `Just 40`, should be inserted to CDN APIs.
+-}
+size40 : Maybe Int
+size40 =
+    Just rounded40Size
 
 
 button : List (Attribute msg) -> { onPress : msg, src : String, alt : String } -> Html msg
@@ -77,6 +111,36 @@ octiconLink attrs opts =
         }
 
 
+{-| Used in Producers' Organisms. Fixed 20px size.
+-}
+rehydrateButton : msg -> Bool -> Html msg
+rehydrateButton onPress rehydrating =
+    let
+        rehydrateButtonSize =
+            26
+    in
+    octiconButton
+        [ alignStart
+        , disabled rehydrating
+        , Border.elliptic
+        , Background.transparent
+        , Image.fillPrim
+        , if rehydrating then
+            Animation.rotating
+
+          else
+            noAttr
+        ]
+        { onPress = onPress
+        , size = rehydrateButtonSize
+        , shape = Octicons.sync
+        }
+
+
+
+-- STYLES
+
+
 styles : List Style
 styles =
     [ s (c iconClass)
@@ -85,9 +149,41 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
+    , s (c rounded20Class)
+        [ ( "width", px rounded20Size )
+        , ( "height", px rounded20Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
+    , s (c rounded40Class)
+        [ ( "width", px rounded40Size )
+        , ( "height", px rounded40Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round5Style
     ]
 
 
 iconClass : String
 iconClass =
     "icon"
+
+
+rounded40Class : String
+rounded40Class =
+    "iconr40"
+
+
+rounded40Size : Int
+rounded40Size =
+    40
+
+
+rounded20Class : String
+rounded20Class =
+    "iconr20"
+
+
+rounded20Size : Int
+rounded20Size =
+    20

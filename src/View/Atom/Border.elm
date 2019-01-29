@@ -1,16 +1,16 @@
 module View.Atom.Border exposing
     ( solid, dotted, dashed
-    , w1, y1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
+    , w1, y1, bot1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
     , color, colorBd, colorBg, colorSub, colorNote
-    , styles
+    , styles, round2Style, round5Style
     )
 
 {-| Border Atoms.
 
 @docs solid, dotted, dashed
-@docs w1, y1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
+@docs w1, y1, bot1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
 @docs color, colorBd, colorBg, colorSub, colorNote
-@docs styles
+@docs styles, round2Style, round5Style
 
 -}
 
@@ -44,6 +44,11 @@ w1 =
 y1 : Attribute msg
 y1 =
     Attributes.class y1Class
+
+
+bot1 : Attribute msg
+bot1 =
+    Attributes.class bot1Class
 
 
 noRound : Attribute msg
@@ -120,9 +125,10 @@ styles =
     , s (c dashedClass) [ ( "border-style", "dashed" ) ]
     , s (c w1Class) [ ( "border-width", "1px" ) ]
     , s (c y1Class) [ ( "border-top-width", "1px" ), ( "border-bottom-width", "1px" ) ]
+    , s (c bot1Class) [ ( "border-bottom-width", "1px" ) ]
     , s (c noRoundClass) [ ( "border-radius", "0px" ) ]
-    , s (c round2Class) [ ( "border-radius", "2px" ) ]
-    , s (c round5Class) [ ( "border-radius", "5px" ) ]
+    , round2Style
+    , round5Style
     , s (c ellipticClass) [ ( "border-radius", "50%" ) ]
     , s (c leftRound5Class)
         [ ( "border-top-left-radius", "5px" )
@@ -173,14 +179,29 @@ y1Class =
     "boy1"
 
 
+bot1Class : String
+bot1Class =
+    "bob1"
+
+
 noRoundClass : String
 noRoundClass =
     "bonor"
 
 
+round2Style : Style
+round2Style =
+    s (c round2Class) [ ( "border-radius", "2px" ) ]
+
+
 round2Class : String
 round2Class =
     "boro2"
+
+
+round5Style : Style
+round5Style =
+    s (c round5Class) [ ( "border-radius", "5px" ) ]
 
 
 round5Class : String

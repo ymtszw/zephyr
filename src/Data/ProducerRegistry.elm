@@ -17,10 +17,8 @@ import Data.Producer as Producer exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord exposing (Discord)
 import Data.Producer.Slack as Slack exposing (SlackRegistry)
 import Data.Storable exposing (Storable)
-import Json.Decode as D exposing (Decoder, Value)
+import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
-import Json.Encode as E
-import Json.EncodeExtra as E
 import Worque exposing (Work)
 
 

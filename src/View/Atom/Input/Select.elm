@@ -22,10 +22,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onInput, stopPropagationOn)
 import Html.Keyed
-import Json.Decode exposing (at, fail, field, string, succeed)
+import Json.Decode exposing (at, field, string, succeed)
 import Json.DecodeExtra exposing (when)
 import Octicons
-import Task
 import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Image as Image
@@ -342,7 +341,7 @@ optionRowKey opts ( optionKey, option ) =
             , stopPropagationOn "click" (succeed ( onSelect, True ))
             , onEnterKeyDown onSelect
             , if opts.selectedOption == Just option then
-                class optionActiveClass
+                Background.colorPrim
 
               else
                 noAttr
@@ -404,11 +403,9 @@ themedStyles themeClass theme =
     , let
         focusSelector =
             String.join "," <|
-                List.map ((++) (c themeClass ++ " " ++ c optionRowClass)) <|
-                    [ ":hover", ":focus" ]
+                List.map (\pseudo -> descOf (c themeClass) (c optionRowClass) ++ pseudo) [ ":hover", ":focus" ]
       in
       s_ focusSelector [ ( "background-color", cssRgba theme.sub ) ]
-    , s_ (c themeClass ++ " " ++ c optionActiveClass) [ ( "background-color", cssRgba theme.prim ) ]
     ]
 
 
@@ -480,8 +477,3 @@ optionRowClass =
 optionRowPaddingY : Int
 optionRowPaddingY =
     2
-
-
-optionActiveClass : String
-optionActiveClass =
-    "slopac"

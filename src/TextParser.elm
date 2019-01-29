@@ -20,7 +20,7 @@ so you should consider parsing only once and storing `Parsed` IR for later uses.
 
 import Markdown.Block as Block exposing (Block(..))
 import Markdown.Config
-import Markdown.Inline as Inline exposing (Inline(..))
+import Markdown.Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
 
@@ -141,10 +141,10 @@ afterWalkBlock : ParseOptions -> Block () () -> Block () ()
 afterWalkBlock opts block =
     -- Also removing raw texts stored in parent nodes
     case block of
-        Heading raw level inlines ->
+        Heading _ level inlines ->
             Heading "" level <| autoLinker opts.autoLink <| applyCustomFormat opts.customInlineFormat inlines
 
-        Paragraph raw inlines ->
+        Paragraph _ inlines ->
             Paragraph "" <| autoLinker opts.autoLink <| applyCustomFormat opts.customInlineFormat inlines
 
         PlainInlines inlines ->
@@ -198,7 +198,7 @@ autoLinkerImpl inlines acc =
                     -- linkified Inline nodes are "properly" ordered; must reverse before adding to acc
                     autoLinkerImpl is (List.reverse linkified ++ acc)
 
-                Err e ->
+                Err _ ->
                     -- Debug here
                     autoLinkerImpl is (Text raw :: acc)
 

@@ -10,7 +10,6 @@ module View.Organism.Sidebar exposing
 
 -}
 
-import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Html exposing (Html, button, div, img, nav, span)
@@ -22,7 +21,7 @@ import View.Atom.Background as Background
 import View.Atom.Border as Border
 import View.Atom.Image as Image
 import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDark, oneDarkTheme)
+import View.Atom.Theme exposing (oneDark)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Style exposing (..)
@@ -58,7 +57,7 @@ render eff p =
         ]
         [ withTooltip (span [ colorNote ] [ t "Add Column" ]) <| addColumnButton eff.columnAdder
         , columnButtons eff.columnButtonClickerByIndex p.columns
-        , otherButtons eff.configOpener
+        , otherButtons eff.configOpener p.configOpen
         ]
 
 
@@ -71,13 +70,15 @@ columnButtons columnButtonClickerByIndex columns =
 addColumnButton : msg -> Html msg
 addColumnButton columnAdder =
     Icon.octiconButton
-        [ class buttonClass
-        , class octiconButtonClass
-        , flexItem
+        [ flexItem
+        , flexBasisAuto
         , padding5
         , Border.round5
         , Border.dashed
         , Border.w1
+        , Icon.rounded40
+        , Background.transparent
+        , Background.hovSub
         ]
         { onPress = columnAdder
         , size = octiconSize - 2 -- Subtract border width
@@ -110,7 +111,9 @@ type ColumnButton
 
 
 type alias ColumnProps =
-    { id : String, pinned : Bool }
+    { id : String
+    , pinned : Bool
+    }
 
 
 colummButtonKey : (Int -> msg) -> Int -> ( ColumnProps, ColumnButton ) -> ( String, Html msg )
@@ -131,11 +134,11 @@ colummButtonKey columnButtonClicker index ( cp, cb ) =
     Tuple.pair ("columnButton_" ++ cp.id) <|
         withTooltip tooltip <|
             button
-                [ class buttonClass
-                , flexItem
+                [ flexItem
                 , noPadding
-                , Border.round5
                 , onClick (columnButtonClicker index)
+                , Icon.rounded40
+                , Background.transparent
                 ]
                 [ columnButtonFace cp.pinned cb
                 ]
@@ -146,16 +149,16 @@ columnButtonFace pinned cb =
     withPin pinned <|
         case cb of
             Fallback desc ->
-                ( Nothing, Icon.abbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] desc )
+                ( Nothing, Icon.abbr [ Icon.rounded40, serif, sizeTitle ] desc )
 
             DiscordButton opts ->
                 ( Just discordBadge
-                , Icon.imgOrAbbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] opts.channelName opts.guildIcon
+                , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.channelName opts.guildIcon
                 )
 
             SlackButton opts ->
                 ( Just slackBadge
-                , Icon.imgOrAbbr [ class innerFaceClass, serif, sizeTitle, Border.round5 ] opts.convName opts.teamIcon
+                , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.convName opts.teamIcon
                 )
 
 
@@ -175,7 +178,12 @@ withPin pinned ( bottomRight, content ) =
 
 pinBadge : Html msg
 pinBadge =
-    div [ class badgeClass ] [ Image.octicon { size = badgeSize, shape = Octicons.pin } ]
+    div
+        [ class badgeClass
+        , Image.fillWarn
+        , Image.rotate45
+        ]
+        [ Image.octicon { size = badgeSize, shape = Octicons.pin } ]
 
 
 discordBadge : Html msg
@@ -193,22 +201,32 @@ slackBadge =
     imageBadge "Slack logo" <| Slack.defaultIconUrl (Just badgeSize)
 
 
-otherButtons : msg -> Html msg
-otherButtons configOpener =
+otherButtons : msg -> Bool -> Html msg
+otherButtons configOpener configOpen =
     let
         note x =
             span [ bold, colorNote ] [ t x ]
     in
     div [ flexColumn, flexBasisAuto, spacingColumn10 ]
         [ withTooltip (note "Zephyr Config") <|
-            Icon.octiconButton
-                [ class buttonClass
-                , class octiconButtonClass
-                , class configToggleButtonClass
-                , flexItem
-                , padding5
-                , Border.round5
-                ]
+            let
+                baseAttrs =
+                    [ flexItem
+                    , flexBasisAuto
+                    , padding5
+                    , Icon.rounded40
+                    ]
+
+                statefulAttrs =
+                    if configOpen then
+                        [ Image.fillText, Background.colorSub ]
+
+                    else
+                        [ Background.hovSub
+                        , Background.transparent
+                        ]
+            in
+            Icon.octiconButton (baseAttrs ++ statefulAttrs)
                 { onPress = configOpener
                 , size = octiconSize
                 , shape = Octicons.gear
@@ -216,11 +234,12 @@ otherButtons configOpener =
         , withTooltip (note "Source") <|
             Icon.octiconLink
                 [ newTab
-                , class buttonClass
-                , class octiconButtonClass
                 , flexItem
+                , flexBasisAuto
                 , padding5
-                , Border.round5
+                , Icon.rounded40
+                , Background.transparent
+                , Background.hovSub
                 ]
                 { url = "https://github.com/ymtszw/zephyr"
                 , size = octiconSize
@@ -235,6 +254,12 @@ otherButtons configOpener =
 
 styles : List Style
 styles =
+    let
+        openedSidebars =
+            [ hov (c sidebarClass)
+            , c sidebarClass ++ c configOpenClass
+            ]
+    in
     [ s (c sidebarClass)
         [ ( "position", "fixed" )
         , ( "left", "0" )
@@ -244,7 +269,7 @@ styles =
         , ( "padding-top", px paddingY )
         , ( "padding-bottom", px paddingY )
         ]
-    , s (c sidebarClass ++ ":hover," ++ c sidebarClass ++ c configOpenClass)
+    , s (String.join "," openedSidebars)
         [ ( "width", px (sidebarWidth + sidebarExpansionWidth) )
         ]
     , s (c sidebarTooltipClass)
@@ -254,45 +279,17 @@ styles =
         , ( "max-height", px buttonSize )
         , ( "display", "none" )
         ]
-    , s
-        (String.join ","
-            [ c sidebarClass ++ ":hover " ++ c sidebarTooltipClass
-            , c sidebarClass ++ c configOpenClass ++ " " ++ c sidebarTooltipClass
-            ]
-        )
+    , s (String.join "," (List.map (\anc -> descOf anc (c sidebarTooltipClass)) openedSidebars))
         [ ( "display", "flex" ) ]
-    , s (c sidebarClass ++ " " ++ c columnButtonsClass)
+    , s (c columnButtonsClass)
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
         , ( "overflow-y", "auto" )
         ]
-    , s (c sidebarClass ++ " " ++ c buttonClass)
-        [ ( "width", px buttonSize )
-        , ( "height", px buttonSize )
-        , ( "flex-basis", "auto" )
-        , ( "background-color", "inherit" )
-        ]
-    , s (c sidebarClass ++ " " ++ c badgeClass)
+    , s (c badgeClass)
         [ ( "width", px badgeSize )
         , ( "height", px badgeSize )
         , ( "overflow", "hidden" )
         ]
-    , s (c sidebarClass ++ " " ++ c badgeClass ++ " " ++ c "pin")
-        [ ( "transform", "rotate(-45deg)" )
-        ]
-    , s (c sidebarClass ++ " " ++ c innerFaceClass)
-        [ ( "width", px buttonSize )
-        , ( "height", px buttonSize )
-        ]
-    , s (c sidebarClass ++ " " ++ c octiconButtonClass)
-        [ ( "background-color", cssRgba oneDarkTheme.bg ) ]
-    , hov (c sidebarClass ++ " " ++ c octiconButtonClass)
-        [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
-    , s (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
-        [ ( "background-color", cssRgba oneDarkTheme.sub ) ]
-    , s (c sidebarClass ++ " " ++ c badgeClass ++ " " ++ c "pin" ++ " path")
-        [ ( "fill", cssRgba oneDarkTheme.warn ) ]
-    , Image.octiconPathStyle (c sidebarClass ++ c configOpenClass ++ " " ++ c configToggleButtonClass)
-        [ ( "fill", cssRgba oneDarkTheme.text ) ]
     ]
 
 
@@ -336,11 +333,6 @@ columnButtonsClass =
     "sbarcbtns"
 
 
-buttonClass : String
-buttonClass =
-    "sbarbtn"
-
-
 buttonSize : Int
 buttonSize =
     40
@@ -356,21 +348,6 @@ badgeSize =
     14
 
 
-innerFaceClass : String
-innerFaceClass =
-    "sbarcbtninner"
-
-
-octiconButtonClass : String
-octiconButtonClass =
-    "sbaroctbtn"
-
-
 octiconSize : Int
 octiconSize =
     buttonSize - (paddingX * 2)
-
-
-configToggleButtonClass : String
-configToggleButtonClass =
-    "sbarctoggle"

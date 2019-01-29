@@ -1,6 +1,8 @@
 module View.Atom.Layout exposing
     ( widthFill, block
-    , flexRow, growRow, flexColumn, growColumn, flexWrap, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+    , flexRow, growRow, flexColumn, growColumn, flexWrap
+    , flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+    , alignEnd, alignStart
     , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -12,7 +14,9 @@ module View.Atom.Layout exposing
 {-| Essential layouting Atoms.
 
 @docs widthFill, block
-@docs flexRow, growRow, flexColumn, growColumn, flexWrap, flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+@docs flexRow, growRow, flexColumn, growColumn, flexWrap
+@docs flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
+@docs alignEnd, alignStart
 @docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -133,6 +137,16 @@ With this setting, containers respect items' `width` or `height`.
 flexBasisAuto : Attribute msg
 flexBasisAuto =
     class flexBasisAutoClass
+
+
+alignStart : Attribute msg
+alignStart =
+    class alignStartClass
+
+
+alignEnd : Attribute msg
+alignEnd =
+    class alignEndClass
 
 
 noPadding : Attribute msg
@@ -269,6 +283,8 @@ styles =
     , flexShrinkStyle
     , flexCenterStyle
     , flexBasisAutoStyle
+    , s (c alignStartClass) [ ( "align-self", "flex-start" ) ]
+    , s (c alignEndClass) [ ( "align-self", "flex-end" ) ]
     , paddingStyle 0
     , paddingStyle 2
     , paddingStyle 5
@@ -477,6 +493,16 @@ flexBasisAutoClass =
     "flbauto"
 
 
+alignStartClass : String
+alignStartClass =
+    "alstart"
+
+
+alignEndClass : String
+alignEndClass =
+    "alend"
+
+
 paddingStyle : Int -> Style
 paddingStyle pad =
     s (c (paddingClass pad)) [ ( "padding", px pad ) ]
@@ -587,14 +613,14 @@ badgeStyles =
         , ( "align-self", "flex-start" )
         , ( "overflow", "hidden" )
         ]
-    , s (c badgeOutsetClass ++ " " ++ c badgeTopRightClass)
+    , s (descOf (c badgeOutsetClass) (c badgeTopRightClass))
         [ ( "transform", "translate(" ++ px badgeOutsetSize ++ "," ++ px (negate badgeOutsetSize) ++ ")" ) ]
     , s (c badgeBottomRightClass)
         [ ( "position", "absolute" )
         , ( "align-self", "flex-end" )
         , ( "overflow", "hidden" )
         ]
-    , s (c badgeOutsetClass ++ " " ++ c badgeBottomRightClass)
+    , s (descOf (c badgeOutsetClass) (c badgeBottomRightClass))
         [ ( "transform", "translate(" ++ px badgeOutsetSize ++ "," ++ px badgeOutsetSize ++ ")" ) ]
     ]
 

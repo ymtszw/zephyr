@@ -4,7 +4,6 @@ import Broker exposing (Broker, Offset)
 import Data.Item as Item exposing (Item)
 import Data.Storable exposing (Storable)
 import Json.Decode as D exposing (Decoder)
-import Json.Encode as E
 
 
 init : Broker Item
