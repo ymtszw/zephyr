@@ -1,4 +1,4 @@
-module View.Organism.Config.Slack exposing (Effects, Props, TeamState(..), render)
+module View.Organism.Config.Slack exposing (Effects, Props, TeamState(..), render, styles)
 
 import Data.Producer.Slack as Slack
 import Html exposing (Html, div, h3, img, p)
@@ -22,6 +22,9 @@ type alias Effects msg =
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
     , onConvSelect : String -> msg
+    , onForceFetchButtonClick : String -> msg
+    , onCreateColumnButtonClick : String -> msg
+    , onUnsubscribeButtonClick : String -> msg
     }
 
 
@@ -112,13 +115,14 @@ teamState eff props ( team, ts ) =
                 HydratedOnce opts ->
                     [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user
                     , ProducerConfig.subSelect eff.onConvSelect
-                        { id = "slackConvSubscribeInput"
+                        { id = "slackConvSubscribeInput_" ++ team.id
                         , selectMsgTagger = props.selectMsgTagger
                         , selectState = props.selectState
                         , options = opts.subbableConvs
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
                         , optionHtml = convSummary
                         }
+                    , ProducerConfig.subbedTable eff { items = opts.subbedConvs, itemHtml = convSummary }
                     ]
 
 
@@ -171,14 +175,29 @@ convSummary c =
     let
         icon =
             if c.isPrivate then
-                div [ Image.fillText ] [ Image.octicon { size = tableRowIconSize, shape = Octicons.lock } ]
+                div [ class convIconClass, Image.fillText ] [ Image.octicon { size = lockIconSize, shape = Octicons.lock } ]
 
             else
-                div [ sizeTitle ] [ t "#" ]
+                div [ class convIconClass, sizeHeadline, flexBasisAuto ] [ t "#" ]
     in
     div [ flexRow, flexCenter, spacingRow5 ] [ icon, div [ flexGrow ] [ t c.name ] ]
 
 
-tableRowIconSize : Int
-tableRowIconSize =
-    20
+lockIconSize : Int
+lockIconSize =
+    16
+
+
+
+-- STYLES
+
+
+styles : List Style
+styles =
+    [ s (c convIconClass) [ ( "width", px lockIconSize ), ( "text-align", "center" ) ]
+    ]
+
+
+convIconClass : String
+convIconClass =
+    "slackcvicon"

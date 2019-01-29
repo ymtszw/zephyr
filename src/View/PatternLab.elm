@@ -1799,6 +1799,14 @@ configDiscord m =
     section []
         [ h1 [ sizeSection ] [ t "Config.Discord" ]
         , withSource """let
+    dummyOpts =
+        { rehydrating = m.toggle
+        , user = dummyUser
+        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , subbableChannels = List.range 0 20 |> List.map subbableChannel
+        , subbedChannels = List.range 0 15 |> List.map dummyChannel
+        }
+
     dummyUser =
         { id = "DUMMYUSERID"
         , username = "Discord User"
@@ -1817,17 +1825,12 @@ configDiscord m =
         , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
         , guildMaybe = Just (dummyGuild (modBy 3 index))
         , fetching = modBy 2 index == 0
-        , subscribed = index /= 0
+        , producing = index /= 0
         }
 
-    dummyOpts =
-        { timezone = Time.utc
-        , rehydrating = m.toggle
-        , user = dummyUser
-        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
-        , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
-        , subbedChannels = List.range 0 15 |> List.map dummyChannel
-        }
+    subbableChannel index =
+        dummyChannel index
+            |> (\\{ id, name, guildMaybe } -> { id = id, name = name, guildMaybe = guildMaybe })
 in
 Discord.render
     { onTokenInput = TextInput
@@ -1846,6 +1849,14 @@ Discord.render
     , selectState = m.select
     }""" <|
             let
+                dummyOpts =
+                    { rehydrating = m.toggle
+                    , user = dummyUser
+                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , subbableChannels = List.range 0 20 |> List.map subbableChannel
+                    , subbedChannels = List.range 0 15 |> List.map dummyChannel
+                    }
+
                 dummyUser =
                     { id = "DUMMYUSERID"
                     , username = "Discord User"
@@ -1867,13 +1878,9 @@ Discord.render
                     , producing = index /= 0
                     }
 
-                dummyOpts =
-                    { rehydrating = m.toggle
-                    , user = dummyUser
-                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
-                    , subbableChannels = List.range 0 20 |> List.map dummyChannel |> List.map (\c -> { id = c.id, name = c.name, guildMaybe = c.guildMaybe })
-                    , subbedChannels = List.range 0 15 |> List.map dummyChannel
-                    }
+                subbableChannel index =
+                    dummyChannel index
+                        |> (\{ id, name, guildMaybe } -> { id = id, name = name, guildMaybe = guildMaybe })
             in
             Discord.render
                 { onTokenInput = TextInput
@@ -1908,18 +1915,18 @@ configSlack m =
             , Slack.HydratedOnce
                 { rehydrating = m.toggle
                 , user = dummyUser index
-                , subbableConvs = []
-                , subbedConvs = []
+                , subbableConvs = List.range 0 (index * 3) |> List.map subbableConv
+                , subbedConvs = List.range 0 (index * 3) |> List.map dummyConv
                 }
             )
 
     dummyTeam index =
         { id = "DUMMYTEAMID" ++ String.fromInt index
         , name = String.fromInt index ++ "TEAM"
-        , domain = String.fromInt index ++ "team.slack.com"
-        , icon =
+        , domain = String.fromInt index ++ "team"
+        , image48 =
             if modBy 2 index == 0 then
-                Just (Image.ph 50 50)
+                Just (Image.ph 48 48)
 
             else
                 Nothing
@@ -1939,12 +1946,27 @@ configSlack m =
                     Nothing
         , image48 = Image.ph 48 48
         }
+
+    dummyConv index =
+        { id = "DUMMYCONVID" ++ String.fromInt index
+        , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
+        , isPrivate = modBy 4 index == 0
+        , fetching = modBy 2 index == 0
+        , producing = index /= 0
+        }
+
+    subbableConv index =
+        dummyConv index
+            |> (\\{ id, name, isPrivate } -> { id = id, name = name, isPrivate = isPrivate })
 in
 Slack.render
     { onTokenInput = TextInput
-    , onTokenSubmit = NoOp
-    , onRehydrateButtonClick = (Toggle (not m.toggle))
+    , onTokenSubmit = Toggle False
+    , onRehydrateButtonClick = Toggle (not m.toggle)
     , onConvSelect = always NoOp
+    , onForceFetchButtonClick = always NoOp
+    , onCreateColumnButtonClick = always NoOp
+    , onUnsubscribeButtonClick = always NoOp
     }
     { token = m.textInput
     , tokenSubmittable = True
@@ -1962,8 +1984,8 @@ Slack.render
                         , Slack.HydratedOnce
                             { rehydrating = m.toggle
                             , user = dummyUser index
-                            , subbableConvs = []
-                            , subbedConvs = []
+                            , subbableConvs = List.range 0 (index * 3) |> List.map subbableConv
+                            , subbedConvs = List.range 0 (index * 3) |> List.map dummyConv
                             }
                         )
 
@@ -1993,12 +2015,27 @@ Slack.render
                                 Nothing
                     , image48 = Image.ph 48 48
                     }
+
+                dummyConv index =
+                    { id = "DUMMYCONVID" ++ String.fromInt index
+                    , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
+                    , isPrivate = modBy 4 index == 0
+                    , fetching = modBy 2 index == 0
+                    , producing = index /= 0
+                    }
+
+                subbableConv index =
+                    dummyConv index
+                        |> (\{ id, name, isPrivate } -> { id = id, name = name, isPrivate = isPrivate })
             in
             Slack.render
                 { onTokenInput = TextInput
-                , onTokenSubmit = NoOp
+                , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
                 , onConvSelect = always NoOp
+                , onForceFetchButtonClick = always NoOp
+                , onCreateColumnButtonClick = always NoOp
+                , onUnsubscribeButtonClick = always NoOp
                 }
                 { token = m.textInput
                 , tokenSubmittable = True
