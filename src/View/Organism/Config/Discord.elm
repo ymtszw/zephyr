@@ -1,22 +1,15 @@
-module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, render, styles)
+module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, render)
 
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, h3, img, p)
+import Html exposing (Html, div, h3, img, p)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
 import Html.Keyed
-import Octicons
-import View.Atom.Animation as Animation
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Image as Image
 import View.Atom.Input.Select as Select
 import View.Atom.Layout exposing (..)
 import View.Atom.Typography exposing (..)
 import View.Molecule.Icon as Icon
 import View.Molecule.ProducerConfig as ProducerConfig
-import View.Molecule.Table as Table
 import View.Style exposing (..)
 
 
@@ -108,7 +101,7 @@ currentState eff props =
                     , filterMatch = Discord.channelFilter
                     , optionHtml = channelSummary
                     }
-                , subbedChannelTable eff opts.subbedChannels
+                , ProducerConfig.subbedTable eff { items = opts.subbedChannels, itemHtml = channelSummary }
                 ]
 
 
@@ -165,107 +158,3 @@ channelSummary c =
                     none
     in
     div [ flexRow, flexCenter, spacingRow5 ] [ guildIcon, div [ flexGrow ] [ t ("#" ++ c.name) ] ]
-
-
-subbedChannelTable : Effects msg -> List SubbedChannel -> Html msg
-subbedChannelTable eff subbedChannels =
-    let
-        nameCell c =
-            ( [ widthFill ], [ channelSummary c ] )
-
-        actionCell c =
-            ( []
-            , [ div [ flexRow, flexCenter, spacingRow2 ]
-                    [ fetchStatusAndforceFetchButton (eff.onForceFetchButtonClick c.id) c.fetching
-                    , createColumnButton (eff.onCreateColumnButtonClick c.id) c
-                    , unsubscribeButton (eff.onUnsubscribeButtonClick c.id)
-                    ]
-              ]
-            )
-    in
-    Table.render []
-        { columns =
-            [ { header = "Name", cell = nameCell }
-            , { header = "Action", cell = actionCell }
-            ]
-        , rowKey = .id
-        , data = subbedChannels
-        }
-
-
-fetchStatusAndforceFetchButton : msg -> Bool -> Html msg
-fetchStatusAndforceFetchButton onPress fetching =
-    button
-        [ flexItem
-        , flexBasisAuto
-        , noPadding
-        , Image.hovSucc
-        , Border.round2
-        , Background.transparent
-        , onClick onPress
-        ]
-        [ div
-            [ -- Animate inner contents, not the button itself, to keep the clickable area stable
-              if fetching then
-                Animation.slideDown
-
-              else
-                noAttr
-            ]
-            [ Image.octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
-            ]
-        ]
-
-
-octiconButtonSize : Int
-octiconButtonSize =
-    20
-
-
-createColumnButton : msg -> SubbedChannel -> Html msg
-createColumnButton onPress c =
-    button
-        [ class createColumnButtonClass
-        , flexItem
-        , flexGrow
-        , flexBasisAuto
-        , padding2
-        , Background.colorPrim
-        , disabled (not c.producing)
-        , onClick onPress
-        ]
-        [ t "Create Column" ]
-
-
-unsubscribeButton : msg -> Html msg
-unsubscribeButton onPress =
-    Icon.octiconButton
-        [ flexItem
-        , Image.hovErr
-        , Border.elliptic
-        , Background.transparent
-        ]
-        { onPress = onPress
-        , size = octiconButtonSize
-        , shape = Octicons.circleSlash
-        }
-
-
-
--- STYLES
-
-
-styles : List Style
-styles =
-    [ s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ) ]
-    ]
-
-
-createColumnButtonClass : String
-createColumnButtonClass =
-    "discordcreatebtn"
-
-
-createColumnButtonWidth : Int
-createColumnButtonWidth =
-    150

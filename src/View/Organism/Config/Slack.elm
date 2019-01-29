@@ -1,4 +1,4 @@
-module View.Organism.Config.Slack exposing (Effects, Props, TeamState(..), render, styles)
+module View.Organism.Config.Slack exposing (Effects, Props, TeamState(..), render)
 
 import Data.Producer.Slack as Slack
 import Html exposing (Html, div, h3, img, p)
@@ -182,12 +182,3 @@ convSummary c =
 tableRowIconSize : Int
 tableRowIconSize =
     20
-
-
-
--- STYLES
-
-
-styles : List Style
-styles =
-    []

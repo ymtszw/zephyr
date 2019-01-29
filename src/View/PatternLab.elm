@@ -1611,6 +1611,28 @@ producerConfig m =
                 , filterMatch = \query e -> String.contains query e.name
                 , optionHtml = \e -> t e.name
                 }
+        , withSource """ProducerConfig.subbedTable
+    { onCreateColumnButtonClick = always NoOp
+    , onForceFetchButtonClick = always (Toggle (not m.toggle))
+    , onUnsubscribeButtonClick = always NoOp
+    }
+    { items =
+        [ { id = "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
+        , { id = "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
+        ]
+    , itemHtml = \\i -> t i.name
+    }""" <|
+            ProducerConfig.subbedTable
+                { onCreateColumnButtonClick = always NoOp
+                , onForceFetchButtonClick = always (Toggle (not m.toggle))
+                , onUnsubscribeButtonClick = always NoOp
+                }
+                { items =
+                    [ { id = "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
+                    , { id = "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
+                    ]
+                , itemHtml = \i -> t i.name
+                }
         ]
 
 
