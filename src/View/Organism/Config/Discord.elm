@@ -24,7 +24,7 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
-    , onChannelSelected : String -> msg
+    , onChannelSelect : String -> msg
     , onForceFetchButtonClick : String -> msg
     , onCreateColumnButtonClick : String -> msg
     , onUnsubscribeButtonClick : String -> msg
@@ -100,7 +100,14 @@ currentState eff props =
             div [ flexColumn, spacingColumn5 ]
                 [ userNameAndAvatar eff.onRehydrateButtonClick opts.rehydrating opts.user
                 , guilds opts.guilds
-                , subscribeChannelInput eff.onChannelSelected props opts.subbableChannels
+                , ProducerConfig.subSelect eff.onChannelSelect
+                    { id = "discordChannelSubscribeInput"
+                    , selectMsgTagger = props.selectMsgTagger
+                    , selectState = props.selectState
+                    , options = opts.subbableChannels
+                    , filterMatch = Discord.channelFilter
+                    , optionHtml = channelSummary
+                    }
                 , subbedChannelTable eff opts.subbedChannels
                 ]
 
@@ -142,24 +149,6 @@ guildIconKey g =
 
             Nothing ->
                 Icon.abbr [ Icon.rounded40, serif, sizeTitle ] g.name
-
-
-subscribeChannelInput : (String -> msg) -> Props msg -> List SubbableChannel -> Html msg
-subscribeChannelInput onSelect props subbableChannels =
-    div [ flexRow, flexCenter, spacingRow5 ]
-        [ div [ sizeHeadline ] [ t "Subscribe:" ]
-        , Select.render [ class subscribeChannelInputClass, flexBasisAuto ]
-            { state = props.selectState
-            , msgTagger = props.selectMsgTagger
-            , id = "discordChannelSubscribeInput"
-            , thin = True
-            , onSelect = .id >> onSelect
-            , selectedOption = Nothing
-            , filterMatch = Just Discord.channelFilter
-            , options = List.map (\c -> ( c.id, c )) subbableChannels
-            , optionHtml = channelSummary
-            }
-        ]
 
 
 channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg
@@ -268,19 +257,8 @@ unsubscribeButton onPress =
 
 styles : List Style
 styles =
-    [ s (c subscribeChannelInputClass) [ ( "width", px subscribeChannelInputWidth ) ]
-    , s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ) ]
+    [ s (c createColumnButtonClass) [ ( "width", px createColumnButtonWidth ) ]
     ]
-
-
-subscribeChannelInputClass : String
-subscribeChannelInputClass =
-    "discordsubchinput"
-
-
-subscribeChannelInputWidth : Int
-subscribeChannelInputWidth =
-    250
 
 
 createColumnButtonClass : String

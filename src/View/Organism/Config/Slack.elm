@@ -111,7 +111,14 @@ teamState eff props ( team, ts ) =
 
                 HydratedOnce opts ->
                     [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user
-                    , subscribeConvInput eff.onConvSelect props opts.subbableConvs
+                    , ProducerConfig.subSelect eff.onConvSelect
+                        { id = "slackConvSubscribeInput"
+                        , selectMsgTagger = props.selectMsgTagger
+                        , selectState = props.selectState
+                        , options = opts.subbableConvs
+                        , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
+                        , optionHtml = convSummary
+                        }
                     ]
 
 
@@ -159,24 +166,6 @@ userNameAndAvatar user =
         ]
 
 
-subscribeConvInput : (String -> msg) -> Props msg -> List SubbableConv -> Html msg
-subscribeConvInput onSelect props subbableConvs =
-    div [ flexRow, flexCenter, spacingRow5 ]
-        [ div [ sizeHeadline ] [ t "Subscribe:" ]
-        , Select.render [ class subscribeConvInputClass, flexBasisAuto ]
-            { state = props.selectState
-            , msgTagger = props.selectMsgTagger
-            , id = "slackConvSubscribeInput"
-            , thin = True
-            , onSelect = .id >> onSelect
-            , selectedOption = Nothing
-            , filterMatch = Just (\f conv -> StringExtra.containsCaseIgnored f conv.name)
-            , options = List.map (\c -> ( c.id, c )) subbableConvs
-            , optionHtml = convSummary
-            }
-        ]
-
-
 convSummary : { c | name : String, isPrivate : Bool } -> Html msg
 convSummary c =
     let
@@ -201,15 +190,4 @@ tableRowIconSize =
 
 styles : List Style
 styles =
-    [ s (c subscribeConvInputClass) [ ( "width", px subscribeConvInputWidth ) ]
-    ]
-
-
-subscribeConvInputClass : String
-subscribeConvInputClass =
-    "slacksubcvinput"
-
-
-subscribeConvInputWidth : Int
-subscribeConvInputWidth =
-    250
+    []

@@ -1589,6 +1589,28 @@ producerConfig m =
                 , submitButtonText = "Register"
                 , apiDomain = "api.example.com"
                 }
+        , withSource """ProducerConfig.subSelect (always NoOp)
+    { id = "subSelectId"
+    , selectMsgTagger = SelectCtrl
+    , selectState = m.select
+    , options =
+        [ { id = "Subbable1", name = "Name1" }
+        , { id = "Subbable2", name = String.repeat 3 "Name2" }
+        ]
+    , filterMatch = \\query e -> String.contains query e.name
+    , optionHtml = \\e -> t e.name
+    }""" <|
+            ProducerConfig.subSelect (always NoOp)
+                { id = "subSelectId"
+                , selectMsgTagger = SelectCtrl
+                , selectState = m.select
+                , options =
+                    [ { id = "Subbable1", name = "Name1" }
+                    , { id = "Subbable2", name = String.repeat 3 "Name2" }
+                    ]
+                , filterMatch = \query e -> String.contains query e.name
+                , optionHtml = \e -> t e.name
+                }
         ]
 
 
@@ -1789,7 +1811,7 @@ Discord.render
     { onTokenInput = TextInput
     , onTokenSubmit = Toggle False
     , onRehydrateButtonClick = Toggle (not m.toggle)
-    , onChannelSelected = always NoOp
+    , onChannelSelect = always NoOp
     , onForceFetchButtonClick = always NoOp
     , onCreateColumnButtonClick = always NoOp
     , onUnsubscribeButtonClick = always NoOp
@@ -1835,7 +1857,7 @@ Discord.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = Toggle (not m.toggle)
-                , onChannelSelected = always NoOp
+                , onChannelSelect = always NoOp
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
