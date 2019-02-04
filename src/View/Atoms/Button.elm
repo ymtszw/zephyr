@@ -1,4 +1,4 @@
-module View.Atom.Button exposing
+module View.Atoms.Button exposing
     ( link
     , styles
     )
@@ -15,9 +15,9 @@ Color of buttons are decided by upstream themes and `Background`/`Typography` AP
 import Color exposing (Color, cssRgba)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
-import View.Atom.Layout as Layout
-import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
-import View.Atom.Typography as Typography
+import View.Atoms.Layout as Layout
+import View.Atoms.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
+import View.Atoms.Typography as Typography
 import View.Style exposing (..)
 
 

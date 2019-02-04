@@ -1,4 +1,4 @@
-module View.Atom.Theme exposing
+module View.Atoms.Theme exposing
     ( Theme, aubergineTheme, oneDarkTheme
     , aubergine, oneDark
     , aubergineClass, oneDarkClass

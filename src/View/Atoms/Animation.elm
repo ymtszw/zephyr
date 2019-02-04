@@ -1,4 +1,4 @@
-module View.Atom.Animation exposing
+module View.Atoms.Animation exposing
     ( rotating, slideDown
     , styles
     )

@@ -1,4 +1,4 @@
-module View.Atom.Image exposing
+module View.Atoms.Image exposing
     ( ph
     , octicon, octiconPathStyle, fillPrim, fillSucc, fillWarn, fillErr, fillText
     , hovPrim, hovSucc, hovWarn, hovErr, hovText
@@ -21,7 +21,7 @@ import Html exposing (Attribute, Html)
 import Html.Attributes exposing (class)
 import Octicons
 import Url.Builder
-import View.Atom.Theme exposing (..)
+import View.Atoms.Theme exposing (..)
 import View.Style exposing (..)
 
 

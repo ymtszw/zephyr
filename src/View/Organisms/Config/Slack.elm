@@ -1,4 +1,4 @@
-module View.Organism.Config.Slack exposing (Effects, Props, TeamState(..), render, styles)
+module View.Organisms.Config.Slack exposing (Effects, Props, TeamState(..), render, styles)
 
 import Data.Producer.Slack as Slack
 import Html exposing (Html, div, h3, img, p)
@@ -7,13 +7,13 @@ import Html.Keyed
 import Octicons
 import StringExtra
 import Url
-import View.Atom.Border as Border
-import View.Atom.Image as Image
-import View.Atom.Input.Select as Select
-import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
-import View.Molecule.ProducerConfig as ProducerConfig
+import View.Atoms.Border as Border
+import View.Atoms.Image as Image
+import View.Atoms.Input.Select as Select
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
+import View.Molecules.ProducerConfig as ProducerConfig
 import View.Style exposing (..)
 
 

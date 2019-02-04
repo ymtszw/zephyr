@@ -1,4 +1,4 @@
-module View.Atom.Layout exposing
+module View.Atoms.Layout exposing
     ( widthFill, block
     , flexRow, growRow, flexColumn, growColumn, flexWrap
     , flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto

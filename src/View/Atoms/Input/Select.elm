@@ -1,4 +1,4 @@
-module View.Atom.Input.Select exposing
+module View.Atoms.Input.Select exposing
     ( State(..), Msg(..), update, sub
     , Options, render, styles
     )
@@ -25,11 +25,11 @@ import Html.Keyed
 import Json.Decode exposing (at, field, string, succeed)
 import Json.DecodeExtra exposing (when)
 import Octicons
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Image as Image
-import View.Atom.Layout as Layout
-import View.Atom.Theme exposing (Theme, aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Image as Image
+import View.Atoms.Layout as Layout
+import View.Atoms.Theme exposing (Theme, aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
 

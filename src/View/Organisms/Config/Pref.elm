@@ -1,4 +1,4 @@
-module View.Organism.Config.Pref exposing (Effects, Props, ShadowColumn(..), ShadowColumnProps, render, styles)
+module View.Organisms.Config.Pref exposing (Effects, Props, ShadowColumn(..), ShadowColumnProps, render, styles)
 
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -6,15 +6,15 @@ import Html exposing (Html, button, div, h3, img, p)
 import Html.Attributes exposing (alt, class, disabled, src)
 import Html.Events exposing (onClick)
 import Octicons
-import View.Atom.Background as Background
-import View.Atom.Image as Image
-import View.Atom.Input as Input
-import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (..)
-import View.Atom.Typography exposing (..)
+import View.Atoms.Background as Background
+import View.Atoms.Image as Image
+import View.Atoms.Input as Input
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Theme exposing (..)
+import View.Atoms.Typography exposing (..)
 import View.ConfigPane.DiscordConfig as Discord
-import View.Molecule.Icon as Icon
-import View.Molecule.Table as Table
+import View.Molecules.Icon as Icon
+import View.Molecules.Table as Table
 import View.Style exposing (..)
 
 

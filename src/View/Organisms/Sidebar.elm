@@ -1,4 +1,4 @@
-module View.Organism.Sidebar exposing
+module View.Organisms.Sidebar exposing
     ( Props, ColumnProps, ColumnButton(..), Effects, render
     , styles, sidebarWidth, sidebarExpansionWidth
     )
@@ -17,13 +17,13 @@ import Html.Attributes exposing (alt, class, src)
 import Html.Events exposing (onClick)
 import Html.Keyed
 import Octicons
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Image as Image
-import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDark)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Image as Image
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Theme exposing (oneDark)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
 import View.Style exposing (..)
 
 

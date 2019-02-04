@@ -1,12 +1,12 @@
-module View.Molecule.Wallpaper exposing (styles, zephyr)
+module View.Molecules.Wallpaper exposing (styles, zephyr)
 
 import Color exposing (cssRgba)
 import Html exposing (Html, div)
 import Html.Attributes exposing (class)
-import View.Atom.Background as Background
-import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (oneDark, oneDarkTheme)
-import View.Atom.Typography exposing (..)
+import View.Atoms.Background as Background
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Theme exposing (oneDark, oneDarkTheme)
+import View.Atoms.Typography exposing (..)
 import View.Style exposing (..)
 
 

@@ -1,18 +1,18 @@
-module View.Molecule.ProducerConfig exposing (styles, subSelect, subbedTable, tokenForm)
+module View.Molecules.ProducerConfig exposing (styles, subSelect, subbedTable, tokenForm)
 
 import Html exposing (Html, button, div, input, label, p, strong)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Octicons
-import View.Atom.Animation as Animation
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Image as Image
-import View.Atom.Input.Select as Select
-import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
-import View.Molecule.Table as Table
+import View.Atoms.Animation as Animation
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Image as Image
+import View.Atoms.Input.Select as Select
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
+import View.Molecules.Table as Table
 import View.Style exposing (..)
 
 

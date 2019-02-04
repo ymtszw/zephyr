@@ -1,9 +1,9 @@
-module View.Organism.Config.Status exposing (Props, render)
+module View.Organisms.Config.Status exposing (Props, render)
 
 import Html exposing (Html, div)
 import StringExtra
-import View.Atom.Layout exposing (flexColumn, padding5, spacingColumn5)
-import View.Atom.Typography exposing (t)
+import View.Atoms.Layout exposing (flexColumn, padding5, spacingColumn5)
+import View.Atoms.Typography exposing (t)
 
 
 type alias Props =

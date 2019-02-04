@@ -1,4 +1,4 @@
-module View.Atom.Background exposing
+module View.Atoms.Background exposing
     ( colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
     , hovSub
     , styles, oneDarkMainStyle, aubergineMainStyle
@@ -15,7 +15,7 @@ module View.Atom.Background exposing
 import Color exposing (Color, cssRgba)
 import Html exposing (Attribute)
 import Html.Attributes exposing (class)
-import View.Atom.Theme exposing (..)
+import View.Atoms.Theme exposing (..)
 import View.Style exposing (..)
 
 

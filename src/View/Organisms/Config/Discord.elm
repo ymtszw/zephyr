@@ -1,15 +1,15 @@
-module View.Organism.Config.Discord exposing (CurrentState(..), Effects, Props, render)
+module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, render)
 
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
 import Html exposing (Html, div, h3, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
-import View.Atom.Input.Select as Select
-import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
-import View.Molecule.ProducerConfig as ProducerConfig
+import View.Atoms.Input.Select as Select
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
+import View.Molecules.ProducerConfig as ProducerConfig
 import View.Style exposing (..)
 
 

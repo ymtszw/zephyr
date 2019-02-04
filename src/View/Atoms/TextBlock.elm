@@ -1,4 +1,4 @@
-module View.Atom.TextBlock exposing
+module View.Atoms.TextBlock exposing
     ( forceBreak, selectAll
     , styles, forceBreakStyle
     )
@@ -12,7 +12,7 @@ module View.Atom.TextBlock exposing
 
 import Html exposing (Attribute)
 import Html.Attributes exposing (class)
-import View.Atom.Typography as Typography
+import View.Atoms.Typography as Typography
 import View.Style exposing (..)
 
 

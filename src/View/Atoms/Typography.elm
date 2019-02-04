@@ -1,4 +1,4 @@
-module View.Atom.Typography exposing
+module View.Atoms.Typography exposing
     ( t, link, ntLink
     , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
@@ -23,8 +23,8 @@ module View.Atom.Typography exposing
 import Color exposing (Color, cssRgba)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
-import View.Atom.Layout as Layout
-import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
+import View.Atoms.Layout as Layout
+import View.Atoms.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
 

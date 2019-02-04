@@ -1,4 +1,4 @@
-module View.Atom.Border exposing
+module View.Atoms.Border exposing
     ( solid, dotted, dashed
     , w1, y1, bot1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
     , color, colorBd, colorBg, colorSub, colorNote
@@ -17,7 +17,7 @@ module View.Atom.Border exposing
 import Color exposing (Color, cssRgba)
 import Html exposing (Attribute)
 import Html.Attributes as Attributes
-import View.Atom.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
+import View.Atoms.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
 

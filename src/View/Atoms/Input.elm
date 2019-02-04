@@ -1,4 +1,4 @@
-module View.Atom.Input exposing
+module View.Atoms.Input exposing
     ( toggle
     , styles
     )
@@ -14,9 +14,9 @@ import Color exposing (cssRgba, setAlpha)
 import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Theme exposing (..)
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Theme exposing (..)
 import View.Style exposing (..)
 
 

@@ -1,4 +1,4 @@
-module View.Molecule.Icon exposing
+module View.Molecules.Icon exposing
     ( rounded20, rounded40, size20, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
@@ -20,13 +20,13 @@ import Html exposing (Attribute, Html, div, img)
 import Html.Attributes exposing (alt, class, disabled, src)
 import Html.Events exposing (onClick)
 import Octicons
-import View.Atom.Animation as Animation
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Button as Button
-import View.Atom.Image as Image
-import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (t)
+import View.Atoms.Animation as Animation
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Button as Button
+import View.Atoms.Image as Image
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Typography exposing (t)
 import View.Style exposing (..)
 
 

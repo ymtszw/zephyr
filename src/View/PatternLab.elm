@@ -12,29 +12,29 @@ import StringExtra
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
-import View.Atom.Animation as Animation
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Button as Button
-import View.Atom.Image as Image
-import View.Atom.Input as Input
-import View.Atom.Input.Select as Select
-import View.Atom.Layout exposing (..)
-import View.Atom.TextBlock exposing (forceBreak, selectAll)
-import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
-import View.Molecule.ProducerConfig as ProducerConfig
-import View.Molecule.Table as Table
-import View.Molecule.Wallpaper as Wallpaper
-import View.Organism.Config.Discord as Discord
-import View.Organism.Config.Pref as Pref
-import View.Organism.Config.Slack as Slack
-import View.Organism.Config.Status as Status
-import View.Organism.Sidebar as Sidebar
+import View.Atoms.Animation as Animation
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Button as Button
+import View.Atoms.Image as Image
+import View.Atoms.Input as Input
+import View.Atoms.Input.Select as Select
+import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (forceBreak, selectAll)
+import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
+import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Table as Table
+import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Config.Discord as Discord
+import View.Organisms.Config.Pref as Pref
+import View.Organisms.Config.Slack as Slack
+import View.Organisms.Config.Status as Status
+import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (none, px)
 import View.Stylesheet
-import View.Template.Main exposing (DragStatus(..))
+import View.Templates.Main exposing (DragStatus(..))
 
 
 main : Program () Model Msg
@@ -252,25 +252,29 @@ introduction =
             , sourceBlock """import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import View.Atom.Animation as Animation
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Button as Button
-import View.Atom.Image as Image
-import View.Atom.Input as Input
-import View.Atom.Input.Select as Select
-import View.Atom.Layout exposing (..)
-import View.Atom.TextBlock exposing (forceBreak, selectAll)
-import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
-import View.Molecule.Table as Table
-import View.Molecule.Wallpaper as Wallpaper
-import View.Organism.Config.Discord as Discord
-import View.Organism.Config.Pref as Pref
-import View.Organism.Config.Status as Status
-import View.Organism.Sidebar as Sidebar
-import View.Style exposing (none, px)"""
+import View.Atoms.Animation as Animation
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Button as Button
+import View.Atoms.Image as Image
+import View.Atoms.Input as Input
+import View.Atoms.Input.Select as Select
+import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (forceBreak, selectAll)
+import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
+import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Table as Table
+import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Config.Discord as Discord
+import View.Organisms.Config.Pref as Pref
+import View.Organisms.Config.Slack as Slack
+import View.Organisms.Config.Status as Status
+import View.Organisms.Sidebar as Sidebar
+import View.Style exposing (none, px)
+import View.Stylesheet
+import View.Templates.Main exposing (DragStatus(..))"""
             ]
         ]
 
@@ -2095,7 +2099,7 @@ mainTemplate m =
                 _ ->
                     div [ flexBasis "400px", Background.colorErr ] [ t "ITEM[PH] ", t (String.fromInt index) ]
     in
-    View.Template.Main.render mainEffects mainProps <|
+    View.Templates.Main.render mainEffects mainProps <|
         { configContents =
             { pref = div [ flexBasis "400px" ] [ t "PREFERENCE[PH]" ]
             , slack = div [ flexBasis "400px" ] [ t "SLACK[PH]" ]

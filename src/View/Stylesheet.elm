@@ -1,25 +1,25 @@
 module View.Stylesheet exposing (length, render)
 
 import Html
-import View.Atom.Animation as Animation
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Button as Button
-import View.Atom.Image as Image
-import View.Atom.Input as Input
-import View.Atom.Input.Select as Select
-import View.Atom.Layout as Layout
-import View.Atom.TextBlock as TextBlock
-import View.Atom.Typography as Typography
-import View.Molecule.Icon as Icon
-import View.Molecule.ProducerConfig as ProducerConfig
-import View.Molecule.Table as Table
-import View.Molecule.Wallpaper as Wallpaper
-import View.Organism.Config.Pref as Pref
-import View.Organism.Config.Slack as Slack
-import View.Organism.Sidebar as Sidebar
+import View.Atoms.Animation as Animation
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Button as Button
+import View.Atoms.Image as Image
+import View.Atoms.Input as Input
+import View.Atoms.Input.Select as Select
+import View.Atoms.Layout as Layout
+import View.Atoms.TextBlock as TextBlock
+import View.Atoms.Typography as Typography
+import View.Molecules.Icon as Icon
+import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Table as Table
+import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Config.Pref as Pref
+import View.Organisms.Config.Slack as Slack
+import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (..)
-import View.Template.Main
+import View.Templates.Main
 
 
 {-| Dumps all required stylesheet of the app as a single `<style>` node.
@@ -52,7 +52,7 @@ rendered =
                 ++ Sidebar.styles
                 ++ Pref.styles
                 ++ Slack.styles
-                ++ View.Template.Main.styles
+                ++ View.Templates.Main.styles
 
 
 length : Int

@@ -1,4 +1,4 @@
-module View.Template.Main exposing
+module View.Templates.Main exposing
     ( Props, Effects, Contents, DragStatus(..), render
     , styles
     )
@@ -27,15 +27,15 @@ import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
 import Octicons
-import View.Atom.Background as Background
-import View.Atom.Border as Border
-import View.Atom.Image as Image
-import View.Atom.Layout exposing (..)
-import View.Atom.Theme exposing (aubergine, oneDark, oneDarkTheme)
-import View.Atom.Typography exposing (..)
-import View.Molecule.Icon as Icon
-import View.Molecule.Wallpaper as Wallpaper
-import View.Organism.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
+import View.Atoms.Background as Background
+import View.Atoms.Border as Border
+import View.Atoms.Image as Image
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
+import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
+import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
 
 

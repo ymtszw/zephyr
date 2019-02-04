@@ -1,11 +1,11 @@
-module View.Molecule.Table exposing (Props, layoutFixed, render, styles)
+module View.Molecules.Table exposing (Props, layoutFixed, render, styles)
 
 import Html exposing (Attribute, Html, table, td, th, thead, tr)
 import Html.Attributes exposing (class)
 import Html.Keyed
-import View.Atom.Background as Background
-import View.Atom.Layout exposing (..)
-import View.Atom.Typography exposing (bold, colorNote, t)
+import View.Atoms.Background as Background
+import View.Atoms.Layout exposing (..)
+import View.Atoms.Typography exposing (bold, colorNote, t)
 import View.Style exposing (..)
 
 
