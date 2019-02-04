@@ -27,6 +27,7 @@ import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
@@ -94,6 +95,7 @@ routes =
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
     , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
     , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
+    , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -2046,6 +2048,55 @@ Slack.render
                 , teamStates = List.range 0 2 |> List.map dummyTeamState
                 , selectMsgTagger = SelectCtrl
                 , selectState = m.select
+                }
+        ]
+
+
+columnHeader : Model -> Html Msg
+columnHeader m =
+    section []
+        [ h1 [ sizeSection ] [ t "Column.Header" ]
+        , withSource "" <|
+            Header.render
+                { onDragstart = \_ _ _ -> NoOp
+                , onPinButtonClick = \_ pinned -> Toggle (not pinned)
+                , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
+                , onDismissButtonClick = always NoOp
+                }
+                0
+                { id = "DUMMYID"
+                , sources = [ Header.DiscordSource { channelName = "Channel 1", guildIcon = Just (Image.ph 40 40) } ]
+                , filters = [ "\"Elm\"", "Has Media" ]
+                , pinned = m.toggle
+                , configOpen = m.toggle
+                }
+        , withSource "" <|
+            Header.render
+                { onDragstart = \_ _ _ -> NoOp
+                , onPinButtonClick = \_ pinned -> Toggle (not pinned)
+                , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
+                , onDismissButtonClick = always NoOp
+                }
+                0
+                { id = "DUMMYID"
+                , sources = [ Header.SlackSource { convName = "Conv 1", teamIcon = Just (Image.ph 41 41) } ]
+                , filters = []
+                , pinned = m.toggle
+                , configOpen = m.toggle
+                }
+        , withSource "" <|
+            Header.render
+                { onDragstart = \_ _ _ -> NoOp
+                , onPinButtonClick = \_ pinned -> Toggle (not pinned)
+                , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
+                , onDismissButtonClick = always NoOp
+                }
+                0
+                { id = "DUMMYID"
+                , sources = []
+                , filters = [ "\"Elm\"", "Has Media" ]
+                , pinned = m.toggle
+                , configOpen = m.toggle
                 }
         ]
 
