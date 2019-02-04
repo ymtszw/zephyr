@@ -96,6 +96,8 @@ hovText =
     class hovTextClass
 
 
+{-| Used for rotating some tilted images/octicons like pin octicons.
+-}
 rotate45 : Attribute msg
 rotate45 =
     class rotate45Class

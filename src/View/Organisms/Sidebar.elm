@@ -10,8 +10,6 @@ module View.Organisms.Sidebar exposing
 
 -}
 
-import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
 import Html exposing (Html, button, div, img, nav, span)
 import Html.Attributes exposing (alt, class, src)
 import Html.Events exposing (onClick)
@@ -152,12 +150,12 @@ columnButtonFace pinned cb =
                 ( Nothing, Icon.abbr [ Icon.rounded40, serif, sizeTitle ] desc )
 
             DiscordButton opts ->
-                ( Just discordBadge
+                ( Just Icon.discordBadge14
                 , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.channelName opts.guildIcon
                 )
 
             SlackButton opts ->
-                ( Just slackBadge
+                ( Just Icon.slackBadge14
                 , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.convName opts.teamIcon
                 )
 
@@ -167,38 +165,13 @@ withPin pinned ( bottomRight, content ) =
     withBadge [ badgeOutset ]
         { topRight =
             if pinned then
-                Just pinBadge
+                Just Icon.pinBadge14
 
             else
                 Nothing
         , bottomRight = bottomRight
         , content = content
         }
-
-
-pinBadge : Html msg
-pinBadge =
-    div
-        [ class badgeClass
-        , Image.fillWarn
-        , Image.rotate45
-        ]
-        [ Image.octicon { size = badgeSize, shape = Octicons.pin } ]
-
-
-discordBadge : Html msg
-discordBadge =
-    imageBadge "Discord logo" <| Discord.defaultIconUrl (Just badgeSize)
-
-
-imageBadge : String -> String -> Html msg
-imageBadge alt_ src_ =
-    img [ class badgeClass, block, Border.round2, src src_, alt alt_ ] []
-
-
-slackBadge : Html msg
-slackBadge =
-    imageBadge "Slack logo" <| Slack.defaultIconUrl (Just badgeSize)
 
 
 otherButtons : msg -> Bool -> Html msg
@@ -285,11 +258,6 @@ styles =
         [ ( "max-height", "calc(100vh - " ++ px (3 * buttonSize + 2 * paddingY + 2 * 15 + 10) ++ ")" )
         , ( "overflow-y", "auto" )
         ]
-    , s (c badgeClass)
-        [ ( "width", px badgeSize )
-        , ( "height", px badgeSize )
-        , ( "overflow", "hidden" )
-        ]
     ]
 
 
@@ -336,16 +304,6 @@ columnButtonsClass =
 buttonSize : Int
 buttonSize =
     40
-
-
-badgeClass : String
-badgeClass =
-    "sbarbadge"
-
-
-badgeSize : Int
-badgeSize =
-    14
 
 
 octiconSize : Int
