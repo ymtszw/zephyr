@@ -10,6 +10,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
@@ -155,7 +156,7 @@ headerText : Maybe msg -> List Source -> List String -> Html msg
 headerText onHeaderClick sources filters =
     let
         baseAttrs =
-            [ flexGrow, flexColumn, spacingColumn2 ]
+            [ flexGrow, flexColumn, spacingColumn2, forceBreak ]
 
         headerClicerAttrs =
             case onHeaderClick of
