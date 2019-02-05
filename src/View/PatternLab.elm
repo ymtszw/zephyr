@@ -2058,7 +2058,9 @@ columnHeader : Model -> Html Msg
 columnHeader m =
     section []
         [ h1 [ sizeSection ] [ t "Column.Header" ]
-        , withSource """Header.render
+        , section [ oneDark ]
+            [ h2 [ sizeTitle ] [ t "oneDark" ]
+            , withSource """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2072,21 +2074,52 @@ columnHeader m =
     , pinned = m.toggle
     , configOpen = m.toggle
     }""" <|
-            Header.render
-                { onDragstart = \_ _ _ -> NoOp
-                , onHeaderClick = Nothing
-                , onPinButtonClick = \_ to -> Toggle to
-                , onConfigToggleButtonClick = \_ to -> Toggle to
-                , onDismissButtonClick = always NoOp
-                }
-                0
-                { id = "DUMMYID"
-                , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
-                , filters = [ "\"Elm\"", "Has Media" ]
-                , pinned = m.toggle
-                , configOpen = m.toggle
-                }
-        , withSource """Header.render
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
+            , withSource """Header.render
+    { onDragstart = \\_ _ _ -> NoOp
+    , onHeaderClick = Nothing
+    , onPinButtonClick = \\_ to -> Toggle to
+    , onConfigToggleButtonClick = \\_ to -> Toggle to
+    , onDismissButtonClick = always NoOp
+    }
+    0
+    { id = "DUMMYID"
+    , sources = []
+    , filters = [ "\\"Elm\\"", "Has Media" ]
+    , pinned = m.toggle
+    , configOpen = m.toggle
+    }""" <|
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources = []
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
+            ]
+        , section [ aubergine ]
+            [ h2 [ sizeTitle ] [ t "aubergine" ]
+            , withSource """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2103,51 +2136,24 @@ columnHeader m =
     , pinned = m.toggle
     , configOpen = m.toggle
     }""" <|
-            Header.render
-                { onDragstart = \_ _ _ -> NoOp
-                , onHeaderClick = Nothing
-                , onPinButtonClick = \_ to -> Toggle to
-                , onConfigToggleButtonClick = \_ to -> Toggle to
-                , onDismissButtonClick = always NoOp
-                }
-                0
-                { id = "DUMMYID"
-                , sources =
-                    [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-                    , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
-                    ]
-                , filters = [ "\"Elm\"", "Has Media" ]
-                , pinned = m.toggle
-                , configOpen = m.toggle
-                }
-        , withSource """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
-    , onPinButtonClick = \\_ to -> Toggle to
-    , onConfigToggleButtonClick = \\_ to -> Toggle to
-    , onDismissButtonClick = always NoOp
-    }
-    0
-    { id = "DUMMYID"
-    , sources = []
-    , filters = [ "\\"Elm\\"", "Has Media" ]
-    , pinned = m.toggle
-    , configOpen = m.toggle
-    }""" <|
-            Header.render
-                { onDragstart = \_ _ _ -> NoOp
-                , onHeaderClick = Nothing
-                , onPinButtonClick = \_ to -> Toggle to
-                , onConfigToggleButtonClick = \_ to -> Toggle to
-                , onDismissButtonClick = always NoOp
-                }
-                0
-                { id = "DUMMYID"
-                , sources = []
-                , filters = [ "\"Elm\"", "Has Media" ]
-                , pinned = m.toggle
-                , configOpen = m.toggle
-                }
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources =
+                        [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
+                        , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
+                        ]
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
+            ]
         ]
 
 
@@ -2155,9 +2161,28 @@ columnConfig : Model -> Html Msg
 columnConfig m =
     section []
         [ h1 [ sizeSection ] [ t "Column.Config" ]
-        , ColumnConfig.render
-            { onCloseButtonClick = Toggle False
-            }
+        , section [ oneDark ]
+            [ h2 [ sizeTitle ] [ t "oneDark" ]
+            , withSource "" <|
+                ColumnConfig.render
+                    { onCloseButtonClick = Toggle False
+                    }
+                    { id = "DUMMYID"
+                    , numItems = 1000
+                    , pinned = m.toggle
+                    }
+            ]
+        , section [ aubergine ]
+            [ h2 [ sizeTitle ] [ t "aubergine" ]
+            , withSource "" <|
+                ColumnConfig.render
+                    { onCloseButtonClick = Toggle False
+                    }
+                    { id = "DUMMYID"
+                    , numItems = 1000
+                    , pinned = m.toggle
+                    }
+            ]
         ]
 
 
