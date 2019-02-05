@@ -27,6 +27,7 @@ import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
@@ -2154,6 +2155,9 @@ columnConfig : Model -> Html Msg
 columnConfig m =
     section []
         [ h1 [ sizeSection ] [ t "Column.Config" ]
+        , ColumnConfig.render
+            { onCloseButtonClick = Toggle False
+            }
         ]
 
 
@@ -2175,16 +2179,16 @@ mainTemplate m =
                     vc index =
                         case modBy 4 index of
                             0 ->
-                                { dragStatus = Settled }
+                                { configOpen = m.toggle, dragStatus = Settled }
 
                             1 ->
-                                { dragStatus = Undroppable }
+                                { configOpen = not m.toggle, dragStatus = Undroppable }
 
                             2 ->
-                                { dragStatus = Droppable }
+                                { configOpen = m.toggle, dragStatus = Droppable }
 
                             _ ->
-                                { dragStatus = Grabbed }
+                                { configOpen = not m.toggle, dragStatus = Grabbed }
                 in
                 List.map vc (List.range 0 m.numColumns)
             }
@@ -2212,20 +2216,8 @@ mainTemplate m =
             }
         , columnContents =
             { header = \index _ -> div [ sizeTitle, flexBasis "40px" ] [ t "HEADER[PH] ", t (String.fromInt index) ]
-            , config =
-                \_ _ ->
-                    if m.toggle then
-                        div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
-
-                    else
-                        none
-            , newMessageEditor =
-                \_ ->
-                    if m.toggle then
-                        div [ flexBasis "150px" ] [ t "MESSAGE EDITOR[PH]" ]
-
-                    else
-                        none
+            , config = \_ _ -> div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
+            , newMessageEditor = \_ -> div [ flexBasis "50px" ] [ t "MESSAGE EDITOR[PH]" ]
             , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
             }
         }

@@ -4,7 +4,7 @@ import Html exposing (Html, div)
 
 
 type alias Effects msg =
-    { onConfigCloseButtonClick : msg
+    { onCloseButtonClick : msg
     }
 
 

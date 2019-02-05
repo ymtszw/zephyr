@@ -42,7 +42,14 @@ import View.Style exposing (..)
 type alias Props c =
     { sidebarProps : Sidebar.Props
     , configDrawerIsOpen : Bool
-    , visibleColumns : List { c | dragStatus : DragStatus }
+    , visibleColumns : List (VisibleColumn c)
+    }
+
+
+type alias VisibleColumn c =
+    { c
+        | dragStatus : DragStatus
+        , configOpen : Bool
     }
 
 
@@ -77,10 +84,10 @@ type alias ConfigContents msg =
 
 
 type alias ColumnContents c msg =
-    { header : Int -> { c | dragStatus : DragStatus } -> Html msg
-    , config : Int -> { c | dragStatus : DragStatus } -> Html msg
-    , newMessageEditor : { c | dragStatus : DragStatus } -> Html msg
-    , items : { c | dragStatus : DragStatus } -> Html msg
+    { header : Int -> VisibleColumn c -> Html msg
+    , config : Int -> VisibleColumn c -> Html msg
+    , newMessageEditor : VisibleColumn c -> Html msg
+    , items : VisibleColumn c -> Html msg
     }
 
 
@@ -184,7 +191,7 @@ statusTitle =
 
 columnContainer :
     Effects msg
-    -> List { c | dragStatus : DragStatus }
+    -> List (VisibleColumn c)
     -> ColumnContents c msg
     -> Html msg
 columnContainer eff visibleColumns contents =
@@ -207,7 +214,7 @@ columnWrapperKey :
     Effects msg
     -> ColumnContents c msg
     -> Int
-    -> { c | dragStatus : DragStatus }
+    -> VisibleColumn c
     -> ( String, Html msg )
 columnWrapperKey eff contents index c =
     let
@@ -243,7 +250,11 @@ columnWrapperKey eff contents index c =
     Tuple.pair ("column_" ++ String.fromInt index) <|
         div (staticAttrs ++ dragHandlers)
             [ contents.header index c
-            , contents.config index c
+            , if c.configOpen then
+                contents.config index c
+
+              else
+                none
             , contents.newMessageEditor c
             , div
                 [ class itemsWrapperClass
