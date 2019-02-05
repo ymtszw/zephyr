@@ -56,10 +56,10 @@ render eff index column =
             innerAttrs =
                 -- Rotate inner contents, not the button itself, to keep the clickable area stable
                 if column.pinned then
-                    [ Image.fillWarn, Image.rotate45 ]
+                    [ class pinButtonClass, Image.fillWarn, Image.rotate45 ]
 
                 else
-                    []
+                    [ class pinButtonClass ]
           in
           button
             [ flexItem
@@ -208,4 +208,9 @@ headlineSize =
 
 styles : List Style
 styles =
-    []
+    [ s (c pinButtonClass) [ ( "transition", "transform 0.2s" ) ] ]
+
+
+pinButtonClass : String
+pinButtonClass =
+    "pinbtn"
