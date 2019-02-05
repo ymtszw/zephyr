@@ -2154,34 +2154,31 @@ mainTemplate m =
     let
         mainEffects =
             { sidebarEffects = dummySidebarEffects m.toggle
-            , columnCtnrEffects =
-                { columnDragEnd = NoOp
-                , columnDragStart = \_ _ -> NoOp
-                , columnDragEnter = \_ -> NoOp
-                , columnDragOver = NoOp
-                }
+            , columnDragEnd = NoOp
+            , columnDragEnter = \_ -> NoOp
+            , columnDragOver = NoOp
             }
 
         mainProps =
             { sidebarProps = dummySidebarProps m.toggle m.numColumns
             , configDrawerIsOpen = m.toggle
-            , columnCtnrProps =
-                { visibleColumns = List.repeat m.numColumns ()
-                , dragStatus =
-                    \index _ ->
+            , visibleColumns =
+                let
+                    vc index =
                         case modBy 4 index of
                             0 ->
-                                Settled
+                                { dragStatus = Settled }
 
                             1 ->
-                                Undroppable
+                                { dragStatus = Undroppable }
 
                             2 ->
-                                Droppable
+                                { dragStatus = Droppable }
 
                             _ ->
-                                Grabbed
-                }
+                                { dragStatus = Grabbed }
+                in
+                List.map vc (List.range 0 m.numColumns)
             }
 
         dummyItem index =
@@ -2206,7 +2203,7 @@ mainTemplate m =
             , status = div [ flexBasis "400px" ] [ t "STATUS[PH]" ]
             }
         , columnContents =
-            { header = \index _ -> div [ sizeTitle ] [ t "HEADER[PH] ", t (String.fromInt index) ]
+            { header = \index _ -> div [ sizeTitle, flexBasis "40px" ] [ t "HEADER[PH] ", t (String.fromInt index) ]
             , config =
                 \_ _ ->
                     if m.toggle then
