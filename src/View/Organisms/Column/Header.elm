@@ -1,6 +1,6 @@
-module View.Organisms.Column.Header exposing (Effects, Source(..), render, styles)
+module View.Organisms.Column.Header exposing (Effects, render, styles)
 
-import Html exposing (Attribute, Html, button, div, span)
+import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick)
 import Json.Decode exposing (succeed)
@@ -13,6 +13,7 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source as Source exposing (Source(..))
 import View.Style exposing (..)
 
 
@@ -23,11 +24,6 @@ type alias Effects msg =
     , onConfigToggleButtonClick : String -> Bool -> msg
     , onDismissButtonClick : Int -> msg
     }
-
-
-type Source
-    = DiscordSource { channelName : String, guildIcon : Maybe String }
-    | SlackSource { convName : String, teamIcon : Maybe String, isPrivate : Bool }
 
 
 render :
@@ -134,24 +130,7 @@ sourceIcon sources =
             Icon.abbr [ Icon.rounded30, serif, sizeTitle ] "Zephyr"
 
         s :: _ ->
-            let
-                ( bottomRight, content ) =
-                    case s of
-                        DiscordSource opts ->
-                            ( Icon.discordBadge14
-                            , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.channelName opts.guildIcon
-                            )
-
-                        SlackSource opts ->
-                            ( Icon.slackBadge14
-                            , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.convName opts.teamIcon
-                            )
-            in
-            withBadge [ badgeOutset ]
-                { topRight = Nothing
-                , bottomRight = Just bottomRight
-                , content = content
-                }
+            Source.badgedIcon30 s
 
 
 headerText : Maybe msg -> List Source -> List String -> Html msg
@@ -172,9 +151,6 @@ headerText onHeaderClick sources filters =
 
         mainText =
             div [ bold, sizeHeadline ]
-
-        sourcesToMain =
-            List.map sourceText >> List.intersperse [ t ", " ] >> List.concat
     in
     div (baseAttrs ++ headerClicerAttrs) <|
         case ( sources, filters ) of
@@ -182,31 +158,15 @@ headerText onHeaderClick sources filters =
                 [ mainText [ t "New Column" ] ]
 
             ( _, [] ) ->
-                [ mainText (sourcesToMain sources) ]
+                [ mainText (Source.concatInline headlineSize sources) ]
 
             ( [], _ ) ->
                 [ mainText [ t (String.join ", " filters) ] ]
 
             ( _, _ ) ->
-                [ mainText (sourcesToMain sources)
+                [ mainText (Source.concatInline headlineSize sources)
                 , div [ colorNote ] [ t (String.join ", " filters) ]
                 ]
-
-
-sourceText : Source -> List (Html msg)
-sourceText source =
-    case source of
-        DiscordSource { channelName } ->
-            [ t ("#" ++ channelName) ]
-
-        SlackSource { convName, isPrivate } ->
-            [ if isPrivate then
-                span [ Image.fillText ] [ Image.octicon { size = headlineSize, shape = Octicons.lock } ]
-
-              else
-                t "#"
-            , t convName
-            ]
 
 
 headlineSize : Int

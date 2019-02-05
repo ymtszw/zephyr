@@ -34,6 +34,7 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
@@ -50,6 +51,7 @@ type alias VisibleColumn c =
     { c
         | dragStatus : DragStatus
         , configOpen : Bool
+        , sources : List Source
     }
 
 
@@ -226,6 +228,12 @@ columnWrapperKey eff contents index c =
             , Border.solid
             , Border.colorBg
             , Background.colorMain
+            , case c.sources of
+                (SlackSource _) :: _ ->
+                    aubergine
+
+                _ ->
+                    noAttr
             ]
 
         dragHandlers =

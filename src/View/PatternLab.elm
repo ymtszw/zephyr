@@ -25,6 +25,7 @@ import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source as Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
@@ -91,6 +92,7 @@ routes =
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
+    , R "source" "Molecules" "Source" <| pLab [ source_ ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
@@ -1644,6 +1646,87 @@ producerConfig m =
         ]
 
 
+source_ : Html Msg
+source_ =
+    section []
+        [ h1 [ sizeSection ] [ t "Source" ]
+        , section []
+            [ h2 [ sizeTitle ] [ t "inline" ]
+            , withSource """div [ sizeHeadline ] <|
+    Source.inline 15 <|
+        DiscordSource { channelName = "Channel1", guildIcon = Nothing }""" <|
+                div [ sizeHeadline ] <|
+                    Source.inline 15 <|
+                        DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+            , withSource """div [ sizeHeadline ] <|
+    Source.inline 15 <|
+        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }""" <|
+                div [ sizeHeadline ] <|
+                    Source.inline 15 <|
+                        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
+            , withSource """div [ sizeHeadline ] <|
+    Source.inline 15 <|
+        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }""" <|
+                div [ sizeHeadline ] <|
+                    Source.inline 15 <|
+                        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }
+            ]
+        , section []
+            [ h2 [ sizeTitle ] [ t "concatInline" ]
+            , withSource """div [ sizeHeadline ] <|
+    Source.concatInline 15
+        [ DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+        , DiscordSource { channelName = "Channel2", guildIcon = Nothing }
+        , SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }
+        ]""" <|
+                div [ sizeHeadline ] <|
+                    Source.concatInline 15
+                        [ DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+                        , DiscordSource { channelName = "Channel2", guildIcon = Nothing }
+                        , SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }
+                        ]
+            ]
+        , section []
+            [ h2 [ sizeTitle ] [ t "badgedIcon20" ]
+            , withSource """Source.badgedIcon20 <|
+    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 20 20) }""" <|
+                Source.badgedIcon20 <|
+                    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 20 20) }
+            , withSource """Source.badgedIcon20 <|
+    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 21 21), isPrivate = False }""" <|
+                Source.badgedIcon20 <|
+                    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 21 21), isPrivate = False }
+            , withSource """Source.badgedIcon20 <|
+    DiscordSource { channelName = "Channel1", guildIcon = Nothing }""" <|
+                Source.badgedIcon20 <|
+                    DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+            , withSource """Source.badgedIcon20 <|
+    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }""" <|
+                Source.badgedIcon20 <|
+                    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
+            ]
+        , section []
+            [ h2 [ sizeTitle ] [ t "badgedIcon30" ]
+            , withSource """Source.badgedIcon30 <|
+    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 30 30) }""" <|
+                Source.badgedIcon30 <|
+                    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 30 30) }
+            , withSource """Source.badgedIcon30 <|
+    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 31 31), isPrivate = False }""" <|
+                Source.badgedIcon30 <|
+                    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 31 31), isPrivate = False }
+            , withSource """Source.badgedIcon30 <|
+    DiscordSource { channelName = "Channel1", guildIcon = Nothing }""" <|
+                Source.badgedIcon30 <|
+                    DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+            , withSource """Source.badgedIcon30 <|
+    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }""" <|
+                Source.badgedIcon30 <|
+                    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
+            ]
+        ]
+
+
 sidebar : Model -> Html Msg
 sidebar m =
     section []
@@ -2069,7 +2152,7 @@ columnHeader m =
     }
     0
     { id = "DUMMYID"
-    , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
+    , sources = [ DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
@@ -2083,7 +2166,7 @@ columnHeader m =
                     }
                     0
                     { id = "DUMMYID"
-                    , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
+                    , sources = [ DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
@@ -2129,8 +2212,8 @@ columnHeader m =
     0
     { id = "DUMMYID"
     , sources =
-        [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-        , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
+        [ SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
+        , DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
         ]
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
@@ -2146,8 +2229,8 @@ columnHeader m =
                     0
                     { id = "DUMMYID"
                     , sources =
-                        [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-                        , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
+                        [ SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
+                        , DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
                         ]
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
