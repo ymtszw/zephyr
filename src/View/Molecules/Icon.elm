@@ -1,21 +1,23 @@
 module View.Molecules.Icon exposing
-    ( rounded20, rounded40, size20, size40
+    ( rounded20, rounded30, rounded40, size20, size30, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
-    , rehydrateButton
+    , rehydrateButton, pinBadge14, discordBadge14, slackBadge14
     , styles
     )
 
 {-| Icon Molecules.
 
-@docs rounded20, rounded40, size20, size40
+@docs rounded20, rounded30, rounded40, size20, size30, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
-@docs rehydrateButton
+@docs rehydrateButton, pinBadge14, discordBadge14, slackBadge14
 @docs styles
 
 -}
 
+import Data.Producer.Discord as Discord
+import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div, img)
 import Html.Attributes exposing (alt, class, disabled, src)
 import Html.Events exposing (onClick)
@@ -37,6 +39,13 @@ rounded20 =
     class rounded20Class
 
 
+{-| Border-rounded 30x30 sized icon. Widely used.
+-}
+rounded30 : Attribute msg
+rounded30 =
+    class rounded30Class
+
+
 {-| Border-rounded 40x40 sized icon. Widely used.
 -}
 rounded40 : Attribute msg
@@ -49,6 +58,13 @@ rounded40 =
 size20 : Maybe Int
 size20 =
     Just rounded20Size
+
+
+{-| Constant of `Just 30`, should be inserted to CDN APIs.
+-}
+size30 : Maybe Int
+size30 =
+    Just rounded30Size
 
 
 {-| Constant of `Just 40`, should be inserted to CDN APIs.
@@ -137,6 +153,31 @@ rehydrateButton onPress rehydrating =
         }
 
 
+pinBadge14 : Html msg
+pinBadge14 =
+    div
+        [ class rounded14Class
+        , Image.fillWarn
+        , Image.rotate45
+        ]
+        [ Image.octicon { size = rounded14Size, shape = Octicons.pin } ]
+
+
+discordBadge14 : Html msg
+discordBadge14 =
+    imageBadge14 "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
+
+
+imageBadge14 : String -> String -> Html msg
+imageBadge14 alt_ src_ =
+    img [ class rounded14Class, src src_, alt alt_ ] []
+
+
+slackBadge14 : Html msg
+slackBadge14 =
+    imageBadge14 "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+
+
 
 -- STYLES
 
@@ -149,9 +190,21 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
+    , s (c rounded14Class)
+        [ ( "width", px rounded14Size )
+        , ( "height", px rounded14Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
     , s (c rounded20Class)
         [ ( "width", px rounded20Size )
         , ( "height", px rounded20Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
+    , s (c rounded30Class)
+        [ ( "width", px rounded30Size )
+        , ( "height", px rounded30Size )
         , ( "flex-basis", "auto" )
         ]
         |> inject Border.round2Style
@@ -169,14 +222,14 @@ iconClass =
     "icon"
 
 
-rounded40Class : String
-rounded40Class =
-    "iconr40"
+rounded14Class : String
+rounded14Class =
+    "iconr14"
 
 
-rounded40Size : Int
-rounded40Size =
-    40
+rounded14Size : Int
+rounded14Size =
+    14
 
 
 rounded20Class : String
@@ -187,3 +240,23 @@ rounded20Class =
 rounded20Size : Int
 rounded20Size =
     20
+
+
+rounded30Class : String
+rounded30Class =
+    "iconr30"
+
+
+rounded30Size : Int
+rounded30Size =
+    30
+
+
+rounded40Class : String
+rounded40Class =
+    "iconr40"
+
+
+rounded40Size : Int
+rounded40Size =
+    40

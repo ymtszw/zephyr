@@ -4,11 +4,9 @@ module View.TextRenderer exposing (render)
 -}
 
 import Data.ColorTheme exposing (ColorTheme)
-import Element exposing (Color)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Lazy exposing (..)
-import Json.Encode
 import Markdown.Block as Block exposing (Block(..), ListBlock)
 import Markdown.Inline as Inline exposing (Inline(..))
 import Octicons

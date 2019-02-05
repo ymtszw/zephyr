@@ -22,7 +22,7 @@ import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div, h2, img, span)
-import Html.Attributes exposing (alt, class, draggable, id, src)
+import Html.Attributes exposing (alt, class, id, src)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
@@ -42,14 +42,7 @@ import View.Style exposing (..)
 type alias Props c =
     { sidebarProps : Sidebar.Props
     , configDrawerIsOpen : Bool
-    , columnCtnrProps : ColumnContainerProps c
-    }
-
-
-type alias ColumnContainerProps c =
-    { visibleColumns : List c
-    , -- Int is index, which is not a strict dependency, but exists for PatterLab
-      dragStatus : Int -> c -> DragStatus
+    , visibleColumns : List { c | dragStatus : DragStatus }
     }
 
 
@@ -60,15 +53,10 @@ type DragStatus
     | Settled
 
 
-type alias Effects c msg =
+type alias Effects msg =
     { sidebarEffects : Sidebar.Effects msg
-    , columnCtnrEffects : ColumnContainerEffects c msg
-    }
-
-
-type alias ColumnContainerEffects c msg =
-    { columnDragEnd : msg
-    , columnDragStart : Int -> c -> msg
+    , -- DragStart is handled in Organisms.Column.Header
+      columnDragEnd : msg
     , columnDragOver : msg
     , columnDragEnter : Int -> msg
     }
@@ -89,20 +77,20 @@ type alias ConfigContents msg =
 
 
 type alias ColumnContents c msg =
-    { header : Int -> c -> Html msg
-    , config : Int -> c -> Html msg
-    , newMessageEditor : c -> Html msg
-    , items : c -> Html msg
+    { header : Int -> { c | dragStatus : DragStatus } -> Html msg
+    , config : Int -> { c | dragStatus : DragStatus } -> Html msg
+    , newMessageEditor : { c | dragStatus : DragStatus } -> Html msg
+    , items : { c | dragStatus : DragStatus } -> Html msg
     }
 
 
-render : Effects c msg -> Props c -> Contents c msg -> List (Html msg)
-render eff p contents =
+render : Effects msg -> Props c -> Contents c msg -> List (Html msg)
+render eff props contents =
     -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
-    , columnContainer eff.columnCtnrEffects p.columnCtnrProps contents.columnContents
-    , configDrawer p.configDrawerIsOpen contents.configContents
-    , Sidebar.render eff.sidebarEffects p.sidebarProps
+    , columnContainer eff props.visibleColumns contents.columnContents
+    , configDrawer props.configDrawerIsOpen contents.configContents
+    , Sidebar.render eff.sidebarEffects props.sidebarProps
     ]
 
 
@@ -195,11 +183,11 @@ statusTitle =
 
 
 columnContainer :
-    ColumnContainerEffects c msg
-    -> ColumnContainerProps c
+    Effects msg
+    -> List { c | dragStatus : DragStatus }
     -> ColumnContents c msg
     -> Html msg
-columnContainer eff p contents =
+columnContainer eff visibleColumns contents =
     Html.Keyed.node "div"
         [ class columnCtnrClass
         , id columnAreaParentId
@@ -207,7 +195,7 @@ columnContainer eff p contents =
         , oneDark
         , on "dragend" (succeed eff.columnDragEnd)
         ]
-        (List.indexedMap (columnWrapperKey p.dragStatus eff contents) p.visibleColumns)
+        (List.indexedMap (columnWrapperKey eff contents) visibleColumns)
 
 
 columnAreaParentId : String
@@ -216,13 +204,12 @@ columnAreaParentId =
 
 
 columnWrapperKey :
-    (Int -> c -> DragStatus)
-    -> ColumnContainerEffects c msg
+    Effects msg
     -> ColumnContents c msg
     -> Int
-    -> c
+    -> { c | dragStatus : DragStatus }
     -> ( String, Html msg )
-columnWrapperKey dragStatus eff contents index c =
+columnWrapperKey eff contents index c =
     let
         staticAttrs =
             [ class columnWrapperClass
@@ -235,7 +222,7 @@ columnWrapperKey dragStatus eff contents index c =
             ]
 
         dragHandlers =
-            case dragStatus index c of
+            case c.dragStatus of
                 Grabbed ->
                     [ class grabbedClass
                     , preventDefaultOn "dragover" (succeed ( eff.columnDragOver, True ))
@@ -255,7 +242,7 @@ columnWrapperKey dragStatus eff contents index c =
     in
     Tuple.pair ("column_" ++ String.fromInt index) <|
         div (staticAttrs ++ dragHandlers)
-            [ header (eff.columnDragStart index c) (contents.header index c)
+            [ contents.header index c
             , contents.config index c
             , contents.newMessageEditor c
             , div
@@ -265,34 +252,6 @@ columnWrapperKey dragStatus eff contents index c =
                 ]
                 [ contents.items c ]
             ]
-
-
-header : msg -> Html msg -> Html msg
-header onDragstart content =
-    div
-        [ class headerClass
-        , flexBasisAuto
-        , flexRow
-        , spacingRow2
-        , Background.colorSub
-        ]
-        [ grabber onDragstart
-        , div [ flexGrow ] [ content ]
-        ]
-
-
-grabber : msg -> Html msg
-grabber onDragstart =
-    div
-        [ class grabberClass
-        , flexBasisAuto
-        , draggable "true"
-        , on "dragstart" (succeed onDragstart)
-        ]
-        [ Octicons.defaultOptions
-            |> Octicons.height headerHeight
-            |> Octicons.kebabVertical
-        ]
 
 
 styles : List Style
@@ -335,17 +294,13 @@ styles =
         , ( "overflow-y", "auto" )
         , ( "transition", "all 0.15s" )
         ]
-    , s (c headerClass) [ ( "height", px headerHeight ) ]
-    , s (c grabberClass) [ ( "cursor", "all-scroll" ) ]
     , s (c grabbedClass)
         [ ( "transform", "scale(0.98)" )
         , ( "box-shadow", "0px 0px 20px 10px " ++ cssRgba oneDarkTheme.prim )
         ]
     , s (c droppableClass) [ ( "transform", "scale(0.98)" ) ]
     , s (c undroppableClass) [ ( "opacity", "0.2" ) ]
-    , s (c itemsWrapperClass)
-        [ ( "overflow-y", "auto" )
-        ]
+    , s (c itemsWrapperClass) [ ( "overflow-y", "auto" ) ]
     ]
 
 
@@ -392,21 +347,6 @@ columnWrapperClass =
 columnWidth : Int
 columnWidth =
     350
-
-
-headerClass : String
-headerClass =
-    "chdr"
-
-
-headerHeight : Int
-headerHeight =
-    40
-
-
-grabberClass : String
-grabberClass =
-    "cgrbbr"
 
 
 grabbedClass : String

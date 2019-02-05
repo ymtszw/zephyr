@@ -5,6 +5,7 @@ import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Button as Button
+import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
@@ -15,6 +16,7 @@ import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
 import View.Organisms.Sidebar as Sidebar
@@ -45,6 +47,7 @@ rendered =
                 ++ Layout.styles
                 ++ Image.styles
                 ++ Animation.styles
+                ++ Cursor.styles
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Table.styles
@@ -52,6 +55,7 @@ rendered =
                 ++ Sidebar.styles
                 ++ Pref.styles
                 ++ Slack.styles
+                ++ Header.styles
                 ++ View.Templates.Main.styles
 
 

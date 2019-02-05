@@ -1,13 +1,13 @@
 module View.Atoms.Background exposing
     ( colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
-    , hovSub
+    , hovSub, hovBd
     , styles, oneDarkMainStyle, aubergineMainStyle
     )
 
 {-| Background Atoms.
 
 @docs colorBg, colorMain, colorSub, colorText, colorNote, colorPrim, colorSucc, colorWarn, colorErr, transparent
-@docs hovSub
+@docs hovSub, hovBd
 @docs styles, oneDarkMainStyle, aubergineMainStyle
 
 -}
@@ -78,6 +78,11 @@ hovSub =
     class hovSubClass
 
 
+hovBd : Attribute msg
+hovBd =
+    class hovBdClass
+
+
 
 -- Styles
 
@@ -96,6 +101,7 @@ styles =
     , bg oneDarkClass colorWarnClass oneDarkTheme.warn
     , bg oneDarkClass colorErrClass oneDarkTheme.err
     , hovBg oneDarkClass hovSubClass oneDarkTheme.sub
+    , hovBg oneDarkClass hovBdClass oneDarkTheme.bd
     , scoped (c oneDarkClass) (c transparentClass) [ ( "background-color", "transparent" ) ]
     , aubergineMainStyle
     , bg aubergineClass colorBgClass aubergineTheme.bg
@@ -108,6 +114,7 @@ styles =
     , bg aubergineClass colorWarnClass aubergineTheme.warn
     , bg aubergineClass colorErrClass aubergineTheme.err
     , hovBg aubergineClass hovSubClass aubergineTheme.sub
+    , hovBg aubergineClass hovBdClass aubergineTheme.bd
     , scoped (c aubergineClass) (c transparentClass) [ ( "background-color", "transparent" ) ]
     ]
 
@@ -185,3 +192,8 @@ hovBg themeClass modeClass color =
 hovSubClass : String
 hovSubClass =
     "bghovsub"
+
+
+hovBdClass : String
+hovBdClass =
+    "bghovbd"
