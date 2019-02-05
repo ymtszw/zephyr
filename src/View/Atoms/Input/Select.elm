@@ -357,7 +357,6 @@ optionRowKey opts ( optionKey, option ) =
 styles : List Style
 styles =
     [ s_ (c selectClass) [ ( "max-width", "50vw" ) ] -- Global maximum width for select
-    , s_ (c headerClass) [ ( "cursor", "pointer" ) ]
     , s_ (c headerTextClass)
         [ ( "white-space", "nowrap" )
         , ( "overflow", "hidden" )
@@ -413,11 +412,6 @@ themedStyles themeClass theme =
 selectClass : String
 selectClass =
     "sl"
-
-
-headerClass : String
-headerClass =
-    "slhead"
 
 
 headerTextClass : String
