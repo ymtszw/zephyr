@@ -1,5 +1,5 @@
 module View.Molecules.Icon exposing
-    ( rounded20, rounded40, size20, size40
+    ( rounded20, rounded30, rounded40, size20, size30, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
     , rehydrateButton, pinBadge14, discordBadge14, slackBadge14
@@ -8,7 +8,7 @@ module View.Molecules.Icon exposing
 
 {-| Icon Molecules.
 
-@docs rounded20, rounded40, size20, size40
+@docs rounded20, rounded30, rounded40, size20, size30, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
 @docs rehydrateButton, pinBadge14, discordBadge14, slackBadge14
@@ -39,6 +39,13 @@ rounded20 =
     class rounded20Class
 
 
+{-| Border-rounded 30x30 sized icon. Widely used.
+-}
+rounded30 : Attribute msg
+rounded30 =
+    class rounded30Class
+
+
 {-| Border-rounded 40x40 sized icon. Widely used.
 -}
 rounded40 : Attribute msg
@@ -51,6 +58,13 @@ rounded40 =
 size20 : Maybe Int
 size20 =
     Just rounded20Size
+
+
+{-| Constant of `Just 30`, should be inserted to CDN APIs.
+-}
+size30 : Maybe Int
+size30 =
+    Just rounded30Size
 
 
 {-| Constant of `Just 40`, should be inserted to CDN APIs.
@@ -188,6 +202,12 @@ styles =
         , ( "flex-basis", "auto" )
         ]
         |> inject Border.round2Style
+    , s (c rounded30Class)
+        [ ( "width", px rounded30Size )
+        , ( "height", px rounded30Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
     , s (c rounded40Class)
         [ ( "width", px rounded40Size )
         , ( "height", px rounded40Size )
@@ -220,6 +240,16 @@ rounded20Class =
 rounded20Size : Int
 rounded20Size =
     20
+
+
+rounded30Class : String
+rounded30Class =
+    "iconr30"
+
+
+rounded30Size : Int
+rounded30Size =
+    30
 
 
 rounded40Class : String
