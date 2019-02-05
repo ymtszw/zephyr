@@ -27,8 +27,9 @@ import Json.DecodeExtra exposing (when)
 import Octicons
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
+import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
-import View.Atoms.Layout as Layout
+import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (Theme, aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
@@ -234,18 +235,18 @@ render userAttrs opts =
 header : msg -> Options a msg -> Html msg
 header onPress opts =
     div
-        [ class headerClass
-        , Layout.flexRow
-        , Layout.flexCenter
+        [ flexRow
+        , flexCenter
         , headerPadding opts.thin
-        , Layout.spacingRow2
+        , spacingRow2
         , Border.round5
         , Background.colorNote
+        , Cursor.pointer
         , stopPropagationOn "click" (succeed ( onPress, True ))
         , onEnterKeyDown onPress
         , tabindex 0
         ]
-        [ div [ class headerTextClass, Layout.flexGrow ]
+        [ div [ class headerTextClass, flexGrow ]
             [ Maybe.withDefault (text "Select...") (Maybe.map opts.optionHtml opts.selectedOption) ]
         , div [ class headerChevronClass, Border.rightRound5, Background.colorSub ]
             [ Image.octicon { size = headerChevronSize, shape = Octicons.chevronDown } ]
@@ -263,7 +264,7 @@ headerPadding thin =
         noAttr
 
     else
-        Layout.padding5
+        padding5
 
 
 optionsWithFilter : Bool -> Options a msg -> Html msg
@@ -291,8 +292,8 @@ optionFilter opts =
                 , class optionFilterClass
                 , placeholder "Filter"
                 , onInput (opts.msgTagger << FilterInput)
-                , Layout.widthFill
-                , Layout.padding2
+                , widthFill
+                , padding2
                 , Border.y1
                 , Border.solid
                 , Background.colorNote
@@ -312,7 +313,7 @@ optionFilter opts =
 
 optionList : Options a msg -> Html msg
 optionList opts =
-    Html.Keyed.node "div" [ class optionListClass, Layout.flexColumn ] <|
+    Html.Keyed.node "div" [ class optionListClass, flexColumn ] <|
         List.map (optionRowKey opts) <|
             case ( opts.state, opts.filterMatch ) of
                 ( Open { filterSettled }, Just matcher ) ->
@@ -335,7 +336,7 @@ optionRowKey opts ( optionKey, option ) =
     Tuple.pair optionKey <|
         div
             [ class optionRowClass
-            , Layout.flexItem
+            , flexItem
             , attribute "role" "option"
             , tabindex 0
             , stopPropagationOn "click" (succeed ( onSelect, True ))

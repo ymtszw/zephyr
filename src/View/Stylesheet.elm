@@ -5,6 +5,7 @@ import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Button as Button
+import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
@@ -46,6 +47,7 @@ rendered =
                 ++ Layout.styles
                 ++ Image.styles
                 ++ Animation.styles
+                ++ Cursor.styles
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Table.styles
