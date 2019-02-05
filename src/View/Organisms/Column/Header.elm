@@ -52,6 +52,11 @@ render eff index column =
         ]
         [ grabbableIcon (eff.onDragstart column.pinned index column.id) column
         , headerText eff.onHeaderClick column.sources column.filters
+        , if column.pinned then
+            none
+
+          else
+            headerButton [ Image.hovSucc ] (eff.onDismissButtonClick index) Octicons.check
         , let
             innerAttrs =
                 -- Rotate inner contents, not the button itself, to keep the clickable area stable
