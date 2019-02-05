@@ -74,6 +74,7 @@ render eff index column =
             , Image.hovWarn
             , Border.round2
             , Background.transparent
+            , Background.hovBd
             , onClick (eff.onPinButtonClick column.id (not column.pinned))
             ]
             [ div innerAttrs [ Image.octicon { size = octiconSize, shape = Octicons.pin } ] ]
@@ -99,6 +100,7 @@ headerButton attrs onPress shape =
             , noPadding
             , Border.round2
             , Background.transparent
+            , Background.hovBd
             ]
     in
     Icon.octiconButton (baseAttrs ++ attrs)
