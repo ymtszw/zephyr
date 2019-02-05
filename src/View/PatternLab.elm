@@ -2059,13 +2059,14 @@ columnHeader m =
         , withSource "" <|
             Header.render
                 { onDragstart = \_ _ _ -> NoOp
+                , onHeaderClick = Nothing
                 , onPinButtonClick = \_ pinned -> Toggle (not pinned)
                 , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
                 , onDismissButtonClick = always NoOp
                 }
                 0
                 { id = "DUMMYID"
-                , sources = [ Header.DiscordSource { channelName = "Channel 1", guildIcon = Just (Image.ph 40 40) } ]
+                , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
                 , filters = [ "\"Elm\"", "Has Media" ]
                 , pinned = m.toggle
                 , configOpen = m.toggle
@@ -2073,13 +2074,17 @@ columnHeader m =
         , withSource "" <|
             Header.render
                 { onDragstart = \_ _ _ -> NoOp
+                , onHeaderClick = Nothing
                 , onPinButtonClick = \_ pinned -> Toggle (not pinned)
                 , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
                 , onDismissButtonClick = always NoOp
                 }
                 0
                 { id = "DUMMYID"
-                , sources = [ Header.SlackSource { convName = "Conv 1", teamIcon = Just (Image.ph 41 41) } ]
+                , sources =
+                    [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
+                    , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
+                    ]
                 , filters = []
                 , pinned = m.toggle
                 , configOpen = m.toggle
@@ -2087,6 +2092,7 @@ columnHeader m =
         , withSource "" <|
             Header.render
                 { onDragstart = \_ _ _ -> NoOp
+                , onHeaderClick = Nothing
                 , onPinButtonClick = \_ pinned -> Toggle (not pinned)
                 , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
                 , onDismissButtonClick = always NoOp
