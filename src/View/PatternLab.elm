@@ -1799,19 +1799,25 @@ configPref m =
         [ h1 [ sizeSection ] [ t "Config.Pref" ]
         , withSource """let
     dummyShadowColumn index =
-        case modBy 3 index of
-            0 ->
-                ( { id = String.fromInt index, description = "Zephyr" }, Pref.FallbackSC )
+        { id = String.fromInt index
+        , sources =
+            case modBy 3 index of
+                0 ->
+                    []
 
-            1 ->
-                ( { id = String.fromInt index, description = "#Discord" }
-                , Pref.DiscordSC { mainChannelName = "Discord", guildIcon = Just (Image.ph 48 48) }
-                )
+                1 ->
+                    [ DiscordSource { channelName = "Discord Channel", guildIcon = Just (Image.ph 20 20) } ]
 
-            _ ->
-                ( { id = String.fromInt index, description = "#Slack" }
-                , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
-                )
+                _ ->
+                    [ SlackSource { convName = "Slack Conversation", teamIcon = Just (Image.ph 21 21), isPrivate = True } ]
+        , filters =
+            case modBy 2 index of
+                0 ->
+                    []
+
+                _ ->
+                    [ "\\"Elm\\"", "Has Media" ]
+        }
 in
 Pref.render
     { onZephyrModeChange = Toggle
@@ -1827,19 +1833,25 @@ Pref.render
     }""" <|
             let
                 dummyShadowColumn index =
-                    case modBy 3 index of
-                        0 ->
-                            ( { id = String.fromInt index, description = "Zephyr" }, Pref.FallbackSC )
+                    { id = String.fromInt index
+                    , sources =
+                        case modBy 3 index of
+                            0 ->
+                                []
 
-                        1 ->
-                            ( { id = String.fromInt index, description = "#Discord" }
-                            , Pref.DiscordSC { mainChannelName = "Discord", guildIcon = Just (Image.ph 48 48) }
-                            )
+                            1 ->
+                                [ DiscordSource { channelName = "Discord Channel", guildIcon = Just (Image.ph 20 20) } ]
 
-                        _ ->
-                            ( { id = String.fromInt index, description = "#Slack" }
-                            , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
-                            )
+                            _ ->
+                                [ SlackSource { convName = "Slack Conversation", teamIcon = Just (Image.ph 21 21), isPrivate = True } ]
+                    , filters =
+                        case modBy 2 index of
+                            0 ->
+                                []
+
+                            _ ->
+                                [ "\"Elm\"", "Has Media" ]
+                    }
             in
             Pref.render
                 { onZephyrModeChange = Toggle
@@ -2285,20 +2297,38 @@ mainTemplate m =
             , visibleColumns =
                 let
                     vc index =
-                        case modBy 4 index of
-                            0 ->
-                                { configOpen = m.toggle, dragStatus = Settled }
+                        { configOpen =
+                            if modBy 2 index == 0 then
+                                m.toggle
 
-                            1 ->
-                                { configOpen = not m.toggle, dragStatus = Undroppable }
+                            else
+                                not m.toggle
+                        , dragStatus =
+                            case modBy 4 index of
+                                0 ->
+                                    Settled
 
-                            2 ->
-                                { configOpen = m.toggle, dragStatus = Droppable }
+                                1 ->
+                                    Undroppable
 
-                            _ ->
-                                { configOpen = not m.toggle, dragStatus = Grabbed }
+                                2 ->
+                                    Droppable
+
+                                _ ->
+                                    Grabbed
+                        , sources =
+                            case modBy 3 index of
+                                0 ->
+                                    []
+
+                                1 ->
+                                    [ DiscordSource { channelName = "Channel1", guildIcon = Nothing } ]
+
+                                _ ->
+                                    [ SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False } ]
+                        }
                 in
-                List.map vc (List.range 0 m.numColumns)
+                List.map vc (List.range 0 (m.numColumns - 1))
             }
 
         dummyItem index =
