@@ -1,4 +1,4 @@
-module View.Organisms.Column.Header exposing (Effects, Source(..), render)
+module View.Organisms.Column.Header exposing (Effects, Source(..), render, styles)
 
 import Html exposing (Html, div)
 import Html.Attributes exposing (..)
@@ -8,6 +8,7 @@ import View.Atoms.Background as Background
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Style exposing (..)
 
 
 type alias Effects msg =
@@ -49,7 +50,8 @@ render eff index column =
 grabbableIcon : msg -> { c | id : String, sources : List Source } -> Html msg
 grabbableIcon onDragstart column =
     div
-        [ flexBasisAuto
+        [ class grabbableClass
+        , flexBasisAuto
         , padding5
         , draggable "true"
         , on "dragstart" (succeed onDragstart)
@@ -83,3 +85,14 @@ sourceIcon sources =
                 , bottomRight = Just bottomRight
                 , content = content
                 }
+
+
+styles : List Style
+styles =
+    [ s (c grabbableClass) [ ( "cursor", "all-scroll" ) ]
+    ]
+
+
+grabbableClass : String
+grabbableClass =
+    "grab"

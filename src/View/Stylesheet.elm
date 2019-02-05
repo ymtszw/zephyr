@@ -15,6 +15,7 @@ import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
 import View.Organisms.Sidebar as Sidebar
@@ -52,6 +53,7 @@ rendered =
                 ++ Sidebar.styles
                 ++ Pref.styles
                 ++ Slack.styles
+                ++ Header.styles
                 ++ View.Templates.Main.styles
 
 
