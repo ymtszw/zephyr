@@ -338,6 +338,7 @@ optionRowKey opts ( optionKey, option ) =
             [ class optionRowClass
             , flexItem
             , attribute "role" "option"
+            , Cursor.pointer
             , tabindex 0
             , stopPropagationOn "click" (succeed ( onSelect, True ))
             , onEnterKeyDown onSelect
@@ -385,7 +386,6 @@ styles =
         ]
     , s_ (c optionRowClass)
         [ ( "padding", px optionRowPaddingY ++ " " ++ px headerTextPaddingX )
-        , ( "cursor", "pointer" )
         ]
     ]
         ++ themedStyles oneDarkClass oneDarkTheme
