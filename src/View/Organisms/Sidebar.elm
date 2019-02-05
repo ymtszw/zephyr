@@ -10,8 +10,8 @@ module View.Organisms.Sidebar exposing
 
 -}
 
-import Html exposing (Html, button, div, img, nav, span)
-import Html.Attributes exposing (alt, class, src)
+import Html exposing (Html, button, div, nav, span)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Html.Keyed
 import Octicons

@@ -22,7 +22,7 @@ import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div, h2, img, span)
-import Html.Attributes exposing (alt, class, draggable, id, src)
+import Html.Attributes exposing (alt, class, id, src)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
