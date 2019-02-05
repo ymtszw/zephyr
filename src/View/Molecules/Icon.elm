@@ -2,7 +2,7 @@ module View.Molecules.Icon exposing
     ( rounded20, rounded30, rounded40, size20, size30, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
-    , rehydrateButton, pinBadge14, discordBadge14, slackBadge14
+    , rehydrateButton, pinBadge14, discordBadge14, slackBadge14, discordBadge10, slackBadge10
     , styles
     )
 
@@ -11,7 +11,7 @@ module View.Molecules.Icon exposing
 @docs rounded20, rounded30, rounded40, size20, size30, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
-@docs rehydrateButton, pinBadge14, discordBadge14, slackBadge14
+@docs rehydrateButton, pinBadge14, discordBadge14, slackBadge14, discordBadge10, slackBadge10
 @docs styles
 
 -}
@@ -163,19 +163,29 @@ pinBadge14 =
         [ Image.octicon { size = rounded14Size, shape = Octicons.pin } ]
 
 
+discordBadge10 : Html msg
+discordBadge10 =
+    imageBadge rounded10Class "Discord logo" <| Discord.defaultIconUrl (Just rounded10Size)
+
+
+imageBadge : String -> String -> String -> Html msg
+imageBadge sizeClass alt_ src_ =
+    img [ class sizeClass, src src_, alt alt_ ] []
+
+
+slackBadge10 : Html msg
+slackBadge10 =
+    imageBadge rounded10Class "Slack logo" <| Slack.defaultIconUrl (Just rounded10Size)
+
+
 discordBadge14 : Html msg
 discordBadge14 =
-    imageBadge14 "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
-
-
-imageBadge14 : String -> String -> Html msg
-imageBadge14 alt_ src_ =
-    img [ class rounded14Class, src src_, alt alt_ ] []
+    imageBadge rounded14Class "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
 
 
 slackBadge14 : Html msg
 slackBadge14 =
-    imageBadge14 "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+    imageBadge rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
 
 
 
@@ -190,6 +200,12 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
+    , s (c rounded10Class)
+        [ ( "width", px rounded10Size )
+        , ( "height", px rounded10Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
     , s (c rounded14Class)
         [ ( "width", px rounded14Size )
         , ( "height", px rounded14Size )
@@ -220,6 +236,16 @@ styles =
 iconClass : String
 iconClass =
     "icon"
+
+
+rounded10Class : String
+rounded10Class =
+    "iconr10"
+
+
+rounded10Size : Int
+rounded10Size =
+    10
 
 
 rounded14Class : String
