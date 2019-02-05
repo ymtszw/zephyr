@@ -96,6 +96,7 @@ routes =
     , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
     , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
+    , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -2146,6 +2147,13 @@ columnHeader m =
                 , pinned = m.toggle
                 , configOpen = m.toggle
                 }
+        ]
+
+
+columnConfig : Model -> Html Msg
+columnConfig m =
+    section []
+        [ h1 [ sizeSection ] [ t "Column.Config" ]
         ]
 
 
