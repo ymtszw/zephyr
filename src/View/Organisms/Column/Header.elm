@@ -1,11 +1,12 @@
 module View.Organisms.Column.Header exposing (Effects, Source(..), render, styles)
 
-import Html exposing (Html, div, span)
+import Html exposing (Attribute, Html, button, div, span)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick)
 import Json.Decode exposing (succeed)
 import Octicons
 import View.Atoms.Background as Background
+import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
@@ -45,19 +46,71 @@ render eff index column =
         [ flexRow
         , flexCenter
         , flexBasisAuto
-        , spacingRow2
+        , padding5
+        , spacingRow5
         , Background.colorSub
         ]
         [ grabbableIcon (eff.onDragstart column.pinned index column.id) column
         , headerText eff.onHeaderClick column.sources column.filters
+        , let
+            innerAttrs =
+                -- Rotate inner contents, not the button itself, to keep the clickable area stable
+                if column.pinned then
+                    [ Image.fillWarn, Image.rotate45 ]
+
+                else
+                    []
+          in
+          button
+            [ flexItem
+            , flexBasisAuto
+            , noPadding
+            , Image.hovWarn
+            , Border.round2
+            , Background.transparent
+            , onClick (eff.onPinButtonClick column.id (not column.pinned))
+            ]
+            [ div innerAttrs [ Image.octicon { size = octiconSize, shape = Octicons.pin } ] ]
+        , headerButton
+            [ if column.configOpen then
+                Image.fillText
+
+              else
+                noAttr
+            , Image.hovText
+            ]
+            (eff.onConfigToggleButtonClick column.id (not column.configOpen))
+            Octicons.settings
         ]
+
+
+headerButton : List (Attribute msg) -> msg -> (Octicons.Options -> Html msg) -> Html msg
+headerButton attrs onPress shape =
+    let
+        baseAttrs =
+            [ flexItem
+            , flexBasisAuto
+            , noPadding
+            , Border.round2
+            , Background.transparent
+            ]
+    in
+    Icon.octiconButton (baseAttrs ++ attrs)
+        { onPress = onPress
+        , size = octiconSize
+        , shape = shape
+        }
+
+
+octiconSize : Int
+octiconSize =
+    30
 
 
 grabbableIcon : msg -> { c | id : String, sources : List Source } -> Html msg
 grabbableIcon onDragstart column =
     div
         [ flexBasisAuto
-        , padding5
         , draggable "true"
         , on "dragstart" (succeed onDragstart)
         , Cursor.allScroll
@@ -70,7 +123,7 @@ sourceIcon : List Source -> Html msg
 sourceIcon sources =
     case sources of
         [] ->
-            Icon.abbr [ Icon.rounded40, serif, sizeTitle ] "Zephyr"
+            Icon.abbr [ Icon.rounded30, serif, sizeTitle ] "Zephyr"
 
         s :: _ ->
             let
@@ -78,12 +131,12 @@ sourceIcon sources =
                     case s of
                         DiscordSource opts ->
                             ( Icon.discordBadge14
-                            , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.channelName opts.guildIcon
+                            , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.channelName opts.guildIcon
                             )
 
                         SlackSource opts ->
                             ( Icon.slackBadge14
-                            , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.convName opts.teamIcon
+                            , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.convName opts.teamIcon
                             )
             in
             withBadge [ badgeOutset ]

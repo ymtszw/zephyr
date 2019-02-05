@@ -2060,8 +2060,8 @@ columnHeader m =
             Header.render
                 { onDragstart = \_ _ _ -> NoOp
                 , onHeaderClick = Nothing
-                , onPinButtonClick = \_ pinned -> Toggle (not pinned)
-                , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
+                , onPinButtonClick = \_ to -> Toggle to
+                , onConfigToggleButtonClick = \_ to -> Toggle to
                 , onDismissButtonClick = always NoOp
                 }
                 0
@@ -2075,8 +2075,8 @@ columnHeader m =
             Header.render
                 { onDragstart = \_ _ _ -> NoOp
                 , onHeaderClick = Nothing
-                , onPinButtonClick = \_ pinned -> Toggle (not pinned)
-                , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
+                , onPinButtonClick = \_ to -> Toggle to
+                , onConfigToggleButtonClick = \_ to -> Toggle to
                 , onDismissButtonClick = always NoOp
                 }
                 0
@@ -2093,8 +2093,8 @@ columnHeader m =
             Header.render
                 { onDragstart = \_ _ _ -> NoOp
                 , onHeaderClick = Nothing
-                , onPinButtonClick = \_ pinned -> Toggle (not pinned)
-                , onConfigToggleButtonClick = \_ configOpen -> Toggle (not configOpen)
+                , onPinButtonClick = \_ to -> Toggle to
+                , onConfigToggleButtonClick = \_ to -> Toggle to
                 , onDismissButtonClick = always NoOp
                 }
                 0
