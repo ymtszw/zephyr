@@ -155,7 +155,7 @@ headerText : Maybe msg -> List Source -> List String -> Html msg
 headerText onHeaderClick sources filters =
     let
         baseAttrs =
-            [ flexGrow, flexBasisAuto, flexColumn, spacingColumn2 ]
+            [ flexGrow, flexColumn, spacingColumn2 ]
 
         headerClicerAttrs =
             case onHeaderClick of
