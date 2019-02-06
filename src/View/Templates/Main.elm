@@ -33,26 +33,25 @@ import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column exposing (Source(..))
 import View.Molecules.Icon as Icon
-import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Wallpaper as Wallpaper
-import View.Organisms.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
+import View.Organisms.Sidebar as Sidebar exposing (ColumnInSidebar, sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
 
 
 type alias Props c =
-    { sidebarProps : Sidebar.Props
-    , configDrawerIsOpen : Bool
+    { configOpen : Bool
     , visibleColumns : List (VisibleColumn c)
     }
 
 
 type alias VisibleColumn c =
-    { c
-        | dragStatus : DragStatus
-        , configOpen : Bool
-        , sources : List Source
-    }
+    ColumnInSidebar
+        { c
+            | dragStatus : DragStatus
+            , configOpen : Bool
+        }
 
 
 type DragStatus
@@ -98,8 +97,8 @@ render eff props contents =
     -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
     , columnContainer eff props.visibleColumns contents.columnContents
-    , configDrawer props.configDrawerIsOpen contents.configContents
-    , Sidebar.render eff.sidebarEffects props.sidebarProps
+    , configDrawer props.configOpen contents.configContents
+    , Sidebar.render eff.sidebarEffects props
     ]
 
 

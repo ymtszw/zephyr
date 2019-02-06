@@ -2447,50 +2447,65 @@ mainTemplate : Model -> List (Html Msg)
 mainTemplate m =
     let
         mainEffects =
-            { sidebarEffects = dummySidebarEffects m.toggle
+            { sidebarEffects =
+                { configOpener = Toggle (not m.toggle)
+                , columnAdder = AddColumn
+                , columnButtonClickerByIndex = always NoOp
+                }
             , columnDragEnd = NoOp
             , columnDragEnter = \_ -> NoOp
             , columnDragOver = NoOp
             }
 
         mainProps =
-            { sidebarProps = dummySidebarProps m.toggle m.numColumns
-            , configDrawerIsOpen = m.toggle
-            , visibleColumns =
-                let
-                    vc index =
-                        { configOpen =
-                            if modBy 2 index == 0 then
-                                m.toggle
+            { configOpen = m.toggle
+            , visibleColumns = dummyColumns
+            }
 
-                            else
-                                not m.toggle
-                        , dragStatus =
-                            case modBy 4 index of
-                                0 ->
-                                    Settled
+        dummyColumns =
+            List.map dummyColumn (List.range 0 (m.numColumns - 1))
 
-                                1 ->
-                                    Undroppable
+        dummyColumn index =
+            { id = String.fromInt index
+            , pinned = modBy 2 index == 0
+            , configOpen =
+                if modBy 2 index == 0 then
+                    m.toggle
 
-                                2 ->
-                                    Droppable
+                else
+                    not m.toggle
+            , dragStatus =
+                case modBy 4 index of
+                    0 ->
+                        Settled
 
-                                _ ->
-                                    Grabbed
-                        , sources =
-                            case modBy 3 index of
-                                0 ->
-                                    []
+                    1 ->
+                        Undroppable
 
-                                1 ->
-                                    [ DiscordSource { channelName = "Channel1", guildIcon = Nothing } ]
+                    2 ->
+                        Droppable
 
-                                _ ->
-                                    [ SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False } ]
-                        }
-                in
-                List.map vc (List.range 0 (m.numColumns - 1))
+                    _ ->
+                        Grabbed
+            , sources =
+                case modBy 3 index of
+                    0 ->
+                        []
+
+                    1 ->
+                        [ DiscordSource { channelName = "Channel1", guildIcon = Nothing } ]
+
+                    _ ->
+                        [ SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
+                        , DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+                        ]
+            , filters =
+                case modBy 2 index of
+                    0 ->
+                        []
+
+                    _ ->
+                        [ "\"Elm\"", "Has Media" ]
             }
 
         dummyItem index =
