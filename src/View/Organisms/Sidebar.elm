@@ -1,11 +1,11 @@
 module View.Organisms.Sidebar exposing
-    ( Props, ColumnProps, ColumnButton(..), Effects, render
+    ( Props, ColumnInSidebar, Effects, render
     , styles, sidebarWidth, sidebarExpansionWidth
     )
 
 {-| Sidebar Organism.
 
-@docs Props, ColumnProps, ColumnButton, Props, Effects, render
+@docs Props, ColumnInSidebar, Effects, render
 @docs styles, sidebarWidth, sidebarExpansionWidth
 
 -}
@@ -21,14 +21,19 @@ import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (oneDark)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
 
 
-type alias Props =
+type alias Props c =
     { configOpen : Bool
-    , columns : List ( ColumnProps, ColumnButton )
+    , visibleColumns : List (ColumnInSidebar c)
     }
+
+
+type alias ColumnInSidebar c =
+    ColumnProps { c | id : String }
 
 
 type alias Effects msg =
@@ -38,7 +43,7 @@ type alias Effects msg =
     }
 
 
-render : Effects msg -> Props -> Html msg
+render : Effects msg -> Props c -> Html msg
 render eff p =
     nav
         [ class sidebarClass
@@ -54,15 +59,15 @@ render eff p =
             noAttr
         ]
         [ withTooltip (span [ colorNote ] [ t "Add Column" ]) <| addColumnButton eff.columnAdder
-        , columnButtons eff.columnButtonClickerByIndex p.columns
+        , columnButtons eff.columnButtonClickerByIndex p.visibleColumns
         , otherButtons eff.configOpener p.configOpen
         ]
 
 
-columnButtons : (Int -> msg) -> List ( ColumnProps, ColumnButton ) -> Html msg
-columnButtons columnButtonClickerByIndex columns =
+columnButtons : (Int -> msg) -> List (ColumnInSidebar c) -> Html msg
+columnButtons columnButtonClickerByIndex visibleColumns =
     Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, padding5, spacingColumn10 ] <|
-        List.indexedMap (colummButtonKey columnButtonClickerByIndex) columns
+        List.indexedMap (colummButtonKey columnButtonClickerByIndex) visibleColumns
 
 
 addColumnButton : msg -> Html msg
@@ -102,35 +107,10 @@ withTooltip tooltip content =
         ]
 
 
-type ColumnButton
-    = Fallback String
-    | DiscordButton { channelName : String, guildIcon : Maybe String }
-    | SlackButton { convName : String, teamIcon : Maybe String }
-
-
-type alias ColumnProps =
-    { id : String
-    , pinned : Bool
-    }
-
-
-colummButtonKey : (Int -> msg) -> Int -> ( ColumnProps, ColumnButton ) -> ( String, Html msg )
-colummButtonKey columnButtonClicker index ( cp, cb ) =
-    let
-        tooltip =
-            span [ bold ] <|
-                case cb of
-                    Fallback desc ->
-                        [ t desc ]
-
-                    DiscordButton opts ->
-                        [ t ("#" ++ opts.channelName) ]
-
-                    SlackButton opts ->
-                        [ t ("#" ++ opts.convName) ]
-    in
-    Tuple.pair ("columnButton_" ++ cp.id) <|
-        withTooltip tooltip <|
+colummButtonKey : (Int -> msg) -> Int -> ColumnInSidebar c -> ( String, Html msg )
+colummButtonKey columnButtonClicker index c =
+    Tuple.pair c.id <|
+        withTooltip (Column.blockTitle [ flexBasisAuto ] c) <|
             button
                 [ flexItem
                 , noPadding
@@ -138,40 +118,8 @@ colummButtonKey columnButtonClicker index ( cp, cb ) =
                 , Icon.rounded40
                 , Background.transparent
                 ]
-                [ columnButtonFace cp.pinned cb
+                [ Column.icon40 c
                 ]
-
-
-columnButtonFace : Bool -> ColumnButton -> Html msg
-columnButtonFace pinned cb =
-    withPin pinned <|
-        case cb of
-            Fallback desc ->
-                ( Nothing, Icon.abbr [ Icon.rounded40, serif, sizeTitle ] desc )
-
-            DiscordButton opts ->
-                ( Just Icon.discordBadge14
-                , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.channelName opts.guildIcon
-                )
-
-            SlackButton opts ->
-                ( Just Icon.slackBadge14
-                , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.convName opts.teamIcon
-                )
-
-
-withPin : Bool -> ( Maybe (Html msg), Html msg ) -> Html msg
-withPin pinned ( bottomRight, content ) =
-    withBadge [ badgeOutset ]
-        { topRight =
-            if pinned then
-                Just Icon.pinBadge14
-
-            else
-                Nothing
-        , bottomRight = bottomRight
-        , content = content
-        }
 
 
 otherButtons : msg -> Bool -> Html msg

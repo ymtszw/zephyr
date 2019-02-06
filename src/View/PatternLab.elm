@@ -1840,66 +1840,73 @@ sidebar : Model -> Html Msg
 sidebar m =
     section []
         [ h1 [ sizeSection ] [ t "Sidebar" ]
-        , withSource """dummySidebarProps : Bool -> Int -> Sidebar.Props
-dummySidebarProps isOpen numColumns =
-    let
-        dummyColumnButton i =
-            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
-            , case modBy 3 i of
+        , withSource """let
+    dummyColumn index =
+        { id = String.fromInt index
+        , pinned = modBy 2 index == 0
+        , sources =
+            case modBy 3 index of
                 0 ->
-                    Sidebar.Fallback "Zehpyr"
+                    []
 
                 1 ->
-                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+                    [ DiscordSource { channelName = "Discord Channel", guildIcon = Just (Image.ph 48 48) } ]
 
                 _ ->
-                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
-            )
-    in
-    { configOpen = isOpen
-    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
-    }
+                    [ SlackSource { convName = "Slack Conversation", teamIcon = Just (Image.ph 50 50), isPrivate = True }
+                    , DiscordSource { channelName = "Discord Channel", guildIcon = Just (Image.ph 48 48) }
+                    ]
+        , filters =
+            case modBy 2 index of
+                0 ->
+                    []
 
-
-dummySidebarEffects : Bool -> Sidebar.Effects Msg
-dummySidebarEffects isOpen =
-    { configOpener = Toggle (not isOpen)
+                _ ->
+                    [ ""Elm"", "Has Media" ]
+        }
+in
+Sidebar.render
+    { configOpener = Toggle (not m.toggle)
     , columnAdder = AddColumn
     , columnButtonClickerByIndex = always NoOp
     }
+    { configOpen = m.toggle
+    , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
+    }""" <|
+            let
+                dummyColumn index =
+                    { id = String.fromInt index
+                    , pinned = modBy 2 index == 0
+                    , sources =
+                        case modBy 3 index of
+                            0 ->
+                                []
 
-Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)""" <|
-            Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
+                            1 ->
+                                [ DiscordSource { channelName = "Discord Channel", guildIcon = Just (Image.ph 48 48) } ]
+
+                            _ ->
+                                [ SlackSource { convName = "Slack Conversation", teamIcon = Just (Image.ph 50 50), isPrivate = True }
+                                , DiscordSource { channelName = "Discord Channel", guildIcon = Just (Image.ph 48 48) }
+                                ]
+                    , filters =
+                        case modBy 2 index of
+                            0 ->
+                                []
+
+                            _ ->
+                                [ "\"Elm\"", "Has Media" ]
+                    }
+            in
+            Sidebar.render
+                { configOpener = Toggle (not m.toggle)
+                , columnAdder = AddColumn
+                , columnButtonClickerByIndex = always NoOp
+                }
+                { configOpen = m.toggle
+                , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
+                }
         ]
-
-
-dummySidebarProps : Bool -> Int -> Sidebar.Props
-dummySidebarProps isOpen numColumns =
-    let
-        dummyColumnButton i =
-            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
-            , case modBy 3 i of
-                0 ->
-                    Sidebar.Fallback "Zehpyr"
-
-                1 ->
-                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
-
-                _ ->
-                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
-            )
-    in
-    { configOpen = isOpen
-    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
-    }
-
-
-dummySidebarEffects : Bool -> Sidebar.Effects Msg
-dummySidebarEffects isOpen =
-    { configOpener = Toggle (not isOpen)
-    , columnAdder = AddColumn
-    , columnButtonClickerByIndex = always NoOp
-    }
 
 
 configPref : Model -> Html Msg
