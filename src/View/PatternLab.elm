@@ -1916,6 +1916,7 @@ configPref m =
         , withSource """let
     dummyShadowColumn index =
         { id = String.fromInt index
+        , pinned = False
         , sources =
             case modBy 3 index of
                 0 ->
@@ -1950,6 +1951,7 @@ Pref.render
             let
                 dummyShadowColumn index =
                     { id = String.fromInt index
+                    , pinned = False
                     , sources =
                         case modBy 3 index of
                             0 ->

@@ -1,4 +1,4 @@
-module View.Organisms.Config.Pref exposing (Effects, Props, ShadowColumn, render, styles)
+module View.Organisms.Config.Pref exposing (Effects, Props, render, styles)
 
 import Html exposing (Html, button, div, h3, p)
 import Html.Attributes exposing (class, disabled)
@@ -10,8 +10,8 @@ import View.Atoms.Input as Input
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (..)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column exposing (ColumnProps, Source(..))
 import View.Molecules.Icon as Icon
-import View.Molecules.Source as Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Style exposing (..)
 
@@ -34,10 +34,7 @@ type alias Props =
 
 
 type alias ShadowColumn =
-    { id : String
-    , sources : List Source
-    , filters : List String
-    }
+    ColumnProps { id : String }
 
 
 render : Effects msg -> Props -> Html msg
@@ -81,27 +78,14 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
         columnCell sc =
             ( [ widthFill, theme sc ]
             , [ div [ flexRow, flexCenter, spacingRow5 ]
-                    [ shadowColumnIcon sc.sources
-                    , div [ flexBasisAuto ] <|
-                        case ( sc.sources, sc.filters ) of
-                            ( [], [] ) ->
-                                [ t "New Column" ]
-
-                            ( [], filters ) ->
-                                [ t (String.join ", " filters) ]
-
-                            ( sources, [] ) ->
-                                Source.concatInline cellFontSize sources
-
-                            ( sources, filters ) ->
-                                Source.concatInline cellFontSize sources
-                                    ++ [ t ", ", t (String.join ", " filters) ]
+                    [ Column.icon20 sc
+                    , div [ flexBasisAuto ] (Column.inlineTitle cellIconSize sc)
                     ]
               ]
             )
 
-        cellFontSize =
-            12
+        cellIconSize =
+            11
 
         actionCell sc =
             ( [ theme sc ]
@@ -125,16 +109,6 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
         , rowKey = .id
         , data = shadowColumns
         }
-
-
-shadowColumnIcon : List Source -> Html msg
-shadowColumnIcon sources =
-    case sources of
-        [] ->
-            Icon.abbr [ Icon.rounded20, serif ] "Zephyr"
-
-        s :: _ ->
-            Source.badgedIcon20 s
 
 
 showColumnButton : msg -> Bool -> Html msg
