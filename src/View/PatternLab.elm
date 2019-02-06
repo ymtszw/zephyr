@@ -23,9 +23,9 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column exposing (Source(..))
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
-import View.Molecules.Source as Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
@@ -92,7 +92,7 @@ routes =
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
-    , R "source" "Molecules" "Source" <| pLab [ source_ ]
+    , R "source" "Molecules" "Column" <| pLab [ column ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
@@ -1646,83 +1646,192 @@ producerConfig m =
         ]
 
 
-source_ : Html Msg
-source_ =
+column : Html Msg
+column =
     section []
-        [ h1 [ sizeSection ] [ t "Source" ]
+        [ h1 [ sizeSection ] [ t "Column" ]
         , section []
-            [ h2 [ sizeTitle ] [ t "inline" ]
+            [ h2 [ sizeTitle ] [ t "inlineTitle" ]
             , withSource """div [ sizeHeadline ] <|
-    Source.inline 15 <|
-        DiscordSource { channelName = "Channel1", guildIcon = Nothing }""" <|
+    Column.inlineTitle 15 <|
+        { pinned = False, sources = [], filters = [] }""" <|
                 div [ sizeHeadline ] <|
-                    Source.inline 15 <|
-                        DiscordSource { channelName = "Channel1", guildIcon = Nothing }
+                    Column.inlineTitle 15 <|
+                        { pinned = False, sources = [], filters = [] }
             , withSource """div [ sizeHeadline ] <|
-    Source.inline 15 <|
-        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }""" <|
+    Column.inlineTitle 15 <|
+        { pinned = False, sources = [], filters = [ "\\"Elm\\"", "Has Media" ] }""" <|
                 div [ sizeHeadline ] <|
-                    Source.inline 15 <|
-                        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
+                    Column.inlineTitle 15 <|
+                        { pinned = False, sources = [], filters = [ "\"Elm\"", "Has Media" ] }
             , withSource """div [ sizeHeadline ] <|
-    Source.inline 15 <|
-        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }""" <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources = [ DiscordSource { channelName = "Channel", guildIcon = Nothing } ]
+        , filters = []
+        }""" <|
                 div [ sizeHeadline ] <|
-                    Source.inline 15 <|
-                        SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources = [ DiscordSource { channelName = "Channel", guildIcon = Nothing } ]
+                        , filters = []
+                        }
+            , withSource """div [ sizeHeadline ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = False } ]
+        , filters = []
+        }""" <|
+                div [ sizeHeadline ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = False } ]
+                        , filters = []
+                        }
+            , withSource """div [ sizeHeadline ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True } ]
+        , filters = []
+        }""" <|
+                div [ sizeHeadline ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True } ]
+                        , filters = []
+                        }
+            , withSource """div [ sizeHeadline ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources =
+            [ DiscordSource { channelName = "Channel", guildIcon = Nothing }
+            , SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True }
+            ]
+        , filters = [ "\\"Elm\\"", "Has Media" ]
+        }""" <|
+                div [ sizeHeadline ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources =
+                            [ DiscordSource { channelName = "Channel", guildIcon = Nothing }
+                            , SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True }
+                            ]
+                        , filters = [ "\"Elm\"", "Has Media" ]
+                        }
             ]
         , section []
-            [ h2 [ sizeTitle ] [ t "concatInline" ]
-            , withSource """div [ sizeHeadline ] <|
-    Source.concatInline 15
-        [ DiscordSource { channelName = "Channel1", guildIcon = Nothing }
-        , DiscordSource { channelName = "Channel2", guildIcon = Nothing }
-        , SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }
-        ]""" <|
-                div [ sizeHeadline ] <|
-                    Source.concatInline 15
-                        [ DiscordSource { channelName = "Channel1", guildIcon = Nothing }
-                        , DiscordSource { channelName = "Channel2", guildIcon = Nothing }
-                        , SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = True }
+            [ h2 [ sizeTitle ] [ t "blockTitle" ]
+            , withSource """Column.blockTitle [] <|
+    { pinned = False, sources = [], filters = [] }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False, sources = [], filters = [] }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False, sources = [], filters = [ "\\"Elm\\"", "Has Media" ] }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False, sources = [], filters = [ "\"Elm\"", "Has Media" ] }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources = [ DiscordSource { channelName = "Channel", guildIcon = Nothing } ]
+    , filters = []
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources = [ DiscordSource { channelName = "Channel", guildIcon = Nothing } ]
+                    , filters = []
+                    }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True } ]
+    , filters = []
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources = [ SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True } ]
+                    , filters = []
+                    }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources =
+        [ DiscordSource { channelName = "Channel", guildIcon = Nothing }
+        , SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True }
+        ]
+    , filters = [ "\\"Elm\\"", "Has Media" ]
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources =
+                        [ DiscordSource { channelName = "Channel", guildIcon = Nothing }
+                        , SlackSource { convName = "Convo", teamIcon = Nothing, isPrivate = True }
                         ]
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    }
+            , withSource """Column.blockTitle [ style "width" (px 350) ] <|
+    { pinned = False
+    , sources =
+        [ DiscordSource { channelName = String.repeat 3 "Clipped if constrained ", guildIcon = Nothing }
+        ]
+    , filters = List.repeat 5 "Clipped if constrained "
+    }""" <|
+                Column.blockTitle [ style "width" (px 350) ] <|
+                    { pinned = False
+                    , sources =
+                        [ DiscordSource { channelName = String.repeat 3 "Clipped if constrained ", guildIcon = Nothing }
+                        ]
+                    , filters = List.repeat 5 "Clipped if constrained "
+                    }
             ]
         , section []
-            [ h2 [ sizeTitle ] [ t "badgedIcon20" ]
-            , withSource """Source.badgedIcon20 <|
-    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 20 20) }""" <|
-                Source.badgedIcon20 <|
-                    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 20 20) }
-            , withSource """Source.badgedIcon20 <|
-    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 21 21), isPrivate = False }""" <|
-                Source.badgedIcon20 <|
-                    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 21 21), isPrivate = False }
-            , withSource """Source.badgedIcon20 <|
-    DiscordSource { channelName = "Channel1", guildIcon = Nothing }""" <|
-                Source.badgedIcon20 <|
-                    DiscordSource { channelName = "Channel1", guildIcon = Nothing }
-            , withSource """Source.badgedIcon20 <|
-    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }""" <|
-                Source.badgedIcon20 <|
-                    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
-            ]
-        , section []
-            [ h2 [ sizeTitle ] [ t "badgedIcon30" ]
-            , withSource """Source.badgedIcon30 <|
-    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 30 30) }""" <|
-                Source.badgedIcon30 <|
-                    DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 30 30) }
-            , withSource """Source.badgedIcon30 <|
-    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 31 31), isPrivate = False }""" <|
-                Source.badgedIcon30 <|
-                    SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 31 31), isPrivate = False }
-            , withSource """Source.badgedIcon30 <|
-    DiscordSource { channelName = "Channel1", guildIcon = Nothing }""" <|
-                Source.badgedIcon30 <|
-                    DiscordSource { channelName = "Channel1", guildIcon = Nothing }
-            , withSource """Source.badgedIcon30 <|
-    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }""" <|
-                Source.badgedIcon30 <|
-                    SlackSource { convName = "Conv1", teamIcon = Nothing, isPrivate = False }
+            [ h2 [ sizeTitle ] [ t "icons" ]
+            , withSource """Column.icon20 { pinned = False, sources = [], filters = [] }""" <|
+                Column.icon20 { pinned = False, sources = [], filters = [] }
+            , withSource """Column.icon20 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }""" <|
+                Column.icon20 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }
+            , withSource """Column.icon20 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }""" <|
+                Column.icon20 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }
+            , withSource """Column.icon20 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }""" <|
+                Column.icon20 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }
+            , withSource """Column.icon20 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }""" <|
+                Column.icon20 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }
+            , withSource """Column.icon30 { pinned = False, sources = [], filters = [] }""" <|
+                Column.icon30 { pinned = False, sources = [], filters = [] }
+            , withSource """Column.icon30 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }""" <|
+                Column.icon30 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }
+            , withSource """Column.icon30 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }""" <|
+                Column.icon30 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }
+            , withSource """Column.icon30 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }""" <|
+                Column.icon30 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }
+            , withSource """Column.icon30 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }""" <|
+                Column.icon30 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }
+            , withSource """Column.icon40 { pinned = False, sources = [], filters = [] }""" <|
+                Column.icon40 { pinned = False, sources = [], filters = [] }
+            , withSource """Column.icon40 { pinned = True, sources = [], filters = [] }""" <|
+                Column.icon40 { pinned = True, sources = [], filters = [] }
+            , withSource """Column.icon40 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }""" <|
+                Column.icon40 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }
+            , withSource """Column.icon40 { pinned = True, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }""" <|
+                Column.icon40 { pinned = True, sources = [ DiscordSource { channelName = "D", guildIcon = Nothing } ], filters = [] }
+            , withSource """Column.icon40 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }""" <|
+                Column.icon40 { pinned = False, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }
+            , withSource """Column.icon40 { pinned = True, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }""" <|
+                Column.icon40 { pinned = True, sources = [ DiscordSource { channelName = "D", guildIcon = Just (Image.ph 20 20) } ], filters = [] }
+            , withSource """Column.icon40 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }""" <|
+                Column.icon40 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }
+            , withSource """Column.icon40 { pinned = True, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }""" <|
+                Column.icon40 { pinned = True, sources = [ SlackSource { convName = "S", teamIcon = Nothing, isPrivate = False } ], filters = [] }
+            , withSource """Column.icon40 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }""" <|
+                Column.icon40 { pinned = False, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }
+            , withSource """Column.icon40 { pinned = True, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }""" <|
+                Column.icon40 { pinned = True, sources = [ SlackSource { convName = "S", teamIcon = Just (Image.ph 21 21), isPrivate = False } ], filters = [] }
             ]
         ]
 
