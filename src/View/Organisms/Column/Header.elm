@@ -10,10 +10,9 @@ import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
-import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column exposing (ColumnProps, Source(..))
 import View.Molecules.Icon as Icon
-import View.Molecules.Source as Source exposing (Source(..))
 import View.Style exposing (..)
 
 
@@ -26,19 +25,16 @@ type alias Effects msg =
     }
 
 
-render :
-    Effects msg
-    -> Int
-    ->
+type alias Props c =
+    ColumnProps
         { c
             | id : String
-            , sources : List Source
-            , filters : List String
-            , pinned : Bool
             , configOpen : Bool
         }
-    -> Html msg
-render eff index column =
+
+
+render : Effects msg -> Int -> Props c -> Html msg
+render eff index props =
     div
         [ flexRow
         , flexCenter
@@ -47,9 +43,9 @@ render eff index column =
         , spacingRow5
         , Background.colorSub
         ]
-        [ grabbableIcon (eff.onDragstart column.pinned index column.id) column
-        , headerText eff.onHeaderClick column.sources column.filters
-        , if column.pinned then
+        [ grabbableIcon (eff.onDragstart props.pinned index props.id) props
+        , headerText eff.onHeaderClick props
+        , if props.pinned then
             none
 
           else
@@ -57,7 +53,7 @@ render eff index column =
         , let
             innerAttrs =
                 -- Rotate inner contents, not the button itself, to keep the clickable area stable
-                if column.pinned then
+                if props.pinned then
                     [ class pinButtonClass, Image.fillWarn, Image.rotate45 ]
 
                 else
@@ -71,18 +67,18 @@ render eff index column =
             , Border.round2
             , Background.transparent
             , Background.hovBd
-            , onClick (eff.onPinButtonClick column.id (not column.pinned))
+            , onClick (eff.onPinButtonClick props.id (not props.pinned))
             ]
             [ div innerAttrs [ Image.octicon { size = octiconSize, shape = Octicons.pin } ] ]
         , headerButton
-            [ if column.configOpen then
+            [ if props.configOpen then
                 Image.fillText
 
               else
                 noAttr
             , Image.hovText
             ]
-            (eff.onConfigToggleButtonClick column.id (not column.configOpen))
+            (eff.onConfigToggleButtonClick props.id (not props.configOpen))
             Octicons.settings
         ]
 
@@ -111,67 +107,33 @@ octiconSize =
     30
 
 
-grabbableIcon : msg -> { c | id : String, sources : List Source } -> Html msg
-grabbableIcon onDragstart column =
+grabbableIcon : msg -> Props c -> Html msg
+grabbableIcon onDragstart props =
     div
         [ flexBasisAuto
         , draggable "true"
         , on "dragstart" (succeed onDragstart)
         , Cursor.allScroll
         ]
-        [ sourceIcon column.sources
+        [ Column.icon30 props
         ]
 
 
-sourceIcon : List Source -> Html msg
-sourceIcon sources =
-    case sources of
-        [] ->
-            Icon.abbr [ Icon.rounded30, serif, sizeTitle ] "Zephyr"
-
-        s :: _ ->
-            Source.badgedIcon30 s
-
-
-headerText : Maybe msg -> List Source -> List String -> Html msg
-headerText onHeaderClick sources filters =
+headerText : Maybe msg -> Props c -> Html msg
+headerText onHeaderClick props =
     let
-        baseAttrs =
-            [ flexGrow, flexColumn, spacingColumn2, forceBreak ]
-
-        headerClicerAttrs =
+        attrs =
             case onHeaderClick of
                 Just onPress ->
-                    [ onClick onPress
+                    [ flexGrow
+                    , onClick onPress
                     , Cursor.pointer
                     ]
 
                 Nothing ->
-                    []
-
-        mainText =
-            div [ bold, sizeHeadline ]
+                    [ flexGrow ]
     in
-    div (baseAttrs ++ headerClicerAttrs) <|
-        case ( sources, filters ) of
-            ( [], [] ) ->
-                [ mainText [ t "New Column" ] ]
-
-            ( _, [] ) ->
-                [ mainText (Source.concatInline headlineSize sources) ]
-
-            ( [], _ ) ->
-                [ mainText [ t (String.join ", " filters) ] ]
-
-            ( _, _ ) ->
-                [ mainText (Source.concatInline headlineSize sources)
-                , div [ colorNote ] [ t (String.join ", " filters) ]
-                ]
-
-
-headlineSize : Int
-headlineSize =
-    15
+    Column.blockTitle attrs props
 
 
 styles : List Style

@@ -2343,7 +2343,7 @@ columnHeader m =
     { id = "DUMMYID"
     , sources =
         [ SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-        , DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
+        , DiscordSource { channelName = String.repeat 2 "Expands unless constrained ", guildIcon = Just (Image.ph 40 40) }
         ]
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
@@ -2360,12 +2360,56 @@ columnHeader m =
                     { id = "DUMMYID"
                     , sources =
                         [ SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-                        , DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
+                        , DiscordSource { channelName = String.repeat 2 "Expands unless constrained ", guildIcon = Just (Image.ph 40 40) }
                         ]
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
+            , withSource """div [ style "width" (px 350) ]
+    [ Header.render
+        { onDragstart = \\_ _ _ -> NoOp
+        , onHeaderClick = Nothing
+        , onPinButtonClick = \\_ to -> Toggle to
+        , onConfigToggleButtonClick = \\_ to -> Toggle to
+        , onDismissButtonClick = always NoOp
+        }
+        0
+        { id = "DUMMYID"
+        , sources =
+            [ SlackSource
+                { convName = String.repeat 3 "Shrinks if constrained "
+                , teamIcon = Just (Image.ph 41 41)
+                , isPrivate = True
+                }
+            ]
+        , filters = List.repeat 3 "Shrinks if constrained"
+        , pinned = m.toggle
+        , configOpen = m.toggle
+        }
+    ]""" <|
+                div [ style "width" (px 350) ]
+                    [ Header.render
+                        { onDragstart = \_ _ _ -> NoOp
+                        , onHeaderClick = Nothing
+                        , onPinButtonClick = \_ to -> Toggle to
+                        , onConfigToggleButtonClick = \_ to -> Toggle to
+                        , onDismissButtonClick = always NoOp
+                        }
+                        0
+                        { id = "DUMMYID"
+                        , sources =
+                            [ SlackSource
+                                { convName = String.repeat 3 "Shrinks if constrained "
+                                , teamIcon = Just (Image.ph 41 41)
+                                , isPrivate = True
+                                }
+                            ]
+                        , filters = List.repeat 3 "Shrinks if constrained"
+                        , pinned = m.toggle
+                        , configOpen = m.toggle
+                        }
+                    ]
             ]
         ]
 
