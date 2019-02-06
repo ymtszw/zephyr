@@ -1,22 +1,26 @@
 module View.Molecules.Column exposing
     ( ColumnProps, Source(..)
     , inlineTitle, blockTitle, icon20, icon30, icon40
+    , styles
     )
 
 {-| Molecules for Column-related UI parts.
 
 @docs ColumnProps, Source
 @docs inlineTitle, blockTitle, icon20, icon30, icon40
+@docs styles
 
 -}
 
 import Html exposing (Attribute, Html, div, span)
+import Html.Attributes exposing (class)
 import Octicons
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Style exposing (..)
 
 
 type alias ColumnProps c =
@@ -66,7 +70,8 @@ sourcesInline octiconSize sources =
 
                 SlackSource { convName, isPrivate } ->
                     [ if isPrivate then
-                        span [ Image.fillText ] [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
+                        span [ class inlineLockIconClass, Image.fillText ]
+                            [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
 
                       else
                         t "#"
@@ -195,3 +200,14 @@ badgedIcon attrs topRight ( bottomRight, content ) =
         , bottomRight = bottomRight
         , content = content
         }
+
+
+styles : List Style
+styles =
+    [ s (descOf (c inlineLockIconClass) (c "octicon")) [ ( "vertical-align", "bottom" ) ]
+    ]
+
+
+inlineLockIconClass : String
+inlineLockIconClass =
+    "illock"

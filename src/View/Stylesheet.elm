@@ -12,6 +12,7 @@ import View.Atoms.Input.Select as Select
 import View.Atoms.Layout as Layout
 import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography as Typography
+import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Table as Table
@@ -52,6 +53,7 @@ rendered =
                 ++ Wallpaper.styles
                 ++ Table.styles
                 ++ ProducerConfig.styles
+                ++ Column.styles
                 ++ Sidebar.styles
                 ++ Pref.styles
                 ++ Slack.styles
