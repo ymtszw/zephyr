@@ -1,6 +1,7 @@
 module View.Organisms.Column.Config exposing (Effects, render)
 
-import Html exposing (Html, div)
+import Html exposing (Html, button, div)
+import Html.Events exposing (onClick)
 import Octicons
 import StringExtra
 import View.Atoms.Background as Background
@@ -39,6 +40,7 @@ render eff c =
             , div [] [ t " Status" ]
             ]
             (status c)
+        , closeButton eff.onCloseButtonClick
         ]
 
 
@@ -89,3 +91,21 @@ status c =
                 "No"
           ]
         ]
+
+
+closeButton : msg -> Html msg
+closeButton onCloseButtonClick =
+    button
+        [ flexItem
+        , Border.noRound
+        , Background.colorSub
+        , Background.hovBd
+        , onClick onCloseButtonClick
+        ]
+        [ Image.octicon { size = closeTriangleSize, shape = Octicons.triangleUp }
+        ]
+
+
+closeTriangleSize : Int
+closeTriangleSize =
+    24
