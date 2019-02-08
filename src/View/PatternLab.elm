@@ -312,7 +312,7 @@ section attrs =
 theme : Html Msg
 theme =
     section []
-        [ h1 [ sizeSection ] [ t "Theme" ]
+        [ h1 [ xxProminent ] [ t "Theme" ]
         , withSource """div [ padding15, oneDark ]
     [ t "This block has oneDark theme. Default background color and text color are automatically applied to its children. "
     , t "Child elements may apply specific color mode classes for decorations. See Typography/Border/Background sections."
@@ -343,7 +343,7 @@ withSource source toRender =
 typography : Html Msg
 typography =
     section []
-        [ h1 [ sizeSection ] [ t "Typography" ]
+        [ h1 [ xxProminent ] [ t "Typography" ]
         , fontFamilies
         , fontSizes
         , fontDecorations
@@ -370,8 +370,8 @@ fontSizes =
         [ h2 [ xProminent ] [ t "Font sizes" ]
         , withSource "p [ sizeImpact ] [ t \"impact\" ]" <|
             p [ sizeImpact ] [ t "impact" ]
-        , withSource "p [ sizeSection ] [ t \"section\" ]" <|
-            p [ sizeSection ] [ t "section" ]
+        , withSource "p [ xxProminent ] [ t \"xxProminent\" ]" <|
+            p [ xxProminent ] [ t "xxProminent" ]
         , withSource "p [ xProminent ] [ t \"xProminent\" ]" <|
             p [ xProminent ] [ t "xProminent" ]
         , withSource "p [ prominent ] [ t \"prominent\" ]" <|
@@ -448,7 +448,7 @@ fontColors =
 textBlock : Html Msg
 textBlock =
     section []
-        [ h1 [ sizeSection ] [ t "Text Blocks" ]
+        [ h1 [ xxProminent ] [ t "Text Blocks" ]
         , withSource """h2 [] [ t "Heading tags does not have default styles. Use Typography classes/styles." ]""" <|
             h2 [] [ t "Heading tags does not have default styles. Use Typography classes/styles." ]
         , withSource """p []
@@ -525,7 +525,7 @@ iroha =
 border : Html Msg
 border =
     section []
-        [ h1 [ sizeSection ] [ t "Border" ]
+        [ h1 [ xxProminent ] [ t "Border" ]
         , withSource "div [ padding5, Border.solid, Border.w1 ] [ t \"I'm surrounded by solid border.\" ]" <|
             div [ padding5, Border.solid, Border.w1 ] [ t "I'm surrounded by solid border." ]
         , withSource "div [ padding5, Border.dotted, Border.w1 ] [ t \"I'm surrounded by dotted border.\" ]" <|
@@ -600,7 +600,7 @@ background =
                 ]
     in
     section []
-        [ h1 [ sizeSection ] [ t "Background" ]
+        [ h1 [ xxProminent ] [ t "Background" ]
         , themedBg oneDark "oneDark"
         , themedBg aubergine "aubergine"
         ]
@@ -639,7 +639,7 @@ layout =
                 ]
     in
     section []
-        [ h1 [ sizeSection ] [ t "Layout" ]
+        [ h1 [ xxProminent ] [ t "Layout" ]
         , basics
         , flexBox
         , padding
@@ -883,7 +883,7 @@ badge =
 image : Html Msg
 image =
     section []
-        [ h1 [ sizeSection ] [ t "Image" ]
+        [ h1 [ xxProminent ] [ t "Image" ]
         , withSource """img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []""" <|
             img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []
         , withSource """div []
@@ -1013,7 +1013,7 @@ button_ =
                 , withSource """button [ Background.colorWarn ] [ t "warn" ]""" <| button [ Background.colorWarn ] [ t "warn" ]
                 , withSource """button [ Background.colorErr ] [ t "err" ]""" <| button [ Background.colorErr ] [ t "err" ]
                 , withSource """button [ Background.colorPrim, prominent ] [ t "prim" ]""" <| button [ Background.colorPrim, prominent ] [ t "prim prominent" ]
-                , withSource """button [ Background.colorPrim, sizeSection ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeSection ] [ t "prim SECTION" ]
+                , withSource """button [ Background.colorPrim, xxProminent ] [ t "prim" ]""" <| button [ Background.colorPrim, xxProminent ] [ t "prim SECTION" ]
                 , withSource """button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]""" <|
                     button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]
                 , withSource """button [ Background.colorPrim, padding10 ]
@@ -1071,11 +1071,11 @@ button_ =
                     Button.link [ Background.colorWarn ] { url = "https://example.com", children = [ t "colorWarn" ] }
                 , withSource """Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }""" <|
                     Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }
-                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
+                , withSource """Button.link [ Background.colorPrim, padding10, xxProminent, Border.w1, Border.solid ]
     { url = "https://example.com"
     , children = [ t "Can be padded/sized/bordered" ]
     }""" <|
-                    Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
+                    Button.link [ Background.colorPrim, padding10, xxProminent, Border.w1, Border.solid ]
                         { url = "https://example.com"
                         , children = [ t "Can be padded/sized/bordered" ]
                         }
@@ -1092,10 +1092,10 @@ button_ =
                 ]
     in
     section []
-        [ h1 [ sizeSection ] [ t "Button" ]
+        [ h1 [ xxProminent ] [ t "Button" ]
         , themedStdButtons oneDark "oneDark"
         , themedStdButtons aubergine "aubergine"
-        , h1 [ sizeSection ] [ t "Link Button" ]
+        , h1 [ xxProminent ] [ t "Link Button" ]
         , themedLinkButtons oneDark "oneDark"
         , themedLinkButtons aubergine "aubergine"
         ]
@@ -1104,7 +1104,7 @@ button_ =
 input_ : Model -> Html Msg
 input_ m =
     section []
-        [ h1 [ sizeSection ] [ t "Input" ]
+        [ h1 [ xxProminent ] [ t "Input" ]
         , textInput m.textInput
         , toggle m.toggle
         , select_ m.select m.selected
@@ -1373,7 +1373,7 @@ select_ ss selected =
 animation : Html Msg
 animation =
     section []
-        [ h1 [ sizeSection ] [ t "Animation" ]
+        [ h1 [ xxProminent ] [ t "Animation" ]
         , withSource """img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
             img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
         , withSource """img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
@@ -1384,7 +1384,7 @@ animation =
 icon : Html Msg
 icon =
     section []
-        [ h1 [ sizeSection ] [ t "Icon" ]
+        [ h1 [ xxProminent ] [ t "Icon" ]
         , withSource """Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }""" <|
             Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }
         , withSource """Icon.button [ Border.round5 ] { onPress = NoOp, src = Image.ph 75 75, alt = "75x75 icon" }""" <|
@@ -1415,7 +1415,7 @@ icon =
 wallpaper : Html Msg
 wallpaper =
     section []
-        [ h1 [ sizeSection ] [ t "Wallpaper" ]
+        [ h1 [ xxProminent ] [ t "Wallpaper" ]
         , withSource "Wallpaper.zephyr" Wallpaper.zephyr
         ]
 
@@ -1423,7 +1423,7 @@ wallpaper =
 table_ : Html Msg
 table_ =
     section []
-        [ h1 [ sizeSection ] [ t "Table" ]
+        [ h1 [ xxProminent ] [ t "Table" ]
         , withSource """Table.render []
     { columns =
         [ { header = "Empty Table Column1", cell = always ( [], [] ) }
@@ -1578,7 +1578,7 @@ table_ =
 producerConfig : Model -> Html Msg
 producerConfig m =
     section []
-        [ h1 [ sizeSection ] [ t "ProducerConfig" ]
+        [ h1 [ xxProminent ] [ t "ProducerConfig" ]
         , withSource """ProducerConfig.tokenForm
     { onInput = TextInput
     , onSubmit = NoOp
@@ -1649,7 +1649,7 @@ producerConfig m =
 column : Html Msg
 column =
     section []
-        [ h1 [ sizeSection ] [ t "Column" ]
+        [ h1 [ xxProminent ] [ t "Column" ]
         , section []
             [ h2 [ xProminent ] [ t "inlineTitle" ]
             , withSource """div [ prominent ] <|
@@ -1967,7 +1967,7 @@ column =
 sidebar : Model -> Html Msg
 sidebar m =
     section []
-        [ h1 [ sizeSection ] [ t "Sidebar" ]
+        [ h1 [ xxProminent ] [ t "Sidebar" ]
         , withSource """let
     dummyColumn index =
         { id = String.fromInt index
@@ -2040,7 +2040,7 @@ Sidebar.render
 configPref : Model -> Html Msg
 configPref m =
     section []
-        [ h1 [ sizeSection ] [ t "Config.Pref" ]
+        [ h1 [ xxProminent ] [ t "Config.Pref" ]
         , withSource """let
     dummyShadowColumn index =
         { id = String.fromInt index
@@ -2117,7 +2117,7 @@ Pref.render
 configStatus : Model -> Html Msg
 configStatus m =
     section []
-        [ h1 [ sizeSection ] [ t "Config.Status" ]
+        [ h1 [ xxProminent ] [ t "Config.Status" ]
         , withSource """Status.render
     { itemBrokerCapacity = 5000
     , columnItemLimit = 2000
@@ -2146,7 +2146,7 @@ configStatus m =
 configDiscord : Model -> Html Msg
 configDiscord m =
     section []
-        [ h1 [ sizeSection ] [ t "Config.Discord" ]
+        [ h1 [ xxProminent ] [ t "Config.Discord" ]
         , withSource """let
     dummyOpts =
         { rehydrating = m.toggle
@@ -2253,7 +2253,7 @@ Discord.render
 configSlack : Model -> Html Msg
 configSlack m =
     section [ aubergine ]
-        [ h1 [ sizeSection ] [ t "Config.Slack" ]
+        [ h1 [ xxProminent ] [ t "Config.Slack" ]
         , withSource """let
     dummyTeamState index =
         if index == 0 then
@@ -2398,7 +2398,7 @@ Slack.render
 columnHeader : Model -> Html Msg
 columnHeader m =
     section []
-        [ h1 [ sizeSection ] [ t "Column.Header" ]
+        [ h1 [ xxProminent ] [ t "Column.Header" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSource """Header.render
@@ -2549,7 +2549,7 @@ columnHeader m =
 columnConfig : Model -> Html Msg
 columnConfig m =
     section []
-        [ h1 [ sizeSection ] [ t "Column.Config" ]
+        [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSource "" <|

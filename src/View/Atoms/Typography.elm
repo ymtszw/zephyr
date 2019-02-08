@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, minuscule, prominent, xProminent, sizeSection, sizeImpact
+    , regular, minuscule, prominent, xProminent, xxProminent, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, minuscule, prominent, xProminent, sizeSection, sizeImpact
+@docs regular, minuscule, prominent, xProminent, xxProminent, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -101,9 +101,9 @@ xProminent =
 
 {-| Scale 4 (30px)
 -}
-sizeSection : Attribute msg
-sizeSection =
-    Attributes.class sizeSectionClass
+xxProminent : Attribute msg
+xxProminent =
+    Attributes.class xxProminentClass
 
 
 {-| Scale 12 (174px). Used for background logo, and that's all.
@@ -198,7 +198,7 @@ styles =
     , s (c minusculeClass) [ ( "font-size", px (scale12 -1) ) ]
     , s (c prominentClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c xProminentClass) [ ( "font-size", px (scale12 2) ) ]
-    , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
+    , s (c xxProminentClass) [ ( "font-size", px (scale12 4) ) ]
     , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
       sansSerifStyle
@@ -239,9 +239,9 @@ xProminentClass =
     "fsxp"
 
 
-sizeSectionClass : String
-sizeSectionClass =
-    "fss"
+xxProminentClass : String
+xxProminentClass =
+    "fsxxp"
 
 
 sizeImpactClass : String
