@@ -1,6 +1,7 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
     , regular, minuscule, prominent, xProminent, xxProminent, impactful
+    , regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -12,6 +13,7 @@ module View.Atoms.Typography exposing
 
 @docs t, link, ntLink
 @docs regular, minuscule, prominent, xProminent, xxProminent, impactful
+@docs regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -78,11 +80,21 @@ regular =
     Attributes.class regularClass
 
 
+regularSize : Int
+regularSize =
+    scale12 0
+
+
 {-| Scale -1 (9px)
 -}
 minuscule : Attribute msg
 minuscule =
     Attributes.class minusculeClass
+
+
+minusculeSize : Int
+minusculeSize =
+    scale12 -1
 
 
 {-| Scale 1 (15px)
@@ -92,11 +104,21 @@ prominent =
     Attributes.class prominentClass
 
 
+prominentSize : Int
+prominentSize =
+    scale12 1
+
+
 {-| Scale 2 (18px)
 -}
 xProminent : Attribute msg
 xProminent =
     Attributes.class xProminentClass
+
+
+xProminentSize : Int
+xProminentSize =
+    scale12 2
 
 
 {-| Scale 4 (30px)
@@ -106,11 +128,21 @@ xxProminent =
     Attributes.class xxProminentClass
 
 
+xxProminentSize : Int
+xxProminentSize =
+    scale12 4
+
+
 {-| Scale 12 (174px). Used for background logo, and that's all.
 -}
 impactful : Attribute msg
 impactful =
     Attributes.class impactfulClass
+
+
+impactfulSize : Int
+impactfulSize =
+    scale12 12
 
 
 {-| Sans-serif fonts. Used as the global default.
@@ -195,11 +227,11 @@ styles : List Style
 styles =
     [ -- Font sizes
       regularStyle
-    , s (c minusculeClass) [ ( "font-size", px (scale12 -1) ) ]
-    , s (c prominentClass) [ ( "font-size", px (scale12 1) ) ]
-    , s (c xProminentClass) [ ( "font-size", px (scale12 2) ) ]
-    , s (c xxProminentClass) [ ( "font-size", px (scale12 4) ) ]
-    , s (c impactfulClass) [ ( "font-size", px (scale12 12) ) ]
+    , s (c minusculeClass) [ ( "font-size", px minusculeSize ) ]
+    , s (c prominentClass) [ ( "font-size", px prominentSize ) ]
+    , s (c xProminentClass) [ ( "font-size", px xProminentSize ) ]
+    , s (c xxProminentClass) [ ( "font-size", px xxProminentSize ) ]
+    , s (c impactfulClass) [ ( "font-size", px impactfulSize ) ]
     , -- Font families
       sansSerifStyle
     , s (c serifClass) [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
@@ -216,7 +248,7 @@ styles =
 
 regularStyle : Style
 regularStyle =
-    s (c regularClass) [ ( "font-size", px (scale12 0) ) ]
+    s (c regularClass) [ ( "font-size", px regularSize ) ]
 
 
 regularClass : String
