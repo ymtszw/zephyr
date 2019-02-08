@@ -235,7 +235,7 @@ naviButton current r =
 introduction : Html Msg
 introduction =
     section []
-        [ h1 [ sizeImpact ]
+        [ h1 [ impactful ]
             [ span [ serif, bold ] [ t "Zephyr:" ]
             , t " "
             , span [ sansSerif, italic ] [ t "Pattern" ]
@@ -368,8 +368,8 @@ fontSizes : Html Msg
 fontSizes =
     section []
         [ h2 [ xProminent ] [ t "Font sizes" ]
-        , withSource "p [ sizeImpact ] [ t \"impact\" ]" <|
-            p [ sizeImpact ] [ t "impact" ]
+        , withSource "p [ impactful ] [ t \"impactful\" ]" <|
+            p [ impactful ] [ t "impactful" ]
         , withSource "p [ xxProminent ] [ t \"xxProminent\" ]" <|
             p [ xxProminent ] [ t "xxProminent" ]
         , withSource "p [ xProminent ] [ t \"xProminent\" ]" <|

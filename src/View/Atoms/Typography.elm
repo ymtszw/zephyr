@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, minuscule, prominent, xProminent, xxProminent, sizeImpact
+    , regular, minuscule, prominent, xProminent, xxProminent, impactful
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, minuscule, prominent, xProminent, xxProminent, sizeImpact
+@docs regular, minuscule, prominent, xProminent, xxProminent, impactful
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -108,9 +108,9 @@ xxProminent =
 
 {-| Scale 12 (174px). Used for background logo, and that's all.
 -}
-sizeImpact : Attribute msg
-sizeImpact =
-    Attributes.class sizeImpactClass
+impactful : Attribute msg
+impactful =
+    Attributes.class impactfulClass
 
 
 {-| Sans-serif fonts. Used as the global default.
@@ -199,7 +199,7 @@ styles =
     , s (c prominentClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c xProminentClass) [ ( "font-size", px (scale12 2) ) ]
     , s (c xxProminentClass) [ ( "font-size", px (scale12 4) ) ]
-    , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
+    , s (c impactfulClass) [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
       sansSerifStyle
     , s (c serifClass) [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
@@ -244,8 +244,8 @@ xxProminentClass =
     "fsxxp"
 
 
-sizeImpactClass : String
-sizeImpactClass =
+impactfulClass : String
+impactfulClass =
     "fsi"
 
 

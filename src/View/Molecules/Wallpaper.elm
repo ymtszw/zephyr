@@ -16,7 +16,7 @@ zephyr =
         [ class zephyrClass
         , oneDark
         , serif
-        , sizeImpact
+        , impactful
         , flexColumn
         , flexCenter
         , Background.colorBg
