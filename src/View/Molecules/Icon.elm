@@ -2,7 +2,7 @@ module View.Molecules.Icon exposing
     ( rounded20, rounded30, rounded40, size20, size30, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
-    , rehydrateButton, pinBadge14, discordBadge14, slackBadge14, discordBadge10, slackBadge10
+    , rehydrateButton, pinBadge14, discord14, slack14, discord10, slack10
     , styles
     )
 
@@ -11,7 +11,7 @@ module View.Molecules.Icon exposing
 @docs rounded20, rounded30, rounded40, size20, size30, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
-@docs rehydrateButton, pinBadge14, discordBadge14, slackBadge14, discordBadge10, slackBadge10
+@docs rehydrateButton, pinBadge14, discord14, slack14, discord10, slack10
 @docs styles
 
 -}
@@ -163,29 +163,29 @@ pinBadge14 =
         [ Image.octicon { size = rounded14Size, shape = Octicons.pin } ]
 
 
-discordBadge10 : Html msg
-discordBadge10 =
-    imageBadge rounded10Class "Discord logo" <| Discord.defaultIconUrl (Just rounded10Size)
+discord10 : Html msg
+discord10 =
+    logo rounded10Class "Discord logo" <| Discord.defaultIconUrl (Just rounded10Size)
 
 
-imageBadge : String -> String -> String -> Html msg
-imageBadge sizeClass alt_ src_ =
+slack10 : Html msg
+slack10 =
+    logo rounded10Class "Slack logo" <| Slack.defaultIconUrl (Just rounded10Size)
+
+
+discord14 : Html msg
+discord14 =
+    logo rounded14Class "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
+
+
+slack14 : Html msg
+slack14 =
+    logo rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+
+
+logo : String -> String -> String -> Html msg
+logo sizeClass alt_ src_ =
     img [ class sizeClass, src src_, alt alt_ ] []
-
-
-slackBadge10 : Html msg
-slackBadge10 =
-    imageBadge rounded10Class "Slack logo" <| Slack.defaultIconUrl (Just rounded10Size)
-
-
-discordBadge14 : Html msg
-discordBadge14 =
-    imageBadge rounded14Class "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
-
-
-slackBadge14 : Html msg
-slackBadge14 =
-    imageBadge rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
 
 
 

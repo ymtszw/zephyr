@@ -1,13 +1,13 @@
 module View.Molecules.Column exposing
     ( ColumnProps, Source(..), sourceId
-    , inlineTitle, blockTitle, icon20, icon30, icon40
+    , inlineTitle, inlineSource, blockTitle, icon20, icon30, icon40
     , styles
     )
 
 {-| Molecules for Column-related UI parts.
 
 @docs ColumnProps, Source, sourceId
-@docs inlineTitle, blockTitle, icon20, icon30, icon40
+@docs inlineTitle, inlineSource, blockTitle, icon20, icon30, icon40
 @docs styles
 
 -}
@@ -34,8 +34,19 @@ type alias ColumnProps c =
 {-| Representation of data sources for columns.
 -}
 type Source
-    = DiscordSource { id : String, channelName : String, guildIcon : Maybe String }
-    | SlackSource { id : String, convName : String, teamIcon : Maybe String, isPrivate : Bool }
+    = DiscordSource
+        { id : String
+        , channelName : String
+        , guildName : String -- Currently DM/GroupDM are not supported
+        , guildIcon : Maybe String
+        }
+    | SlackSource
+        { id : String
+        , convName : String
+        , teamName : String
+        , teamIcon : Maybe String
+        , isPrivate : Bool
+        }
 
 
 sourceId : Source -> String
@@ -72,23 +83,26 @@ inlineTitle octiconSize cp =
 
 sourcesInline : Int -> List Source -> List (Html msg)
 sourcesInline octiconSize sources =
-    let
-        inline source =
-            case source of
-                DiscordSource { channelName } ->
-                    [ t ("#" ++ channelName) ]
+    sources |> List.map (inlineSource octiconSize) |> List.intersperse [ t ", " ] |> List.concat
 
-                SlackSource { convName, isPrivate } ->
-                    [ if isPrivate then
-                        span [ class inlineLockIconClass, Image.fillText ]
-                            [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
 
-                      else
-                        t "#"
-                    , t convName
-                    ]
-    in
-    sources |> List.map inline |> List.intersperse [ t ", " ] |> List.concat
+{-| Renders a list of inline Html nodes from a Source.
+-}
+inlineSource : Int -> Source -> List (Html msg)
+inlineSource octiconSize source =
+    case source of
+        DiscordSource { channelName } ->
+            [ t ("#" ++ channelName) ]
+
+        SlackSource { convName, isPrivate } ->
+            [ if isPrivate then
+                span [ class inlineLockIconClass, Image.fillText ]
+                    [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
+
+              else
+                t "#"
+            , t convName
+            ]
 
 
 {-| Renders a column block consists of text information of sources and filters.
@@ -138,15 +152,28 @@ icon20 cp =
             [] ->
                 ( Nothing, Icon.abbr [ Icon.rounded20, serif ] "Zephyr" )
 
-            (DiscordSource opts) :: _ ->
-                ( Just Icon.discordBadge10
-                , Icon.imgOrAbbr [ Icon.rounded20, serif ] opts.channelName opts.guildIcon
-                )
+            source :: _ ->
+                ( Just (sourceBadge10 source), sourceIcon [ Icon.rounded20 ] source )
 
-            (SlackSource opts) :: _ ->
-                ( Just Icon.slackBadge10
-                , Icon.imgOrAbbr [ Icon.rounded20, serif ] opts.convName opts.teamIcon
-                )
+
+sourceBadge10 : Source -> Html msg
+sourceBadge10 source =
+    case source of
+        DiscordSource _ ->
+            Icon.discord10
+
+        SlackSource _ ->
+            Icon.slack10
+
+
+sourceIcon : List (Attribute msg) -> Source -> Html msg
+sourceIcon attrs source =
+    case source of
+        DiscordSource opts ->
+            Icon.imgOrAbbr (serif :: attrs) opts.guildName opts.guildIcon
+
+        SlackSource opts ->
+            Icon.imgOrAbbr (serif :: attrs) opts.teamName opts.teamIcon
 
 
 {-| Renders a badged icon representing a column in 30x30 size.
@@ -161,15 +188,18 @@ icon30 cp =
             [] ->
                 ( Nothing, Icon.abbr [ Icon.rounded30, serif, sizeTitle ] "Zephyr" )
 
-            (DiscordSource opts) :: _ ->
-                ( Just Icon.discordBadge14
-                , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.channelName opts.guildIcon
-                )
+            source :: _ ->
+                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded30, sizeTitle ] source )
 
-            (SlackSource opts) :: _ ->
-                ( Just Icon.slackBadge14
-                , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.convName opts.teamIcon
-                )
+
+sourceBadge14 : Source -> Html msg
+sourceBadge14 source =
+    case source of
+        DiscordSource _ ->
+            Icon.discord14
+
+        SlackSource _ ->
+            Icon.slack14
 
 
 {-| Renders a pinned/badged icon representing a column in 40x40 size.
@@ -192,15 +222,8 @@ icon40 cp =
             [] ->
                 ( Nothing, Icon.abbr [ Icon.rounded40, serif, sizeTitle ] "Zephyr" )
 
-            (DiscordSource opts) :: _ ->
-                ( Just Icon.discordBadge14
-                , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.channelName opts.guildIcon
-                )
-
-            (SlackSource opts) :: _ ->
-                ( Just Icon.slackBadge14
-                , Icon.imgOrAbbr [ Icon.rounded40, serif, sizeTitle ] opts.convName opts.teamIcon
-                )
+            source :: _ ->
+                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded40, sizeTitle ] source )
 
 
 badgedIcon : List (Attribute msg) -> Maybe (Html msg) -> ( Maybe (Html msg), Html msg ) -> Html msg
