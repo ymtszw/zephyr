@@ -2421,24 +2421,36 @@ columnConfig m =
         , section [ oneDark ]
             [ h2 [ sizeTitle ] [ t "oneDark" ]
             , withSource "" <|
-                ColumnConfig.render
-                    { onCloseButtonClick = Toggle False
-                    }
-                    { id = "DUMMYID"
-                    , numItems = 1000
-                    , pinned = m.toggle
-                    }
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , ColumnConfig.render
+                        { onCloseButtonClick = Toggle False
+                        , onColumnDeleteButtonClick = always NoOp
+                        }
+                        { id = "DUMMYID"
+                        , numItems = 1000
+                        , pinned = m.toggle
+                        , sources = []
+                        , filters = []
+                        }
+                    ]
             ]
         , section [ aubergine ]
             [ h2 [ sizeTitle ] [ t "aubergine" ]
             , withSource "" <|
-                ColumnConfig.render
-                    { onCloseButtonClick = Toggle False
-                    }
-                    { id = "DUMMYID"
-                    , numItems = 1000
-                    , pinned = m.toggle
-                    }
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , ColumnConfig.render
+                        { onCloseButtonClick = Toggle False
+                        , onColumnDeleteButtonClick = always NoOp
+                        }
+                        { id = "DUMMYID"
+                        , numItems = 1000
+                        , pinned = m.toggle
+                        , sources = []
+                        , filters = []
+                        }
+                    ]
             ]
         ]
 
