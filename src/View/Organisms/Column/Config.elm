@@ -10,8 +10,7 @@ import View.Atoms.Image as Image
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Column as Column exposing (ColumnProps)
-import View.Molecules.Icon as Icon
+import View.Molecules.Column exposing (ColumnProps)
 import View.Molecules.Source as Source exposing (Source)
 
 
@@ -107,7 +106,7 @@ status props =
 
 sources : Effects msg -> Props c -> List (Html msg)
 sources eff props =
-    sourceSelector eff props :: []
+    [ sourceSelector eff props ]
 
 
 sourceSelector : Effects msg -> Props c -> Html msg
@@ -121,7 +120,7 @@ sourceSelector eff props =
         , selectedOption = Nothing
         , filterMatch = Nothing
         , options = List.map (\s -> ( Source.id s, s )) props.availableSourecs
-        , optionHtml = Source.inlineWithIcon14
+        , optionHtml = Source.horizontalBlock14
         }
 
 

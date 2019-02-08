@@ -19,10 +19,8 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 -}
 
 import Color exposing (cssRgba)
-import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html, div, img, span)
-import Html.Attributes exposing (alt, class, id, src)
+import Html exposing (Attribute, Html, div, span)
+import Html.Attributes exposing (class, id)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)

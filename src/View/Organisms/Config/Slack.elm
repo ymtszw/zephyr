@@ -4,11 +4,9 @@ import Data.Producer.Slack as Slack
 import Html exposing (Html, div, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
-import Octicons
 import StringExtra
 import Url
 import View.Atoms.Border as Border
-import View.Atoms.Image as Image
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (forceBreak)

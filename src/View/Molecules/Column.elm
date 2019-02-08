@@ -11,10 +11,7 @@ module View.Molecules.Column exposing
 
 -}
 
-import Html exposing (Attribute, Html, div, span)
-import Html.Attributes exposing (class)
-import Octicons
-import View.Atoms.Image as Image
+import Html exposing (Attribute, Html, div)
 import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)

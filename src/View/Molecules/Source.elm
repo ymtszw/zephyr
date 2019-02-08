@@ -1,6 +1,6 @@
 module View.Molecules.Source exposing
     ( Source(..), id
-    , inline, slackInline, concatInline, inlineWithIcon14
+    , inline, slackInline, concatInline, horizontalBlock14
     , icon, badge10, badge14
     , styles
     )
@@ -8,16 +8,18 @@ module View.Molecules.Source exposing
 {-| Data source Molecule.
 
 @docs Source, id
-@docs inline, slackInline, concatInline, inlineWithIcon14
+@docs inline, slackInline, concatInline, horizontalBlock14
 @docs icon, badge10, badge14
 @docs styles
 
 -}
 
-import Html exposing (Attribute, Html, span)
+import Html exposing (Attribute, Html, div, span)
 import Html.Attributes exposing (class)
 import Octicons
 import View.Atoms.Image as Image
+import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
@@ -110,15 +112,13 @@ badge14 attrs source =
             Icon.slack14 attrs
 
 
-inlineWithIcon14 : Source -> Html msg
-inlineWithIcon14 source =
-    span [] <|
-        [ badge14 source
-        , t " "
-        , icon [ Icon.rounded14, regular ] source
-        , t " "
+horizontalBlock14 : Source -> Html msg
+horizontalBlock14 source =
+    div [ flexRow, flexCenter, spacingRow2, clip ] <|
+        [ badge14 [ flexItem ] source
+        , icon [ flexItem, Icon.rounded14, regular ] source
+        , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inline regularSize source)
         ]
-            ++ inline regularSize source
 
 
 
