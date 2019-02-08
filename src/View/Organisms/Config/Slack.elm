@@ -11,6 +11,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Image as Image
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
@@ -160,7 +161,7 @@ userNameAndAvatar user =
             , alt (Maybe.withDefault user.realName user.displayName)
             ]
             []
-        , div [ flexGrow ] <|
+        , div [ flexGrow, forceBreak ] <|
             case user.displayName of
                 Just dn ->
                     [ h3 [ sizeHeadline, bold ] [ t dn ], p [ colorNote ] [ t user.realName ] ]

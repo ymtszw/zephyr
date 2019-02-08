@@ -204,7 +204,7 @@ badgedIcon attrs topRight ( bottomRight, content ) =
 
 styles : List Style
 styles =
-    [ s (descOf (c inlineLockIconClass) (c "octicon")) [ ( "vertical-align", "bottom" ) ]
+    [ s (descOf (c inlineLockIconClass) (c "octicon")) [ ( "vertical-align", "bottom" ) ] -- Adjusting lock icons' position
     ]
 
 
