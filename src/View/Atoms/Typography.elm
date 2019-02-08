@@ -80,6 +80,8 @@ regular =
     Attributes.class regularClass
 
 
+{-| Scale 0 (12)
+-}
 regularSize : Int
 regularSize =
     scale12 0
@@ -92,6 +94,8 @@ minuscule =
     Attributes.class minusculeClass
 
 
+{-| Scale -1 (9)
+-}
 minusculeSize : Int
 minusculeSize =
     scale12 -1
@@ -104,6 +108,8 @@ prominent =
     Attributes.class prominentClass
 
 
+{-| Scale 1 (15)
+-}
 prominentSize : Int
 prominentSize =
     scale12 1
@@ -116,6 +122,8 @@ xProminent =
     Attributes.class xProminentClass
 
 
+{-| Scale 2 (18)
+-}
 xProminentSize : Int
 xProminentSize =
     scale12 2
@@ -128,6 +136,8 @@ xxProminent =
     Attributes.class xxProminentClass
 
 
+{-| Scale 4 (30)
+-}
 xxProminentSize : Int
 xxProminentSize =
     scale12 4
@@ -140,6 +150,8 @@ impactful =
     Attributes.class impactfulClass
 
 
+{-| Scale 12 (174)
+-}
 impactfulSize : Int
 impactfulSize =
     scale12 12
