@@ -138,7 +138,7 @@ dangerZone eff props =
     [ row
         [ div [ flexGrow ]
             [ p [] [ t "Delete this column" ]
-            , p [ colorNote, sizeDetail ] [ t "CAUTION: Messages stored in this column will be permanently discarded!" ]
+            , p [ colorNote, detail ] [ t "CAUTION: Messages stored in this column will be permanently discarded!" ]
             ]
         , button
             [ flexItem

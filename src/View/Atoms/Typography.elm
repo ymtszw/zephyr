@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+    , regular, detail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+@docs regular, detail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -80,9 +80,9 @@ regular =
 
 {-| Scale -1 (9px)
 -}
-sizeDetail : Attribute msg
-sizeDetail =
-    Attributes.class sizeDetailClass
+detail : Attribute msg
+detail =
+    Attributes.class detailClass
 
 
 {-| Scale 1 (15px)
@@ -195,7 +195,7 @@ styles : List Style
 styles =
     [ -- Font sizes
       regularStyle
-    , s (c sizeDetailClass) [ ( "font-size", px (scale12 -1) ) ]
+    , s (c detailClass) [ ( "font-size", px (scale12 -1) ) ]
     , s (c sizeHeadlineClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
     , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
@@ -224,8 +224,8 @@ regularClass =
     "fsr"
 
 
-sizeDetailClass : String
-sizeDetailClass =
+detailClass : String
+detailClass =
     "fsd"
 
 

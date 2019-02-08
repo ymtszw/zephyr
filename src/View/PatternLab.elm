@@ -376,10 +376,10 @@ fontSizes =
             p [ sizeTitle ] [ t "title" ]
         , withSource "p [ sizeHeadline ] [ t \"headline\" ]" <|
             p [ sizeHeadline ] [ t "headline" ]
-        , withSource "p [ regular ] [ t \"base\" ]" <|
+        , withSource "p [ regular ] [ t \"regular\" ]" <|
             p [ regular ] [ t "regular" ]
-        , withSource "p [ sizeDetail ] [ t \"detail\" ]" <|
-            p [ sizeDetail ] [ t "detail" ]
+        , withSource "p [ detail ] [ t \"detail\" ]" <|
+            p [ detail ] [ t "detail" ]
         ]
 
 
