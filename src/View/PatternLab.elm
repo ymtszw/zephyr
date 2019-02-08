@@ -378,8 +378,8 @@ fontSizes =
             p [ headline ] [ t "headline" ]
         , withSource "p [ regular ] [ t \"regular\" ]" <|
             p [ regular ] [ t "regular" ]
-        , withSource "p [ detail ] [ t \"detail\" ]" <|
-            p [ detail ] [ t "detail" ]
+        , withSource "p [ minuscule ] [ t \"minuscule\" ]" <|
+            p [ minuscule ] [ t "minuscule" ]
         ]
 
 

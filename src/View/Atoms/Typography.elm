@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, detail, headline, sizeTitle, sizeSection, sizeImpact
+    , regular, minuscule, headline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, detail, headline, sizeTitle, sizeSection, sizeImpact
+@docs regular, minuscule, headline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -80,8 +80,8 @@ regular =
 
 {-| Scale -1 (9px)
 -}
-detail : Attribute msg
-detail =
+minuscule : Attribute msg
+minuscule =
     Attributes.class detailClass
 
 

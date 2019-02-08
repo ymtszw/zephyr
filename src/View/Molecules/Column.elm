@@ -136,7 +136,7 @@ blockTitle userAttrs cp =
 
             ( sources, filters ) ->
                 [ mainText (sourcesInline octiconSize sources)
-                , div [ colorNote, detail, ellipsis ] [ t (String.join ", " filters) ]
+                , div [ colorNote, minuscule, ellipsis ] [ t (String.join ", " filters) ]
                 ]
 
 

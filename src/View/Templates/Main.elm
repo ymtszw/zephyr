@@ -21,7 +21,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 import Color exposing (cssRgba)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html, div, h2, img, span)
+import Html exposing (Attribute, Html, div, img, span)
 import Html.Attributes exposing (alt, class, id, src)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
@@ -160,7 +160,7 @@ titleTemplate text icon =
         , Border.bot1
         ]
         [ icon
-        , h2 [ bold, sizeTitle ] [ t text ]
+        , div [ bold, sizeTitle ] [ t text ]
         ]
 
 

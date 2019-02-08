@@ -1,6 +1,6 @@
 module View.Organisms.Config.Pref exposing (Effects, Props, render, styles)
 
-import Html exposing (Html, button, div, h3, p)
+import Html exposing (Html, button, div, p)
 import Html.Attributes exposing (class, disabled)
 import Html.Events exposing (onClick)
 import Octicons
@@ -60,7 +60,7 @@ prefRow : String -> List String -> Html msg -> Html msg
 prefRow title descriptions contents =
     div [ growRow, spacingRow5 ]
         [ div [ flexColumn, spacingColumn5 ]
-            [ h3 [ sizeTitle ] [ t title ]
+            [ div [ sizeTitle ] [ t title ]
             , desc (List.map t descriptions)
             ]
         , contents
