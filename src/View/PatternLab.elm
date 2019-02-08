@@ -209,7 +209,7 @@ navi current =
 naviRow : Route -> List R -> Html Msg
 naviRow current rs =
     div [ flexRow, flexCenter, spacingRow15 ]
-        [ h2 [ sizeHeadline, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
+        [ h2 [ headline, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
         , div [ flexRow, flexGrow, flexWrap, flexCenter, spacingWrapped10 ] <|
             List.map (naviButton current) rs
         ]
@@ -218,7 +218,7 @@ naviRow current rs =
 naviButton : Route -> R -> Html Msg
 naviButton current r =
     Button.link
-        [ sizeHeadline
+        [ headline
         , padding10
         , flexItem
         , if current == r.path then
@@ -248,13 +248,13 @@ introduction =
             , t "By default this page has oneDark theme."
             ]
         , div [ padding10 ]
-            [ h2 [ sizeHeadline ]
+            [ h2 [ headline ]
                 [ t "Stylesheet length: "
                 , t (StringExtra.punctuateNumber View.Stylesheet.length)
                 ]
             ]
         , section []
-            [ h2 [ sizeHeadline ] [ t "Imports" ]
+            [ h2 [ headline ] [ t "Imports" ]
             , sourceBlock """import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -374,8 +374,8 @@ fontSizes =
             p [ sizeSection ] [ t "section" ]
         , withSource "p [ sizeTitle ] [ t \"title\" ]" <|
             p [ sizeTitle ] [ t "title" ]
-        , withSource "p [ sizeHeadline ] [ t \"headline\" ]" <|
-            p [ sizeHeadline ] [ t "headline" ]
+        , withSource "p [ headline ] [ t \"headline\" ]" <|
+            p [ headline ] [ t "headline" ]
         , withSource "p [ regular ] [ t \"regular\" ]" <|
             p [ regular ] [ t "regular" ]
         , withSource "p [ detail ] [ t \"detail\" ]" <|
@@ -403,7 +403,7 @@ fontColors =
     let
         coloredTexts theme_ themeText =
             section [ theme_ ]
-                [ h3 [ sizeHeadline ] [ t themeText ]
+                [ h3 [ headline ] [ t themeText ]
                 , withSource """p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]""" <|
                     p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]
                 , withSource """p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]""" <|
@@ -579,24 +579,24 @@ background =
         themedBg theme_ themeText =
             section [ theme_ ]
                 [ h2 [ sizeTitle ] [ t themeText ]
-                , withSource """div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]""" <|
-                    div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]
-                , withSource """div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]""" <|
-                    div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]
-                , withSource """div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]""" <|
-                    div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]
-                , withSource """div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]""" <|
-                    div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]
-                , withSource """div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]""" <|
-                    div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]
-                , withSource """div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]""" <|
-                    div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]
-                , withSource """div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]""" <|
-                    div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]
-                , withSource """div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]""" <|
-                    div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]
-                , withSource """div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]""" <|
-                    div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]
+                , withSource """div [ padding15 ] [ h3 [ headline ] [ t "Default" ] ]""" <|
+                    div [ padding15 ] [ h3 [ headline ] [ t "Default" ] ]
+                , withSource """div [ padding15, Background.colorBg ] [ h3 [ headline ] [ t "colorBg" ] ]""" <|
+                    div [ padding15, Background.colorBg ] [ h3 [ headline ] [ t "colorBg" ] ]
+                , withSource """div [ padding15, Background.colorMain ] [ h3 [ headline ] [ t "colorMain" ] ]""" <|
+                    div [ padding15, Background.colorMain ] [ h3 [ headline ] [ t "colorMain" ] ]
+                , withSource """div [ padding15, Background.colorSub ] [ h3 [ headline ] [ t "colorSub" ] ]""" <|
+                    div [ padding15, Background.colorSub ] [ h3 [ headline ] [ t "colorSub" ] ]
+                , withSource """div [ padding15, Background.colorNote ] [ h3 [ headline ] [ t "colorNote" ] ]""" <|
+                    div [ padding15, Background.colorNote ] [ h3 [ headline ] [ t "colorNote" ] ]
+                , withSource """div [ padding15, Background.colorPrim ] [ h3 [ headline ] [ t "colorPrim" ] ]""" <|
+                    div [ padding15, Background.colorPrim ] [ h3 [ headline ] [ t "colorPrim" ] ]
+                , withSource """div [ padding15, Background.colorSucc ] [ h3 [ headline ] [ t "colorSucc" ] ]""" <|
+                    div [ padding15, Background.colorSucc ] [ h3 [ headline ] [ t "colorSucc" ] ]
+                , withSource """div [ padding15, Background.colorWarn ] [ h3 [ headline ] [ t "colorWarn" ] ]""" <|
+                    div [ padding15, Background.colorWarn ] [ h3 [ headline ] [ t "colorWarn" ] ]
+                , withSource """div [ padding15, Background.colorErr ] [ h3 [ headline ] [ t "colorErr" ] ]""" <|
+                    div [ padding15, Background.colorErr ] [ h3 [ headline ] [ t "colorErr" ] ]
                 ]
     in
     section []
@@ -1012,7 +1012,7 @@ button_ =
                 , withSource """button [ Background.colorSucc ] [ t "succ" ]""" <| button [ Background.colorSucc ] [ t "succ" ]
                 , withSource """button [ Background.colorWarn ] [ t "warn" ]""" <| button [ Background.colorWarn ] [ t "warn" ]
                 , withSource """button [ Background.colorErr ] [ t "err" ]""" <| button [ Background.colorErr ] [ t "err" ]
-                , withSource """button [ Background.colorPrim, sizeHeadline ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeHeadline ] [ t "prim HEADLINE" ]
+                , withSource """button [ Background.colorPrim, headline ] [ t "prim" ]""" <| button [ Background.colorPrim, headline ] [ t "prim HEADLINE" ]
                 , withSource """button [ Background.colorPrim, sizeSection ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeSection ] [ t "prim SECTION" ]
                 , withSource """button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]""" <|
                     button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]
@@ -1046,12 +1046,12 @@ button_ =
                         ]
                 , withSource """div [ flexRow ] [ button [ Background.colorPrim, flexGrow, flexItem ] [ t "Can become a flex item" ] ]""" <|
                     div [ flexRow ] [ button [ Background.colorPrim, flexGrow, flexItem ] [ t "Can become a flex item" ] ]
-                , withSource """div [ growRow, sizeHeadline ]
+                , withSource """div [ growRow, headline ]
     [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
     , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
     , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
     ]""" <|
-                    div [ growRow, sizeHeadline ]
+                    div [ growRow, headline ]
                         [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
                         , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
                         , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
@@ -1127,7 +1127,7 @@ textInput currentInput =
         , onInput TextInput
         , placeholder "Big input"
         , block
-        , sizeHeadline
+        , headline
         , padding5
         , Border.round5
         , Border.w1
@@ -1144,7 +1144,7 @@ textInput currentInput =
                     , onInput TextInput
                     , placeholder "Big input"
                     , block
-                    , sizeHeadline
+                    , headline
                     , padding5
                     , Border.round5
                     , Border.w1
@@ -1652,55 +1652,55 @@ column =
         [ h1 [ sizeSection ] [ t "Column" ]
         , section []
             [ h2 [ sizeTitle ] [ t "inlineTitle" ]
-            , withSource """div [ sizeHeadline ] <|
+            , withSource """div [ headline ] <|
     Column.inlineTitle 15 <|
         { pinned = False, sources = [], filters = [] }""" <|
-                div [ sizeHeadline ] <|
+                div [ headline ] <|
                     Column.inlineTitle 15 <|
                         { pinned = False, sources = [], filters = [] }
-            , withSource """div [ sizeHeadline ] <|
+            , withSource """div [ headline ] <|
     Column.inlineTitle 15 <|
         { pinned = False, sources = [], filters = [ "\\"Elm\\"", "Has Media" ] }""" <|
-                div [ sizeHeadline ] <|
+                div [ headline ] <|
                     Column.inlineTitle 15 <|
                         { pinned = False, sources = [], filters = [ "\"Elm\"", "Has Media" ] }
-            , withSource """div [ sizeHeadline ] <|
+            , withSource """div [ headline ] <|
     Column.inlineTitle 15 <|
         { pinned = False
         , sources = [ DiscordSource { id = "DID", channelName = "Channel", guildName = "Guild", guildIcon = Nothing } ]
         , filters = []
         }""" <|
-                div [ sizeHeadline ] <|
+                div [ headline ] <|
                     Column.inlineTitle 15 <|
                         { pinned = False
                         , sources = [ DiscordSource { id = "DID", channelName = "Channel", guildName = "Guild", guildIcon = Nothing } ]
                         , filters = []
                         }
-            , withSource """div [ sizeHeadline ] <|
+            , withSource """div [ headline ] <|
     Column.inlineTitle 15 <|
         { pinned = False
         , sources = [ SlackSource { id = "SID", convName = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = False } ]
         , filters = []
         }""" <|
-                div [ sizeHeadline ] <|
+                div [ headline ] <|
                     Column.inlineTitle 15 <|
                         { pinned = False
                         , sources = [ SlackSource { id = "SID", convName = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = False } ]
                         , filters = []
                         }
-            , withSource """div [ sizeHeadline ] <|
+            , withSource """div [ headline ] <|
     Column.inlineTitle 15 <|
         { pinned = False
         , sources = [ SlackSource { id = "SID", convName = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True } ]
         , filters = []
         }""" <|
-                div [ sizeHeadline ] <|
+                div [ headline ] <|
                     Column.inlineTitle 15 <|
                         { pinned = False
                         , sources = [ SlackSource { id = "SID", convName = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True } ]
                         , filters = []
                         }
-            , withSource """div [ sizeHeadline ] <|
+            , withSource """div [ headline ] <|
     Column.inlineTitle 15 <|
         { pinned = False
         , sources =
@@ -1709,7 +1709,7 @@ column =
             ]
         , filters = [ "\\"Elm\\"", "Has Media" ]
         }""" <|
-                div [ sizeHeadline ] <|
+                div [ headline ] <|
                     Column.inlineTitle 15 <|
                         { pinned = False
                         , sources =

@@ -116,7 +116,7 @@ userNameAndAvatar onRehydrateButtonClick rehydrating user =
             ]
             []
         , div [ flexGrow ]
-            [ h3 [ sizeHeadline, bold ] [ t user.username ]
+            [ h3 [ headline, bold ] [ t user.username ]
             , p [ colorNote ] [ t ("#" ++ user.discriminator) ]
             ]
         , Icon.rehydrateButton onRehydrateButtonClick rehydrating

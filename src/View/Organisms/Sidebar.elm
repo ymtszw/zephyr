@@ -99,7 +99,7 @@ withTooltip tooltip content =
             , flexCenter
             , flexBasisAuto
             , padding5
-            , sizeHeadline
+            , headline
             , Background.colorSub
             , Border.round5
             ]

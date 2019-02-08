@@ -42,7 +42,7 @@ tokenForm eff props =
             , id props.id
             , onInput eff.onInput
             , flexItem
-            , sizeHeadline
+            , headline
             , padding5
             , Border.round5
             ]
@@ -50,7 +50,7 @@ tokenForm eff props =
         , button
             [ flexItem
             , alignEnd
-            , sizeHeadline
+            , headline
             , padding10
             , Background.colorPrim
             , Border.round5
@@ -74,7 +74,7 @@ subSelect :
     -> Html msg
 subSelect onSelect props =
     div [ flexRow, flexCenter, spacingRow5 ]
-        [ div [ sizeHeadline ] [ t "Subscribe:" ]
+        [ div [ headline ] [ t "Subscribe:" ]
         , Select.render [ class subSelectClass, flexBasisAuto ]
             { state = props.selectState
             , msgTagger = props.selectMsgTagger

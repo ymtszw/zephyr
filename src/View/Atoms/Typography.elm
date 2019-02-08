@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, detail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+    , regular, detail, headline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, detail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+@docs regular, detail, headline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -87,9 +87,9 @@ detail =
 
 {-| Scale 1 (15px)
 -}
-sizeHeadline : Attribute msg
-sizeHeadline =
-    Attributes.class sizeHeadlineClass
+headline : Attribute msg
+headline =
+    Attributes.class headlineClass
 
 
 {-| Scale 2 (18px)
@@ -196,7 +196,7 @@ styles =
     [ -- Font sizes
       regularStyle
     , s (c detailClass) [ ( "font-size", px (scale12 -1) ) ]
-    , s (c sizeHeadlineClass) [ ( "font-size", px (scale12 1) ) ]
+    , s (c headlineClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
     , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
     , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
@@ -229,8 +229,8 @@ detailClass =
     "fsd"
 
 
-sizeHeadlineClass : String
-sizeHeadlineClass =
+headlineClass : String
+headlineClass =
     "fsh"
 
 

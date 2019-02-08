@@ -133,7 +133,7 @@ dangerZone : Effects msg -> ColumnProps { c | id : String } -> List (Html msg)
 dangerZone eff props =
     let
         row =
-            div [ flexRow, flexCenter, spacingRow5, sizeHeadline ]
+            div [ flexRow, flexCenter, spacingRow5, headline ]
     in
     [ row
         [ div [ flexGrow ]

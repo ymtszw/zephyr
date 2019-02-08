@@ -118,7 +118,7 @@ blockTitle userAttrs cp =
             [ flexShrink, flexColumn, spacingColumn2, nowrap, clip ]
 
         mainText =
-            div [ bold, sizeHeadline, ellipsis ]
+            div [ bold, headline, ellipsis ]
 
         octiconSize =
             13
