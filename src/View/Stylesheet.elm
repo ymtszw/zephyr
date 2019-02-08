@@ -12,14 +12,13 @@ import View.Atoms.Input.Select as Select
 import View.Atoms.Layout as Layout
 import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography as Typography
-import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source as Source
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Pref as Pref
-import View.Organisms.Config.Slack as Slack
 import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (..)
 import View.Templates.Main
@@ -52,11 +51,10 @@ rendered =
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Table.styles
+                ++ Source.styles
                 ++ ProducerConfig.styles
-                ++ Column.styles
                 ++ Sidebar.styles
                 ++ Pref.styles
-                ++ Slack.styles
                 ++ Header.styles
                 ++ View.Templates.Main.styles
 

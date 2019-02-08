@@ -1,7 +1,7 @@
-module View.Organisms.Config.Slack exposing (Effects, Props, TeamState(..), render, styles)
+module View.Organisms.Config.Slack exposing (Effects, Props, TeamState(..), render)
 
 import Data.Producer.Slack as Slack
-import Html exposing (Html, div, h3, img, p)
+import Html exposing (Html, div, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
 import Octicons
@@ -15,6 +15,7 @@ import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source as Source
 import View.Style exposing (..)
 
 
@@ -121,9 +122,12 @@ teamState eff props ( team, ts ) =
                         , selectState = props.selectState
                         , options = opts.subbableConvs
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
-                        , optionHtml = convSummary
+                        , optionHtml = div [] << Source.slackInline regularSize
                         }
-                    , ProducerConfig.subbedTable eff { items = opts.subbedConvs, itemHtml = convSummary }
+                    , ProducerConfig.subbedTable eff
+                        { items = opts.subbedConvs
+                        , itemHtml = div [] << Source.slackInline regularSize
+                        }
                     ]
 
 
@@ -145,7 +149,7 @@ teamNameAndIcon team =
                 teamUrl =
                     Slack.teamUrl team
             in
-            [ h3 [ prominent, bold ] [ t team.name ]
+            [ div [ prominent, bold ] [ t team.name ]
             , ntLink [] { url = Url.toString teamUrl, children = [ t teamUrl.host ] }
             ]
         ]
@@ -164,41 +168,8 @@ userNameAndAvatar user =
         , div [ flexGrow, forceBreak ] <|
             case user.displayName of
                 Just dn ->
-                    [ h3 [ prominent, bold ] [ t dn ], p [ colorNote ] [ t user.realName ] ]
+                    [ div [ prominent, bold ] [ t dn ], p [ colorNote ] [ t user.realName ] ]
 
                 Nothing ->
-                    [ h3 [ prominent, bold ] [ t user.realName ] ]
+                    [ div [ prominent, bold ] [ t user.realName ] ]
         ]
-
-
-convSummary : { c | name : String, isPrivate : Bool } -> Html msg
-convSummary c =
-    let
-        icon =
-            if c.isPrivate then
-                div [ class convIconClass, Image.fillText ] [ Image.octicon { size = lockIconSize, shape = Octicons.lock } ]
-
-            else
-                div [ class convIconClass, prominent, flexBasisAuto ] [ t "#" ]
-    in
-    div [ flexRow, flexCenter, spacingRow5 ] [ icon, div [ flexGrow ] [ t c.name ] ]
-
-
-lockIconSize : Int
-lockIconSize =
-    16
-
-
-
--- STYLES
-
-
-styles : List Style
-styles =
-    [ s (c convIconClass) [ ( "width", px lockIconSize ), ( "text-align", "center" ) ]
-    ]
-
-
-convIconClass : String
-convIconClass =
-    "slackcvicon"

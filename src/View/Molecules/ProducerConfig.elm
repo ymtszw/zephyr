@@ -103,10 +103,10 @@ subbedTable :
 subbedTable eff props =
     let
         nameCell c =
-            ( [ widthFill ], [ props.itemHtml c ] )
+            ( [ Table.alignMiddle, widthFill ], [ props.itemHtml c ] )
 
         actionCell c =
-            ( []
+            ( [ Table.alignMiddle ]
             , [ div [ flexRow, flexCenter, spacingRow2 ]
                     [ fetchStatusAndforceFetchButton (eff.onForceFetchButtonClick c.id) c.fetching
                     , createColumnButton (eff.onCreateColumnButtonClick c.id) c
@@ -144,14 +144,9 @@ fetchStatusAndforceFetchButton onPress fetching =
               else
                 noAttr
             ]
-            [ Image.octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
+            [ Image.octicon { size = xProminentSize, shape = Octicons.arrowDown }
             ]
         ]
-
-
-octiconButtonSize : Int
-octiconButtonSize =
-    20
 
 
 createColumnButton : msg -> { a | producing : Bool } -> Html msg
@@ -178,7 +173,7 @@ unsubscribeButton onPress =
         , Background.transparent
         ]
         { onPress = onPress
-        , size = octiconButtonSize
+        , size = xProminentSize
         , shape = Octicons.circleSlash
         }
 

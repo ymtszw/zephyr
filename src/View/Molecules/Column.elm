@@ -1,7 +1,6 @@
 module View.Molecules.Column exposing
     ( ColumnProps
     , inlineTitle, blockTitle, icon20, icon30, icon40
-    , styles
     )
 
 {-| Molecules for Column-related UI parts.
@@ -149,8 +148,3 @@ badgedIcon attrs topRight ( bottomRight, content ) =
         , bottomRight = bottomRight
         , content = content
         }
-
-
-styles : List Style
-styles =
-    []
