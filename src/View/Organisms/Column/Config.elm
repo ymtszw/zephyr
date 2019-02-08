@@ -1,6 +1,6 @@
 module View.Organisms.Column.Config exposing (Effects, render)
 
-import Html exposing (Html, button, div)
+import Html exposing (Html, button, div, span)
 import Html.Events exposing (onClick)
 import Octicons
 import StringExtra
@@ -36,10 +36,15 @@ render eff c =
         , Border.colorNote
         ]
         [ configSection
-            [ div [ Image.fillSucc ] [ Image.octicon { size = configHeaderOcticonSize, shape = Octicons.pulse } ]
-            , div [] [ t " Status" ]
+            [ span [ Image.fillSucc ] [ Image.octicon { size = configHeaderOcticonSize, shape = Octicons.pulse } ]
+            , t " Status"
             ]
             (status c)
+        , configSection
+            [ span [ Image.fillErr ] [ Image.octicon { size = configHeaderOcticonSize, shape = Octicons.stop } ]
+            , t " Danger Zone"
+            ]
+            []
         , closeButton eff.onCloseButtonClick
         ]
 
@@ -49,12 +54,9 @@ configSection headerTexts contents =
     let
         header =
             div
-                [ flexRow
-                , flexCenter
-                , padding2
-                , spacingRow5
-                , sizeTitle
+                [ sizeTitle
                 , colorNote
+                , padding2
                 , Border.bot1
                 , Border.solid
                 ]
