@@ -1,12 +1,12 @@
 module View.Molecules.Column exposing
-    ( ColumnProps, Source(..)
+    ( ColumnProps, Source(..), sourceId
     , inlineTitle, blockTitle, icon20, icon30, icon40
     , styles
     )
 
 {-| Molecules for Column-related UI parts.
 
-@docs ColumnProps, Source
+@docs ColumnProps, Source, sourceId
 @docs inlineTitle, blockTitle, icon20, icon30, icon40
 @docs styles
 
@@ -34,8 +34,18 @@ type alias ColumnProps c =
 {-| Representation of data sources for columns.
 -}
 type Source
-    = DiscordSource { channelName : String, guildIcon : Maybe String }
-    | SlackSource { convName : String, teamIcon : Maybe String, isPrivate : Bool }
+    = DiscordSource { id : String, channelName : String, guildIcon : Maybe String }
+    | SlackSource { id : String, convName : String, teamIcon : Maybe String, isPrivate : Bool }
+
+
+sourceId : Source -> String
+sourceId source =
+    case source of
+        DiscordSource { id } ->
+            "DiscordSource_" ++ id
+
+        SlackSource { id } ->
+            "SlackSource_" ++ id
 
 
 {-| Renders a list of inline Html nodes from sources and filters.
