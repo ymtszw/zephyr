@@ -90,24 +90,24 @@ icon attrs source =
             Icon.imgOrAbbr (serif :: attrs) opts.teamName opts.teamIcon
 
 
-badge10 : Source -> Html msg
-badge10 source =
+badge10 : List (Attribute msg) -> Source -> Html msg
+badge10 attrs source =
     case source of
         DiscordSource _ ->
-            Icon.discord10
+            Icon.discord10 attrs
 
         SlackSource _ ->
-            Icon.slack10
+            Icon.slack10 attrs
 
 
-badge14 : Source -> Html msg
-badge14 source =
+badge14 : List (Attribute msg) -> Source -> Html msg
+badge14 attrs source =
     case source of
         DiscordSource _ ->
-            Icon.discord14
+            Icon.discord14 attrs
 
         SlackSource _ ->
-            Icon.slack14
+            Icon.slack14 attrs
 
 
 inlineWithIcon14 : Source -> Html msg

@@ -151,39 +151,39 @@ pinBadge14 =
         [ Image.octicon { size = rounded14Size, shape = Octicons.pin } ]
 
 
-discord10 : Html msg
-discord10 =
-    logo rounded10Class "Discord logo" <| Discord.defaultIconUrl (Just rounded10Size)
+discord10 : List (Attribute msg) -> Html msg
+discord10 attrs =
+    logo attrs rounded10Class "Discord logo" <| Discord.defaultIconUrl (Just rounded10Size)
 
 
-slack10 : Html msg
-slack10 =
-    logo rounded10Class "Slack logo" <| Slack.defaultIconUrl (Just rounded10Size)
+slack10 : List (Attribute msg) -> Html msg
+slack10 attrs =
+    logo attrs rounded10Class "Slack logo" <| Slack.defaultIconUrl (Just rounded10Size)
 
 
-discord14 : Html msg
-discord14 =
-    logo rounded14Class "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
+discord14 : List (Attribute msg) -> Html msg
+discord14 attrs =
+    logo attrs rounded14Class "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
 
 
-slack14 : Html msg
-slack14 =
-    logo rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+slack14 : List (Attribute msg) -> Html msg
+slack14 attrs =
+    logo attrs rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
 
 
-discord20 : Html msg
-discord20 =
-    logo rounded20Class "Discord logo" <| Discord.defaultIconUrl (Just rounded20Size)
+discord20 : List (Attribute msg) -> Html msg
+discord20 attrs =
+    logo attrs rounded20Class "Discord logo" <| Discord.defaultIconUrl (Just rounded20Size)
 
 
-slack20 : Html msg
-slack20 =
-    logo rounded20Class "Slack logo" <| Slack.defaultIconUrl (Just rounded20Size)
+slack20 : List (Attribute msg) -> Html msg
+slack20 attrs =
+    logo attrs rounded20Class "Slack logo" <| Slack.defaultIconUrl (Just rounded20Size)
 
 
-logo : String -> String -> String -> Html msg
-logo sizeClass alt_ src_ =
-    img [ class sizeClass, src src_, alt alt_ ] []
+logo : List (Attribute msg) -> String -> String -> String -> Html msg
+logo attrs sizeClass alt_ src_ =
+    img ([ class sizeClass, src src_, alt alt_ ] ++ attrs) []
 
 
 discordImageUrl20 : Discord.Image -> String

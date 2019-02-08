@@ -98,7 +98,7 @@ icon20 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded20, serif ] "Zephyr" )
 
             source :: _ ->
-                ( Just (Source.badge10 source), Source.icon [ Icon.rounded20 ] source )
+                ( Just (Source.badge10 [] source), Source.icon [ Icon.rounded20 ] source )
 
 
 {-| Renders a badged icon representing a column in 30x30 size.
@@ -114,7 +114,7 @@ icon30 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded30, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (Source.badge14 source), Source.icon [ Icon.rounded30, xProminent ] source )
+                ( Just (Source.badge14 [] source), Source.icon [ Icon.rounded30, xProminent ] source )
 
 
 {-| Renders a pinned/badged icon representing a column in 40x40 size.
@@ -138,7 +138,7 @@ icon40 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded40, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (Source.badge14 source), Source.icon [ Icon.rounded40, xProminent ] source )
+                ( Just (Source.badge14 [] source), Source.icon [ Icon.rounded40, xProminent ] source )
 
 
 badgedIcon : List (Attribute msg) -> Maybe (Html msg) -> ( Maybe (Html msg), Html msg ) -> Html msg
