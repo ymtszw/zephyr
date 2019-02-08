@@ -82,7 +82,7 @@ regular =
 -}
 minuscule : Attribute msg
 minuscule =
-    Attributes.class detailClass
+    Attributes.class minusculeClass
 
 
 {-| Scale 1 (15px)
@@ -195,7 +195,7 @@ styles : List Style
 styles =
     [ -- Font sizes
       regularStyle
-    , s (c detailClass) [ ( "font-size", px (scale12 -1) ) ]
+    , s (c minusculeClass) [ ( "font-size", px (scale12 -1) ) ]
     , s (c headlineClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
     , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
@@ -224,9 +224,9 @@ regularClass =
     "fsr"
 
 
-detailClass : String
-detailClass =
-    "fsd"
+minusculeClass : String
+minusculeClass =
+    "fsm"
 
 
 headlineClass : String
