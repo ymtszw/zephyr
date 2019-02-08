@@ -113,7 +113,7 @@ resetUserAgentStyles =
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
     , s "body" [ ( "line-height", "1" ) ]
-        |> inject Typography.sizeBaseStyle
+        |> inject Typography.regularStyle
         |> inject Typography.sansSerifStyle
         |> inject Background.oneDarkMainStyle
     , s "ol,ul"

@@ -1,22 +1,22 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+    , regular, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
     , newTab
-    , styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
+    , styles, regularStyle, sansSerifStyle, monospaceStyle
     )
 
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+@docs regular, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
 @docs newTab
-@docs styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
+@docs styles, regularStyle, sansSerifStyle, monospaceStyle
 
 -}
 
@@ -73,9 +73,9 @@ This equals to the global default, so you do not need this in an element
 where global default is not overridden.
 
 -}
-sizeBase : Attribute msg
-sizeBase =
-    Attributes.class sizeBaseClass
+regular : Attribute msg
+regular =
+    Attributes.class regularClass
 
 
 {-| Scale -1 (9px)
@@ -194,7 +194,7 @@ newTab =
 styles : List Style
 styles =
     [ -- Font sizes
-      sizeBaseStyle
+      regularStyle
     , s (c sizeDetailClass) [ ( "font-size", px (scale12 -1) ) ]
     , s (c sizeHeadlineClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
@@ -214,14 +214,14 @@ styles =
         ++ linkStyles
 
 
-sizeBaseStyle : Style
-sizeBaseStyle =
-    s (c sizeBaseClass) [ ( "font-size", px (scale12 0) ) ]
+regularStyle : Style
+regularStyle =
+    s (c regularClass) [ ( "font-size", px (scale12 0) ) ]
 
 
-sizeBaseClass : String
-sizeBaseClass =
-    "fsb"
+regularClass : String
+regularClass =
+    "fsr"
 
 
 sizeDetailClass : String

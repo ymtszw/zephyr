@@ -239,12 +239,12 @@ sourceSummary14 : Source -> Html msg
 sourceSummary14 source =
     let
         octiconSize =
-            -- sizeBase
+            -- regular
             12
     in
     div [ flexRow, flexCenter, spacingRow2, clip ]
         [ div [ flexItem, flexBasisAuto ] [ sourceBadge14 source ]
-        , sourceIcon [ flexItem, flexBasisAuto, Icon.rounded14, sizeBase ] source
+        , sourceIcon [ flexItem, flexBasisAuto, Icon.rounded14, regular ] source
         , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inlineSource octiconSize source)
         ]
 
