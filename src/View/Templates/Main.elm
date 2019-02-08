@@ -160,7 +160,7 @@ titleTemplate text icon =
         , Border.bot1
         ]
         [ icon
-        , div [ bold, sizeTitle ] [ t text ]
+        , div [ bold, xProminent ] [ t text ]
         ]
 
 

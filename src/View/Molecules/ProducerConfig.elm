@@ -30,7 +30,7 @@ tokenForm :
     -> Html msg
 tokenForm eff props =
     div [ flexColumn, spacingColumn2 ]
-        [ label [ flexItem, sizeTitle, bold, for props.id ] [ t "Token" ]
+        [ label [ flexItem, xProminent, bold, for props.id ] [ t "Token" ]
         , p [ colorNote ]
             [ t ("Tokens are stored in IndexedDB of your web browser, and only sent to '" ++ props.apiDomain ++ "'. Otherwise it ")
             , strong [ bold ] [ t "NEVER" ]

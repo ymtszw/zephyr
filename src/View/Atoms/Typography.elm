@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, minuscule, prominent, sizeTitle, sizeSection, sizeImpact
+    , regular, minuscule, prominent, xProminent, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, minuscule, prominent, sizeTitle, sizeSection, sizeImpact
+@docs regular, minuscule, prominent, xProminent, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -94,9 +94,9 @@ prominent =
 
 {-| Scale 2 (18px)
 -}
-sizeTitle : Attribute msg
-sizeTitle =
-    Attributes.class sizeTitleClass
+xProminent : Attribute msg
+xProminent =
+    Attributes.class xProminentClass
 
 
 {-| Scale 4 (30px)
@@ -197,7 +197,7 @@ styles =
       regularStyle
     , s (c minusculeClass) [ ( "font-size", px (scale12 -1) ) ]
     , s (c prominentClass) [ ( "font-size", px (scale12 1) ) ]
-    , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
+    , s (c xProminentClass) [ ( "font-size", px (scale12 2) ) ]
     , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
     , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
     , -- Font families
@@ -234,9 +234,9 @@ prominentClass =
     "fsp"
 
 
-sizeTitleClass : String
-sizeTitleClass =
-    "fst"
+xProminentClass : String
+xProminentClass =
+    "fsxp"
 
 
 sizeSectionClass : String

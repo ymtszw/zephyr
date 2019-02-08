@@ -60,7 +60,7 @@ prefRow : String -> List String -> Html msg -> Html msg
 prefRow title descriptions contents =
     div [ growRow, spacingRow5 ]
         [ div [ flexColumn, spacingColumn5 ]
-            [ div [ sizeTitle ] [ t title ]
+            [ div [ xProminent ] [ t title ]
             , desc (List.map t descriptions)
             ]
         , contents

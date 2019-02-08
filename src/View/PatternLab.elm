@@ -354,7 +354,7 @@ typography =
 fontFamilies : Html Msg
 fontFamilies =
     section []
-        [ h2 [ sizeTitle ] [ t "Font families" ]
+        [ h2 [ xProminent ] [ t "Font families" ]
         , withSource "p [ sansSerif ] [ t \"This paragraph uses a sans-serif font. あいうえお水兵リーベ\" ]" <|
             p [ sansSerif ] [ t "This paragraph uses a sans-serif font. あいうえお水兵リーベ" ]
         , withSource "p [ serif ] [ t \"This paragraph uses a serif font. あいうえお水兵リーベ\" ]" <|
@@ -367,13 +367,13 @@ fontFamilies =
 fontSizes : Html Msg
 fontSizes =
     section []
-        [ h2 [ sizeTitle ] [ t "Font sizes" ]
+        [ h2 [ xProminent ] [ t "Font sizes" ]
         , withSource "p [ sizeImpact ] [ t \"impact\" ]" <|
             p [ sizeImpact ] [ t "impact" ]
         , withSource "p [ sizeSection ] [ t \"section\" ]" <|
             p [ sizeSection ] [ t "section" ]
-        , withSource "p [ sizeTitle ] [ t \"title\" ]" <|
-            p [ sizeTitle ] [ t "title" ]
+        , withSource "p [ xProminent ] [ t \"xProminent\" ]" <|
+            p [ xProminent ] [ t "xProminent" ]
         , withSource "p [ prominent ] [ t \"prominent\" ]" <|
             p [ prominent ] [ t "prominent" ]
         , withSource "p [ regular ] [ t \"regular\" ]" <|
@@ -386,7 +386,7 @@ fontSizes =
 fontDecorations : Html Msg
 fontDecorations =
     section []
-        [ h2 [ sizeTitle ] [ t "Font decorations" ]
+        [ h2 [ xProminent ] [ t "Font decorations" ]
         , withSource "p [] [ t \"This is normal text, あいうえお水兵リーベ\" ]" <|
             p [] [ t "This is normal text, あいうえお水兵リーベ" ]
         , withSource "p [ italic ] [ t \"This is italic text, あいうえお水兵リーベ\" ]" <|
@@ -439,7 +439,7 @@ fontColors =
                 ]
     in
     section []
-        [ h2 [ sizeTitle ] [ t "Font colors" ]
+        [ h2 [ xProminent ] [ t "Font colors" ]
         , coloredTexts oneDark "oneDark"
         , coloredTexts aubergine "aubergine"
         ]
@@ -578,7 +578,7 @@ background =
     let
         themedBg theme_ themeText =
             section [ theme_ ]
-                [ h2 [ sizeTitle ] [ t themeText ]
+                [ h2 [ xProminent ] [ t themeText ]
                 , withSource """div [ padding15 ] [ h3 [ prominent ] [ t "Default" ] ]""" <|
                     div [ padding15 ] [ h3 [ prominent ] [ t "Default" ] ]
                 , withSource """div [ padding15, Background.colorBg ] [ h3 [ prominent ] [ t "colorBg" ] ]""" <|
@@ -611,7 +611,7 @@ layout =
     let
         basics =
             section []
-                [ h2 [ sizeTitle ] [ t "Basics" ]
+                [ h2 [ xProminent ] [ t "Basics" ]
                 , withSource """div [ Border.solid, Border.w1 ] [ t "I am a bare ", code [] [ t "div" ] ]""" <|
                     div [ Border.solid, Border.w1, flexShrink ] [ t "I am a bare ", code [] [ t "div" ] ]
                 , withSource """div [ widthFill, Border.solid, Border.w1 ]
@@ -651,7 +651,7 @@ layout =
 flexBox : Html Msg
 flexBox =
     section []
-        [ h2 [ sizeTitle ] [ t "FlexBox" ]
+        [ h2 [ xProminent ] [ t "FlexBox" ]
         , withSource """div [ flexRow ]
     [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
     , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
@@ -728,7 +728,7 @@ flexBox =
 padding : Html Msg
 padding =
     section []
-        [ h2 [ sizeTitle ] [ t "Padding" ]
+        [ h2 [ xProminent ] [ t "Padding" ]
         , withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
             div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]
         , withSource """div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
@@ -745,7 +745,7 @@ padding =
 spacing : Html Msg
 spacing =
     section []
-        [ h2 [ sizeTitle ] [ t "Spacing" ]
+        [ h2 [ xProminent ] [ t "Spacing" ]
         , withSource """div [ growRow, Border.solid, Border.w1 ]
     [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
     , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
@@ -824,7 +824,7 @@ spacing =
 badge : Html Msg
 badge =
     section []
-        [ h2 [ sizeTitle ] [ t "Badge" ]
+        [ h2 [ xProminent ] [ t "Badge" ]
         , withSource """withBadge []
     { content =
         div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
@@ -1006,7 +1006,7 @@ button_ =
     let
         themedStdButtons theme_ themeText =
             section [ theme_ ]
-                [ h2 [ sizeTitle ] [ t themeText ]
+                [ h2 [ xProminent ] [ t themeText ]
                 , withSource """button [] [ t "default" ]""" <| button [] [ t "default" ]
                 , withSource """button [ Background.colorPrim ] [ t "prim" ]""" <| button [ Background.colorPrim ] [ t "prim" ]
                 , withSource """button [ Background.colorSucc ] [ t "succ" ]""" <| button [ Background.colorSucc ] [ t "succ" ]
@@ -1060,7 +1060,7 @@ button_ =
 
         themedLinkButtons theme_ themeText =
             section [ theme_ ]
-                [ h2 [ sizeTitle ] [ t themeText ]
+                [ h2 [ xProminent ] [ t themeText ]
                 , withSource """Button.link [] { url = "https://example.com", children = [ t "A Link button looks like a button but is a link" ] }""" <|
                     Button.link [] { url = "https://example.com", children = [ t "A Link button looks like a button but is a link" ] }
                 , withSource """Button.link [ Background.colorPrim ] { url = "https://example.com", children = [ t "colorPrim" ] }""" <|
@@ -1114,7 +1114,7 @@ input_ m =
 textInput : String -> Html Msg
 textInput currentInput =
     section []
-        [ h2 [ sizeTitle ] [ t "Text" ]
+        [ h2 [ xProminent ] [ t "Text" ]
         , withSource """div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]""" <|
             div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]
         , withSource """div [] [ t "With placeholder. ", input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!" ] [] ]""" <|
@@ -1167,7 +1167,7 @@ textInput currentInput =
 toggle : Bool -> Html Msg
 toggle checked =
     section []
-        [ h2 [ sizeTitle ] [ t "Toggle" ]
+        [ h2 [ xProminent ] [ t "Toggle" ]
         , withSource """div []
     [ t "Inline toggle input. Width and height are fixed 36x18px. "
     , Input.toggle [] { onChange = Toggle, checked = checked }
@@ -1226,7 +1226,7 @@ select_ ss selected =
                     )
     in
     section []
-        [ h2 [ sizeTitle ] [ t "Select" ]
+        [ h2 [ xProminent ] [ t "Select" ]
         , withSource """div []
     [ t "By default these are block elements."
     , Select.render []
@@ -1395,8 +1395,8 @@ icon =
             Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }
         , withSource """Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr\"""" <|
             Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr"
-        , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr\"""" <|
-            Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr"
+        , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", xProminent, Border.round5 ] "Zephyr\"""" <|
+            Icon.abbr [ style "width" "60px", style "height" "80px", xProminent, Border.round5 ] "Zephyr"
         , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))""" <|
             Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))
         , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing""" <|
@@ -1651,7 +1651,7 @@ column =
     section []
         [ h1 [ sizeSection ] [ t "Column" ]
         , section []
-            [ h2 [ sizeTitle ] [ t "inlineTitle" ]
+            [ h2 [ xProminent ] [ t "inlineTitle" ]
             , withSource """div [ prominent ] <|
     Column.inlineTitle 15 <|
         { pinned = False, sources = [], filters = [] }""" <|
@@ -1720,7 +1720,7 @@ column =
                         }
             ]
         , section []
-            [ h2 [ sizeTitle ] [ t "blockTitle" ]
+            [ h2 [ xProminent ] [ t "blockTitle" ]
             , withSource """Column.blockTitle [] <|
     { pinned = False, sources = [], filters = [] }""" <|
                 Column.blockTitle [] <|
@@ -1791,7 +1791,7 @@ column =
                     }
             ]
         , section []
-            [ h2 [ sizeTitle ] [ t "icons" ]
+            [ h2 [ xProminent ] [ t "icons" ]
             , withSource """Column.icon20 { pinned = False, sources = [], filters = [] }""" <|
                 Column.icon20 { pinned = False, sources = [], filters = [] }
             , withSource """Column.icon20
@@ -2400,7 +2400,7 @@ columnHeader m =
     section []
         [ h1 [ sizeSection ] [ t "Column.Header" ]
         , section [ oneDark ]
-            [ h2 [ sizeTitle ] [ t "oneDark" ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
             , withSource """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
@@ -2459,7 +2459,7 @@ columnHeader m =
                     }
             ]
         , section [ aubergine ]
-            [ h2 [ sizeTitle ] [ t "aubergine" ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
             , withSource """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
@@ -2551,7 +2551,7 @@ columnConfig m =
     section []
         [ h1 [ sizeSection ] [ t "Column.Config" ]
         , section [ oneDark ]
-            [ h2 [ sizeTitle ] [ t "oneDark" ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
             , withSource "" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
@@ -2579,7 +2579,7 @@ columnConfig m =
                     ]
             ]
         , section [ aubergine ]
-            [ h2 [ sizeTitle ] [ t "aubergine" ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
             , withSource "" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
@@ -2696,7 +2696,7 @@ mainTemplate m =
             , status = div [ flexBasis "400px" ] [ t "STATUS[PH]" ]
             }
         , columnContents =
-            { header = \index _ -> div [ sizeTitle, flexBasis "40px" ] [ t "HEADER[PH] ", t (String.fromInt index) ]
+            { header = \index _ -> div [ xProminent, flexBasis "40px" ] [ t "HEADER[PH] ", t (String.fromInt index) ]
             , config = \_ _ -> div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
             , newMessageEditor = \_ -> div [ flexBasis "50px" ] [ t "MESSAGE EDITOR[PH]" ]
             , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10

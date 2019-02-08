@@ -141,7 +141,7 @@ guildIconKey g =
                 img [ Icon.rounded40, src src_, alt g.name ] []
 
             Nothing ->
-                Icon.abbr [ Icon.rounded40, serif, sizeTitle ] g.name
+                Icon.abbr [ Icon.rounded40, serif, xProminent ] g.name
 
 
 channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg

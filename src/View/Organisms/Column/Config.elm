@@ -69,7 +69,7 @@ configSection headerTexts contents =
     let
         header =
             div
-                [ sizeTitle
+                [ xProminent
                 , padding2
                 , Border.bot1
                 , Border.solid

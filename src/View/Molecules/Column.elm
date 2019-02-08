@@ -186,10 +186,10 @@ icon30 cp =
     badgedIcon [ badgeOutset ] Nothing <|
         case cp.sources of
             [] ->
-                ( Nothing, Icon.abbr [ Icon.rounded30, serif, sizeTitle ] "Zephyr" )
+                ( Nothing, Icon.abbr [ Icon.rounded30, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded30, sizeTitle ] source )
+                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded30, xProminent ] source )
 
 
 sourceBadge14 : Source -> Html msg
@@ -220,10 +220,10 @@ icon40 cp =
     badgedIcon [ badgeOutset ] topRight <|
         case cp.sources of
             [] ->
-                ( Nothing, Icon.abbr [ Icon.rounded40, serif, sizeTitle ] "Zephyr" )
+                ( Nothing, Icon.abbr [ Icon.rounded40, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded40, sizeTitle ] source )
+                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded40, xProminent ] source )
 
 
 badgedIcon : List (Attribute msg) -> Maybe (Html msg) -> ( Maybe (Html msg), Html msg ) -> Html msg
