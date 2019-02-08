@@ -145,7 +145,7 @@ teamNameAndIcon team =
                 teamUrl =
                     Slack.teamUrl team
             in
-            [ h3 [ headline, bold ] [ t team.name ]
+            [ h3 [ prominent, bold ] [ t team.name ]
             , ntLink [] { url = Url.toString teamUrl, children = [ t teamUrl.host ] }
             ]
         ]
@@ -164,10 +164,10 @@ userNameAndAvatar user =
         , div [ flexGrow, forceBreak ] <|
             case user.displayName of
                 Just dn ->
-                    [ h3 [ headline, bold ] [ t dn ], p [ colorNote ] [ t user.realName ] ]
+                    [ h3 [ prominent, bold ] [ t dn ], p [ colorNote ] [ t user.realName ] ]
 
                 Nothing ->
-                    [ h3 [ headline, bold ] [ t user.realName ] ]
+                    [ h3 [ prominent, bold ] [ t user.realName ] ]
         ]
 
 
@@ -179,7 +179,7 @@ convSummary c =
                 div [ class convIconClass, Image.fillText ] [ Image.octicon { size = lockIconSize, shape = Octicons.lock } ]
 
             else
-                div [ class convIconClass, headline, flexBasisAuto ] [ t "#" ]
+                div [ class convIconClass, prominent, flexBasisAuto ] [ t "#" ]
     in
     div [ flexRow, flexCenter, spacingRow5 ] [ icon, div [ flexGrow ] [ t c.name ] ]
 

@@ -1,6 +1,6 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, minuscule, headline, sizeTitle, sizeSection, sizeImpact
+    , regular, minuscule, prominent, sizeTitle, sizeSection, sizeImpact
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -11,7 +11,7 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, minuscule, headline, sizeTitle, sizeSection, sizeImpact
+@docs regular, minuscule, prominent, sizeTitle, sizeSection, sizeImpact
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -87,9 +87,9 @@ minuscule =
 
 {-| Scale 1 (15px)
 -}
-headline : Attribute msg
-headline =
-    Attributes.class headlineClass
+prominent : Attribute msg
+prominent =
+    Attributes.class prominentClass
 
 
 {-| Scale 2 (18px)
@@ -196,7 +196,7 @@ styles =
     [ -- Font sizes
       regularStyle
     , s (c minusculeClass) [ ( "font-size", px (scale12 -1) ) ]
-    , s (c headlineClass) [ ( "font-size", px (scale12 1) ) ]
+    , s (c prominentClass) [ ( "font-size", px (scale12 1) ) ]
     , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
     , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
     , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
@@ -229,9 +229,9 @@ minusculeClass =
     "fsm"
 
 
-headlineClass : String
-headlineClass =
-    "fsh"
+prominentClass : String
+prominentClass =
+    "fsp"
 
 
 sizeTitleClass : String
