@@ -1,6 +1,6 @@
 module View.Molecules.Source exposing
     ( Source(..), id
-    , inline, concatInline, inlineWithIcon14
+    , inline, slackInline, concatInline, inlineWithIcon14
     , icon, badge10, badge14
     , styles
     )
@@ -8,7 +8,7 @@ module View.Molecules.Source exposing
 {-| Data source Molecule.
 
 @docs Source, id
-@docs inline, concatInline, inlineWithIcon14
+@docs inline, slackInline, concatInline, inlineWithIcon14
 @docs icon, badge10, badge14
 @docs styles
 
@@ -59,15 +59,20 @@ inline octiconSize source =
         DiscordSource { name } ->
             [ t ("#" ++ name) ]
 
-        SlackSource { name, isPrivate } ->
-            [ if isPrivate then
-                span [ class inlineLockIconClass, Image.fillText ]
-                    [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
+        SlackSource opts ->
+            slackInline octiconSize opts
 
-              else
-                t "#"
-            , t name
-            ]
+
+slackInline : Int -> { s | name : String, isPrivate : Bool } -> List (Html msg)
+slackInline octiconSize { name, isPrivate } =
+    [ if isPrivate then
+        span [ class inlineLockIconClass, Image.fillText ]
+            [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
+
+      else
+        t "#"
+    , t name
+    ]
 
 
 concatInline : Int -> List Source -> List (Html msg)
