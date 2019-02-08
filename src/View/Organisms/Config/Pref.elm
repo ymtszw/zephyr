@@ -10,8 +10,9 @@ import View.Atoms.Input as Input
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (..)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Column as Column exposing (ColumnProps, Source(..))
+import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Style exposing (..)
 

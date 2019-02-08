@@ -10,8 +10,9 @@ import View.Atoms.Image as Image
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Column as Column exposing (ColumnProps, Source(..))
+import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source as Source exposing (Source)
 
 
 type alias Effects msg =
@@ -119,8 +120,8 @@ sourceSelector eff props =
         , onSelect = eff.onSourceSelect props.column.id
         , selectedOption = Nothing
         , filterMatch = Nothing
-        , options = List.map (\s -> ( Column.sourceId s, s )) props.availableSourecs
-        , optionHtml = Column.sourceSummary14
+        , options = List.map (\s -> ( Source.id s, s )) props.availableSourecs
+        , optionHtml = Source.inlineWithIcon14
         }
 
 

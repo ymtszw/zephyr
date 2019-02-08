@@ -1,13 +1,13 @@
 module View.Molecules.Column exposing
-    ( ColumnProps, Source(..), sourceId
-    , inlineTitle, blockTitle, icon20, icon30, icon40, sourceSummary14
+    ( ColumnProps
+    , inlineTitle, blockTitle, icon20, icon30, icon40
     , styles
     )
 
 {-| Molecules for Column-related UI parts.
 
-@docs ColumnProps, Source, sourceId
-@docs inlineTitle, blockTitle, icon20, icon30, icon40, sourceSummary14
+@docs ColumnProps
+@docs inlineTitle, blockTitle, icon20, icon30, icon40
 @docs styles
 
 -}
@@ -20,6 +20,7 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source as Source exposing (Source(..))
 import View.Style exposing (..)
 
 
@@ -29,34 +30,6 @@ type alias ColumnProps c =
         , sources : List Source -- Empty list indicates "any" sources
         , filters : List String
     }
-
-
-{-| Representation of data sources for columns.
--}
-type Source
-    = DiscordSource
-        { id : String
-        , name : String
-        , guildName : String -- Currently DM/GroupDM are not supported
-        , guildIcon : Maybe String
-        }
-    | SlackSource
-        { id : String
-        , name : String
-        , teamName : String
-        , teamIcon : Maybe String
-        , isPrivate : Bool
-        }
-
-
-sourceId : Source -> String
-sourceId source =
-    case source of
-        DiscordSource { id } ->
-            "DiscordSource_" ++ id
-
-        SlackSource { id } ->
-            "SlackSource_" ++ id
 
 
 {-| Renders a list of inline Html nodes from sources and filters.
@@ -71,38 +44,14 @@ inlineTitle octiconSize cp =
             [ t "New Column" ]
 
         ( sources, [] ) ->
-            sourcesInline octiconSize sources
+            Source.concatInline octiconSize sources
 
         ( [], filters ) ->
             [ t (String.join ", " filters) ]
 
         ( sources, filters ) ->
-            sourcesInline octiconSize sources
+            Source.concatInline octiconSize sources
                 ++ [ t ", ", t (String.join ", " filters) ]
-
-
-sourcesInline : Int -> List Source -> List (Html msg)
-sourcesInline octiconSize sources =
-    sources |> List.map (inlineSource octiconSize) |> List.intersperse [ t ", " ] |> List.concat
-
-
-{-| Renders a list of inline Html nodes from a Source.
--}
-inlineSource : Int -> Source -> List (Html msg)
-inlineSource octiconSize source =
-    case source of
-        DiscordSource { name } ->
-            [ t ("#" ++ name) ]
-
-        SlackSource { name, isPrivate } ->
-            [ if isPrivate then
-                span [ class inlineLockIconClass, Image.fillText ]
-                    [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
-
-              else
-                t "#"
-            , t name
-            ]
 
 
 {-| Renders a column block consists of text information of sources and filters.
@@ -126,13 +75,13 @@ blockTitle userAttrs cp =
                 [ mainText [ t "New Column" ] ]
 
             ( sources, [] ) ->
-                [ mainText (sourcesInline prominentSize sources) ]
+                [ mainText (Source.concatInline prominentSize sources) ]
 
             ( [], filters ) ->
                 [ mainText [ t (String.join ", " filters) ] ]
 
             ( sources, filters ) ->
-                [ mainText (sourcesInline prominentSize sources)
+                [ mainText (Source.concatInline prominentSize sources)
                 , div [ colorNote, minuscule, ellipsis ] [ t (String.join ", " filters) ]
                 ]
 
@@ -150,27 +99,7 @@ icon20 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded20, serif ] "Zephyr" )
 
             source :: _ ->
-                ( Just (sourceBadge10 source), sourceIcon [ Icon.rounded20 ] source )
-
-
-sourceBadge10 : Source -> Html msg
-sourceBadge10 source =
-    case source of
-        DiscordSource _ ->
-            Icon.discord10
-
-        SlackSource _ ->
-            Icon.slack10
-
-
-sourceIcon : List (Attribute msg) -> Source -> Html msg
-sourceIcon attrs source =
-    case source of
-        DiscordSource opts ->
-            Icon.imgOrAbbr (serif :: attrs) opts.guildName opts.guildIcon
-
-        SlackSource opts ->
-            Icon.imgOrAbbr (serif :: attrs) opts.teamName opts.teamIcon
+                ( Just (Source.badge10 source), Source.icon [ Icon.rounded20 ] source )
 
 
 {-| Renders a badged icon representing a column in 30x30 size.
@@ -186,17 +115,7 @@ icon30 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded30, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded30, xProminent ] source )
-
-
-sourceBadge14 : Source -> Html msg
-sourceBadge14 source =
-    case source of
-        DiscordSource _ ->
-            Icon.discord14
-
-        SlackSource _ ->
-            Icon.slack14
+                ( Just (Source.badge14 source), Source.icon [ Icon.rounded30, xProminent ] source )
 
 
 {-| Renders a pinned/badged icon representing a column in 40x40 size.
@@ -220,7 +139,7 @@ icon40 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded40, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (sourceBadge14 source), sourceIcon [ Icon.rounded40, xProminent ] source )
+                ( Just (Source.badge14 source), Source.icon [ Icon.rounded40, xProminent ] source )
 
 
 badgedIcon : List (Attribute msg) -> Maybe (Html msg) -> ( Maybe (Html msg), Html msg ) -> Html msg
@@ -232,21 +151,6 @@ badgedIcon attrs topRight ( bottomRight, content ) =
         }
 
 
-sourceSummary14 : Source -> Html msg
-sourceSummary14 source =
-    div [ flexRow, flexCenter, spacingRow2, clip ]
-        [ div [ flexItem, flexBasisAuto ] [ sourceBadge14 source ]
-        , sourceIcon [ flexItem, flexBasisAuto, Icon.rounded14, regular ] source
-        , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inlineSource regularSize source)
-        ]
-
-
 styles : List Style
 styles =
-    [ s (descOf (c inlineLockIconClass) (c "octicon")) [ ( "vertical-align", "bottom" ) ] -- Adjusting lock icons' position
-    ]
-
-
-inlineLockIconClass : String
-inlineLockIconClass =
-    "illock"
+    []

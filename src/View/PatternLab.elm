@@ -23,9 +23,10 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Column as Column exposing (Source(..))
+import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig

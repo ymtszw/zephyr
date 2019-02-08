@@ -11,7 +11,7 @@ import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Column as Column exposing (ColumnProps, Source(..))
+import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
 

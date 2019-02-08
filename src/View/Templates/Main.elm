@@ -33,8 +33,8 @@ import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Column exposing (Source(..))
 import View.Molecules.Icon as Icon
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Sidebar as Sidebar exposing (ColumnInSidebar, sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
