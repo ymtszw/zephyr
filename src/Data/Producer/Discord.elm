@@ -1,5 +1,5 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), User, POV, Guild, Channel, FAM, init, decoder, encode, encodeUser
+    ( Discord(..), User, POV, Guild, Image, Channel, FAM, init, decoder, encode, encodeUser
     , ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
     , Message, Author(..), Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
     , encodeMessage, messageDecoder, colorDecoder, encodeFam, famDecoder
@@ -18,7 +18,7 @@ Using Discord's RESTful APIs to retrieve Items.
 Note that it involves a little "shady" work on retrieving
 full-privilege personal token for a Discord user. Discuss in private.
 
-@docs Discord, User, POV, Guild, Channel, FAM, init, decoder, encode, encodeUser
+@docs Discord, User, POV, Guild, Image, Channel, FAM, init, decoder, encode, encodeUser
 @docs ChannelCache, encodeGuild, guildDecoder, encodeChannelCache, channelCacheDecoder
 @docs Message, Author, Embed, EmbedImage, EmbedVideo, EmbedAuthor, Attachment
 @docs encodeMessage, messageDecoder, colorDecoder, encodeFam, famDecoder

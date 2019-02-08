@@ -111,7 +111,7 @@ userNameAndAvatar onRehydrateButtonClick rehydrating user =
         [ img
             [ flexItem
             , Icon.rounded40
-            , src (Discord.imageUrlWithFallback Icon.size40 user.discriminator user.avatar)
+            , src (Icon.discordImageUrlWithFallback40 user.discriminator user.avatar)
             , alt user.username
             ]
             []
@@ -136,7 +136,7 @@ guilds guilds_ =
 guildIconKey : Discord.Guild -> ( String, Html msg )
 guildIconKey g =
     Tuple.pair g.id <|
-        case Maybe.map (Discord.imageUrlNoFallback Icon.size40) g.icon of
+        case Maybe.map Icon.discordImageUrl40 g.icon of
             Just src_ ->
                 img [ Icon.rounded40, src src_, alt g.name ] []
 
@@ -151,7 +151,7 @@ channelSummary c =
             case c.guildMaybe of
                 Just g ->
                     Icon.imgOrAbbr [ flexItem, Icon.rounded20 ] g.name <|
-                        Maybe.map (Discord.imageUrlNoFallback Icon.size20) g.icon
+                        Maybe.map Icon.discordImageUrl20 g.icon
 
                 Nothing ->
                     -- TODO DM/GroupDMs should have appropriate icons

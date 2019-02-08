@@ -1,17 +1,19 @@
 module View.Molecules.Icon exposing
-    ( rounded14, rounded20, rounded30, rounded40, size20, size30, size40
+    ( rounded14, rounded20, rounded30, rounded40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
     , rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
+    , discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
     , styles
     )
 
 {-| Icon Molecules.
 
-@docs rounded14, rounded20, rounded30, rounded40, size20, size30, size40
+@docs rounded14, rounded20, rounded30, rounded40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
 @docs rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
+@docs discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
 @docs styles
 
 -}
@@ -58,27 +60,6 @@ rounded30 =
 rounded40 : Attribute msg
 rounded40 =
     class rounded40Class
-
-
-{-| Constant of `Just 20`, should be inserted to CDN APIs.
--}
-size20 : Maybe Int
-size20 =
-    Just rounded20Size
-
-
-{-| Constant of `Just 30`, should be inserted to CDN APIs.
--}
-size30 : Maybe Int
-size30 =
-    Just rounded30Size
-
-
-{-| Constant of `Just 40`, should be inserted to CDN APIs.
--}
-size40 : Maybe Int
-size40 =
-    Just rounded40Size
 
 
 button : List (Attribute msg) -> { onPress : msg, src : String, alt : String } -> Html msg
@@ -203,6 +184,21 @@ slack20 =
 logo : String -> String -> String -> Html msg
 logo sizeClass alt_ src_ =
     img [ class sizeClass, src src_, alt alt_ ] []
+
+
+discordImageUrl20 : Discord.Image -> String
+discordImageUrl20 =
+    Discord.imageUrlNoFallback (Just rounded20Size)
+
+
+discordImageUrl40 : Discord.Image -> String
+discordImageUrl40 =
+    Discord.imageUrlNoFallback (Just rounded40Size)
+
+
+discordImageUrlWithFallback40 : String -> Maybe Discord.Image -> String
+discordImageUrlWithFallback40 =
+    Discord.imageUrlWithFallback (Just rounded40Size)
 
 
 
