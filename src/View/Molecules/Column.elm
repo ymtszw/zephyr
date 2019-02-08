@@ -36,13 +36,13 @@ type alias ColumnProps c =
 type Source
     = DiscordSource
         { id : String
-        , channelName : String
+        , name : String
         , guildName : String -- Currently DM/GroupDM are not supported
         , guildIcon : Maybe String
         }
     | SlackSource
         { id : String
-        , convName : String
+        , name : String
         , teamName : String
         , teamIcon : Maybe String
         , isPrivate : Bool
@@ -91,17 +91,17 @@ sourcesInline octiconSize sources =
 inlineSource : Int -> Source -> List (Html msg)
 inlineSource octiconSize source =
     case source of
-        DiscordSource { channelName } ->
-            [ t ("#" ++ channelName) ]
+        DiscordSource { name } ->
+            [ t ("#" ++ name) ]
 
-        SlackSource { convName, isPrivate } ->
+        SlackSource { name, isPrivate } ->
             [ if isPrivate then
                 span [ class inlineLockIconClass, Image.fillText ]
                     [ Image.octicon { size = octiconSize, shape = Octicons.lock } ]
 
               else
                 t "#"
-            , t convName
+            , t name
             ]
 
 
