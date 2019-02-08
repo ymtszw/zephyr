@@ -79,13 +79,10 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
             ( [ widthFill, theme sc ]
             , [ div [ flexRow, flexCenter, spacingRow5 ]
                     [ Column.icon20 sc
-                    , div [ flexBasisAuto ] (Column.inlineTitle cellIconSize sc)
+                    , div [ flexBasisAuto ] (Column.inlineTitle regularSize sc)
                     ]
               ]
             )
-
-        cellIconSize =
-            11
 
         actionCell sc =
             ( [ theme sc ]
@@ -113,22 +110,16 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
 
 showColumnButton : msg -> Bool -> Html msg
 showColumnButton onShowColumnButtonClick slotsAvailable =
-    let
-        showColumnButtonOcticonSize =
-            14
-    in
     button
         [ class showColumnButtonClass
         , flexItem
-        , flexRow
-        , flexCenter
-        , padding2
+        , flexBasisAuto
         , Background.colorPrim
         , Image.fillText
         , disabled (not slotsAvailable)
         , onClick onShowColumnButtonClick
         ]
-        [ Image.octicon { size = showColumnButtonOcticonSize, shape = Octicons.arrowRight }
+        [ Image.octicon { size = regularSize, shape = Octicons.arrowRight }
         , t " Show"
         ]
 
@@ -137,7 +128,7 @@ deleteColumnButton : msg -> Html msg
 deleteColumnButton onDeleteColumnButtonClick =
     Icon.octiconButton [ flexItem, Icon.rounded20, Image.fillErr, Background.transparent ]
         { onPress = onDeleteColumnButtonClick
-        , size = shadowColumnIconSize
+        , size = xProminentSize
         , shape = Octicons.trashcan
         }
 
@@ -150,17 +141,9 @@ styles : List Style
 styles =
     [ s (c showColumnButtonClass)
         [ ( "width", px showColumnButtonWidth )
-        , ( "height", px shadowColumnIconSize )
         , ( "justify-content", "center" )
-        , ( "flex-basis", "auto" )
         ]
     ]
-
-
-shadowColumnIconSize : Int
-shadowColumnIconSize =
-    -- Bigger than base font size
-    20
 
 
 showColumnButtonClass : String

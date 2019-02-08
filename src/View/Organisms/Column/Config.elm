@@ -46,17 +46,17 @@ render eff props =
         , Border.colorNote
         ]
         [ configSection
-            [ span [ Image.fillSucc ] [ Image.octicon { size = configHeaderOcticonSize, shape = Octicons.pulse } ]
+            [ span [ Image.fillSucc ] [ Image.octicon { size = xProminentSize, shape = Octicons.pulse } ]
             , t " Status"
             ]
             (status props.column)
         , configSection
-            [ span [ Image.fillPrim ] [ Image.octicon { size = configHeaderOcticonSize, shape = Octicons.beaker } ]
+            [ span [ Image.fillPrim ] [ Image.octicon { size = xProminentSize, shape = Octicons.beaker } ]
             , t " Sources"
             ]
             (sources eff props)
         , configSection
-            [ span [ Image.fillErr ] [ Image.octicon { size = configHeaderOcticonSize, shape = Octicons.stop } ]
+            [ span [ Image.fillErr ] [ Image.octicon { size = xProminentSize, shape = Octicons.stop } ]
             , span [ colorErr ] [ t " Danger Zone" ]
             ]
             (dangerZone eff props.column)
@@ -87,11 +87,6 @@ configSection headerTexts contents =
                 contents
     in
     div [ flexColumn, spacingColumn2 ] [ header, wrappedContents ]
-
-
-configHeaderOcticonSize : Int
-configHeaderOcticonSize =
-    18
 
 
 status : ColumnProps { c | id : String, numItems : Int } -> List (Html msg)
@@ -160,10 +155,5 @@ closeButton onCloseButtonClick =
         , Background.hovBd
         , onClick onCloseButtonClick
         ]
-        [ Image.octicon { size = closeTriangleSize, shape = Octicons.triangleUp }
+        [ Image.octicon { size = xProminentSize, shape = Octicons.triangleUp }
         ]
-
-
-closeTriangleSize : Int
-closeTriangleSize =
-    24

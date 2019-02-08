@@ -146,10 +146,11 @@ configSectionWrapper maybeTheme title content =
 prefTitle : Html msg
 prefTitle =
     titleTemplate "Preference" <|
-        span [ Image.fillText ] [ Image.octicon { size = titleIconSize, shape = Octicons.settings } ]
+        \size ->
+            span [ Image.fillText ] [ Image.octicon { size = size, shape = Octicons.settings } ]
 
 
-titleTemplate : String -> Html msg -> Html msg
+titleTemplate : String -> (Int -> Html msg) -> Html msg
 titleTemplate text icon =
     div
         [ flexRow
@@ -159,30 +160,26 @@ titleTemplate text icon =
         , Border.solid
         , Border.bot1
         ]
-        [ icon
+        [ icon xProminentSize
         , div [ bold, xProminent ] [ t text ]
         ]
 
 
-titleIconSize : Int
-titleIconSize =
-    20
-
-
 slackTitle : Html msg
 slackTitle =
-    titleTemplate "Slack" Icon.slack20
+    titleTemplate "Slack" (always Icon.slack20)
 
 
 discordTitle : Html msg
 discordTitle =
-    titleTemplate "Discord" Icon.discord20
+    titleTemplate "Discord" (always Icon.discord20)
 
 
 statusTitle : Html msg
 statusTitle =
     titleTemplate "Status" <|
-        span [ Image.fillSucc ] [ Image.octicon { size = titleIconSize, shape = Octicons.pulse } ]
+        \size ->
+            span [ Image.fillSucc ] [ Image.octicon { size = size, shape = Octicons.pulse } ]
 
 
 columnContainer :

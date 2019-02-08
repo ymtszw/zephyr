@@ -119,9 +119,6 @@ blockTitle userAttrs cp =
 
         mainText =
             div [ bold, prominent, ellipsis ]
-
-        octiconSize =
-            13
     in
     div (baseAttrs ++ userAttrs) <|
         case ( cp.sources, cp.filters ) of
@@ -129,13 +126,13 @@ blockTitle userAttrs cp =
                 [ mainText [ t "New Column" ] ]
 
             ( sources, [] ) ->
-                [ mainText (sourcesInline octiconSize sources) ]
+                [ mainText (sourcesInline prominentSize sources) ]
 
             ( [], filters ) ->
                 [ mainText [ t (String.join ", " filters) ] ]
 
             ( sources, filters ) ->
-                [ mainText (sourcesInline octiconSize sources)
+                [ mainText (sourcesInline prominentSize sources)
                 , div [ colorNote, minuscule, ellipsis ] [ t (String.join ", " filters) ]
                 ]
 
@@ -237,15 +234,10 @@ badgedIcon attrs topRight ( bottomRight, content ) =
 
 sourceSummary14 : Source -> Html msg
 sourceSummary14 source =
-    let
-        octiconSize =
-            -- regular
-            12
-    in
     div [ flexRow, flexCenter, spacingRow2, clip ]
         [ div [ flexItem, flexBasisAuto ] [ sourceBadge14 source ]
         , sourceIcon [ flexItem, flexBasisAuto, Icon.rounded14, regular ] source
-        , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inlineSource octiconSize source)
+        , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inlineSource regularSize source)
         ]
 
 

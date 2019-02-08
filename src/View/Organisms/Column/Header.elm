@@ -69,7 +69,7 @@ render eff index props =
             , Background.hovBd
             , onClick (eff.onPinButtonClick props.id (not props.pinned))
             ]
-            [ div innerAttrs [ Image.octicon { size = octiconSize, shape = Octicons.pin } ] ]
+            [ div innerAttrs [ Image.octicon { size = xxProminentSize, shape = Octicons.pin } ] ]
         , headerButton
             [ if props.configOpen then
                 Image.fillText
@@ -97,14 +97,9 @@ headerButton attrs onPress shape =
     in
     Icon.octiconButton (baseAttrs ++ attrs)
         { onPress = onPress
-        , size = octiconSize
+        , size = xxProminentSize
         , shape = shape
         }
-
-
-octiconSize : Int
-octiconSize =
-    30
 
 
 grabbableIcon : msg -> Props c -> Html msg
