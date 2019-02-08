@@ -2562,9 +2562,14 @@ columnConfig m =
                         , selectMsgTagger = SelectCtrl
                         }
                         { selectState = m.select
-                        , availableSourecs = []
+                        , availableSourecs =
+                            [ DiscordSource { id = "DID1", channelName = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , DiscordSource { id = "DID2", channelName = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , SlackSource { id = "SID1", convName = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                            , SlackSource { id = "SID2", convName = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                            ]
                         , column =
-                            { id = "DUMMYID"
+                            { id = "DUMMYID1"
                             , numItems = 1000
                             , pinned = m.toggle
                             , sources = []
@@ -2585,13 +2590,17 @@ columnConfig m =
                         , selectMsgTagger = SelectCtrl
                         }
                         { selectState = m.select
-                        , availableSourecs = []
+                        , availableSourecs =
+                            [ DiscordSource { id = "DID1", channelName = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , DiscordSource { id = "DID2", channelName = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , SlackSource { id = "SID1", convName = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                            , SlackSource { id = "SID2", convName = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                            ]
                         , column =
-                            { id = "DUMMYID"
+                            { id = "DUMMYID2"
                             , numItems = 1000
                             , pinned = m.toggle
                             , sources = []
-                            , availableSourecs = []
                             , filters = []
                             }
                         }

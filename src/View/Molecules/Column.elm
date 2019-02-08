@@ -1,13 +1,13 @@
 module View.Molecules.Column exposing
     ( ColumnProps, Source(..), sourceId
-    , inlineTitle, inlineSource, blockTitle, icon20, icon30, icon40
+    , inlineTitle, blockTitle, icon20, icon30, icon40, sourceSummary14
     , styles
     )
 
 {-| Molecules for Column-related UI parts.
 
 @docs ColumnProps, Source, sourceId
-@docs inlineTitle, inlineSource, blockTitle, icon20, icon30, icon40
+@docs inlineTitle, blockTitle, icon20, icon30, icon40, sourceSummary14
 @docs styles
 
 -}
@@ -233,6 +233,20 @@ badgedIcon attrs topRight ( bottomRight, content ) =
         , bottomRight = bottomRight
         , content = content
         }
+
+
+sourceSummary14 : Source -> Html msg
+sourceSummary14 source =
+    let
+        octiconSize =
+            -- sizeBase
+            12
+    in
+    div [ flexRow, flexCenter, spacingRow2, clip ]
+        [ div [ flexItem, flexBasisAuto ] [ sourceBadge14 source ]
+        , sourceIcon [ flexItem, flexBasisAuto, Icon.rounded14, sizeBase ] source
+        , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inlineSource octiconSize source)
+        ]
 
 
 styles : List Style
