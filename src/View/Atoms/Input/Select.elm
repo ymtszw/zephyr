@@ -336,7 +336,6 @@ optionRowKey opts ( optionKey, option ) =
     Tuple.pair optionKey <|
         div
             [ class optionRowClass
-            , flexItem
             , attribute "role" "option"
             , Cursor.pointer
             , tabindex 0
@@ -380,6 +379,7 @@ styles =
         ]
     , s_ (c optionListClass)
         [ ( "overflow-y", "auto" )
+        , ( "overflow-x", "hidden" )
         , ( "max-height", px optionListMaxHeight )
         , ( "min-width", px optionListMinWidth )
         , ( "max-width", "50vw" )
