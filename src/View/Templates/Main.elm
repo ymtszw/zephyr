@@ -171,17 +171,12 @@ titleIconSize =
 
 slackTitle : Html msg
 slackTitle =
-    titleTemplate "Slack" <| imageIcon "Slack logo" <| Slack.defaultIconUrl Icon.size20
-
-
-imageIcon : String -> String -> Html msg
-imageIcon alt_ src_ =
-    img [ Icon.rounded20, src src_, alt alt_ ] []
+    titleTemplate "Slack" Icon.slack20
 
 
 discordTitle : Html msg
 discordTitle =
-    titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl Icon.size20
+    titleTemplate "Discord" Icon.discord20
 
 
 statusTitle : Html msg

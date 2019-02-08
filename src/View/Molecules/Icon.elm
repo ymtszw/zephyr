@@ -1,17 +1,17 @@
 module View.Molecules.Icon exposing
-    ( rounded20, rounded30, rounded40, size20, size30, size40
+    ( rounded14, rounded20, rounded30, rounded40, size20, size30, size40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
-    , rehydrateButton, pinBadge14, discord14, slack14, discord10, slack10
+    , rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
     , styles
     )
 
 {-| Icon Molecules.
 
-@docs rounded20, rounded30, rounded40, size20, size30, size40
+@docs rounded14, rounded20, rounded30, rounded40, size20, size30, size40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
-@docs rehydrateButton, pinBadge14, discord14, slack14, discord10, slack10
+@docs rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
 @docs styles
 
 -}
@@ -30,6 +30,13 @@ import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (t)
 import View.Style exposing (..)
+
+
+{-| Border-rounded 14x14 sized icon.
+-}
+rounded14 : Attribute msg
+rounded14 =
+    class rounded14Class
 
 
 {-| Border-rounded 20x20 sized icon. Widely used.
@@ -181,6 +188,16 @@ discord14 =
 slack14 : Html msg
 slack14 =
     logo rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+
+
+discord20 : Html msg
+discord20 =
+    logo rounded20Class "Discord logo" <| Discord.defaultIconUrl (Just rounded20Size)
+
+
+slack20 : Html msg
+slack20 =
+    logo rounded20Class "Slack logo" <| Slack.defaultIconUrl (Just rounded20Size)
 
 
 logo : String -> String -> String -> Html msg
