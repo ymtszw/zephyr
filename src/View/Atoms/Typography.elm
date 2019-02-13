@@ -1,7 +1,7 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, minuscule, prominent, xProminent, xxProminent, impactful
-    , regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
+    , regular, minuscule, prominent, xProminent, xxProminent, xxxProminent, impactful
+    , regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, xxxProminentSize, impactfulSize
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -12,8 +12,8 @@ module View.Atoms.Typography exposing
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, minuscule, prominent, xProminent, xxProminent, impactful
-@docs regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
+@docs regular, minuscule, prominent, xProminent, xxProminent, xxxProminent, impactful
+@docs regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, xxxProminentSize, impactfulSize
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -143,6 +143,20 @@ xxProminentSize =
     scale12 4
 
 
+{-| Scale 8 (71px)
+-}
+xxxProminent : Attribute msg
+xxxProminent =
+    Attributes.class xxxProminentClass
+
+
+{-| Scale 8 (71)
+-}
+xxxProminentSize : Int
+xxxProminentSize =
+    scale12 8
+
+
 {-| Scale 12 (174px). Used for background logo, and that's all.
 -}
 impactful : Attribute msg
@@ -243,6 +257,7 @@ styles =
     , s (c prominentClass) [ ( "font-size", px prominentSize ) ]
     , s (c xProminentClass) [ ( "font-size", px xProminentSize ) ]
     , s (c xxProminentClass) [ ( "font-size", px xxProminentSize ) ]
+    , s (c xxxProminentClass) [ ( "font-size", px xxxProminentSize ) ]
     , s (c impactfulClass) [ ( "font-size", px impactfulSize ) ]
     , -- Font families
       sansSerifStyle
@@ -286,6 +301,11 @@ xProminentClass =
 xxProminentClass : String
 xxProminentClass =
     "fsxxp"
+
+
+xxxProminentClass : String
+xxxProminentClass =
+    "fsxxxp"
 
 
 impactfulClass : String
