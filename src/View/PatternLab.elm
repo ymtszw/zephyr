@@ -2,12 +2,14 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import ListExtra
 import Octicons
+import SelectArray
 import StringExtra
 import Url exposing (Url)
 import Url.Builder
@@ -31,6 +33,7 @@ import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
+import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
@@ -101,6 +104,7 @@ routes =
     , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
     , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
+    , R "column_new_message_editor" "Organisms" "Column.NewMessageEditor" <| \m -> pLab [ columnNewMessageEditor m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -2668,6 +2672,31 @@ columnConfig m =
                             }
                         }
                     ]
+            ]
+        ]
+
+
+columnNewMessageEditor : Model -> Html Msg
+columnNewMessageEditor m =
+    section []
+        [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
+        , section [ oneDark ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
+            , NewMessageEditor.render
+                { onTextInput = \_ str -> TextInput str }
+                { id = "DUMMYID1"
+                , editorActive = m.toggle
+                , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                }
+            ]
+        , section [ aubergine ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
+            , NewMessageEditor.render
+                { onTextInput = \_ str -> TextInput str }
+                { id = "DUMMYID2"
+                , editorActive = m.toggle
+                , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                }
             ]
         ]
 
