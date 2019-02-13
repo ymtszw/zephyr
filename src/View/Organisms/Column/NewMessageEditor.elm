@@ -11,6 +11,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
 import View.Style exposing (..)
 
 
@@ -49,9 +50,15 @@ render eff c =
 
 editorMenu : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
 editorMenu eff c editor =
-    div [ flexRow, spacingRow5, flexCenter ]
-        [ Image.octicon { size = prominentSize, shape = Octicons.pencil }
-        ]
+    if c.editorActive then
+        div [ flexRow, spacingRow5, flexCenter ]
+            [ div [] [ Image.octicon { size = prominentSize, shape = Octicons.pencil } ]
+            , Icon.octiconButton [ flexItem, pushRight, Background.transparent, Background.hovBd ]
+                { onPress = eff.onToggleActive c.id False, size = prominentSize, shape = Octicons.x }
+            ]
+
+    else
+        none
 
 
 editorTextarea : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
