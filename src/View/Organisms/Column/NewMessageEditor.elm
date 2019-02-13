@@ -4,9 +4,11 @@ import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import Html exposing (Html, div, textarea)
 import Html.Attributes exposing (class, placeholder, spellcheck)
 import Html.Events exposing (onFocus, onInput)
+import Octicons
 import SelectArray exposing (SelectArray)
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
+import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
 import View.Style exposing (..)
@@ -40,12 +42,20 @@ render eff c =
         , Border.bot1
         , Border.solid
         ]
-        [ editorTextarea (eff.onTextInput c.id) (eff.onToggleActive c.id) c.editorActive selectedEditor
+        [ editorMenu eff c selectedEditor
+        , editorTextarea eff c selectedEditor
         ]
 
 
-editorTextarea : (String -> msg) -> (Bool -> msg) -> Bool -> ColumnEditor -> Html msg
-editorTextarea onInput_ onToggleActive editorActive editor =
+editorMenu : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
+editorMenu eff c editor =
+    div [ flexRow, spacingRow5, flexCenter ]
+        [ Image.octicon { size = prominentSize, shape = Octicons.pencil }
+        ]
+
+
+editorTextarea : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
+editorTextarea eff c editor =
     let
         buffer =
             getBuffer editor
@@ -54,6 +64,7 @@ editorTextarea onInput_ onToggleActive editorActive editor =
             [ class textareaClass
             , flexItem
             , widthFill
+            , padding5
             , spellcheck True
             , placeholder <|
                 case editor of
@@ -62,12 +73,13 @@ editorTextarea onInput_ onToggleActive editorActive editor =
 
                     LocalMessageEditor _ ->
                         "Memo"
-            , onFocus (onToggleActive True)
-            , onInput onInput_
+            , Border.round5
+            , onFocus (eff.onToggleActive c.id True)
+            , onInput (eff.onTextInput c.id)
             ]
 
         stateAttrs =
-            if editorActive then
+            if c.editorActive then
                 let
                     bufferHeight =
                         if lines < 6 then

@@ -2691,7 +2691,10 @@ columnNewMessageEditor m =
                         }
                         { id = "DUMMYID1"
                         , editorActive = m.toggle
-                        , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                        , editors =
+                            SelectArray.fromLists []
+                                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = Nothing })
+                                [ LocalMessageEditor m.textInput ]
                         }
                     ]
             ]
