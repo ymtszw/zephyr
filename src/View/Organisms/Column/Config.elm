@@ -11,7 +11,7 @@ import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column exposing (ColumnProps)
-import View.Molecules.Source as Source exposing (Source)
+import View.Molecules.Source as Source exposing (Source(..))
 
 
 type alias Effects msg =
@@ -118,10 +118,22 @@ sourceSelector eff props =
         , thin = True
         , onSelect = eff.onSourceSelect props.column.id
         , selectedOption = Nothing
-        , filterMatch = Nothing
+        , filterMatch = Just sourceFilterMatch
         , options = List.map (\s -> ( Source.id s, s )) props.availableSourecs
         , optionHtml = Source.horizontalBlock14
         }
+
+
+sourceFilterMatch : String -> Source -> Bool
+sourceFilterMatch query source =
+    case source of
+        DiscordSource opts ->
+            StringExtra.containsCaseIgnored query opts.name
+                || StringExtra.containsCaseIgnored query opts.guildName
+
+        SlackSource opts ->
+            StringExtra.containsCaseIgnored query opts.name
+                || StringExtra.containsCaseIgnored query opts.teamName
 
 
 dangerZone : Effects msg -> ColumnProps { c | id : String } -> List (Html msg)
