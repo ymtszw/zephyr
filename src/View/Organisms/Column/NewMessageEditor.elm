@@ -1,12 +1,15 @@
-module View.Organisms.Column.NewMessageEditor exposing (render)
+module View.Organisms.Column.NewMessageEditor exposing (render, styles)
 
 import Data.ColumnEditor exposing (ColumnEditor, getBuffer)
 import Html exposing (Html, div, textarea)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onInput)
 import SelectArray exposing (SelectArray)
+import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
+import View.Style exposing (..)
 
 
 type alias Effects msg =
@@ -42,4 +45,32 @@ render eff column =
 
 editorTextarea : (String -> msg) -> Bool -> ColumnEditor -> Html msg
 editorTextarea onInput_ editorActive editor =
-    textarea [ onInput onInput_ ] [ t (getBuffer editor) ]
+    let
+        baseAttrs =
+            [ class textareaClass
+            , onInput onInput_
+            ]
+
+        stateAttrs =
+            if editorActive then
+                [ colorText, Background.colorNote ]
+
+            else
+                [ colorNote, Background.colorSub ]
+    in
+    textarea (baseAttrs ++ stateAttrs) [ t (getBuffer editor) ]
+
+
+
+-- STYLES
+
+
+styles : List Style
+styles =
+    [ s (c textareaClass) [ ( "resize", "none" ) ]
+    ]
+
+
+textareaClass : String
+textareaClass =
+    "editortextarea"
