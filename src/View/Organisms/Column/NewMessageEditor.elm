@@ -1,8 +1,9 @@
 module View.Organisms.Column.NewMessageEditor exposing (render, styles)
 
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
-import Html exposing (Html, div, textarea)
-import Html.Attributes exposing (class, placeholder, spellcheck)
+import File exposing (File)
+import Html exposing (Html, button, div, img, textarea)
+import Html.Attributes exposing (alt, class, placeholder, spellcheck, src)
 import Html.Events exposing (onFocus, onInput)
 import Html.Keyed
 import Octicons
@@ -20,6 +21,8 @@ type alias Effects msg =
     { onTextInput : String -> String -> msg
     , onToggleActive : String -> Bool -> msg
     , onResetButtonClick : String -> msg
+    , -- TODO support multiple files in a editor
+      onDeleteFileButtonClick : String -> msg
     }
 
 
@@ -51,6 +54,7 @@ render eff c =
         , ( "editorTextarea_" ++ c.id ++ "_" ++ String.fromInt c.editorSeq
           , editorTextarea eff c selectedEditor
           )
+        , ( "selectedFiles_" ++ c.id, selectedFiles eff c selectedEditor )
         ]
 
 
@@ -61,7 +65,7 @@ editorMenu eff c editor =
             [ div [] [ Image.octicon { size = prominentSize, shape = Octicons.pencil } ]
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, pushRight, Image.hovErr ]
                 { onPress = eff.onResetButtonClick c.id, size = prominentSize, shape = Octicons.trashcan }
-            , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd ]
+            , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, Image.hovText ]
                 { onPress = eff.onToggleActive c.id False, size = prominentSize, shape = Octicons.x }
             ]
 
@@ -112,6 +116,53 @@ editorTextarea eff c editor =
                 [ flexBasis (px (regularSize * 2)), colorNote, Background.colorSub ]
     in
     textarea (baseAttrs ++ stateAttrs) [ t buffer ]
+
+
+selectedFiles : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
+selectedFiles eff c editor =
+    case ( c.editorActive, editor ) of
+        ( True, DiscordMessageEditor { file } ) ->
+            case file of
+                Just ( f, dataUrl ) ->
+                    withPreviewWrapper (eff.onDeleteFileButtonClick c.id) f <|
+                        if String.startsWith "image/" (File.mime f) then
+                            img [ block, src dataUrl, alt (File.name f) ] []
+
+                        else
+                            div [ padding15 ] [ Image.octicon { size = xxProminentSize, shape = Octicons.file } ]
+
+                Nothing ->
+                    -- TODO droppable area
+                    none
+
+        _ ->
+            none
+
+
+withPreviewWrapper : msg -> File -> Html msg -> Html msg
+withPreviewWrapper onDeleteFileButtonClick f preview =
+    let
+        deleteFileButton =
+            div [ Background.transparent, padding5 ]
+                [ Icon.octiconButton
+                    [ padding5
+                    , Border.elliptic
+                    , Background.colorSub
+                    ]
+                    { onPress = onDeleteFileButtonClick
+                    , size = prominentSize
+                    , shape = Octicons.x
+                    }
+                ]
+    in
+    withBadge
+        [ Border.round5
+        , Background.colorSub
+        ]
+        { topRight = Just deleteFileButton
+        , bottomRight = Nothing
+        , content = preview
+        }
 
 
 

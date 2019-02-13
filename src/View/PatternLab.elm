@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation exposing (Key)
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
+import File exposing (File)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -65,6 +66,7 @@ type alias Model =
     , selected : Maybe String
     , numColumns : Int
     , editorSeq : Int
+    , editorFile : Maybe ( File, String )
     }
 
 
@@ -120,6 +122,7 @@ init () url key =
       , selected = Nothing
       , numColumns = 4
       , editorSeq = 0
+      , editorFile = Nothing
       }
     , Cmd.none
     )
@@ -2695,13 +2698,14 @@ columnNewMessageEditor m =
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
                         , onResetButtonClick = always EditorReset
+                        , onDeleteFileButtonClick = always NoOp
                         }
                         { id = "DUMMYID1"
                         , editorActive = m.toggle
                         , editorSeq = m.editorSeq
                         , editors =
                             SelectArray.fromLists []
-                                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = Nothing })
+                                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
                                 [ LocalMessageEditor m.textInput ]
                         }
                     ]
@@ -2715,6 +2719,7 @@ columnNewMessageEditor m =
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
                         , onResetButtonClick = always EditorReset
+                        , onDeleteFileButtonClick = always NoOp
                         }
                         { id = "DUMMYID2"
                         , editorActive = m.toggle
