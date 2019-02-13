@@ -1,5 +1,5 @@
 module View.Molecules.Source exposing
-    ( Source(..), id
+    ( Source(..), id, theme, headTheme
     , inline, slackInline, concatInline, horizontalBlock14
     , icon, badge10, badge14
     , styles
@@ -7,7 +7,7 @@ module View.Molecules.Source exposing
 
 {-| Data source Molecule.
 
-@docs Source, id
+@docs Source, id, theme, headTheme
 @docs inline, slackInline, concatInline, horizontalBlock14
 @docs icon, badge10, badge14
 @docs styles
@@ -20,6 +20,7 @@ import Octicons
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
+import View.Atoms.Theme exposing (aubergine, oneDark)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
@@ -51,6 +52,26 @@ id source =
 
         SlackSource opts ->
             "SlackSource_" ++ opts.id
+
+
+theme : Source -> Attribute msg
+theme s =
+    case s of
+        SlackSource _ ->
+            aubergine
+
+        DiscordSource _ ->
+            oneDark
+
+
+headTheme : List Source -> Attribute msg
+headTheme sources =
+    case sources of
+        [] ->
+            noAttr
+
+        s :: _ ->
+            theme s
 
 
 {-| Renders a list of inline Html nodes from a Source.
