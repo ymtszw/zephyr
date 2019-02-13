@@ -49,6 +49,9 @@ editorTextarea onInput_ onToggleActive editorActive editor =
     let
         baseAttrs =
             [ class textareaClass
+            , flexItem
+            , flexBasisAuto
+            , widthFill
             , onFocus (onToggleActive True)
             , onInput onInput_
             ]

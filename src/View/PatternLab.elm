@@ -2682,25 +2682,27 @@ columnNewMessageEditor m =
         [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , NewMessageEditor.render
-                { onTextInput = \_ str -> TextInput str
-                , onToggleActive = \_ isActive -> Toggle isActive
-                }
-                { id = "DUMMYID1"
-                , editorActive = m.toggle
-                , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
-                }
+            , withSource "" <|
+                NewMessageEditor.render
+                    { onTextInput = \_ str -> TextInput str
+                    , onToggleActive = \_ isActive -> Toggle isActive
+                    }
+                    { id = "DUMMYID1"
+                    , editorActive = m.toggle
+                    , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                    }
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , NewMessageEditor.render
-                { onTextInput = \_ str -> TextInput str
-                , onToggleActive = \_ isActive -> Toggle isActive
-                }
-                { id = "DUMMYID2"
-                , editorActive = m.toggle
-                , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
-                }
+            , withSource "" <|
+                NewMessageEditor.render
+                    { onTextInput = \_ str -> TextInput str
+                    , onToggleActive = \_ isActive -> Toggle isActive
+                    }
+                    { id = "DUMMYID2"
+                    , editorActive = m.toggle
+                    , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                    }
             ]
         ]
 
