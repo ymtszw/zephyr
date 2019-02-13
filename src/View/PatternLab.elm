@@ -2683,26 +2683,32 @@ columnNewMessageEditor m =
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSource "" <|
-                NewMessageEditor.render
-                    { onTextInput = \_ str -> TextInput str
-                    , onToggleActive = \_ isActive -> Toggle isActive
-                    }
-                    { id = "DUMMYID1"
-                    , editorActive = m.toggle
-                    , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
-                    }
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , NewMessageEditor.render
+                        { onTextInput = \_ str -> TextInput str
+                        , onToggleActive = \_ isActive -> Toggle isActive
+                        }
+                        { id = "DUMMYID1"
+                        , editorActive = m.toggle
+                        , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                        }
+                    ]
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
             , withSource "" <|
-                NewMessageEditor.render
-                    { onTextInput = \_ str -> TextInput str
-                    , onToggleActive = \_ isActive -> Toggle isActive
-                    }
-                    { id = "DUMMYID2"
-                    , editorActive = m.toggle
-                    , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
-                    }
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , NewMessageEditor.render
+                        { onTextInput = \_ str -> TextInput str
+                        , onToggleActive = \_ isActive -> Toggle isActive
+                        }
+                        { id = "DUMMYID2"
+                        , editorActive = m.toggle
+                        , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+                        }
+                    ]
             ]
         ]
 

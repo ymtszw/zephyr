@@ -47,10 +47,12 @@ render eff c =
 editorTextarea : (String -> msg) -> (Bool -> msg) -> Bool -> ColumnEditor -> Html msg
 editorTextarea onInput_ onToggleActive editorActive editor =
     let
+        buffer =
+            getBuffer editor
+
         baseAttrs =
             [ class textareaClass
             , flexItem
-            , flexBasisAuto
             , widthFill
             , onFocus (onToggleActive True)
             , onInput onInput_
@@ -58,12 +60,23 @@ editorTextarea onInput_ onToggleActive editorActive editor =
 
         stateAttrs =
             if editorActive then
-                [ colorText, Background.colorNote ]
+                let
+                    bufferHeight =
+                        if lines < 6 then
+                            regularSize * 8
+
+                        else
+                            regularSize * 16
+
+                    lines =
+                        List.length (String.split "\n" buffer)
+                in
+                [ flexBasis (px bufferHeight), colorText, Background.colorNote ]
 
             else
-                [ colorNote, Background.colorSub ]
+                [ flexBasis (px (regularSize * 2)), colorNote, Background.colorSub ]
     in
-    textarea (baseAttrs ++ stateAttrs) [ t (getBuffer editor) ]
+    textarea (baseAttrs ++ stateAttrs) [ t buffer ]
 
 
 
@@ -72,7 +85,10 @@ editorTextarea onInput_ onToggleActive editorActive editor =
 
 styles : List Style
 styles =
-    [ s (c textareaClass) [ ( "resize", "none" ) ]
+    [ s (c textareaClass)
+        [ ( "resize", "none" )
+        , ( "transition", "all 0.15s" )
+        ]
     ]
 
 
