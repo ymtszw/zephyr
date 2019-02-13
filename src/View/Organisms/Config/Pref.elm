@@ -1,9 +1,7 @@
-module View.Organisms.Config.Pref exposing (Effects, Props, ShadowColumn(..), ShadowColumnProps, render, styles)
+module View.Organisms.Config.Pref exposing (Effects, Props, render, styles)
 
-import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
-import Html exposing (Html, button, div, h3, img, p)
-import Html.Attributes exposing (alt, class, disabled, src)
+import Html exposing (Html, button, div, p)
+import Html.Attributes exposing (class, disabled)
 import Html.Events exposing (onClick)
 import Octicons
 import View.Atoms.Background as Background
@@ -12,8 +10,9 @@ import View.Atoms.Input as Input
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (..)
 import View.Atoms.Typography exposing (..)
-import View.ConfigPane.DiscordConfig as Discord
+import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Style exposing (..)
 
@@ -30,9 +29,13 @@ type alias Props =
     { zephyrMode : Bool
     , evictThreshold : Int
     , columnSlotsAvailable : Bool
-    , shadowColumns : List ( ShadowColumnProps, ShadowColumn )
+    , shadowColumns : List ShadowColumn
     , logging : Bool
     }
+
+
+type alias ShadowColumn =
+    ColumnProps { id : String }
 
 
 render : Effects msg -> Props -> Html msg
@@ -58,7 +61,7 @@ prefRow : String -> List String -> Html msg -> Html msg
 prefRow title descriptions contents =
     div [ growRow, spacingRow5 ]
         [ div [ flexColumn, spacingColumn5 ]
-            [ h3 [ sizeTitle ] [ t title ]
+            [ div [ xProminent ] [ t title ]
             , desc (List.map t descriptions)
             ]
         , contents
@@ -70,42 +73,30 @@ desc texts =
     p [ colorNote ] texts
 
 
-type ShadowColumn
-    = FallbackSC
-    | DiscordSC { mainChannelName : String, guildIcon : Maybe String }
-    | SlackSC { mainConvName : String, teamIcon : Maybe String }
-
-
-type alias ShadowColumnProps =
-    { id : String
-    , description : String
-    }
-
-
-shadowColumnsTable : Effects msg -> Bool -> List ( ShadowColumnProps, ShadowColumn ) -> Html msg
+shadowColumnsTable : Effects msg -> Bool -> List ShadowColumn -> Html msg
 shadowColumnsTable eff slotsAvailable shadowColumns =
     let
-        columnCell ( scp, sc ) =
+        columnCell sc =
             ( [ widthFill, theme sc ]
             , [ div [ flexRow, flexCenter, spacingRow5 ]
-                    [ shadowColumnIcon scp.description sc
-                    , div [ bold ] [ t scp.description ]
+                    [ Column.icon20 sc
+                    , div [ flexBasisAuto ] (Column.inlineTitle regularSize sc)
                     ]
               ]
             )
 
-        actionCell ( scp, sc ) =
+        actionCell sc =
             ( [ theme sc ]
             , [ div [ flexRow, flexCenter, spacingRow2 ]
-                    [ showColumnButton (eff.onShowColumnButtonClick scp.id) slotsAvailable
-                    , deleteColumnButton (eff.onDeleteColumnButtonClick scp.id)
+                    [ showColumnButton (eff.onShowColumnButtonClick sc.id) slotsAvailable
+                    , deleteColumnButton (eff.onDeleteColumnButtonClick sc.id)
                     ]
               ]
             )
 
         theme sc =
-            case sc of
-                SlackSC _ ->
+            case sc.sources of
+                (SlackSource _) :: _ ->
                     aubergine
 
                 _ ->
@@ -113,68 +104,23 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
     in
     Table.render []
         { columns = [ { header = "Column", cell = columnCell }, { header = "Action", cell = actionCell } ]
-        , rowKey = \( scp, _ ) -> scp.id
+        , rowKey = .id
         , data = shadowColumns
         }
 
 
-shadowColumnIcon : String -> ShadowColumn -> Html msg
-shadowColumnIcon description sc =
-    case sc of
-        FallbackSC ->
-            Icon.abbr [ Icon.rounded20, serif ] description
-
-        DiscordSC { guildIcon } ->
-            badgedIcon discordBadge <|
-                Icon.imgOrAbbr [ Icon.rounded20, serif ] "Discord guild icon" guildIcon
-
-        SlackSC { teamIcon } ->
-            badgedIcon slackBadge <|
-                Icon.imgOrAbbr [ Icon.rounded20, serif ] "Slack team icon" teamIcon
-
-
-badgedIcon : Html msg -> Html msg -> Html msg
-badgedIcon badge icon =
-    withBadge []
-        { topRight = Nothing
-        , bottomRight = Just badge
-        , content = icon -- No inset
-        }
-
-
-discordBadge : Html msg
-discordBadge =
-    imageBadge "Discord logo" <| Discord.defaultIconUrl (Just shadowColumnIconBadgeSize)
-
-
-imageBadge : String -> String -> Html msg
-imageBadge alt_ src_ =
-    img [ class shadowColumnIconBadgeClass, block, src src_, alt alt_ ] []
-
-
-slackBadge : Html msg
-slackBadge =
-    imageBadge "Slack logo" <| Slack.defaultIconUrl (Just shadowColumnIconBadgeSize)
-
-
 showColumnButton : msg -> Bool -> Html msg
 showColumnButton onShowColumnButtonClick slotsAvailable =
-    let
-        showColumnButtonOcticonSize =
-            14
-    in
     button
         [ class showColumnButtonClass
         , flexItem
-        , flexRow
-        , flexCenter
-        , padding2
+        , flexBasisAuto
         , Background.colorPrim
         , Image.fillText
         , disabled (not slotsAvailable)
         , onClick onShowColumnButtonClick
         ]
-        [ Image.octicon { size = showColumnButtonOcticonSize, shape = Octicons.arrowRight }
+        [ Image.octicon { size = regularSize, shape = Octicons.arrowRight }
         , t " Show"
         ]
 
@@ -183,7 +129,7 @@ deleteColumnButton : msg -> Html msg
 deleteColumnButton onDeleteColumnButtonClick =
     Icon.octiconButton [ flexItem, Icon.rounded20, Image.fillErr, Background.transparent ]
         { onPress = onDeleteColumnButtonClick
-        , size = shadowColumnIconSize
+        , size = xProminentSize
         , shape = Octicons.trashcan
         }
 
@@ -194,33 +140,11 @@ deleteColumnButton onDeleteColumnButtonClick =
 
 styles : List Style
 styles =
-    [ s (c shadowColumnIconBadgeClass)
-        [ ( "width", px shadowColumnIconBadgeSize )
-        , ( "height", px shadowColumnIconBadgeSize )
-        ]
-    , s (c showColumnButtonClass)
+    [ s (c showColumnButtonClass)
         [ ( "width", px showColumnButtonWidth )
-        , ( "height", px shadowColumnIconSize )
         , ( "justify-content", "center" )
-        , ( "flex-basis", "auto" )
         ]
     ]
-
-
-shadowColumnIconSize : Int
-shadowColumnIconSize =
-    -- Bigger than base font size
-    20
-
-
-shadowColumnIconBadgeClass : String
-shadowColumnIconBadgeClass =
-    "scbadge"
-
-
-shadowColumnIconBadgeSize : Int
-shadowColumnIconBadgeSize =
-    shadowColumnIconSize // 2
 
 
 showColumnButtonClass : String

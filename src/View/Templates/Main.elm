@@ -19,10 +19,8 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 -}
 
 import Color exposing (cssRgba)
-import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html, div, h2, img, span)
-import Html.Attributes exposing (alt, class, id, src)
+import Html exposing (Attribute, Html, div, span)
+import Html.Attributes exposing (class, id)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
@@ -34,16 +32,24 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source as Source
 import View.Molecules.Wallpaper as Wallpaper
-import View.Organisms.Sidebar as Sidebar exposing (sidebarExpansionWidth, sidebarWidth)
+import View.Organisms.Sidebar as Sidebar exposing (ColumnInSidebar, sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
 
 
 type alias Props c =
-    { sidebarProps : Sidebar.Props
-    , configDrawerIsOpen : Bool
-    , visibleColumns : List { c | dragStatus : DragStatus }
+    { configOpen : Bool
+    , visibleColumns : List (VisibleColumn c)
     }
+
+
+type alias VisibleColumn c =
+    ColumnInSidebar
+        { c
+            | dragStatus : DragStatus
+            , configOpen : Bool
+        }
 
 
 type DragStatus
@@ -77,10 +83,10 @@ type alias ConfigContents msg =
 
 
 type alias ColumnContents c msg =
-    { header : Int -> { c | dragStatus : DragStatus } -> Html msg
-    , config : Int -> { c | dragStatus : DragStatus } -> Html msg
-    , newMessageEditor : { c | dragStatus : DragStatus } -> Html msg
-    , items : { c | dragStatus : DragStatus } -> Html msg
+    { header : Int -> VisibleColumn c -> Html msg
+    , config : Int -> VisibleColumn c -> Html msg
+    , newMessageEditor : VisibleColumn c -> Html msg
+    , items : VisibleColumn c -> Html msg
     }
 
 
@@ -89,8 +95,8 @@ render eff props contents =
     -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
     , columnContainer eff props.visibleColumns contents.columnContents
-    , configDrawer props.configDrawerIsOpen contents.configContents
-    , Sidebar.render eff.sidebarEffects props.sidebarProps
+    , configDrawer props.configOpen contents.configContents
+    , Sidebar.render eff.sidebarEffects props
     ]
 
 
@@ -138,7 +144,7 @@ configSectionWrapper maybeTheme title content =
 prefTitle : Html msg
 prefTitle =
     titleTemplate "Preference" <|
-        span [ Image.fillText ] [ Image.octicon { size = titleIconSize, shape = Octicons.settings } ]
+        span [ Image.fillText ] [ Image.octicon { size = xProminentSize, shape = Octicons.settings } ]
 
 
 titleTemplate : String -> Html msg -> Html msg
@@ -152,39 +158,29 @@ titleTemplate text icon =
         , Border.bot1
         ]
         [ icon
-        , h2 [ bold, sizeTitle ] [ t text ]
+        , div [ bold, xProminent ] [ t text ]
         ]
-
-
-titleIconSize : Int
-titleIconSize =
-    20
 
 
 slackTitle : Html msg
 slackTitle =
-    titleTemplate "Slack" <| imageIcon "Slack logo" <| Slack.defaultIconUrl Icon.size20
-
-
-imageIcon : String -> String -> Html msg
-imageIcon alt_ src_ =
-    img [ Icon.rounded20, src src_, alt alt_ ] []
+    titleTemplate "Slack" (Icon.slack20 [])
 
 
 discordTitle : Html msg
 discordTitle =
-    titleTemplate "Discord" <| imageIcon "Discord logo" <| Discord.defaultIconUrl Icon.size20
+    titleTemplate "Discord" (Icon.discord20 [])
 
 
 statusTitle : Html msg
 statusTitle =
     titleTemplate "Status" <|
-        span [ Image.fillSucc ] [ Image.octicon { size = titleIconSize, shape = Octicons.pulse } ]
+        span [ Image.fillSucc ] [ Image.octicon { size = xProminentSize, shape = Octicons.pulse } ]
 
 
 columnContainer :
     Effects msg
-    -> List { c | dragStatus : DragStatus }
+    -> List (VisibleColumn c)
     -> ColumnContents c msg
     -> Html msg
 columnContainer eff visibleColumns contents =
@@ -207,7 +203,7 @@ columnWrapperKey :
     Effects msg
     -> ColumnContents c msg
     -> Int
-    -> { c | dragStatus : DragStatus }
+    -> VisibleColumn c
     -> ( String, Html msg )
 columnWrapperKey eff contents index c =
     let
@@ -219,6 +215,7 @@ columnWrapperKey eff contents index c =
             , Border.solid
             , Border.colorBg
             , Background.colorMain
+            , Source.headTheme c.sources
             ]
 
         dragHandlers =
@@ -243,7 +240,11 @@ columnWrapperKey eff contents index c =
     Tuple.pair ("column_" ++ String.fromInt index) <|
         div (staticAttrs ++ dragHandlers)
             [ contents.header index c
-            , contents.config index c
+            , if c.configOpen then
+                contents.config index c
+
+              else
+                none
             , contents.newMessageEditor c
             , div
                 [ class itemsWrapperClass

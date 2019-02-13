@@ -1,11 +1,11 @@
 module View.Atoms.TextBlock exposing
-    ( forceBreak, selectAll
+    ( forceBreak, nowrap, selectAll, clip, ellipsis
     , styles, forceBreakStyle
     )
 
 {-| Text Block Atoms.
 
-@docs forceBreak, selectAll
+@docs forceBreak, nowrap, selectAll, clip, ellipsis
 @docs styles, forceBreakStyle
 
 -}
@@ -21,16 +21,34 @@ forceBreak =
     class forceBreakClass
 
 
+nowrap : Attribute msg
+nowrap =
+    class nowrapClass
+
+
 selectAll : Attribute msg
 selectAll =
     class selectAllClass
+
+
+clip : Attribute msg
+clip =
+    class clipClass
+
+
+ellipsis : Attribute msg
+ellipsis =
+    class ellipsisClass
 
 
 styles : List Style
 styles =
     [ baseTextBlockStyle
     , forceBreakStyle
+    , s (c nowrapClass) [ ( "white-space", "nowrap" ) ]
     , s (c selectAllClass) [ ( "user-select", "all" ) ]
+    , s (c clipClass) [ ( "overflow", "hidden" ) ]
+    , s (c ellipsisClass) [ ( "overflow", "hidden" ), ( "text-overflow", "ellipsis" ) ]
     , preStyle
     ]
 
@@ -53,6 +71,11 @@ forceBreakClass =
     "fbr"
 
 
+nowrapClass : String
+nowrapClass =
+    "nwr"
+
+
 preStyle : Style
 preStyle =
     derive "pre" Typography.monospaceStyle
@@ -62,3 +85,13 @@ preStyle =
 selectAllClass : String
 selectAllClass =
     "slctall"
+
+
+clipClass : String
+clipClass =
+    "clip"
+
+
+ellipsisClass : String
+ellipsisClass =
+    "ellip"

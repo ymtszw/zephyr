@@ -14,11 +14,11 @@ import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography as Typography
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source as Source
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Pref as Pref
-import View.Organisms.Config.Slack as Slack
 import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (..)
 import View.Templates.Main
@@ -51,10 +51,10 @@ rendered =
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Table.styles
+                ++ Source.styles
                 ++ ProducerConfig.styles
                 ++ Sidebar.styles
                 ++ Pref.styles
-                ++ Slack.styles
                 ++ Header.styles
                 ++ View.Templates.Main.styles
 
@@ -111,7 +111,7 @@ resetUserAgentStyles =
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
     , s "body" [ ( "line-height", "1" ) ]
-        |> inject Typography.sizeBaseStyle
+        |> inject Typography.regularStyle
         |> inject Typography.sansSerifStyle
         |> inject Background.oneDarkMainStyle
     , s "ol,ul"

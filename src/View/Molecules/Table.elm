@@ -1,4 +1,4 @@
-module View.Molecules.Table exposing (Props, layoutFixed, render, styles)
+module View.Molecules.Table exposing (Props, alignMiddle, layoutFixed, render, styles)
 
 import Html exposing (Attribute, Html, table, td, th, thead, tr)
 import Html.Attributes exposing (class)
@@ -57,6 +57,11 @@ layoutFixed =
     class layoutFixedClass
 
 
+alignMiddle : Attribute msg
+alignMiddle =
+    class alignMiddleClass
+
+
 
 -- STYLES
 
@@ -72,6 +77,7 @@ styles =
         ]
     , s "td" [ ( "overflow-x", "auto" ), ( "vertical-align", "top" ) ]
     , s (c layoutFixedClass) [ ( "table-layout", "fixed" ) ]
+    , s (c alignMiddleClass) [ ( "vertical-align", "middle" ) ]
     , s (c emptyClass) [ ( "text-align", "center" ) ]
     ]
 
@@ -84,6 +90,11 @@ defaultBorderSpacing =
 layoutFixedClass : String
 layoutFixedClass =
     "tblf"
+
+
+alignMiddleClass : String
+alignMiddleClass =
+    "tbvam"
 
 
 emptyClass : String

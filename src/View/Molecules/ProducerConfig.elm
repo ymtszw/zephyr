@@ -30,7 +30,7 @@ tokenForm :
     -> Html msg
 tokenForm eff props =
     div [ flexColumn, spacingColumn2 ]
-        [ label [ flexItem, sizeTitle, bold, for props.id ] [ t "Token" ]
+        [ label [ flexItem, xProminent, bold, for props.id ] [ t "Token" ]
         , p [ colorNote ]
             [ t ("Tokens are stored in IndexedDB of your web browser, and only sent to '" ++ props.apiDomain ++ "'. Otherwise it ")
             , strong [ bold ] [ t "NEVER" ]
@@ -42,7 +42,7 @@ tokenForm eff props =
             , id props.id
             , onInput eff.onInput
             , flexItem
-            , sizeHeadline
+            , prominent
             , padding5
             , Border.round5
             ]
@@ -50,7 +50,7 @@ tokenForm eff props =
         , button
             [ flexItem
             , alignEnd
-            , sizeHeadline
+            , prominent
             , padding10
             , Background.colorPrim
             , Border.round5
@@ -74,7 +74,7 @@ subSelect :
     -> Html msg
 subSelect onSelect props =
     div [ flexRow, flexCenter, spacingRow5 ]
-        [ div [ sizeHeadline ] [ t "Subscribe:" ]
+        [ div [ prominent ] [ t "Subscribe:" ]
         , Select.render [ class subSelectClass, flexBasisAuto ]
             { state = props.selectState
             , msgTagger = props.selectMsgTagger
@@ -103,10 +103,10 @@ subbedTable :
 subbedTable eff props =
     let
         nameCell c =
-            ( [ widthFill ], [ props.itemHtml c ] )
+            ( [ Table.alignMiddle, widthFill ], [ props.itemHtml c ] )
 
         actionCell c =
-            ( []
+            ( [ Table.alignMiddle ]
             , [ div [ flexRow, flexCenter, spacingRow2 ]
                     [ fetchStatusAndforceFetchButton (eff.onForceFetchButtonClick c.id) c.fetching
                     , createColumnButton (eff.onCreateColumnButtonClick c.id) c
@@ -144,14 +144,9 @@ fetchStatusAndforceFetchButton onPress fetching =
               else
                 noAttr
             ]
-            [ Image.octicon { size = octiconButtonSize, shape = Octicons.arrowDown }
+            [ Image.octicon { size = xProminentSize, shape = Octicons.arrowDown }
             ]
         ]
-
-
-octiconButtonSize : Int
-octiconButtonSize =
-    20
 
 
 createColumnButton : msg -> { a | producing : Bool } -> Html msg
@@ -178,7 +173,7 @@ unsubscribeButton onPress =
         , Background.transparent
         ]
         { onPress = onPress
-        , size = octiconButtonSize
+        , size = xProminentSize
         , shape = Octicons.circleSlash
         }
 

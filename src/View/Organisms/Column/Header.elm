@@ -1,6 +1,6 @@
-module View.Organisms.Column.Header exposing (Effects, Source(..), render, styles)
+module View.Organisms.Column.Header exposing (Effects, render, styles)
 
-import Html exposing (Attribute, Html, button, div, span)
+import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick)
 import Json.Decode exposing (succeed)
@@ -10,8 +10,8 @@ import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
-import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
 
@@ -25,24 +25,16 @@ type alias Effects msg =
     }
 
 
-type Source
-    = DiscordSource { channelName : String, guildIcon : Maybe String }
-    | SlackSource { convName : String, teamIcon : Maybe String, isPrivate : Bool }
-
-
-render :
-    Effects msg
-    -> Int
-    ->
+type alias Props c =
+    ColumnProps
         { c
             | id : String
-            , sources : List Source
-            , filters : List String
-            , pinned : Bool
             , configOpen : Bool
         }
-    -> Html msg
-render eff index column =
+
+
+render : Effects msg -> Int -> Props c -> Html msg
+render eff index props =
     div
         [ flexRow
         , flexCenter
@@ -51,9 +43,9 @@ render eff index column =
         , spacingRow5
         , Background.colorSub
         ]
-        [ grabbableIcon (eff.onDragstart column.pinned index column.id) column
-        , headerText eff.onHeaderClick column.sources column.filters
-        , if column.pinned then
+        [ grabbableIcon (eff.onDragstart props.pinned index props.id) props
+        , headerText eff.onHeaderClick props
+        , if props.pinned then
             none
 
           else
@@ -61,7 +53,7 @@ render eff index column =
         , let
             innerAttrs =
                 -- Rotate inner contents, not the button itself, to keep the clickable area stable
-                if column.pinned then
+                if props.pinned then
                     [ class pinButtonClass, Image.fillWarn, Image.rotate45 ]
 
                 else
@@ -75,18 +67,18 @@ render eff index column =
             , Border.round2
             , Background.transparent
             , Background.hovBd
-            , onClick (eff.onPinButtonClick column.id (not column.pinned))
+            , onClick (eff.onPinButtonClick props.id (not props.pinned))
             ]
-            [ div innerAttrs [ Image.octicon { size = octiconSize, shape = Octicons.pin } ] ]
+            [ div innerAttrs [ Image.octicon { size = xxProminentSize, shape = Octicons.pin } ] ]
         , headerButton
-            [ if column.configOpen then
+            [ if props.configOpen then
                 Image.fillText
 
               else
                 noAttr
             , Image.hovText
             ]
-            (eff.onConfigToggleButtonClick column.id (not column.configOpen))
+            (eff.onConfigToggleButtonClick props.id (not props.configOpen))
             Octicons.settings
         ]
 
@@ -105,113 +97,38 @@ headerButton attrs onPress shape =
     in
     Icon.octiconButton (baseAttrs ++ attrs)
         { onPress = onPress
-        , size = octiconSize
+        , size = xxProminentSize
         , shape = shape
         }
 
 
-octiconSize : Int
-octiconSize =
-    30
-
-
-grabbableIcon : msg -> { c | id : String, sources : List Source } -> Html msg
-grabbableIcon onDragstart column =
+grabbableIcon : msg -> Props c -> Html msg
+grabbableIcon onDragstart props =
     div
         [ flexBasisAuto
         , draggable "true"
         , on "dragstart" (succeed onDragstart)
         , Cursor.allScroll
         ]
-        [ sourceIcon column.sources
+        [ Column.icon30 props
         ]
 
 
-sourceIcon : List Source -> Html msg
-sourceIcon sources =
-    case sources of
-        [] ->
-            Icon.abbr [ Icon.rounded30, serif, sizeTitle ] "Zephyr"
-
-        s :: _ ->
-            let
-                ( bottomRight, content ) =
-                    case s of
-                        DiscordSource opts ->
-                            ( Icon.discordBadge14
-                            , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.channelName opts.guildIcon
-                            )
-
-                        SlackSource opts ->
-                            ( Icon.slackBadge14
-                            , Icon.imgOrAbbr [ Icon.rounded30, serif, sizeTitle ] opts.convName opts.teamIcon
-                            )
-            in
-            withBadge [ badgeOutset ]
-                { topRight = Nothing
-                , bottomRight = Just bottomRight
-                , content = content
-                }
-
-
-headerText : Maybe msg -> List Source -> List String -> Html msg
-headerText onHeaderClick sources filters =
+headerText : Maybe msg -> Props c -> Html msg
+headerText onHeaderClick props =
     let
-        baseAttrs =
-            [ flexGrow, flexColumn, spacingColumn2, forceBreak ]
-
-        headerClicerAttrs =
+        attrs =
             case onHeaderClick of
                 Just onPress ->
-                    [ onClick onPress
+                    [ flexGrow
+                    , onClick onPress
                     , Cursor.pointer
                     ]
 
                 Nothing ->
-                    []
-
-        mainText =
-            div [ bold, sizeHeadline ]
-
-        sourcesToMain =
-            List.map sourceText >> List.intersperse [ t ", " ] >> List.concat
+                    [ flexGrow ]
     in
-    div (baseAttrs ++ headerClicerAttrs) <|
-        case ( sources, filters ) of
-            ( [], [] ) ->
-                [ mainText [ t "New Column" ] ]
-
-            ( _, [] ) ->
-                [ mainText (sourcesToMain sources) ]
-
-            ( [], _ ) ->
-                [ mainText [ t (String.join ", " filters) ] ]
-
-            ( _, _ ) ->
-                [ mainText (sourcesToMain sources)
-                , div [ colorNote ] [ t (String.join ", " filters) ]
-                ]
-
-
-sourceText : Source -> List (Html msg)
-sourceText source =
-    case source of
-        DiscordSource { channelName } ->
-            [ t ("#" ++ channelName) ]
-
-        SlackSource { convName, isPrivate } ->
-            [ if isPrivate then
-                span [ Image.fillText ] [ Image.octicon { size = headlineSize, shape = Octicons.lock } ]
-
-              else
-                t "#"
-            , t convName
-            ]
-
-
-headlineSize : Int
-headlineSize =
-    15
+    Column.blockTitle attrs props
 
 
 styles : List Style

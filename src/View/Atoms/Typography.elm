@@ -1,22 +1,24 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+    , regular, minuscule, prominent, xProminent, xxProminent, impactful
+    , regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
     , newTab
-    , styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
+    , styles, regularStyle, sansSerifStyle, monospaceStyle
     )
 
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs sizeBase, sizeDetail, sizeHeadline, sizeTitle, sizeSection, sizeImpact
+@docs regular, minuscule, prominent, xProminent, xxProminent, impactful
+@docs regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
 @docs newTab
-@docs styles, sizeBaseStyle, sansSerifStyle, monospaceStyle
+@docs styles, regularStyle, sansSerifStyle, monospaceStyle
 
 -}
 
@@ -73,44 +75,86 @@ This equals to the global default, so you do not need this in an element
 where global default is not overridden.
 
 -}
-sizeBase : Attribute msg
-sizeBase =
-    Attributes.class sizeBaseClass
+regular : Attribute msg
+regular =
+    Attributes.class regularClass
+
+
+{-| Scale 0 (12)
+-}
+regularSize : Int
+regularSize =
+    scale12 0
 
 
 {-| Scale -1 (9px)
 -}
-sizeDetail : Attribute msg
-sizeDetail =
-    Attributes.class sizeDetailClass
+minuscule : Attribute msg
+minuscule =
+    Attributes.class minusculeClass
+
+
+{-| Scale -1 (9)
+-}
+minusculeSize : Int
+minusculeSize =
+    scale12 -1
 
 
 {-| Scale 1 (15px)
 -}
-sizeHeadline : Attribute msg
-sizeHeadline =
-    Attributes.class sizeHeadlineClass
+prominent : Attribute msg
+prominent =
+    Attributes.class prominentClass
+
+
+{-| Scale 1 (15)
+-}
+prominentSize : Int
+prominentSize =
+    scale12 1
 
 
 {-| Scale 2 (18px)
 -}
-sizeTitle : Attribute msg
-sizeTitle =
-    Attributes.class sizeTitleClass
+xProminent : Attribute msg
+xProminent =
+    Attributes.class xProminentClass
+
+
+{-| Scale 2 (18)
+-}
+xProminentSize : Int
+xProminentSize =
+    scale12 2
 
 
 {-| Scale 4 (30px)
 -}
-sizeSection : Attribute msg
-sizeSection =
-    Attributes.class sizeSectionClass
+xxProminent : Attribute msg
+xxProminent =
+    Attributes.class xxProminentClass
+
+
+{-| Scale 4 (30)
+-}
+xxProminentSize : Int
+xxProminentSize =
+    scale12 4
 
 
 {-| Scale 12 (174px). Used for background logo, and that's all.
 -}
-sizeImpact : Attribute msg
-sizeImpact =
-    Attributes.class sizeImpactClass
+impactful : Attribute msg
+impactful =
+    Attributes.class impactfulClass
+
+
+{-| Scale 12 (174)
+-}
+impactfulSize : Int
+impactfulSize =
+    scale12 12
 
 
 {-| Sans-serif fonts. Used as the global default.
@@ -194,12 +238,12 @@ newTab =
 styles : List Style
 styles =
     [ -- Font sizes
-      sizeBaseStyle
-    , s (c sizeDetailClass) [ ( "font-size", px (scale12 -1) ) ]
-    , s (c sizeHeadlineClass) [ ( "font-size", px (scale12 1) ) ]
-    , s (c sizeTitleClass) [ ( "font-size", px (scale12 2) ) ]
-    , s (c sizeSectionClass) [ ( "font-size", px (scale12 4) ) ]
-    , s (c sizeImpactClass) [ ( "font-size", px (scale12 12) ) ]
+      regularStyle
+    , s (c minusculeClass) [ ( "font-size", px minusculeSize ) ]
+    , s (c prominentClass) [ ( "font-size", px prominentSize ) ]
+    , s (c xProminentClass) [ ( "font-size", px xProminentSize ) ]
+    , s (c xxProminentClass) [ ( "font-size", px xxProminentSize ) ]
+    , s (c impactfulClass) [ ( "font-size", px impactfulSize ) ]
     , -- Font families
       sansSerifStyle
     , s (c serifClass) [ fontFamily [ "Georgia", "Palatino Linotype", "Times New Roman", "serif" ] ]
@@ -214,38 +258,38 @@ styles =
         ++ linkStyles
 
 
-sizeBaseStyle : Style
-sizeBaseStyle =
-    s (c sizeBaseClass) [ ( "font-size", px (scale12 0) ) ]
+regularStyle : Style
+regularStyle =
+    s (c regularClass) [ ( "font-size", px regularSize ) ]
 
 
-sizeBaseClass : String
-sizeBaseClass =
-    "fsb"
+regularClass : String
+regularClass =
+    "fsr"
 
 
-sizeDetailClass : String
-sizeDetailClass =
-    "fsd"
+minusculeClass : String
+minusculeClass =
+    "fsm"
 
 
-sizeHeadlineClass : String
-sizeHeadlineClass =
-    "fsh"
+prominentClass : String
+prominentClass =
+    "fsp"
 
 
-sizeTitleClass : String
-sizeTitleClass =
-    "fst"
+xProminentClass : String
+xProminentClass =
+    "fsxp"
 
 
-sizeSectionClass : String
-sizeSectionClass =
-    "fss"
+xxProminentClass : String
+xxProminentClass =
+    "fsxxp"
 
 
-sizeImpactClass : String
-sizeImpactClass =
+impactfulClass : String
+impactfulClass =
     "fsi"
 
 

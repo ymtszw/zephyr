@@ -1,17 +1,19 @@
 module View.Molecules.Icon exposing
-    ( rounded20, rounded30, rounded40, size20, size30, size40
+    ( rounded14, rounded20, rounded30, rounded40
     , button, link, abbr, imgOrAbbr
     , octiconButton, octiconLink
-    , rehydrateButton, pinBadge14, discordBadge14, slackBadge14
+    , rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
+    , discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
     , styles
     )
 
 {-| Icon Molecules.
 
-@docs rounded20, rounded30, rounded40, size20, size30, size40
+@docs rounded14, rounded20, rounded30, rounded40
 @docs button, link, abbr, imgOrAbbr
 @docs octiconButton, octiconLink
-@docs rehydrateButton, pinBadge14, discordBadge14, slackBadge14
+@docs rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
+@docs discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
 @docs styles
 
 -}
@@ -30,6 +32,13 @@ import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (t)
 import View.Style exposing (..)
+
+
+{-| Border-rounded 14x14 sized icon.
+-}
+rounded14 : Attribute msg
+rounded14 =
+    class rounded14Class
 
 
 {-| Border-rounded 20x20 sized icon. Widely used.
@@ -51,27 +60,6 @@ rounded30 =
 rounded40 : Attribute msg
 rounded40 =
     class rounded40Class
-
-
-{-| Constant of `Just 20`, should be inserted to CDN APIs.
--}
-size20 : Maybe Int
-size20 =
-    Just rounded20Size
-
-
-{-| Constant of `Just 30`, should be inserted to CDN APIs.
--}
-size30 : Maybe Int
-size30 =
-    Just rounded30Size
-
-
-{-| Constant of `Just 40`, should be inserted to CDN APIs.
--}
-size40 : Maybe Int
-size40 =
-    Just rounded40Size
 
 
 button : List (Attribute msg) -> { onPress : msg, src : String, alt : String } -> Html msg
@@ -163,19 +151,54 @@ pinBadge14 =
         [ Image.octicon { size = rounded14Size, shape = Octicons.pin } ]
 
 
-discordBadge14 : Html msg
-discordBadge14 =
-    imageBadge14 "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
+discord10 : List (Attribute msg) -> Html msg
+discord10 attrs =
+    logo attrs rounded10Class "Discord logo" <| Discord.defaultIconUrl (Just rounded10Size)
 
 
-imageBadge14 : String -> String -> Html msg
-imageBadge14 alt_ src_ =
-    img [ class rounded14Class, src src_, alt alt_ ] []
+slack10 : List (Attribute msg) -> Html msg
+slack10 attrs =
+    logo attrs rounded10Class "Slack logo" <| Slack.defaultIconUrl (Just rounded10Size)
 
 
-slackBadge14 : Html msg
-slackBadge14 =
-    imageBadge14 "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+discord14 : List (Attribute msg) -> Html msg
+discord14 attrs =
+    logo attrs rounded14Class "Discord logo" <| Discord.defaultIconUrl (Just rounded14Size)
+
+
+slack14 : List (Attribute msg) -> Html msg
+slack14 attrs =
+    logo attrs rounded14Class "Slack logo" <| Slack.defaultIconUrl (Just rounded14Size)
+
+
+discord20 : List (Attribute msg) -> Html msg
+discord20 attrs =
+    logo attrs rounded20Class "Discord logo" <| Discord.defaultIconUrl (Just rounded20Size)
+
+
+slack20 : List (Attribute msg) -> Html msg
+slack20 attrs =
+    logo attrs rounded20Class "Slack logo" <| Slack.defaultIconUrl (Just rounded20Size)
+
+
+logo : List (Attribute msg) -> String -> String -> String -> Html msg
+logo attrs sizeClass alt_ src_ =
+    img ([ class sizeClass, src src_, alt alt_ ] ++ attrs) []
+
+
+discordImageUrl20 : Discord.Image -> String
+discordImageUrl20 =
+    Discord.imageUrlNoFallback (Just rounded20Size)
+
+
+discordImageUrl40 : Discord.Image -> String
+discordImageUrl40 =
+    Discord.imageUrlNoFallback (Just rounded40Size)
+
+
+discordImageUrlWithFallback40 : String -> Maybe Discord.Image -> String
+discordImageUrlWithFallback40 =
+    Discord.imageUrlWithFallback (Just rounded40Size)
 
 
 
@@ -190,6 +213,12 @@ styles =
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
         ]
+    , s (c rounded10Class)
+        [ ( "width", px rounded10Size )
+        , ( "height", px rounded10Size )
+        , ( "flex-basis", "auto" )
+        ]
+        |> inject Border.round2Style
     , s (c rounded14Class)
         [ ( "width", px rounded14Size )
         , ( "height", px rounded14Size )
@@ -220,6 +249,16 @@ styles =
 iconClass : String
 iconClass =
     "icon"
+
+
+rounded10Class : String
+rounded10Class =
+    "iconr10"
+
+
+rounded10Size : Int
+rounded10Size =
+    10
 
 
 rounded14Class : String

@@ -23,10 +23,13 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
@@ -90,12 +93,14 @@ routes =
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
+    , R "source" "Molecules" "Column" <| pLab [ column ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
     , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
     , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
+    , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -205,7 +210,7 @@ navi current =
 naviRow : Route -> List R -> Html Msg
 naviRow current rs =
     div [ flexRow, flexCenter, spacingRow15 ]
-        [ h2 [ sizeHeadline, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
+        [ h2 [ prominent, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
         , div [ flexRow, flexGrow, flexWrap, flexCenter, spacingWrapped10 ] <|
             List.map (naviButton current) rs
         ]
@@ -214,7 +219,7 @@ naviRow current rs =
 naviButton : Route -> R -> Html Msg
 naviButton current r =
     Button.link
-        [ sizeHeadline
+        [ prominent
         , padding10
         , flexItem
         , if current == r.path then
@@ -231,7 +236,7 @@ naviButton current r =
 introduction : Html Msg
 introduction =
     section []
-        [ h1 [ sizeImpact ]
+        [ h1 [ impactful ]
             [ span [ serif, bold ] [ t "Zephyr:" ]
             , t " "
             , span [ sansSerif, italic ] [ t "Pattern" ]
@@ -244,13 +249,13 @@ introduction =
             , t "By default this page has oneDark theme."
             ]
         , div [ padding10 ]
-            [ h2 [ sizeHeadline ]
+            [ h2 [ prominent ]
                 [ t "Stylesheet length: "
                 , t (StringExtra.punctuateNumber View.Stylesheet.length)
                 ]
             ]
         , section []
-            [ h2 [ sizeHeadline ] [ t "Imports" ]
+            [ h2 [ prominent ] [ t "Imports" ]
             , sourceBlock """import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -308,7 +313,7 @@ section attrs =
 theme : Html Msg
 theme =
     section []
-        [ h1 [ sizeSection ] [ t "Theme" ]
+        [ h1 [ xxProminent ] [ t "Theme" ]
         , withSource """div [ padding15, oneDark ]
     [ t "This block has oneDark theme. Default background color and text color are automatically applied to its children. "
     , t "Child elements may apply specific color mode classes for decorations. See Typography/Border/Background sections."
@@ -339,7 +344,7 @@ withSource source toRender =
 typography : Html Msg
 typography =
     section []
-        [ h1 [ sizeSection ] [ t "Typography" ]
+        [ h1 [ xxProminent ] [ t "Typography" ]
         , fontFamilies
         , fontSizes
         , fontDecorations
@@ -350,7 +355,7 @@ typography =
 fontFamilies : Html Msg
 fontFamilies =
     section []
-        [ h2 [ sizeTitle ] [ t "Font families" ]
+        [ h2 [ xProminent ] [ t "Font families" ]
         , withSource "p [ sansSerif ] [ t \"This paragraph uses a sans-serif font. あいうえお水兵リーベ\" ]" <|
             p [ sansSerif ] [ t "This paragraph uses a sans-serif font. あいうえお水兵リーベ" ]
         , withSource "p [ serif ] [ t \"This paragraph uses a serif font. あいうえお水兵リーベ\" ]" <|
@@ -363,26 +368,26 @@ fontFamilies =
 fontSizes : Html Msg
 fontSizes =
     section []
-        [ h2 [ sizeTitle ] [ t "Font sizes" ]
-        , withSource "p [ sizeImpact ] [ t \"impact\" ]" <|
-            p [ sizeImpact ] [ t "impact" ]
-        , withSource "p [ sizeSection ] [ t \"section\" ]" <|
-            p [ sizeSection ] [ t "section" ]
-        , withSource "p [ sizeTitle ] [ t \"title\" ]" <|
-            p [ sizeTitle ] [ t "title" ]
-        , withSource "p [ sizeHeadline ] [ t \"headline\" ]" <|
-            p [ sizeHeadline ] [ t "headline" ]
-        , withSource "p [ sizeBase ] [ t \"base\" ]" <|
-            p [ sizeBase ] [ t "base" ]
-        , withSource "p [ sizeDetail ] [ t \"detail\" ]" <|
-            p [ sizeDetail ] [ t "detail" ]
+        [ h2 [ xProminent ] [ t "Font sizes" ]
+        , withSource "p [ impactful ] [ t \"impactful\" ]" <|
+            p [ impactful ] [ t "impactful" ]
+        , withSource "p [ xxProminent ] [ t \"xxProminent\" ]" <|
+            p [ xxProminent ] [ t "xxProminent" ]
+        , withSource "p [ xProminent ] [ t \"xProminent\" ]" <|
+            p [ xProminent ] [ t "xProminent" ]
+        , withSource "p [ prominent ] [ t \"prominent\" ]" <|
+            p [ prominent ] [ t "prominent" ]
+        , withSource "p [ regular ] [ t \"regular\" ]" <|
+            p [ regular ] [ t "regular" ]
+        , withSource "p [ minuscule ] [ t \"minuscule\" ]" <|
+            p [ minuscule ] [ t "minuscule" ]
         ]
 
 
 fontDecorations : Html Msg
 fontDecorations =
     section []
-        [ h2 [ sizeTitle ] [ t "Font decorations" ]
+        [ h2 [ xProminent ] [ t "Font decorations" ]
         , withSource "p [] [ t \"This is normal text, あいうえお水兵リーベ\" ]" <|
             p [] [ t "This is normal text, あいうえお水兵リーベ" ]
         , withSource "p [ italic ] [ t \"This is italic text, あいうえお水兵リーベ\" ]" <|
@@ -399,7 +404,7 @@ fontColors =
     let
         coloredTexts theme_ themeText =
             section [ theme_ ]
-                [ h3 [ sizeHeadline ] [ t themeText ]
+                [ h3 [ prominent ] [ t themeText ]
                 , withSource """p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]""" <|
                     p [ colorText ] [ t "Text color, あいうえお水兵リーベ" ]
                 , withSource """p [ colorNote ] [ t "Note color, あいうえお水兵リーベ" ]""" <|
@@ -435,7 +440,7 @@ fontColors =
                 ]
     in
     section []
-        [ h2 [ sizeTitle ] [ t "Font colors" ]
+        [ h2 [ xProminent ] [ t "Font colors" ]
         , coloredTexts oneDark "oneDark"
         , coloredTexts aubergine "aubergine"
         ]
@@ -444,7 +449,7 @@ fontColors =
 textBlock : Html Msg
 textBlock =
     section []
-        [ h1 [ sizeSection ] [ t "Text Blocks" ]
+        [ h1 [ xxProminent ] [ t "Text Blocks" ]
         , withSource """h2 [] [ t "Heading tags does not have default styles. Use Typography classes/styles." ]""" <|
             h2 [] [ t "Heading tags does not have default styles. Use Typography classes/styles." ]
         , withSource """p []
@@ -521,7 +526,7 @@ iroha =
 border : Html Msg
 border =
     section []
-        [ h1 [ sizeSection ] [ t "Border" ]
+        [ h1 [ xxProminent ] [ t "Border" ]
         , withSource "div [ padding5, Border.solid, Border.w1 ] [ t \"I'm surrounded by solid border.\" ]" <|
             div [ padding5, Border.solid, Border.w1 ] [ t "I'm surrounded by solid border." ]
         , withSource "div [ padding5, Border.dotted, Border.w1 ] [ t \"I'm surrounded by dotted border.\" ]" <|
@@ -574,29 +579,29 @@ background =
     let
         themedBg theme_ themeText =
             section [ theme_ ]
-                [ h2 [ sizeTitle ] [ t themeText ]
-                , withSource """div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]""" <|
-                    div [ padding15 ] [ h3 [ sizeHeadline ] [ t "Default" ] ]
-                , withSource """div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]""" <|
-                    div [ padding15, Background.colorBg ] [ h3 [ sizeHeadline ] [ t "colorBg" ] ]
-                , withSource """div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]""" <|
-                    div [ padding15, Background.colorMain ] [ h3 [ sizeHeadline ] [ t "colorMain" ] ]
-                , withSource """div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]""" <|
-                    div [ padding15, Background.colorSub ] [ h3 [ sizeHeadline ] [ t "colorSub" ] ]
-                , withSource """div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]""" <|
-                    div [ padding15, Background.colorNote ] [ h3 [ sizeHeadline ] [ t "colorNote" ] ]
-                , withSource """div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]""" <|
-                    div [ padding15, Background.colorPrim ] [ h3 [ sizeHeadline ] [ t "colorPrim" ] ]
-                , withSource """div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]""" <|
-                    div [ padding15, Background.colorSucc ] [ h3 [ sizeHeadline ] [ t "colorSucc" ] ]
-                , withSource """div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]""" <|
-                    div [ padding15, Background.colorWarn ] [ h3 [ sizeHeadline ] [ t "colorWarn" ] ]
-                , withSource """div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]""" <|
-                    div [ padding15, Background.colorErr ] [ h3 [ sizeHeadline ] [ t "colorErr" ] ]
+                [ h2 [ xProminent ] [ t themeText ]
+                , withSource """div [ padding15 ] [ h3 [ prominent ] [ t "Default" ] ]""" <|
+                    div [ padding15 ] [ h3 [ prominent ] [ t "Default" ] ]
+                , withSource """div [ padding15, Background.colorBg ] [ h3 [ prominent ] [ t "colorBg" ] ]""" <|
+                    div [ padding15, Background.colorBg ] [ h3 [ prominent ] [ t "colorBg" ] ]
+                , withSource """div [ padding15, Background.colorMain ] [ h3 [ prominent ] [ t "colorMain" ] ]""" <|
+                    div [ padding15, Background.colorMain ] [ h3 [ prominent ] [ t "colorMain" ] ]
+                , withSource """div [ padding15, Background.colorSub ] [ h3 [ prominent ] [ t "colorSub" ] ]""" <|
+                    div [ padding15, Background.colorSub ] [ h3 [ prominent ] [ t "colorSub" ] ]
+                , withSource """div [ padding15, Background.colorNote ] [ h3 [ prominent ] [ t "colorNote" ] ]""" <|
+                    div [ padding15, Background.colorNote ] [ h3 [ prominent ] [ t "colorNote" ] ]
+                , withSource """div [ padding15, Background.colorPrim ] [ h3 [ prominent ] [ t "colorPrim" ] ]""" <|
+                    div [ padding15, Background.colorPrim ] [ h3 [ prominent ] [ t "colorPrim" ] ]
+                , withSource """div [ padding15, Background.colorSucc ] [ h3 [ prominent ] [ t "colorSucc" ] ]""" <|
+                    div [ padding15, Background.colorSucc ] [ h3 [ prominent ] [ t "colorSucc" ] ]
+                , withSource """div [ padding15, Background.colorWarn ] [ h3 [ prominent ] [ t "colorWarn" ] ]""" <|
+                    div [ padding15, Background.colorWarn ] [ h3 [ prominent ] [ t "colorWarn" ] ]
+                , withSource """div [ padding15, Background.colorErr ] [ h3 [ prominent ] [ t "colorErr" ] ]""" <|
+                    div [ padding15, Background.colorErr ] [ h3 [ prominent ] [ t "colorErr" ] ]
                 ]
     in
     section []
-        [ h1 [ sizeSection ] [ t "Background" ]
+        [ h1 [ xxProminent ] [ t "Background" ]
         , themedBg oneDark "oneDark"
         , themedBg aubergine "aubergine"
         ]
@@ -607,7 +612,7 @@ layout =
     let
         basics =
             section []
-                [ h2 [ sizeTitle ] [ t "Basics" ]
+                [ h2 [ xProminent ] [ t "Basics" ]
                 , withSource """div [ Border.solid, Border.w1 ] [ t "I am a bare ", code [] [ t "div" ] ]""" <|
                     div [ Border.solid, Border.w1, flexShrink ] [ t "I am a bare ", code [] [ t "div" ] ]
                 , withSource """div [ widthFill, Border.solid, Border.w1 ]
@@ -635,7 +640,7 @@ layout =
                 ]
     in
     section []
-        [ h1 [ sizeSection ] [ t "Layout" ]
+        [ h1 [ xxProminent ] [ t "Layout" ]
         , basics
         , flexBox
         , padding
@@ -647,7 +652,7 @@ layout =
 flexBox : Html Msg
 flexBox =
     section []
-        [ h2 [ sizeTitle ] [ t "FlexBox" ]
+        [ h2 [ xProminent ] [ t "FlexBox" ]
         , withSource """div [ flexRow ]
     [ div [ Border.solid, Border.w1 ] [ t "I shrink as narrow as content length allows." ]
     , div [ Border.solid, Border.w1, flexBasis (px 200) ] [ t "I am fixed 200px width. ", t lorem ]
@@ -724,7 +729,7 @@ flexBox =
 padding : Html Msg
 padding =
     section []
-        [ h2 [ sizeTitle ] [ t "Padding" ]
+        [ h2 [ xProminent ] [ t "Padding" ]
         , withSource """div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]""" <|
             div [ Border.solid, Border.w1 ] [ t "No padding. ", t lorem ]
         , withSource """div [ padding2, Border.solid, Border.w1 ] [ t "I'm surrounded by 2px padding. ", t lorem ]""" <|
@@ -741,7 +746,7 @@ padding =
 spacing : Html Msg
 spacing =
     section []
-        [ h2 [ sizeTitle ] [ t "Spacing" ]
+        [ h2 [ xProminent ] [ t "Spacing" ]
         , withSource """div [ growRow, Border.solid, Border.w1 ]
     [ div [ Border.solid, Border.w1 ] [ t "I'm the first child of flex row." ]
     , div [ Border.solid, Border.w1 ] [ t "I'm the second one. No spacing." ]
@@ -820,7 +825,7 @@ spacing =
 badge : Html Msg
 badge =
     section []
-        [ h2 [ sizeTitle ] [ t "Badge" ]
+        [ h2 [ xProminent ] [ t "Badge" ]
         , withSource """withBadge []
     { content =
         div [ Background.colorNote, padding10 ] [ t "I'm main content. This is a special layouting helper Atom for badges. ", t lorem ]
@@ -879,7 +884,7 @@ badge =
 image : Html Msg
 image =
     section []
-        [ h1 [ sizeSection ] [ t "Image" ]
+        [ h1 [ xxProminent ] [ t "Image" ]
         , withSource """img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []""" <|
             img [ src (Image.ph 200 100), alt "200x100", width 200, height 100 ] []
         , withSource """div []
@@ -1002,14 +1007,14 @@ button_ =
     let
         themedStdButtons theme_ themeText =
             section [ theme_ ]
-                [ h2 [ sizeTitle ] [ t themeText ]
+                [ h2 [ xProminent ] [ t themeText ]
                 , withSource """button [] [ t "default" ]""" <| button [] [ t "default" ]
                 , withSource """button [ Background.colorPrim ] [ t "prim" ]""" <| button [ Background.colorPrim ] [ t "prim" ]
                 , withSource """button [ Background.colorSucc ] [ t "succ" ]""" <| button [ Background.colorSucc ] [ t "succ" ]
                 , withSource """button [ Background.colorWarn ] [ t "warn" ]""" <| button [ Background.colorWarn ] [ t "warn" ]
                 , withSource """button [ Background.colorErr ] [ t "err" ]""" <| button [ Background.colorErr ] [ t "err" ]
-                , withSource """button [ Background.colorPrim, sizeHeadline ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeHeadline ] [ t "prim HEADLINE" ]
-                , withSource """button [ Background.colorPrim, sizeSection ] [ t "prim" ]""" <| button [ Background.colorPrim, sizeSection ] [ t "prim SECTION" ]
+                , withSource """button [ Background.colorPrim, prominent ] [ t "prim" ]""" <| button [ Background.colorPrim, prominent ] [ t "prim prominent" ]
+                , withSource """button [ Background.colorPrim, xxProminent ] [ t "prim" ]""" <| button [ Background.colorPrim, xxProminent ] [ t "prim SECTION" ]
                 , withSource """button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]""" <|
                     button [ Background.colorPrim, widthFill ] [ t "Can fill with ", code [] [ t "widthFill" ] ]
                 , withSource """button [ Background.colorPrim, padding10 ]
@@ -1042,12 +1047,12 @@ button_ =
                         ]
                 , withSource """div [ flexRow ] [ button [ Background.colorPrim, flexGrow, flexItem ] [ t "Can become a flex item" ] ]""" <|
                     div [ flexRow ] [ button [ Background.colorPrim, flexGrow, flexItem ] [ t "Can become a flex item" ] ]
-                , withSource """div [ growRow, sizeHeadline ]
+                , withSource """div [ growRow, prominent ]
     [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
     , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
     , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
     ]""" <|
-                    div [ growRow, sizeHeadline ]
+                    div [ growRow, prominent ]
                         [ button [ Background.colorSucc, Border.leftRound5 ] [ t "We can achieve coupled button row" ]
                         , button [ Background.colorWarn, Border.noRound ] [ t "We can achieve coupled button row" ]
                         , button [ Background.colorErr, Border.rightRound5 ] [ t "We can achieve coupled button row" ]
@@ -1056,7 +1061,7 @@ button_ =
 
         themedLinkButtons theme_ themeText =
             section [ theme_ ]
-                [ h2 [ sizeTitle ] [ t themeText ]
+                [ h2 [ xProminent ] [ t themeText ]
                 , withSource """Button.link [] { url = "https://example.com", children = [ t "A Link button looks like a button but is a link" ] }""" <|
                     Button.link [] { url = "https://example.com", children = [ t "A Link button looks like a button but is a link" ] }
                 , withSource """Button.link [ Background.colorPrim ] { url = "https://example.com", children = [ t "colorPrim" ] }""" <|
@@ -1067,11 +1072,11 @@ button_ =
                     Button.link [ Background.colorWarn ] { url = "https://example.com", children = [ t "colorWarn" ] }
                 , withSource """Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }""" <|
                     Button.link [ Background.colorErr ] { url = "https://example.com", children = [ t "colorErr" ] }
-                , withSource """Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
+                , withSource """Button.link [ Background.colorPrim, padding10, xxProminent, Border.w1, Border.solid ]
     { url = "https://example.com"
     , children = [ t "Can be padded/sized/bordered" ]
     }""" <|
-                    Button.link [ Background.colorPrim, padding10, sizeSection, Border.w1, Border.solid ]
+                    Button.link [ Background.colorPrim, padding10, xxProminent, Border.w1, Border.solid ]
                         { url = "https://example.com"
                         , children = [ t "Can be padded/sized/bordered" ]
                         }
@@ -1088,10 +1093,10 @@ button_ =
                 ]
     in
     section []
-        [ h1 [ sizeSection ] [ t "Button" ]
+        [ h1 [ xxProminent ] [ t "Button" ]
         , themedStdButtons oneDark "oneDark"
         , themedStdButtons aubergine "aubergine"
-        , h1 [ sizeSection ] [ t "Link Button" ]
+        , h1 [ xxProminent ] [ t "Link Button" ]
         , themedLinkButtons oneDark "oneDark"
         , themedLinkButtons aubergine "aubergine"
         ]
@@ -1100,7 +1105,7 @@ button_ =
 input_ : Model -> Html Msg
 input_ m =
     section []
-        [ h1 [ sizeSection ] [ t "Input" ]
+        [ h1 [ xxProminent ] [ t "Input" ]
         , textInput m.textInput
         , toggle m.toggle
         , select_ m.select m.selected
@@ -1110,7 +1115,7 @@ input_ m =
 textInput : String -> Html Msg
 textInput currentInput =
     section []
-        [ h2 [ sizeTitle ] [ t "Text" ]
+        [ h2 [ xProminent ] [ t "Text" ]
         , withSource """div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]""" <|
             div [] [ t "Inline text input. ", input [ type_ "text", value currentInput, onInput TextInput ] [] ]
         , withSource """div [] [ t "With placeholder. ", input [ type_ "text", value currentInput, onInput TextInput, placeholder "Write something!" ] [] ]""" <|
@@ -1123,7 +1128,7 @@ textInput currentInput =
         , onInput TextInput
         , placeholder "Big input"
         , block
-        , sizeHeadline
+        , prominent
         , padding5
         , Border.round5
         , Border.w1
@@ -1140,7 +1145,7 @@ textInput currentInput =
                     , onInput TextInput
                     , placeholder "Big input"
                     , block
-                    , sizeHeadline
+                    , prominent
                     , padding5
                     , Border.round5
                     , Border.w1
@@ -1163,7 +1168,7 @@ textInput currentInput =
 toggle : Bool -> Html Msg
 toggle checked =
     section []
-        [ h2 [ sizeTitle ] [ t "Toggle" ]
+        [ h2 [ xProminent ] [ t "Toggle" ]
         , withSource """div []
     [ t "Inline toggle input. Width and height are fixed 36x18px. "
     , Input.toggle [] { onChange = Toggle, checked = checked }
@@ -1222,7 +1227,7 @@ select_ ss selected =
                     )
     in
     section []
-        [ h2 [ sizeTitle ] [ t "Select" ]
+        [ h2 [ xProminent ] [ t "Select" ]
         , withSource """div []
     [ t "By default these are block elements."
     , Select.render []
@@ -1369,7 +1374,7 @@ select_ ss selected =
 animation : Html Msg
 animation =
     section []
-        [ h1 [ sizeSection ] [ t "Animation" ]
+        [ h1 [ xxProminent ] [ t "Animation" ]
         , withSource """img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
             img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
         , withSource """img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
@@ -1380,7 +1385,7 @@ animation =
 icon : Html Msg
 icon =
     section []
-        [ h1 [ sizeSection ] [ t "Icon" ]
+        [ h1 [ xxProminent ] [ t "Icon" ]
         , withSource """Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }""" <|
             Icon.button [] { onPress = NoOp, src = Image.ph 50 50, alt = "50x50 icon" }
         , withSource """Icon.button [ Border.round5 ] { onPress = NoOp, src = Image.ph 75 75, alt = "75x75 icon" }""" <|
@@ -1391,8 +1396,8 @@ icon =
             Icon.link [ Border.round5, newTab ] { url = "https://example.com", src = Image.ph 75 75, alt = "75x75 icon" }
         , withSource """Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr\"""" <|
             Icon.abbr [ style "width" "50px", style "height" "50px" ] "Zephyr"
-        , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr\"""" <|
-            Icon.abbr [ style "width" "60px", style "height" "80px", sizeTitle, Border.round5 ] "Zephyr"
+        , withSource """Icon.abbr [ style "width" "60px", style "height" "80px", xProminent, Border.round5 ] "Zephyr\"""" <|
+            Icon.abbr [ style "width" "60px", style "height" "80px", xProminent, Border.round5 ] "Zephyr"
         , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))""" <|
             Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))
         , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing""" <|
@@ -1411,7 +1416,7 @@ icon =
 wallpaper : Html Msg
 wallpaper =
     section []
-        [ h1 [ sizeSection ] [ t "Wallpaper" ]
+        [ h1 [ xxProminent ] [ t "Wallpaper" ]
         , withSource "Wallpaper.zephyr" Wallpaper.zephyr
         ]
 
@@ -1419,7 +1424,7 @@ wallpaper =
 table_ : Html Msg
 table_ =
     section []
-        [ h1 [ sizeSection ] [ t "Table" ]
+        [ h1 [ xxProminent ] [ t "Table" ]
         , withSource """Table.render []
     { columns =
         [ { header = "Empty Table Column1", cell = always ( [], [] ) }
@@ -1574,7 +1579,7 @@ table_ =
 producerConfig : Model -> Html Msg
 producerConfig m =
     section []
-        [ h1 [ sizeSection ] [ t "ProducerConfig" ]
+        [ h1 [ xxProminent ] [ t "ProducerConfig" ]
         , withSource """ProducerConfig.tokenForm
     { onInput = TextInput
     , onSubmit = NoOp
@@ -1642,91 +1647,423 @@ producerConfig m =
         ]
 
 
-sidebar : Model -> Html Msg
-sidebar m =
+column : Html Msg
+column =
     section []
-        [ h1 [ sizeSection ] [ t "Sidebar" ]
-        , withSource """dummySidebarProps : Bool -> Int -> Sidebar.Props
-dummySidebarProps isOpen numColumns =
-    let
-        dummyColumnButton i =
-            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
-            , case modBy 3 i of
-                0 ->
-                    Sidebar.Fallback "Zehpyr"
-
-                1 ->
-                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
-
-                _ ->
-                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
-            )
-    in
-    { configOpen = isOpen
-    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
-    }
-
-
-dummySidebarEffects : Bool -> Sidebar.Effects Msg
-dummySidebarEffects isOpen =
-    { configOpener = Toggle (not isOpen)
-    , columnAdder = AddColumn
-    , columnButtonClickerByIndex = always NoOp
-    }
-
-Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)""" <|
-            Sidebar.render (dummySidebarEffects m.toggle) (dummySidebarProps m.toggle m.numColumns)
+        [ h1 [ xxProminent ] [ t "Column" ]
+        , section []
+            [ h2 [ xProminent ] [ t "inlineTitle" ]
+            , withSource """div [ prominent ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False, sources = [], filters = [] }""" <|
+                div [ prominent ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False, sources = [], filters = [] }
+            , withSource """div [ prominent ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False, sources = [], filters = [ "\\"Elm\\"", "Has Media" ] }""" <|
+                div [ prominent ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False, sources = [], filters = [ "\"Elm\"", "Has Media" ] }
+            , withSource """div [ prominent ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources = [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing } ]
+        , filters = []
+        }""" <|
+                div [ prominent ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources = [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing } ]
+                        , filters = []
+                        }
+            , withSource """div [ prominent ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = False } ]
+        , filters = []
+        }""" <|
+                div [ prominent ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = False } ]
+                        , filters = []
+                        }
+            , withSource """div [ prominent ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True } ]
+        , filters = []
+        }""" <|
+                div [ prominent ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True } ]
+                        , filters = []
+                        }
+            , withSource """div [ prominent ] <|
+    Column.inlineTitle 15 <|
+        { pinned = False
+        , sources =
+            [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing }
+            , SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True }
+            ]
+        , filters = [ "\\"Elm\\"", "Has Media" ]
+        }""" <|
+                div [ prominent ] <|
+                    Column.inlineTitle 15 <|
+                        { pinned = False
+                        , sources =
+                            [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing }
+                            , SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True }
+                            ]
+                        , filters = [ "\"Elm\"", "Has Media" ]
+                        }
+            ]
+        , section []
+            [ h2 [ xProminent ] [ t "blockTitle" ]
+            , withSource """Column.blockTitle [] <|
+    { pinned = False, sources = [], filters = [] }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False, sources = [], filters = [] }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False, sources = [], filters = [ "\\"Elm\\"", "Has Media" ] }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False, sources = [], filters = [ "\"Elm\"", "Has Media" ] }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing } ]
+    , filters = []
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing } ]
+                    , filters = []
+                    }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True } ]
+    , filters = []
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True } ]
+                    , filters = []
+                    }
+            , withSource """Column.blockTitle [] <|
+    { pinned = False
+    , sources =
+        [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing }
+        , SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True }
+        ]
+    , filters = [ "\\"Elm\\"", "Has Media" ]
+    }""" <|
+                Column.blockTitle [] <|
+                    { pinned = False
+                    , sources =
+                        [ DiscordSource { id = "DID", name = "Channel", guildName = "Guild", guildIcon = Nothing }
+                        , SlackSource { id = "SID", name = "Convo", teamName = "Team", teamIcon = Nothing, isPrivate = True }
+                        ]
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    }
+            , withSource """Column.blockTitle [ style "width" (px 350) ] <|
+    { pinned = False
+    , sources =
+        [ DiscordSource { id = "DID", name = String.repeat 3 "Clipped if constrained ", guildName = "Guild", guildIcon = Nothing }
+        ]
+    , filters = List.repeat 5 "Clipped if constrained "
+    }""" <|
+                Column.blockTitle [ style "width" (px 350) ] <|
+                    { pinned = False
+                    , sources =
+                        [ DiscordSource { id = "DID", name = String.repeat 3 "Clipped if constrained ", guildName = "Guild", guildIcon = Nothing }
+                        ]
+                    , filters = List.repeat 5 "Clipped if constrained "
+                    }
+            ]
+        , section []
+            [ h2 [ xProminent ] [ t "icons" ]
+            , withSource """Column.icon20 { pinned = False, sources = [], filters = [] }""" <|
+                Column.icon20 { pinned = False, sources = [], filters = [] }
+            , withSource """Column.icon20
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+    , filters = []
+    }""" <|
+                Column.icon20
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon20
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+    , filters = []
+    }""" <|
+                Column.icon20
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon20
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon20
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon20
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon20
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon30 { pinned = False, sources = [], filters = [] }""" <|
+                Column.icon30 { pinned = False, sources = [], filters = [] }
+            , withSource """Column.icon30
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+    , filters = []
+    }""" <|
+                Column.icon30
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon30
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+    , filters = []
+    }""" <|
+                Column.icon30
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon30
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon30
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon30
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon30
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40 { pinned = False, sources = [], filters = [] }""" <|
+                Column.icon40 { pinned = False, sources = [], filters = [] }
+            , withSource """Column.icon40 { pinned = True, sources = [], filters = [] }""" <|
+                Column.icon40 { pinned = True, sources = [], filters = [] }
+            , withSource """Column.icon40
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = True
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = True
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Nothing } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = False
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = False
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = True
+    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = True
+                    , sources = [ DiscordSource { id = "DID", name = "D", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = True
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = True
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Nothing, isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = False
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = False
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+                    , filters = []
+                    }
+            , withSource """Column.icon40
+    { pinned = True
+    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+    , filters = []
+    }""" <|
+                Column.icon40
+                    { pinned = True
+                    , sources = [ SlackSource { id = "SID", name = "S", teamName = "チーム", teamIcon = Just (Image.ph 21 21), isPrivate = False } ]
+                    , filters = []
+                    }
+            ]
         ]
 
 
-dummySidebarProps : Bool -> Int -> Sidebar.Props
-dummySidebarProps isOpen numColumns =
-    let
-        dummyColumnButton i =
-            ( Sidebar.ColumnProps (String.fromInt i) (modBy 2 i == 0)
-            , case modBy 3 i of
+sidebar : Model -> Html Msg
+sidebar m =
+    section []
+        [ h1 [ xxProminent ] [ t "Sidebar" ]
+        , withSource """let
+    dummyColumn index =
+        { id = String.fromInt index
+        , pinned = modBy 2 index == 0
+        , sources =
+            case modBy 3 index of
                 0 ->
-                    Sidebar.Fallback "Zehpyr"
+                    []
 
                 1 ->
-                    Sidebar.DiscordButton { channelName = "Discord", guildIcon = Just (Image.ph 48 48) }
+                    [ DiscordSource { id = "DID" ++ String.fromInt index, name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 48 48) } ]
 
                 _ ->
-                    Sidebar.SlackButton { convName = "Slack", teamIcon = Just (Image.ph 50 50) }
-            )
-    in
-    { configOpen = isOpen
-    , columns = List.range 0 (numColumns - 1) |> List.map dummyColumnButton
-    }
+                    [ SlackSource { id = "SID" ++ String.fromInt index, name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 50 50), isPrivate = True }
+                    , DiscordSource { id = "DID" ++ String.fromInt index, name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 48 48) }
+                    ]
+        , filters =
+            case modBy 2 index of
+                0 ->
+                    []
 
-
-dummySidebarEffects : Bool -> Sidebar.Effects Msg
-dummySidebarEffects isOpen =
-    { configOpener = Toggle (not isOpen)
+                _ ->
+                    [ ""Elm"", "Has Media" ]
+        }
+in
+Sidebar.render
+    { configOpener = Toggle (not m.toggle)
     , columnAdder = AddColumn
     , columnButtonClickerByIndex = always NoOp
     }
+    { configOpen = m.toggle
+    , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
+    }""" <|
+            let
+                dummyColumn index =
+                    { id = String.fromInt index
+                    , pinned = modBy 2 index == 0
+                    , sources =
+                        case modBy 3 index of
+                            0 ->
+                                []
+
+                            1 ->
+                                [ DiscordSource { id = "DID" ++ String.fromInt index, name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 48 48) } ]
+
+                            _ ->
+                                [ SlackSource { id = "SID" ++ String.fromInt index, name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 50 50), isPrivate = True }
+                                , DiscordSource { id = "DID" ++ String.fromInt index, name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 48 48) }
+                                ]
+                    , filters =
+                        case modBy 2 index of
+                            0 ->
+                                []
+
+                            _ ->
+                                [ "\"Elm\"", "Has Media" ]
+                    }
+            in
+            Sidebar.render
+                { configOpener = Toggle (not m.toggle)
+                , columnAdder = AddColumn
+                , columnButtonClickerByIndex = always NoOp
+                }
+                { configOpen = m.toggle
+                , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
+                }
+        ]
 
 
 configPref : Model -> Html Msg
 configPref m =
     section []
-        [ h1 [ sizeSection ] [ t "Config.Pref" ]
+        [ h1 [ xxProminent ] [ t "Config.Pref" ]
         , withSource """let
     dummyShadowColumn index =
-        case modBy 3 index of
-            0 ->
-                ( { id = String.fromInt index, description = "Zephyr" }, Pref.FallbackSC )
+        { id = String.fromInt index
+        , pinned = False
+        , sources =
+            case modBy 3 index of
+                0 ->
+                    []
 
-            1 ->
-                ( { id = String.fromInt index, description = "#Discord" }
-                , Pref.DiscordSC { mainChannelName = "Discord", guildIcon = Just (Image.ph 48 48) }
-                )
+                1 ->
+                    [ DiscordSource { id = "CID" ++ String.fromInt index, name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
 
-            _ ->
-                ( { id = String.fromInt index, description = "#Slack" }
-                , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
-                )
+                _ ->
+                    [ SlackSource { id = "CID" ++ String.fromInt index, name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True } ]
+        , filters =
+            case modBy 2 index of
+                0 ->
+                    []
+
+                _ ->
+                    [ "\\"Elm\\"", "Has Media" ]
+        }
 in
 Pref.render
     { onZephyrModeChange = Toggle
@@ -1742,19 +2079,26 @@ Pref.render
     }""" <|
             let
                 dummyShadowColumn index =
-                    case modBy 3 index of
-                        0 ->
-                            ( { id = String.fromInt index, description = "Zephyr" }, Pref.FallbackSC )
+                    { id = String.fromInt index
+                    , pinned = False
+                    , sources =
+                        case modBy 3 index of
+                            0 ->
+                                []
 
-                        1 ->
-                            ( { id = String.fromInt index, description = "#Discord" }
-                            , Pref.DiscordSC { mainChannelName = "Discord", guildIcon = Just (Image.ph 48 48) }
-                            )
+                            1 ->
+                                [ DiscordSource { id = "CID" ++ String.fromInt index, name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) } ]
 
-                        _ ->
-                            ( { id = String.fromInt index, description = "#Slack" }
-                            , Pref.SlackSC { mainConvName = "Slack", teamIcon = Just (Image.ph 50 50) }
-                            )
+                            _ ->
+                                [ SlackSource { id = "CID" ++ String.fromInt index, name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True } ]
+                    , filters =
+                        case modBy 2 index of
+                            0 ->
+                                []
+
+                            _ ->
+                                [ "\"Elm\"", "Has Media" ]
+                    }
             in
             Pref.render
                 { onZephyrModeChange = Toggle
@@ -1774,7 +2118,7 @@ Pref.render
 configStatus : Model -> Html Msg
 configStatus m =
     section []
-        [ h1 [ sizeSection ] [ t "Config.Status" ]
+        [ h1 [ xxProminent ] [ t "Config.Status" ]
         , withSource """Status.render
     { itemBrokerCapacity = 5000
     , columnItemLimit = 2000
@@ -1803,7 +2147,7 @@ configStatus m =
 configDiscord : Model -> Html Msg
 configDiscord m =
     section []
-        [ h1 [ sizeSection ] [ t "Config.Discord" ]
+        [ h1 [ xxProminent ] [ t "Config.Discord" ]
         , withSource """let
     dummyOpts =
         { rehydrating = m.toggle
@@ -1910,7 +2254,7 @@ Discord.render
 configSlack : Model -> Html Msg
 configSlack m =
     section [ aubergine ]
-        [ h1 [ sizeSection ] [ t "Config.Slack" ]
+        [ h1 [ xxProminent ] [ t "Config.Slack" ]
         , withSource """let
     dummyTeamState index =
         if index == 0 then
@@ -2055,8 +2399,10 @@ Slack.render
 columnHeader : Model -> Html Msg
 columnHeader m =
     section []
-        [ h1 [ sizeSection ] [ t "Column.Header" ]
-        , withSource """Header.render
+        [ h1 [ xxProminent ] [ t "Column.Header" ]
+        , section [ oneDark ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
+            , withSource """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2065,60 +2411,26 @@ columnHeader m =
     }
     0
     { id = "DUMMYID"
-    , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
+    , sources = [ DiscordSource { id = "ID1", name = "Channel1", guildName = "Guild", guildIcon = Just (Image.ph 40 40) } ]
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
     }""" <|
-            Header.render
-                { onDragstart = \_ _ _ -> NoOp
-                , onHeaderClick = Nothing
-                , onPinButtonClick = \_ to -> Toggle to
-                , onConfigToggleButtonClick = \_ to -> Toggle to
-                , onDismissButtonClick = always NoOp
-                }
-                0
-                { id = "DUMMYID"
-                , sources = [ Header.DiscordSource { channelName = "Channel1", guildIcon = Just (Image.ph 40 40) } ]
-                , filters = [ "\"Elm\"", "Has Media" ]
-                , pinned = m.toggle
-                , configOpen = m.toggle
-                }
-        , withSource """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
-    , onPinButtonClick = \\_ to -> Toggle to
-    , onConfigToggleButtonClick = \\_ to -> Toggle to
-    , onDismissButtonClick = always NoOp
-    }
-    0
-    { id = "DUMMYID"
-    , sources =
-        [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-        , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
-        ]
-    , filters = [ "\\"Elm\\"", "Has Media" ]
-    , pinned = m.toggle
-    , configOpen = m.toggle
-    }""" <|
-            Header.render
-                { onDragstart = \_ _ _ -> NoOp
-                , onHeaderClick = Nothing
-                , onPinButtonClick = \_ to -> Toggle to
-                , onConfigToggleButtonClick = \_ to -> Toggle to
-                , onDismissButtonClick = always NoOp
-                }
-                0
-                { id = "DUMMYID"
-                , sources =
-                    [ Header.SlackSource { convName = "Conv1", teamIcon = Just (Image.ph 41 41), isPrivate = True }
-                    , Header.DiscordSource { channelName = String.repeat 5 "Channel1", guildIcon = Just (Image.ph 40 40) }
-                    ]
-                , filters = [ "\"Elm\"", "Has Media" ]
-                , pinned = m.toggle
-                , configOpen = m.toggle
-                }
-        , withSource """Header.render
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources = [ DiscordSource { id = "ID1", name = "Channel1", guildName = "Guild", guildIcon = Just (Image.ph 40 40) } ]
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
+            , withSource """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2132,20 +2444,177 @@ columnHeader m =
     , pinned = m.toggle
     , configOpen = m.toggle
     }""" <|
-            Header.render
-                { onDragstart = \_ _ _ -> NoOp
-                , onHeaderClick = Nothing
-                , onPinButtonClick = \_ to -> Toggle to
-                , onConfigToggleButtonClick = \_ to -> Toggle to
-                , onDismissButtonClick = always NoOp
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources = []
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
+            ]
+        , section [ aubergine ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
+            , withSource """Header.render
+    { onDragstart = \\_ _ _ -> NoOp
+    , onHeaderClick = Nothing
+    , onPinButtonClick = \\_ to -> Toggle to
+    , onConfigToggleButtonClick = \\_ to -> Toggle to
+    , onDismissButtonClick = always NoOp
+    }
+    0
+    { id = "DUMMYID"
+    , sources =
+        [ SlackSource { id = "SID1", name = "Conv1", teamName = "Team", teamIcon = Just (Image.ph 41 41), isPrivate = True }
+        , DiscordSource { id = "DID1", name = String.repeat 2 "Expands unless constrained ", guildName = "Guild", guildIcon = Just (Image.ph 40 40) }
+        ]
+    , filters = [ "\\"Elm\\"", "Has Media" ]
+    , pinned = m.toggle
+    , configOpen = m.toggle
+    }""" <|
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources =
+                        [ SlackSource { id = "SID1", name = "Conv1", teamName = "Team", teamIcon = Just (Image.ph 41 41), isPrivate = True }
+                        , DiscordSource { id = "DID1", name = String.repeat 2 "Expands unless constrained ", guildName = "Guild", guildIcon = Just (Image.ph 40 40) }
+                        ]
+                    , filters = [ "\"Elm\"", "Has Media" ]
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
+            , withSource """div [ style "width" (px 350) ]
+    [ Header.render
+        { onDragstart = \\_ _ _ -> NoOp
+        , onHeaderClick = Nothing
+        , onPinButtonClick = \\_ to -> Toggle to
+        , onConfigToggleButtonClick = \\_ to -> Toggle to
+        , onDismissButtonClick = always NoOp
+        }
+        0
+        { id = "DUMMYID"
+        , sources =
+            [ SlackSource
+                { id = "CID1"
+                , name = String.repeat 3 "Shrinks if constrained "
+                , teamName = "Team"
+                , teamIcon = Just (Image.ph 41 41)
+                , isPrivate = True
                 }
-                0
-                { id = "DUMMYID"
-                , sources = []
-                , filters = [ "\"Elm\"", "Has Media" ]
-                , pinned = m.toggle
-                , configOpen = m.toggle
-                }
+            ]
+        , filters = List.repeat 3 "Shrinks if constrained"
+        , pinned = m.toggle
+        , configOpen = m.toggle
+        }
+    ]""" <|
+                div [ style "width" (px 350) ]
+                    [ Header.render
+                        { onDragstart = \_ _ _ -> NoOp
+                        , onHeaderClick = Nothing
+                        , onPinButtonClick = \_ to -> Toggle to
+                        , onConfigToggleButtonClick = \_ to -> Toggle to
+                        , onDismissButtonClick = always NoOp
+                        }
+                        0
+                        { id = "DUMMYID"
+                        , sources =
+                            [ SlackSource
+                                { id = "CID1"
+                                , name = String.repeat 3 "Shrinks if constrained "
+                                , teamName = "Team"
+                                , teamIcon = Just (Image.ph 41 41)
+                                , isPrivate = True
+                                }
+                            ]
+                        , filters = List.repeat 3 "Shrinks if constrained"
+                        , pinned = m.toggle
+                        , configOpen = m.toggle
+                        }
+                    ]
+            ]
+        ]
+
+
+columnConfig : Model -> Html Msg
+columnConfig m =
+    section []
+        [ h1 [ xxProminent ] [ t "Column.Config" ]
+        , section [ oneDark ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
+            , withSource "" <|
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , ColumnConfig.render
+                        { onCloseButtonClick = Toggle False
+                        , onColumnDeleteButtonClick = always NoOp
+                        , onSourceSelect = \_ _ -> NoOp
+                        , selectMsgTagger = SelectCtrl
+                        , onRemoveSourceButtonClick = \_ _ -> NoOp
+                        }
+                        { selectState = m.select
+                        , availableSourecs =
+                            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                            ]
+                        , column =
+                            { id = "DUMMYID1"
+                            , numItems = 1000
+                            , pinned = m.toggle
+                            , sources =
+                                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                                ]
+                            , filters = []
+                            }
+                        }
+                    ]
+            ]
+        , section [ aubergine ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
+            , withSource "" <|
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , ColumnConfig.render
+                        { onCloseButtonClick = Toggle False
+                        , onColumnDeleteButtonClick = always NoOp
+                        , onSourceSelect = \_ _ -> NoOp
+                        , selectMsgTagger = SelectCtrl
+                        , onRemoveSourceButtonClick = \_ _ -> NoOp
+                        }
+                        { selectState = m.select
+                        , availableSourecs =
+                            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                            ]
+                        , column =
+                            { id = "DUMMYID2"
+                            , numItems = 1000
+                            , pinned = m.toggle
+                            , sources =
+                                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                                ]
+                            , filters = []
+                            }
+                        }
+                    ]
+            ]
         ]
 
 
@@ -2153,32 +2622,65 @@ mainTemplate : Model -> List (Html Msg)
 mainTemplate m =
     let
         mainEffects =
-            { sidebarEffects = dummySidebarEffects m.toggle
+            { sidebarEffects =
+                { configOpener = Toggle (not m.toggle)
+                , columnAdder = AddColumn
+                , columnButtonClickerByIndex = always NoOp
+                }
             , columnDragEnd = NoOp
             , columnDragEnter = \_ -> NoOp
             , columnDragOver = NoOp
             }
 
         mainProps =
-            { sidebarProps = dummySidebarProps m.toggle m.numColumns
-            , configDrawerIsOpen = m.toggle
-            , visibleColumns =
-                let
-                    vc index =
-                        case modBy 4 index of
-                            0 ->
-                                { dragStatus = Settled }
+            { configOpen = m.toggle
+            , visibleColumns = dummyColumns
+            }
 
-                            1 ->
-                                { dragStatus = Undroppable }
+        dummyColumns =
+            List.map dummyColumn (List.range 0 (m.numColumns - 1))
 
-                            2 ->
-                                { dragStatus = Droppable }
+        dummyColumn index =
+            { id = String.fromInt index
+            , pinned = modBy 2 index == 0
+            , configOpen =
+                if modBy 2 index == 0 then
+                    m.toggle
 
-                            _ ->
-                                { dragStatus = Grabbed }
-                in
-                List.map vc (List.range 0 m.numColumns)
+                else
+                    not m.toggle
+            , dragStatus =
+                case modBy 4 index of
+                    0 ->
+                        Settled
+
+                    1 ->
+                        Undroppable
+
+                    2 ->
+                        Droppable
+
+                    _ ->
+                        Grabbed
+            , sources =
+                case modBy 3 index of
+                    0 ->
+                        []
+
+                    1 ->
+                        [ DiscordSource { id = "CID" ++ String.fromInt index, name = "Channel1", guildName = "Guild", guildIcon = Nothing } ]
+
+                    _ ->
+                        [ SlackSource { id = "CID" ++ String.fromInt index, name = "Conv1", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                        , DiscordSource { id = "CID" ++ String.fromInt index, name = "Channel1", guildName = "Guild", guildIcon = Nothing }
+                        ]
+            , filters =
+                case modBy 2 index of
+                    0 ->
+                        []
+
+                    _ ->
+                        [ "\"Elm\"", "Has Media" ]
             }
 
         dummyItem index =
@@ -2203,21 +2705,9 @@ mainTemplate m =
             , status = div [ flexBasis "400px" ] [ t "STATUS[PH]" ]
             }
         , columnContents =
-            { header = \index _ -> div [ sizeTitle, flexBasis "40px" ] [ t "HEADER[PH] ", t (String.fromInt index) ]
-            , config =
-                \_ _ ->
-                    if m.toggle then
-                        div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
-
-                    else
-                        none
-            , newMessageEditor =
-                \_ ->
-                    if m.toggle then
-                        div [ flexBasis "150px" ] [ t "MESSAGE EDITOR[PH]" ]
-
-                    else
-                        none
+            { header = \index _ -> div [ xProminent, flexBasis "40px" ] [ t "HEADER[PH] ", t (String.fromInt index) ]
+            , config = \_ _ -> div [ Border.w1, Border.solid, flexBasis "200px" ] [ t "CONFIG[PH]" ]
+            , newMessageEditor = \_ -> div [ flexBasis "50px" ] [ t "MESSAGE EDITOR[PH]" ]
             , items = \_ -> div [ flexColumn ] <| List.map dummyItem <| List.range 0 10
             }
         }
