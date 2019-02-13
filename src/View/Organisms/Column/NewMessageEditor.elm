@@ -2,16 +2,18 @@ module View.Organisms.Column.NewMessageEditor exposing (render, styles)
 
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import File exposing (File)
-import Html exposing (Html, button, div, img, textarea)
-import Html.Attributes exposing (alt, class, placeholder, spellcheck, src)
+import Html exposing (Html, button, div, img, span, textarea)
+import Html.Attributes exposing (alt, class, placeholder, spellcheck, src, title)
 import Html.Events exposing (onFocus, onInput)
 import Html.Keyed
 import Octicons
 import SelectArray exposing (SelectArray)
+import StringExtra
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Style exposing (..)
@@ -23,6 +25,8 @@ type alias Effects msg =
     , onResetButtonClick : String -> msg
     , -- TODO support multiple files in a editor
       onDiscardFileButtonClick : String -> msg
+    , -- XXX should diverge for different sources later
+      onRequestFileAreaClick : String -> msg
     }
 
 
@@ -124,44 +128,122 @@ selectedFiles eff c editor =
         ( True, DiscordMessageEditor { file } ) ->
             case file of
                 Just ( f, dataUrl ) ->
-                    withPreviewWrapper (eff.onDiscardFileButtonClick c.id) f <|
-                        if String.startsWith "image/" (File.mime f) then
-                            img [ block, src dataUrl, alt (File.name f) ] []
-
-                        else
-                            div [ padding15 ] [ Image.octicon { size = xxProminentSize, shape = Octicons.file } ]
+                    filePreview (eff.onDiscardFileButtonClick c.id) f dataUrl
 
                 Nothing ->
-                    -- TODO droppable area
-                    none
+                    fileSelectArea (eff.onRequestFileAreaClick c.id)
 
         _ ->
             none
 
 
-withPreviewWrapper : msg -> File -> Html msg -> Html msg
-withPreviewWrapper onDiscardFileButtonClick f preview =
+filePreview : msg -> File -> String -> Html msg
+filePreview onDiscardFileButtonClick f dataUrl =
     let
-        deleteFileButton =
+        actualPreview =
+            case String.split "/" (File.mime f) of
+                "image" :: _ ->
+                    img [ class previewImageClass, block, src dataUrl, alt (File.name f) ] []
+
+                "video" :: _ ->
+                    fileIconPreview Octicons.deviceCameraVideo
+
+                "application" :: appSubType :: _ ->
+                    if appSubType == "pdf" then
+                        fileIconPreview Octicons.filePdf
+
+                    else if appSubType == "octet-stream" then
+                        fileIconPreview Octicons.fileBinary
+
+                    else if isArchive appSubType then
+                        fileIconPreview Octicons.fileZip
+
+                    else
+                        -- Can do more, but stopping right here
+                        fileIconPreview Octicons.file
+
+                _ ->
+                    fileIconPreview Octicons.file
+
+        fileIconPreview shape =
+            div [ padding15 ] [ Image.octicon { size = xxxProminentSize, shape = shape } ]
+
+        isArchive appSubType =
+            List.member appSubType
+                [ "zip", "x-bzip", "x-bzip2", "x-gzip", "x-rar-compressed", "x-7z-compressed", "x-tar" ]
+
+        discardFileButton =
             div [ Background.transparent, padding5 ]
                 [ Icon.octiconButton
                     [ padding5
                     , Border.elliptic
-                    , Background.colorSub
+                    , Background.colorBg
+                    , Background.hovBd
                     ]
                     { onPress = onDiscardFileButtonClick
                     , size = prominentSize
                     , shape = Octicons.x
                     }
                 ]
+
+        fileMetadata =
+            let
+                metadata title_ =
+                    div
+                        [ class previewMetadataClass
+                        , padding5
+                        , alignEnd
+                        , nowrap
+                        , clip
+                        , ellipsis
+                        , title title_
+                        , Border.round5
+                        , Background.colorBg
+                        ]
+            in
+            div [ flexColumn, spacingColumn2, Background.transparent, padding5 ]
+                [ metadata (File.name f) [ span [ bold ] [ t (File.name f) ] ]
+                , let
+                    mimeAndSize =
+                        mimeOrQuestion ++ " (" ++ StringExtra.punctuateNumber (File.size f) ++ " Bytes)"
+
+                    mimeOrQuestion =
+                        case File.mime f of
+                            "" ->
+                                "?"
+
+                            nonEmptyMime ->
+                                nonEmptyMime
+                  in
+                  metadata mimeAndSize [ t mimeAndSize ]
+                ]
     in
     withBadge
-        [ Border.round5
+        [ clip
+        , Border.round5
         , Background.colorSub
         ]
-        { topRight = Just deleteFileButton
-        , bottomRight = Nothing
-        , content = preview
+        { topRight = Just discardFileButton
+        , bottomRight = Just fileMetadata
+        , content = div [ widthFill, flexColumn, flexCenter ] [ actualPreview ]
+        }
+
+
+fileSelectArea : msg -> Html msg
+fileSelectArea onRequestFileAreaClick =
+    Icon.octiconButton
+        [ flexItem
+        , padding5
+        , Border.w1
+        , Border.round5
+        , Border.dashed
+        , Background.transparent
+        , Background.hovBd
+        , Image.hovText
+        ]
+        { onPress = onRequestFileAreaClick
+        , size = xProminentSize
+        , shape = Octicons.plus
         }
 
 
@@ -175,9 +257,35 @@ styles =
         [ ( "resize", "none" )
         , ( "transition", "all 0.15s" )
         ]
+    , s (c previewImageClass)
+        [ ( "max-width", "100%" )
+        , ( "max-height", px maxPreviewHeight )
+        , ( "object-fit", "scale-down" )
+        ]
+    , s (c previewMetadataClass) [ ( "max-width", px maxMetadataWidth ) ]
     ]
 
 
 textareaClass : String
 textareaClass =
     "editortextarea"
+
+
+previewImageClass : String
+previewImageClass =
+    "editorpreviewimg"
+
+
+maxPreviewHeight : Int
+maxPreviewHeight =
+    400
+
+
+previewMetadataClass : String
+previewMetadataClass =
+    "editorpreviewmd"
+
+
+maxMetadataWidth : Int
+maxMetadataWidth =
+    250

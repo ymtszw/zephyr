@@ -2716,6 +2716,7 @@ columnNewMessageEditor m =
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
                         , onResetButtonClick = always EditorReset
+                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
                         , onDiscardFileButtonClick = always EditorFileDiscard
                         }
                         { id = "DUMMYID1"
@@ -2737,6 +2738,7 @@ columnNewMessageEditor m =
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
                         , onResetButtonClick = always EditorReset
+                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
                         , onDiscardFileButtonClick = always EditorFileDiscard
                         }
                         { id = "DUMMYID2"
