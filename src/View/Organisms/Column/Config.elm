@@ -20,6 +20,7 @@ type alias Effects msg =
     , onColumnDeleteButtonClick : String -> msg
     , onSourceSelect : String -> Source -> msg
     , selectMsgTagger : Select.Msg msg -> msg
+    , onRemoveSourceButtonClick : String -> Int -> msg
     }
 
 
@@ -140,15 +141,23 @@ sourceFilterMatch query source =
 selectedSources : Effects msg -> Props c -> List (Html msg)
 selectedSources eff props =
     let
-        selectedSource s =
+        selectedSource index s =
             div [ flexRow, flexCenter ]
                 [ div [ flexGrow, flexBasisAuto, flexShrink, clip, padding5, Background.colorSub, Border.leftRound5 ]
                     [ Source.horizontalBlock14 s ]
-                , button [ flexItem, padding5, Border.rightRound5, Background.colorSub, Background.hovBd, Image.hovErr ]
+                , button
+                    [ flexItem
+                    , padding5
+                    , Border.rightRound5
+                    , Background.colorSub
+                    , Background.hovBd
+                    , Image.hovErr
+                    , onClick (eff.onRemoveSourceButtonClick props.column.id index)
+                    ]
                     [ Image.octicon { size = regularSize, shape = Octicons.trashcan } ]
                 ]
     in
-    List.map selectedSource props.column.sources
+    List.indexedMap selectedSource props.column.sources
 
 
 dangerZone : Effects msg -> ColumnProps { c | id : String } -> List (Html msg)

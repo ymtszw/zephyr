@@ -2561,6 +2561,7 @@ columnConfig m =
                         , onColumnDeleteButtonClick = always NoOp
                         , onSourceSelect = \_ _ -> NoOp
                         , selectMsgTagger = SelectCtrl
+                        , onRemoveSourceButtonClick = \_ _ -> NoOp
                         }
                         { selectState = m.select
                         , availableSourecs =
@@ -2592,6 +2593,7 @@ columnConfig m =
                         , onColumnDeleteButtonClick = always NoOp
                         , onSourceSelect = \_ _ -> NoOp
                         , selectMsgTagger = SelectCtrl
+                        , onRemoveSourceButtonClick = \_ _ -> NoOp
                         }
                         { selectState = m.select
                         , availableSourecs =
