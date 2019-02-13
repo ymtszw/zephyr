@@ -5,6 +5,7 @@ import Browser.Navigation exposing (Key)
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
 import File exposing (File)
+import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
@@ -12,6 +13,7 @@ import ListExtra
 import Octicons
 import SelectArray
 import StringExtra
+import Task
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
@@ -155,6 +157,10 @@ type Msg
     | Selected String
     | AddColumn
     | EditorReset
+    | EditorFileRequest (List String)
+    | EditorFileSelected File
+    | EditorFileLoaded ( File, String )
+    | EditorFileDiscard
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -192,7 +198,19 @@ update msg m =
             ( { m | numColumns = m.numColumns + 1 }, Cmd.none )
 
         EditorReset ->
-            ( { m | textInput = "", editorSeq = m.editorSeq + 1 }, Cmd.none )
+            ( { m | textInput = "", editorSeq = m.editorSeq + 1, editorFile = Nothing }, Cmd.none )
+
+        EditorFileRequest mimeTypes ->
+            ( m, File.Select.file mimeTypes EditorFileSelected )
+
+        EditorFileSelected file ->
+            ( m, Task.perform (\dataUrl -> EditorFileLoaded ( file, dataUrl )) (File.toUrl file) )
+
+        EditorFileLoaded fileWithDataUrl ->
+            ( { m | editorFile = Just fileWithDataUrl }, Cmd.none )
+
+        EditorFileDiscard ->
+            ( { m | editorFile = Nothing }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2698,7 +2716,7 @@ columnNewMessageEditor m =
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
                         , onResetButtonClick = always EditorReset
-                        , onDeleteFileButtonClick = always NoOp
+                        , onDiscardFileButtonClick = always EditorFileDiscard
                         }
                         { id = "DUMMYID1"
                         , editorActive = m.toggle
@@ -2719,7 +2737,7 @@ columnNewMessageEditor m =
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
                         , onResetButtonClick = always EditorReset
-                        , onDeleteFileButtonClick = always NoOp
+                        , onDiscardFileButtonClick = always EditorFileDiscard
                         }
                         { id = "DUMMYID2"
                         , editorActive = m.toggle
