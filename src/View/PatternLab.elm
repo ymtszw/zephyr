@@ -64,6 +64,7 @@ type alias Model =
     , select : Select.State
     , selected : Maybe String
     , numColumns : Int
+    , editorSeq : Int
     }
 
 
@@ -118,6 +119,7 @@ init () url key =
       , select = Select.AllClosed
       , selected = Nothing
       , numColumns = 4
+      , editorSeq = 0
       }
     , Cmd.none
     )
@@ -149,6 +151,7 @@ type Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
+    | EditorReset
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -184,6 +187,9 @@ update msg m =
 
         AddColumn ->
             ( { m | numColumns = m.numColumns + 1 }, Cmd.none )
+
+        EditorReset ->
+            ( { m | textInput = "", editorSeq = m.editorSeq + 1 }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2688,9 +2694,11 @@ columnNewMessageEditor m =
                     , NewMessageEditor.render
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
+                        , onResetButtonClick = always EditorReset
                         }
                         { id = "DUMMYID1"
                         , editorActive = m.toggle
+                        , editorSeq = m.editorSeq
                         , editors =
                             SelectArray.fromLists []
                                 (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = Nothing })
@@ -2706,9 +2714,11 @@ columnNewMessageEditor m =
                     , NewMessageEditor.render
                         { onTextInput = \_ str -> TextInput str
                         , onToggleActive = \_ isActive -> Toggle isActive
+                        , onResetButtonClick = always EditorReset
                         }
                         { id = "DUMMYID2"
                         , editorActive = m.toggle
+                        , editorSeq = m.editorSeq
                         , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
                         }
                     ]

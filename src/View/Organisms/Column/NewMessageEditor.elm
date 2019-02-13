@@ -4,6 +4,7 @@ import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import Html exposing (Html, div, textarea)
 import Html.Attributes exposing (class, placeholder, spellcheck)
 import Html.Events exposing (onFocus, onInput)
+import Html.Keyed
 import Octicons
 import SelectArray exposing (SelectArray)
 import View.Atoms.Background as Background
@@ -18,6 +19,7 @@ import View.Style exposing (..)
 type alias Effects msg =
     { onTextInput : String -> String -> msg
     , onToggleActive : String -> Bool -> msg
+    , onResetButtonClick : String -> msg
     }
 
 
@@ -25,6 +27,7 @@ type alias ColumnProps c =
     { c
         | id : String
         , editors : SelectArray ColumnEditor
+        , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/elm/html/issues/55
         , editorActive : Bool
     }
 
@@ -35,7 +38,8 @@ render eff c =
         selectedEditor =
             SelectArray.selected c.editors
     in
-    div
+    -- Workaround for https://github.com/elm/html/issues/55
+    Html.Keyed.node "div"
         [ flexColumn
         , padding5
         , spacingColumn5
@@ -43,8 +47,10 @@ render eff c =
         , Border.bot1
         , Border.solid
         ]
-        [ editorMenu eff c selectedEditor
-        , editorTextarea eff c selectedEditor
+        [ ( "editorMenu_" ++ c.id, editorMenu eff c selectedEditor )
+        , ( "editorTextarea_" ++ c.id ++ "_" ++ String.fromInt c.editorSeq
+          , editorTextarea eff c selectedEditor
+          )
         ]
 
 
@@ -53,7 +59,9 @@ editorMenu eff c editor =
     if c.editorActive then
         div [ flexRow, spacingRow5, flexCenter ]
             [ div [] [ Image.octicon { size = prominentSize, shape = Octicons.pencil } ]
-            , Icon.octiconButton [ flexItem, pushRight, Background.transparent, Background.hovBd ]
+            , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, pushRight, Image.hovErr ]
+                { onPress = eff.onResetButtonClick c.id, size = prominentSize, shape = Octicons.trashcan }
+            , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd ]
                 { onPress = eff.onToggleActive c.id False, size = prominentSize, shape = Octicons.x }
             ]
 
