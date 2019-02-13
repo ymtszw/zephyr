@@ -2573,7 +2573,10 @@ columnConfig m =
                             { id = "DUMMYID1"
                             , numItems = 1000
                             , pinned = m.toggle
-                            , sources = []
+                            , sources =
+                                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                                ]
                             , filters = []
                             }
                         }
@@ -2601,7 +2604,10 @@ columnConfig m =
                             { id = "DUMMYID2"
                             , numItems = 1000
                             , pinned = m.toggle
-                            , sources = []
+                            , sources =
+                                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                                ]
                             , filters = []
                             }
                         }

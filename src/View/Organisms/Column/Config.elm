@@ -9,6 +9,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Image as Image
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (clip)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column exposing (ColumnProps)
 import View.Molecules.Source as Source exposing (Source(..))
@@ -106,7 +107,7 @@ status props =
 
 sources : Effects msg -> Props c -> List (Html msg)
 sources eff props =
-    [ sourceSelector eff props ]
+    sourceSelector eff props :: selectedSources eff props
 
 
 sourceSelector : Effects msg -> Props c -> Html msg
@@ -134,6 +135,20 @@ sourceFilterMatch query source =
         SlackSource opts ->
             StringExtra.containsCaseIgnored query opts.name
                 || StringExtra.containsCaseIgnored query opts.teamName
+
+
+selectedSources : Effects msg -> Props c -> List (Html msg)
+selectedSources eff props =
+    let
+        selectedSource s =
+            div [ flexRow, flexCenter ]
+                [ div [ flexGrow, flexBasisAuto, flexShrink, clip, padding5, Background.colorSub, Border.leftRound5 ]
+                    [ Source.horizontalBlock14 s ]
+                , button [ flexItem, padding5, Border.rightRound5, Background.colorSub, Background.hovBd, Image.hovErr ]
+                    [ Image.octicon { size = regularSize, shape = Octicons.trashcan } ]
+                ]
+    in
+    List.map selectedSource props.column.sources
 
 
 dangerZone : Effects msg -> ColumnProps { c | id : String } -> List (Html msg)
