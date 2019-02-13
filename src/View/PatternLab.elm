@@ -2683,7 +2683,9 @@ columnNewMessageEditor m =
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , NewMessageEditor.render
-                { onTextInput = \_ str -> TextInput str }
+                { onTextInput = \_ str -> TextInput str
+                , onToggleActive = \_ isActive -> Toggle isActive
+                }
                 { id = "DUMMYID1"
                 , editorActive = m.toggle
                 , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
@@ -2692,7 +2694,9 @@ columnNewMessageEditor m =
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
             , NewMessageEditor.render
-                { onTextInput = \_ str -> TextInput str }
+                { onTextInput = \_ str -> TextInput str
+                , onToggleActive = \_ isActive -> Toggle isActive
+                }
                 { id = "DUMMYID2"
                 , editorActive = m.toggle
                 , editors = SelectArray.singleton (LocalMessageEditor m.textInput)

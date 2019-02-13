@@ -3,7 +3,7 @@ module View.Organisms.Column.NewMessageEditor exposing (render, styles)
 import Data.ColumnEditor exposing (ColumnEditor, getBuffer)
 import Html exposing (Html, div, textarea)
 import Html.Attributes exposing (class)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onFocus, onInput)
 import SelectArray exposing (SelectArray)
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
@@ -14,6 +14,7 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onTextInput : String -> String -> msg
+    , onToggleActive : String -> Bool -> msg
     }
 
 
@@ -26,10 +27,10 @@ type alias ColumnProps c =
 
 
 render : Effects msg -> ColumnProps c -> Html msg
-render eff column =
+render eff c =
     let
         selectedEditor =
-            SelectArray.selected column.editors
+            SelectArray.selected c.editors
     in
     div
         [ flexColumn
@@ -39,15 +40,16 @@ render eff column =
         , Border.bot1
         , Border.solid
         ]
-        [ editorTextarea (eff.onTextInput column.id) column.editorActive selectedEditor
+        [ editorTextarea (eff.onTextInput c.id) (eff.onToggleActive c.id) c.editorActive selectedEditor
         ]
 
 
-editorTextarea : (String -> msg) -> Bool -> ColumnEditor -> Html msg
-editorTextarea onInput_ editorActive editor =
+editorTextarea : (String -> msg) -> (Bool -> msg) -> Bool -> ColumnEditor -> Html msg
+editorTextarea onInput_ onToggleActive editorActive editor =
     let
         baseAttrs =
             [ class textareaClass
+            , onFocus (onToggleActive True)
             , onInput onInput_
             ]
 
