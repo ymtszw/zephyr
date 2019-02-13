@@ -1,8 +1,8 @@
 module View.Organisms.Column.NewMessageEditor exposing (render, styles)
 
-import Data.ColumnEditor exposing (ColumnEditor, getBuffer)
+import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import Html exposing (Html, div, textarea)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, placeholder, spellcheck)
 import Html.Events exposing (onFocus, onInput)
 import SelectArray exposing (SelectArray)
 import View.Atoms.Background as Background
@@ -54,6 +54,14 @@ editorTextarea onInput_ onToggleActive editorActive editor =
             [ class textareaClass
             , flexItem
             , widthFill
+            , spellcheck True
+            , placeholder <|
+                case editor of
+                    DiscordMessageEditor _ ->
+                        "Message"
+
+                    LocalMessageEditor _ ->
+                        "Memo"
             , onFocus (onToggleActive True)
             , onInput onInput_
             ]
