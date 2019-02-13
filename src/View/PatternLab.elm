@@ -2553,7 +2553,34 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSource "" <|
+            , withSource """div [ style "width" (px 350) ]
+    [ t "(Contained)"
+    , ColumnConfig.render
+        { onCloseButtonClick = Toggle False
+        , onColumnDeleteButtonClick = always NoOp
+        , onSourceSelect = \\_ _ -> NoOp
+        , selectMsgTagger = SelectCtrl
+        , onRemoveSourceButtonClick = \\_ _ -> NoOp
+        }
+        { selectState = m.select
+        , availableSourecs =
+            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+            ]
+        , column =
+            { id = "DUMMYID1"
+            , numItems = 1000
+            , pinned = m.toggle
+            , sources =
+                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                ]
+            , filters = []
+            }
+        }
+    ]""" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
                     , ColumnConfig.render
@@ -2585,7 +2612,34 @@ columnConfig m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSource "" <|
+            , withSource """div [ style "width" (px 350) ]
+    [ t "(Contained)"
+    , ColumnConfig.render
+        { onCloseButtonClick = Toggle False
+        , onColumnDeleteButtonClick = always NoOp
+        , onSourceSelect = \\_ _ -> NoOp
+        , selectMsgTagger = SelectCtrl
+        , onRemoveSourceButtonClick = \\_ _ -> NoOp
+        }
+        { selectState = m.select
+        , availableSourecs =
+            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+            ]
+        , column =
+            { id = "DUMMYID2"
+            , numItems = 1000
+            , pinned = m.toggle
+            , sources =
+                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                ]
+            , filters = []
+            }
+        }
+    ]""" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
                     , ColumnConfig.render
