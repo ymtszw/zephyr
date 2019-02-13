@@ -1,11 +1,12 @@
-module View.Organisms.Column.NewMessageEditor exposing (render, styles)
+module View.Organisms.Column.NewMessageEditor exposing (ColumnProps, Effects, UserAction(..), render, styles)
 
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import File exposing (File)
 import Html exposing (Html, button, div, img, span, textarea)
 import Html.Attributes exposing (alt, class, placeholder, spellcheck, src, title)
-import Html.Events exposing (onFocus, onInput)
+import Html.Events exposing (onFocus, onInput, preventDefaultOn)
 import Html.Keyed
+import Json.Decode as D
 import Octicons
 import SelectArray exposing (SelectArray)
 import StringExtra
@@ -21,12 +22,14 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onTextInput : String -> String -> msg
-    , onToggleActive : String -> Bool -> msg
+    , -- Used for dragenter and dragover too
+      onInteracted : String -> UserAction -> msg
     , onResetButtonClick : String -> msg
     , -- TODO support multiple files in a editor
       onDiscardFileButtonClick : String -> msg
     , -- XXX should diverge for different sources later
       onRequestFileAreaClick : String -> msg
+    , onFileDrop : String -> UserAction -> File -> msg
     }
 
 
@@ -35,8 +38,29 @@ type alias ColumnProps c =
         | id : String
         , editors : SelectArray ColumnEditor
         , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/elm/html/issues/55
-        , editorActive : Bool
+        , userActionOnEditor : UserAction
     }
+
+
+{-| Indicates current user's action against the editor.
+
+HoveringFiles enables dynamic styling upon file hover.
+
+-}
+type UserAction
+    = Browsing
+    | Authoring
+    | HoveringFiles
+
+
+isActive : UserAction -> Bool
+isActive action =
+    case action of
+        Browsing ->
+            False
+
+        _ ->
+            True
 
 
 render : Effects msg -> ColumnProps c -> Html msg
@@ -64,13 +88,13 @@ render eff c =
 
 editorMenu : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
 editorMenu eff c editor =
-    if c.editorActive then
+    if isActive c.userActionOnEditor then
         div [ flexRow, spacingRow5, flexCenter ]
             [ div [] [ Image.octicon { size = prominentSize, shape = Octicons.pencil } ]
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, pushRight, Image.hovErr ]
                 { onPress = eff.onResetButtonClick c.id, size = prominentSize, shape = Octicons.trashcan }
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, Image.hovText ]
-                { onPress = eff.onToggleActive c.id False, size = prominentSize, shape = Octicons.x }
+                { onPress = eff.onInteracted c.id Browsing, size = prominentSize, shape = Octicons.x }
             ]
 
     else
@@ -97,12 +121,12 @@ editorTextarea eff c editor =
                     LocalMessageEditor _ ->
                         "Memo"
             , Border.round5
-            , onFocus (eff.onToggleActive c.id True)
+            , onFocus (eff.onInteracted c.id Authoring)
             , onInput (eff.onTextInput c.id)
             ]
 
         stateAttrs =
-            if c.editorActive then
+            if isActive c.userActionOnEditor then
                 let
                     bufferHeight =
                         if lines < 6 then
@@ -124,14 +148,14 @@ editorTextarea eff c editor =
 
 selectedFiles : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
 selectedFiles eff c editor =
-    case ( c.editorActive, editor ) of
+    case ( isActive c.userActionOnEditor, editor ) of
         ( True, DiscordMessageEditor { file } ) ->
             case file of
                 Just ( f, dataUrl ) ->
                     filePreview (eff.onDiscardFileButtonClick c.id) f dataUrl
 
                 Nothing ->
-                    fileSelectArea (eff.onRequestFileAreaClick c.id)
+                    fileSelectArea eff c
 
         _ ->
             none
@@ -229,21 +253,51 @@ filePreview onDiscardFileButtonClick f dataUrl =
         }
 
 
-fileSelectArea : msg -> Html msg
-fileSelectArea onRequestFileAreaClick =
+fileSelectArea : Effects msg -> ColumnProps c -> Html msg
+fileSelectArea eff c =
+    let
+        catchDroppedFile =
+            D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id Authoring f) File.decoder)
+
+        hijackOn event msgDecoder =
+            preventDefaultOn event
+                (D.map
+                    (\msg ->
+                        let
+                            _ =
+                                Debug.log event msg
+                        in
+                        ( msg, True )
+                    )
+                    msgDecoder
+                )
+
+        ( bg, fill, shape ) =
+            case c.userActionOnEditor of
+                HoveringFiles ->
+                    ( Background.colorSucc, Image.fillText, Octicons.check )
+
+                _ ->
+                    ( Background.transparent, noAttr, Octicons.cloudUpload )
+    in
     Icon.octiconButton
         [ flexItem
         , padding5
         , Border.w1
         , Border.round5
         , Border.dashed
-        , Background.transparent
+        , bg
         , Background.hovBd
+        , fill
         , Image.hovText
+        , hijackOn "dragenter" (D.succeed (eff.onInteracted c.id HoveringFiles))
+        , hijackOn "dragover" (D.succeed (eff.onInteracted c.id HoveringFiles))
+        , hijackOn "dragleave" (D.succeed (eff.onInteracted c.id Authoring))
+        , hijackOn "drop" catchDroppedFile
         ]
-        { onPress = onRequestFileAreaClick
+        { onPress = eff.onRequestFileAreaClick c.id
         , size = xProminentSize
-        , shape = Octicons.plus
+        , shape = shape
         }
 
 
@@ -260,6 +314,7 @@ styles =
     , s (c previewImageClass)
         [ ( "max-width", "100%" )
         , ( "max-height", px maxPreviewHeight )
+        , ( "min-height", px minPreviewHeight )
         , ( "object-fit", "scale-down" )
         ]
     , s (c previewMetadataClass) [ ( "max-width", px maxMetadataWidth ) ]
@@ -279,6 +334,12 @@ previewImageClass =
 maxPreviewHeight : Int
 maxPreviewHeight =
     400
+
+
+minPreviewHeight : Int
+minPreviewHeight =
+    -- Required height for force-showing discard button and metadata
+    100
 
 
 previewMetadataClass : String

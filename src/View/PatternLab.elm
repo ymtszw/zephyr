@@ -69,6 +69,7 @@ type alias Model =
     , numColumns : Int
     , editorSeq : Int
     , editorFile : Maybe ( File, String )
+    , userActionOnEditor : NewMessageEditor.UserAction
     }
 
 
@@ -125,6 +126,7 @@ init () url key =
       , numColumns = 4
       , editorSeq = 0
       , editorFile = Nothing
+      , userActionOnEditor = NewMessageEditor.Browsing
       }
     , Cmd.none
     )
@@ -156,9 +158,10 @@ type Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
+    | EditorInteracted NewMessageEditor.UserAction
     | EditorReset
     | EditorFileRequest (List String)
-    | EditorFileSelected File
+    | EditorFileSelected NewMessageEditor.UserAction File
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
 
@@ -197,14 +200,19 @@ update msg m =
         AddColumn ->
             ( { m | numColumns = m.numColumns + 1 }, Cmd.none )
 
+        EditorInteracted action ->
+            ( { m | userActionOnEditor = action }, Cmd.none )
+
         EditorReset ->
             ( { m | textInput = "", editorSeq = m.editorSeq + 1, editorFile = Nothing }, Cmd.none )
 
         EditorFileRequest mimeTypes ->
-            ( m, File.Select.file mimeTypes EditorFileSelected )
+            ( m, File.Select.file mimeTypes (EditorFileSelected NewMessageEditor.Authoring) )
 
-        EditorFileSelected file ->
-            ( m, Task.perform (\dataUrl -> EditorFileLoaded ( file, dataUrl )) (File.toUrl file) )
+        EditorFileSelected action file ->
+            ( { m | userActionOnEditor = action }
+            , Task.perform (\dataUrl -> EditorFileLoaded ( file, dataUrl )) (File.toUrl file)
+            )
 
         EditorFileLoaded fileWithDataUrl ->
             ( { m | editorFile = Just fileWithDataUrl }, Cmd.none )
@@ -2714,13 +2722,14 @@ columnNewMessageEditor m =
                     [ t "(Contained)"
                     , NewMessageEditor.render
                         { onTextInput = \_ str -> TextInput str
-                        , onToggleActive = \_ isActive -> Toggle isActive
+                        , onInteracted = \_ action -> EditorInteracted action
                         , onResetButtonClick = always EditorReset
-                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
                         , onDiscardFileButtonClick = always EditorFileDiscard
+                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+                        , onFileDrop = \_ action f -> EditorFileSelected action f
                         }
                         { id = "DUMMYID1"
-                        , editorActive = m.toggle
+                        , userActionOnEditor = m.userActionOnEditor
                         , editorSeq = m.editorSeq
                         , editors =
                             SelectArray.fromLists []
@@ -2736,13 +2745,14 @@ columnNewMessageEditor m =
                     [ t "(Contained)"
                     , NewMessageEditor.render
                         { onTextInput = \_ str -> TextInput str
-                        , onToggleActive = \_ isActive -> Toggle isActive
+                        , onInteracted = \_ action -> EditorInteracted action
                         , onResetButtonClick = always EditorReset
-                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
                         , onDiscardFileButtonClick = always EditorFileDiscard
+                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+                        , onFileDrop = \_ action f -> EditorFileSelected action f
                         }
                         { id = "DUMMYID2"
-                        , editorActive = m.toggle
+                        , userActionOnEditor = m.userActionOnEditor
                         , editorSeq = m.editorSeq
                         , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
                         }
