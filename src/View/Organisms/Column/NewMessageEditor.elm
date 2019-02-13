@@ -22,7 +22,7 @@ type alias Effects msg =
     , onToggleActive : String -> Bool -> msg
     , onResetButtonClick : String -> msg
     , -- TODO support multiple files in a editor
-      onDeleteFileButtonClick : String -> msg
+      onDiscardFileButtonClick : String -> msg
     }
 
 
@@ -124,7 +124,7 @@ selectedFiles eff c editor =
         ( True, DiscordMessageEditor { file } ) ->
             case file of
                 Just ( f, dataUrl ) ->
-                    withPreviewWrapper (eff.onDeleteFileButtonClick c.id) f <|
+                    withPreviewWrapper (eff.onDiscardFileButtonClick c.id) f <|
                         if String.startsWith "image/" (File.mime f) then
                             img [ block, src dataUrl, alt (File.name f) ] []
 
@@ -140,7 +140,7 @@ selectedFiles eff c editor =
 
 
 withPreviewWrapper : msg -> File -> Html msg -> Html msg
-withPreviewWrapper onDeleteFileButtonClick f preview =
+withPreviewWrapper onDiscardFileButtonClick f preview =
     let
         deleteFileButton =
             div [ Background.transparent, padding5 ]
@@ -149,7 +149,7 @@ withPreviewWrapper onDeleteFileButtonClick f preview =
                     , Border.elliptic
                     , Background.colorSub
                     ]
-                    { onPress = onDeleteFileButtonClick
+                    { onPress = onDiscardFileButtonClick
                     , size = prominentSize
                     , shape = Octicons.x
                     }
