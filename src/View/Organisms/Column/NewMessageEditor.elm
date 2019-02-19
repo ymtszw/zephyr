@@ -390,7 +390,7 @@ submitButton onSubmit isActive editor =
 
 styles : List Style
 styles =
-    [ s (c editorSelectClass) [ ( "max-width", px maxEditorSelectWidth ) ]
+    [ s (c editorSelectClass) [ ( "width", px fixedEditorSelectWidth ) ]
     , s (c textareaClass)
         [ ( "resize", "none" )
         , ( "transition", "all 0.15s" )
@@ -410,8 +410,8 @@ editorSelectClass =
     "editorSelect"
 
 
-maxEditorSelectWidth : Int
-maxEditorSelectWidth =
+fixedEditorSelectWidth : Int
+fixedEditorSelectWidth =
     200
 
 
