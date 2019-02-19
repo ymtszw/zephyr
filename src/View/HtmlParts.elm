@@ -57,7 +57,7 @@ none =
 
 flex : Attribute msg
 flex =
-    style "flex" "1 0"
+    style "flex" "1 0 auto"
 
 
 grow : Attribute msg
