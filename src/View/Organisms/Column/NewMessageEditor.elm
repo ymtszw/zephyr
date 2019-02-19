@@ -3,8 +3,8 @@ module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserActi
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import File exposing (File)
 import Html exposing (Html, button, div, img, span, textarea)
-import Html.Attributes exposing (alt, class, placeholder, spellcheck, src, title)
-import Html.Events exposing (onFocus, onInput, preventDefaultOn)
+import Html.Attributes exposing (alt, class, disabled, placeholder, spellcheck, src, title)
+import Html.Events exposing (onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
 import ListExtra
@@ -36,6 +36,7 @@ type alias Effects msg =
     , -- XXX should diverge for different sources later
       onRequestFileAreaClick : String -> msg
     , onFileDrop : String -> UserAction -> File -> msg
+    , onSubmit : String -> msg
     }
 
 
@@ -63,21 +64,19 @@ type UserAction
     | HoveringFiles
 
 
-isActive : UserAction -> Bool
-isActive action =
-    case action of
-        Browsing ->
-            False
-
-        _ ->
-            True
-
-
 render : Effects msg -> Props c -> Html msg
 render eff props =
     let
         selectedEditor =
             SelectArray.selected props.column.editors
+
+        isActive =
+            case props.column.userActionOnEditor of
+                Browsing ->
+                    False
+
+                _ ->
+                    True
     in
     -- Workaround for https://github.com/elm/html/issues/55
     Html.Keyed.node "div"
@@ -88,17 +87,18 @@ render eff props =
         , Border.bot1
         , Border.solid
         ]
-        [ ( "editorMenu_" ++ props.column.id, editorMenu eff props selectedEditor )
+        [ ( "editorMenu_" ++ props.column.id, editorMenu eff props isActive selectedEditor )
         , ( "editorTextarea_" ++ props.column.id ++ "_" ++ String.fromInt props.column.editorSeq
-          , editorTextarea eff props.column selectedEditor
+          , editorTextarea eff props.column.id isActive selectedEditor
           )
-        , ( "selectedFiles_" ++ props.column.id, selectedFiles eff props.column selectedEditor )
+        , ( "selectedFiles_" ++ props.column.id, selectedFiles eff props.column isActive selectedEditor )
+        , ( "submitButton_" ++ props.column.id, submitButton (eff.onSubmit props.column.id) isActive selectedEditor )
         ]
 
 
-editorMenu : Effects msg -> Props c -> ColumnEditor -> Html msg
-editorMenu eff props editor =
-    if isActive props.column.userActionOnEditor then
+editorMenu : Effects msg -> Props c -> Bool -> ColumnEditor -> Html msg
+editorMenu eff props isActive editor =
+    if isActive then
         div [ flexRow, spacingRow5, flexCenter ]
             [ div [] [ Image.octicon { size = prominentSize, shape = Octicons.pencil } ]
             , editorSelect eff props editor
@@ -158,8 +158,8 @@ editorSelectOption sources ( index, editor ) =
             t "Personal Memo"
 
 
-editorTextarea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> ColumnEditor -> Html msg
-editorTextarea eff c editor =
+editorTextarea : Effects msg -> String -> Bool -> ColumnEditor -> Html msg
+editorTextarea eff cId isActive editor =
     let
         buffer =
             getBuffer editor
@@ -178,12 +178,12 @@ editorTextarea eff c editor =
                     LocalMessageEditor _ ->
                         "Memo"
             , Border.round5
-            , onFocus (eff.onInteracted c.id Authoring)
-            , onInput (eff.onTextInput c.id)
+            , onFocus (eff.onInteracted cId Authoring)
+            , onInput (eff.onTextInput cId)
             ]
 
         stateAttrs =
-            if isActive c.userActionOnEditor then
+            if isActive then
                 let
                     bufferHeight =
                         if lines < 6 then
@@ -203,9 +203,9 @@ editorTextarea eff c editor =
     textarea (baseAttrs ++ stateAttrs) [ t buffer ]
 
 
-selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> ColumnEditor -> Html msg
-selectedFiles eff c editor =
-    case ( isActive c.userActionOnEditor, editor ) of
+selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
+selectedFiles eff c isActive editor =
+    case ( isActive, editor ) of
         ( True, DiscordMessageEditor { file } ) ->
             case file of
                 Just ( f, dataUrl ) ->
@@ -356,6 +356,32 @@ fileSelectArea eff c =
         , size = xProminentSize
         , shape = shape
         }
+
+
+submitButton : msg -> Bool -> ColumnEditor -> Html msg
+submitButton onSubmit isActive editor =
+    if isActive then
+        let
+            isNotReady =
+                case editor of
+                    DiscordMessageEditor opts ->
+                        String.isEmpty opts.buffer && opts.file == Nothing
+
+                    LocalMessageEditor buffer ->
+                        String.isEmpty buffer
+        in
+        button
+            [ flexItem
+            , alignEnd
+            , padding5
+            , disabled isNotReady
+            , Background.colorSucc
+            , onClick onSubmit
+            ]
+            [ t "Submit" ]
+
+    else
+        none
 
 
 

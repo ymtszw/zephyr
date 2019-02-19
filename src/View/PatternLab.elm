@@ -2729,6 +2729,7 @@ columnNewMessageEditor m =
                         , onDiscardFileButtonClick = always EditorFileDiscard
                         , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
                         , onFileDrop = \_ action f -> EditorFileSelected action f
+                        , onSubmit = always EditorReset
                         }
                         { selectState = m.select
                         , column =
@@ -2767,6 +2768,7 @@ columnNewMessageEditor m =
                         , onDiscardFileButtonClick = always EditorFileDiscard
                         , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
                         , onFileDrop = \_ action f -> EditorFileSelected action f
+                        , onSubmit = always EditorReset
                         }
                         { selectState = m.select
                         , column =
