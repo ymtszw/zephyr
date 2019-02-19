@@ -317,17 +317,7 @@ fileSelectArea eff c =
             D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id Authoring f) File.decoder)
 
         hijackOn event msgDecoder =
-            preventDefaultOn event
-                (D.map
-                    (\msg ->
-                        let
-                            _ =
-                                Debug.log event msg
-                        in
-                        ( msg, True )
-                    )
-                    msgDecoder
-                )
+            preventDefaultOn event (D.map (\msg -> ( msg, True )) msgDecoder)
 
         ( bg, fill, shape ) =
             case c.userActionOnEditor of
