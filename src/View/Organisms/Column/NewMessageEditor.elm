@@ -1,4 +1,4 @@
-module View.Organisms.Column.NewMessageEditor exposing (ColumnProps, Effects, UserAction(..), render, styles)
+module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserAction(..), render, styles)
 
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import File exposing (File)
@@ -7,21 +7,27 @@ import Html.Attributes exposing (alt, class, placeholder, spellcheck, src, title
 import Html.Events exposing (onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
+import ListExtra
 import Octicons
 import SelectArray exposing (SelectArray)
 import StringExtra
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Image as Image
+import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
+import View.Molecules.Source as Source exposing (Source(..))
 import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { onTextInput : String -> String -> msg
+    { onEditorSelect : String -> Int -> msg
+    , selectMsgTagger : Select.Msg msg -> msg
+    , onTextInput : String -> String -> msg
     , -- Used for dragenter and dragover too
       onInteracted : String -> UserAction -> msg
     , onResetButtonClick : String -> msg
@@ -33,12 +39,16 @@ type alias Effects msg =
     }
 
 
-type alias ColumnProps c =
-    { c
-        | id : String
-        , editors : SelectArray ColumnEditor
-        , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/elm/html/issues/55
-        , userActionOnEditor : UserAction
+type alias Props c =
+    { selectState : Select.State
+    , column :
+        ColumnProps
+            { c
+                | id : String
+                , editors : SelectArray ColumnEditor
+                , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/elm/html/issues/55
+                , userActionOnEditor : UserAction
+            }
     }
 
 
@@ -63,11 +73,11 @@ isActive action =
             True
 
 
-render : Effects msg -> ColumnProps c -> Html msg
-render eff c =
+render : Effects msg -> Props c -> Html msg
+render eff props =
     let
         selectedEditor =
-            SelectArray.selected c.editors
+            SelectArray.selected props.column.editors
     in
     -- Workaround for https://github.com/elm/html/issues/55
     Html.Keyed.node "div"
@@ -78,30 +88,77 @@ render eff c =
         , Border.bot1
         , Border.solid
         ]
-        [ ( "editorMenu_" ++ c.id, editorMenu eff c selectedEditor )
-        , ( "editorTextarea_" ++ c.id ++ "_" ++ String.fromInt c.editorSeq
-          , editorTextarea eff c selectedEditor
+        [ ( "editorMenu_" ++ props.column.id, editorMenu eff props selectedEditor )
+        , ( "editorTextarea_" ++ props.column.id ++ "_" ++ String.fromInt props.column.editorSeq
+          , editorTextarea eff props.column selectedEditor
           )
-        , ( "selectedFiles_" ++ c.id, selectedFiles eff c selectedEditor )
+        , ( "selectedFiles_" ++ props.column.id, selectedFiles eff props.column selectedEditor )
         ]
 
 
-editorMenu : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
-editorMenu eff c editor =
-    if isActive c.userActionOnEditor then
+editorMenu : Effects msg -> Props c -> ColumnEditor -> Html msg
+editorMenu eff props editor =
+    if isActive props.column.userActionOnEditor then
         div [ flexRow, spacingRow5, flexCenter ]
             [ div [] [ Image.octicon { size = prominentSize, shape = Octicons.pencil } ]
+            , editorSelect eff props editor
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, pushRight, Image.hovErr ]
-                { onPress = eff.onResetButtonClick c.id, size = prominentSize, shape = Octicons.trashcan }
+                { onPress = eff.onResetButtonClick props.column.id, size = prominentSize, shape = Octicons.trashcan }
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, Image.hovText ]
-                { onPress = eff.onInteracted c.id Browsing, size = prominentSize, shape = Octicons.x }
+                { onPress = eff.onInteracted props.column.id Browsing, size = prominentSize, shape = Octicons.x }
             ]
 
     else
         none
 
 
-editorTextarea : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
+editorSelect : Effects msg -> Props c -> ColumnEditor -> Html msg
+editorSelect eff props editor =
+    let
+        indexedEditors =
+            SelectArray.indexedMap (\{ index, e } -> ( String.fromInt index, ( index, e ) )) props.column.editors
+
+        selectedIndex =
+            SelectArray.selectedIndex props.column.editors
+    in
+    Select.render [ class editorSelectClass, flexItem, flexShrink, flexBasisAuto ]
+        { state = props.selectState
+        , msgTagger = eff.selectMsgTagger
+        , thin = True
+        , id = "editorSelect_" ++ props.column.id
+        , onSelect = \( newIndex, _ ) -> eff.onEditorSelect props.column.id newIndex
+        , selectedOption = Just ( selectedIndex, editor )
+        , filterMatch = Nothing
+        , options = indexedEditors
+        , optionHtml = editorSelectOption props.column.sources
+        }
+
+
+editorSelectOption : List Source -> ( Int, ColumnEditor ) -> Html msg
+editorSelectOption sources ( index, editor ) =
+    case editor of
+        DiscordMessageEditor { channelId } ->
+            let
+                matchingDiscordSource s =
+                    case s of
+                        DiscordSource { id } ->
+                            id == channelId
+
+                        _ ->
+                            False
+            in
+            case ListExtra.findOne matchingDiscordSource sources of
+                Just s ->
+                    Source.horizontalBlock14 s
+
+                Nothing ->
+                    t channelId
+
+        LocalMessageEditor _ ->
+            t "Personal Memo"
+
+
+editorTextarea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> ColumnEditor -> Html msg
 editorTextarea eff c editor =
     let
         buffer =
@@ -146,7 +203,7 @@ editorTextarea eff c editor =
     textarea (baseAttrs ++ stateAttrs) [ t buffer ]
 
 
-selectedFiles : Effects msg -> ColumnProps c -> ColumnEditor -> Html msg
+selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> ColumnEditor -> Html msg
 selectedFiles eff c editor =
     case ( isActive c.userActionOnEditor, editor ) of
         ( True, DiscordMessageEditor { file } ) ->
@@ -253,7 +310,7 @@ filePreview onDiscardFileButtonClick f dataUrl =
         }
 
 
-fileSelectArea : Effects msg -> ColumnProps c -> Html msg
+fileSelectArea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Html msg
 fileSelectArea eff c =
     let
         catchDroppedFile =
@@ -307,7 +364,8 @@ fileSelectArea eff c =
 
 styles : List Style
 styles =
-    [ s (c textareaClass)
+    [ s (c editorSelectClass) [ ( "max-width", px maxEditorSelectWidth ) ]
+    , s (c textareaClass)
         [ ( "resize", "none" )
         , ( "transition", "all 0.15s" )
         ]
@@ -319,6 +377,16 @@ styles =
         ]
     , s (c previewMetadataClass) [ ( "max-width", px maxMetadataWidth ) ]
     ]
+
+
+editorSelectClass : String
+editorSelectClass =
+    "editorSelect"
+
+
+maxEditorSelectWidth : Int
+maxEditorSelectWidth =
+    200
 
 
 textareaClass : String
