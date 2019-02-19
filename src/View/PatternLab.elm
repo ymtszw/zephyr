@@ -2717,7 +2717,41 @@ columnNewMessageEditor m =
         [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSource "" <|
+            , withSource """div [ style "width" (px 350) ]
+    [ t "(Contained)"
+    , NewMessageEditor.render
+        { onEditorSelect = \\_ _ -> NoOp
+        , selectMsgTagger = SelectCtrl
+        , onTextInput = \\_ str -> TextInput str
+        , onInteracted = \\_ action -> EditorInteracted action
+        , onResetButtonClick = always EditorReset
+        , onDiscardFileButtonClick = always EditorFileDiscard
+        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+        , onFileDrop = \\_ action f -> EditorFileSelected action f
+        , onSubmit = always EditorReset
+        }
+        { selectState = m.select
+        , column =
+            { id = "DUMMYID1"
+            , pinned = False
+            , sources =
+                [ DiscordSource
+                    { id = "DID1"
+                    , name = String.repeat 3 "Discord Channel "
+                    , guildName = "Guild"
+                    , guildIcon = Just (Image.ph 14 14)
+                    }
+                ]
+            , filters = []
+            , userActionOnEditor = m.userActionOnEditor
+            , editorSeq = m.editorSeq
+            , editors =
+                SelectArray.fromLists []
+                    (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
+                    [ LocalMessageEditor m.textInput ]
+            }
+        }
+    ]""" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
                     , NewMessageEditor.render
@@ -2756,7 +2790,31 @@ columnNewMessageEditor m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSource "" <|
+            , withSource """div [ style "width" (px 350) ]
+    [ t "(Contained)"
+    , NewMessageEditor.render
+        { onEditorSelect = \\_ _ -> NoOp
+        , selectMsgTagger = SelectCtrl
+        , onTextInput = \\_ str -> TextInput str
+        , onInteracted = \\_ action -> EditorInteracted action
+        , onResetButtonClick = always EditorReset
+        , onDiscardFileButtonClick = always EditorFileDiscard
+        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+        , onFileDrop = \\_ action f -> EditorFileSelected action f
+        , onSubmit = always EditorReset
+        }
+        { selectState = m.select
+        , column =
+            { id = "DUMMYID2"
+            , pinned = False
+            , sources = []
+            , filters = []
+            , userActionOnEditor = m.userActionOnEditor
+            , editorSeq = m.editorSeq
+            , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
+            }
+        }
+    ]""" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
                     , NewMessageEditor.render
