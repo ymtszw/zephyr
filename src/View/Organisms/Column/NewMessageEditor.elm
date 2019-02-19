@@ -2,11 +2,12 @@ module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserActi
 
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import File exposing (File)
-import Html exposing (Html, button, div, img, span, textarea)
+import Html exposing (Attribute, Html, button, div, img, span, textarea)
 import Html.Attributes exposing (alt, class, disabled, placeholder, spellcheck, src, title)
-import Html.Events exposing (onClick, onFocus, onInput, preventDefaultOn)
+import Html.Events exposing (on, onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
+import Json.DecodeExtra as D
 import ListExtra
 import Octicons
 import SelectArray exposing (SelectArray)
@@ -173,13 +174,18 @@ editorTextarea eff cId isActive editor =
             , placeholder <|
                 case editor of
                     DiscordMessageEditor _ ->
-                        "Message"
+                        "Message  (Ctrl + Enter to submit)"
 
                     LocalMessageEditor _ ->
-                        "Memo"
+                        "Memo  (Ctrl + Enter to submit)"
             , Border.round5
             , onFocus (eff.onInteracted cId Authoring)
             , onInput (eff.onTextInput cId)
+            , if isNotReadyToSubmit editor then
+                noAttr
+
+              else
+                onCtrlEnterKeyDown (eff.onSubmit cId)
             ]
 
         stateAttrs =
@@ -201,6 +207,24 @@ editorTextarea eff cId isActive editor =
                 [ flexBasis (px (regularSize * 2)), colorNote, phColorNote, Background.colorSub ]
     in
     textarea (baseAttrs ++ stateAttrs) [ t buffer ]
+
+
+isNotReadyToSubmit : ColumnEditor -> Bool
+isNotReadyToSubmit editor =
+    case editor of
+        DiscordMessageEditor opts ->
+            String.isEmpty opts.buffer && opts.file == Nothing
+
+        LocalMessageEditor buffer ->
+            String.isEmpty buffer
+
+
+onCtrlEnterKeyDown : msg -> Attribute msg
+onCtrlEnterKeyDown onPress =
+    on "keydown" <|
+        D.when (D.field "ctrlKey" D.bool) identity <|
+            D.when (D.field "key" D.string) ((==) "Enter") <|
+                D.succeed onPress
 
 
 selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
@@ -351,20 +375,11 @@ fileSelectArea eff c =
 submitButton : msg -> Bool -> ColumnEditor -> Html msg
 submitButton onSubmit isActive editor =
     if isActive then
-        let
-            isNotReady =
-                case editor of
-                    DiscordMessageEditor opts ->
-                        String.isEmpty opts.buffer && opts.file == Nothing
-
-                    LocalMessageEditor buffer ->
-                        String.isEmpty buffer
-        in
         button
             [ flexItem
             , alignEnd
             , padding5
-            , disabled isNotReady
+            , disabled (isNotReadyToSubmit editor)
             , Background.colorSucc
             , onClick onSubmit
             ]
