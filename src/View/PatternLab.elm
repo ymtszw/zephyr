@@ -2,13 +2,18 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
+import File exposing (File)
+import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import ListExtra
 import Octicons
+import SelectArray
 import StringExtra
+import Task
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
@@ -31,6 +36,7 @@ import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
+import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
@@ -61,6 +67,9 @@ type alias Model =
     , select : Select.State
     , selected : Maybe String
     , numColumns : Int
+    , editorSeq : Int
+    , editorFile : Maybe ( File, String )
+    , userActionOnEditor : NewMessageEditor.UserAction
     }
 
 
@@ -101,6 +110,7 @@ routes =
     , R "config_slack" "Organisms" "Config.Slack" <| \m -> pLab [ configSlack m ] m
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
     , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
+    , R "column_new_message_editor" "Organisms" "Column.NewMessageEditor" <| \m -> pLab [ columnNewMessageEditor m ] m
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -114,6 +124,9 @@ init () url key =
       , select = Select.AllClosed
       , selected = Nothing
       , numColumns = 4
+      , editorSeq = 0
+      , editorFile = Nothing
+      , userActionOnEditor = NewMessageEditor.Browsing
       }
     , Cmd.none
     )
@@ -145,6 +158,12 @@ type Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
+    | EditorInteracted NewMessageEditor.UserAction
+    | EditorReset
+    | EditorFileRequest (List String)
+    | EditorFileSelected NewMessageEditor.UserAction File
+    | EditorFileLoaded ( File, String )
+    | EditorFileDiscard
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -180,6 +199,26 @@ update msg m =
 
         AddColumn ->
             ( { m | numColumns = m.numColumns + 1 }, Cmd.none )
+
+        EditorInteracted action ->
+            ( { m | userActionOnEditor = action }, Cmd.none )
+
+        EditorReset ->
+            ( { m | textInput = "", editorSeq = m.editorSeq + 1, editorFile = Nothing }, Cmd.none )
+
+        EditorFileRequest mimeTypes ->
+            ( m, File.Select.file mimeTypes (EditorFileSelected NewMessageEditor.Authoring) )
+
+        EditorFileSelected action file ->
+            ( { m | userActionOnEditor = action }
+            , Task.perform (\dataUrl -> EditorFileLoaded ( file, dataUrl )) (File.toUrl file)
+            )
+
+        EditorFileLoaded fileWithDataUrl ->
+            ( { m | editorFile = Just fileWithDataUrl }, Cmd.none )
+
+        EditorFileDiscard ->
+            ( { m | editorFile = Nothing }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2553,7 +2592,34 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSource "" <|
+            , withSource """div [ style "width" (px 350) ]
+    [ t "(Contained)"
+    , ColumnConfig.render
+        { onCloseButtonClick = Toggle False
+        , onColumnDeleteButtonClick = always NoOp
+        , onSourceSelect = \\_ _ -> NoOp
+        , selectMsgTagger = SelectCtrl
+        , onRemoveSourceButtonClick = \\_ _ -> NoOp
+        }
+        { selectState = m.select
+        , availableSourecs =
+            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+            ]
+        , column =
+            { id = "DUMMYID1"
+            , numItems = 1000
+            , pinned = m.toggle
+            , sources =
+                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                ]
+            , filters = []
+            }
+        }
+    ]""" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
                     , ColumnConfig.render
@@ -2585,7 +2651,34 @@ columnConfig m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSource "" <|
+            , withSource """div [ style "width" (px 350) ]
+    [ t "(Contained)"
+    , ColumnConfig.render
+        { onCloseButtonClick = Toggle False
+        , onColumnDeleteButtonClick = always NoOp
+        , onSourceSelect = \\_ _ -> NoOp
+        , selectMsgTagger = SelectCtrl
+        , onRemoveSourceButtonClick = \\_ _ -> NoOp
+        }
+        { selectState = m.select
+        , availableSourecs =
+            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+            ]
+        , column =
+            { id = "DUMMYID2"
+            , numItems = 1000
+            , pinned = m.toggle
+            , sources =
+                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                ]
+            , filters = []
+            }
+        }
+    ]""" <|
                 div [ style "width" (px 350) ]
                     [ t "(Contained)"
                     , ColumnConfig.render
@@ -2611,6 +2704,81 @@ columnConfig m =
                                 , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
                                 ]
                             , filters = []
+                            }
+                        }
+                    ]
+            ]
+        ]
+
+
+columnNewMessageEditor : Model -> Html Msg
+columnNewMessageEditor m =
+    section []
+        [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
+        , section [ oneDark ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
+            , withSource "" <|
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , NewMessageEditor.render
+                        { onEditorSelect = \_ _ -> NoOp
+                        , selectMsgTagger = SelectCtrl
+                        , onTextInput = \_ str -> TextInput str
+                        , onInteracted = \_ action -> EditorInteracted action
+                        , onResetButtonClick = always EditorReset
+                        , onDiscardFileButtonClick = always EditorFileDiscard
+                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+                        , onFileDrop = \_ action f -> EditorFileSelected action f
+                        , onSubmit = always EditorReset
+                        }
+                        { selectState = m.select
+                        , column =
+                            { id = "DUMMYID1"
+                            , pinned = False
+                            , sources =
+                                [ DiscordSource
+                                    { id = "DID1"
+                                    , name = String.repeat 3 "Discord Channel "
+                                    , guildName = "Guild"
+                                    , guildIcon = Just (Image.ph 14 14)
+                                    }
+                                ]
+                            , filters = []
+                            , userActionOnEditor = m.userActionOnEditor
+                            , editorSeq = m.editorSeq
+                            , editors =
+                                SelectArray.fromLists []
+                                    (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
+                                    [ LocalMessageEditor m.textInput ]
+                            }
+                        }
+                    ]
+            ]
+        , section [ aubergine ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
+            , withSource "" <|
+                div [ style "width" (px 350) ]
+                    [ t "(Contained)"
+                    , NewMessageEditor.render
+                        { onEditorSelect = \_ _ -> NoOp
+                        , selectMsgTagger = SelectCtrl
+                        , onTextInput = \_ str -> TextInput str
+                        , onInteracted = \_ action -> EditorInteracted action
+                        , onResetButtonClick = always EditorReset
+                        , onDiscardFileButtonClick = always EditorFileDiscard
+                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+                        , onFileDrop = \_ action f -> EditorFileSelected action f
+                        , onSubmit = always EditorReset
+                        }
+                        { selectState = m.select
+                        , column =
+                            { id = "DUMMYID2"
+                            , pinned = False
+                            , sources = []
+                            , filters = []
+                            , userActionOnEditor = m.userActionOnEditor
+                            , editorSeq = m.editorSeq
+                            , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
                             }
                         }
                     ]

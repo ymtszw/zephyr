@@ -1,19 +1,20 @@
 module View.Atoms.Typography exposing
     ( t, link, ntLink
-    , regular, minuscule, prominent, xProminent, xxProminent, impactful
-    , regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
+    , regular, minuscule, prominent, xProminent, xxProminent, xxxProminent, impactful
+    , regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, xxxProminentSize, impactfulSize
     , sansSerif, serif, monospace
     , italic, bold, underline
     , colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
     , newTab
     , styles, regularStyle, sansSerifStyle, monospaceStyle
+    , phColorNote, phColorText
     )
 
 {-| Typography Atoms.
 
 @docs t, link, ntLink
-@docs regular, minuscule, prominent, xProminent, xxProminent, impactful
-@docs regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, impactfulSize
+@docs regular, minuscule, prominent, xProminent, xxProminent, xxxProminent, impactful
+@docs regularSize, minusculeSize, prominentSize, xProminentSize, xxProminentSize, xxxProminentSize, impactfulSize
 @docs sansSerif, serif, monospace
 @docs italic, bold, underline
 @docs colorText, colorNote, colorLink, colorPrim, colorSucc, colorWarn, colorErr
@@ -22,7 +23,7 @@ module View.Atoms.Typography exposing
 
 -}
 
-import Color exposing (Color, cssRgba)
+import Color exposing (Color, cssRgba, setAlpha)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
 import View.Atoms.Layout as Layout
@@ -143,6 +144,20 @@ xxProminentSize =
     scale12 4
 
 
+{-| Scale 8 (71px)
+-}
+xxxProminent : Attribute msg
+xxxProminent =
+    Attributes.class xxxProminentClass
+
+
+{-| Scale 8 (71)
+-}
+xxxProminentSize : Int
+xxxProminentSize =
+    scale12 8
+
+
 {-| Scale 12 (174px). Used for background logo, and that's all.
 -}
 impactful : Attribute msg
@@ -224,6 +239,16 @@ colorErr =
     Attributes.class colorErrClass
 
 
+phColorText : Attribute msg
+phColorText =
+    Attributes.class phColorTextClass
+
+
+phColorNote : Attribute msg
+phColorNote =
+    Attributes.class phColorNoteClass
+
+
 {-| Used with `link`, sets "target='\_blank'".
 -}
 newTab : Attribute msg
@@ -243,6 +268,7 @@ styles =
     , s (c prominentClass) [ ( "font-size", px prominentSize ) ]
     , s (c xProminentClass) [ ( "font-size", px xProminentSize ) ]
     , s (c xxProminentClass) [ ( "font-size", px xxProminentSize ) ]
+    , s (c xxxProminentClass) [ ( "font-size", px xxxProminentSize ) ]
     , s (c impactfulClass) [ ( "font-size", px impactfulSize ) ]
     , -- Font families
       sansSerifStyle
@@ -286,6 +312,11 @@ xProminentClass =
 xxProminentClass : String
 xxProminentClass =
     "fsxxp"
+
+
+xxxProminentClass : String
+xxxProminentClass =
+    "fsxxxp"
 
 
 impactfulClass : String
@@ -340,28 +371,34 @@ underlineClass =
 
 fontColorStyles : List Style
 fontColorStyles =
+    let
+        fc themeClass modeClass color =
+            scoped (c themeClass) (c modeClass) [ ( "color", cssRgba color ) ]
+
+        ph themeClass modeClass color =
+            scoped (c themeClass) (c modeClass ++ "::placeholder") [ ( "color", cssRgba color ) ]
+    in
     [ s (c oneDarkClass) [ ( "color", cssRgba oneDarkTheme.text ) ] -- Default Font Color of the theme
-    , f oneDarkClass colorTextClass oneDarkTheme.text
-    , f oneDarkClass colorNoteClass oneDarkTheme.note
-    , f oneDarkClass colorLinkClass oneDarkTheme.link
-    , f oneDarkClass colorPrimClass oneDarkTheme.prim
-    , f oneDarkClass colorSuccClass oneDarkTheme.succ
-    , f oneDarkClass colorWarnClass oneDarkTheme.warn
-    , f oneDarkClass colorErrClass oneDarkTheme.err
+    , fc oneDarkClass colorTextClass oneDarkTheme.text
+    , fc oneDarkClass colorNoteClass oneDarkTheme.note
+    , fc oneDarkClass colorLinkClass oneDarkTheme.link
+    , fc oneDarkClass colorPrimClass oneDarkTheme.prim
+    , fc oneDarkClass colorSuccClass oneDarkTheme.succ
+    , fc oneDarkClass colorWarnClass oneDarkTheme.warn
+    , fc oneDarkClass colorErrClass oneDarkTheme.err
+    , ph oneDarkClass phColorTextClass (setAlpha 0.3 oneDarkTheme.text)
+    , ph oneDarkClass phColorNoteClass (setAlpha 0.6 oneDarkTheme.note)
     , s (c aubergineClass) [ ( "color", cssRgba aubergineTheme.text ) ] -- Default Font Color of the theme
-    , f aubergineClass colorTextClass aubergineTheme.text
-    , f aubergineClass colorNoteClass aubergineTheme.note
-    , f aubergineClass colorLinkClass aubergineTheme.link
-    , f aubergineClass colorPrimClass aubergineTheme.prim
-    , f aubergineClass colorSuccClass aubergineTheme.succ
-    , f aubergineClass colorWarnClass aubergineTheme.warn
-    , f aubergineClass colorErrClass aubergineTheme.err
+    , fc aubergineClass colorTextClass aubergineTheme.text
+    , fc aubergineClass colorNoteClass aubergineTheme.note
+    , fc aubergineClass colorLinkClass aubergineTheme.link
+    , fc aubergineClass colorPrimClass aubergineTheme.prim
+    , fc aubergineClass colorSuccClass aubergineTheme.succ
+    , fc aubergineClass colorWarnClass aubergineTheme.warn
+    , fc aubergineClass colorErrClass aubergineTheme.err
+    , ph aubergineClass phColorTextClass (setAlpha 0.3 aubergineTheme.text)
+    , ph aubergineClass phColorNoteClass (setAlpha 0.4 aubergineTheme.note)
     ]
-
-
-f : String -> String -> Color -> Style
-f themeClass modeClass color =
-    scoped (c themeClass) (c modeClass) [ ( "color", cssRgba color ) ]
 
 
 colorTextClass : String
@@ -397,6 +434,16 @@ colorWarnClass =
 colorErrClass : String
 colorErrClass =
     "fcerr"
+
+
+phColorTextClass : String
+phColorTextClass =
+    "phtext"
+
+
+phColorNoteClass : String
+phColorNoteClass =
+    "phnote"
 
 
 inlineCodeStyles : List Style

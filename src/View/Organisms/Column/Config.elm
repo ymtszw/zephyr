@@ -154,7 +154,7 @@ selectedSources eff props =
                     , Image.hovErr
                     , onClick (eff.onRemoveSourceButtonClick props.column.id index)
                     ]
-                    [ Image.octicon { size = regularSize, shape = Octicons.trashcan } ]
+                    [ Image.octicon { size = regularSize, shape = Octicons.x } ]
                 ]
     in
     List.indexedMap selectedSource props.column.sources

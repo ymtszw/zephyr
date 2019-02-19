@@ -2,7 +2,7 @@ module View.Atoms.Layout exposing
     ( widthFill, block
     , flexRow, growRow, flexColumn, growColumn, flexWrap
     , flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
-    , alignEnd, alignStart
+    , alignEnd, alignStart, pushRight
     , noPadding, padding2, padding5, padding10, padding15, paddingInline
     , spacingRow2, spacingRow5, spacingRow10, spacingRow15
     , spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -16,7 +16,7 @@ module View.Atoms.Layout exposing
 @docs widthFill, block
 @docs flexRow, growRow, flexColumn, growColumn, flexWrap
 @docs flexItem, growItem, flexGrow, flexShrink, flexCenter, flexBasis, flexBasisAuto
-@docs alignEnd, alignStart
+@docs alignEnd, alignStart, pushRight
 @docs noPadding, padding2, padding5, padding10, padding15, paddingInline
 @docs spacingRow2, spacingRow5, spacingRow10, spacingRow15
 @docs spacingColumn2, spacingColumn5, spacingColumn10, spacingColumn15
@@ -147,6 +147,18 @@ alignStart =
 alignEnd : Attribute msg
 alignEnd =
     class alignEndClass
+
+
+{-| Push a flex item (and items appearing thereafter) to right, in `flex-direction: row` containers.
+
+This applies `margin-left: auto` to the item.
+
+<https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Box_Alignment/Box_Alignment_in_Flexbox#Alignment_and_auto_margins>
+
+-}
+pushRight : Attribute msg
+pushRight =
+    class pushRightClass
 
 
 noPadding : Attribute msg
@@ -285,6 +297,7 @@ styles =
     , flexBasisAutoStyle
     , s (c alignStartClass) [ ( "align-self", "flex-start" ) ]
     , s (c alignEndClass) [ ( "align-self", "flex-end" ) ]
+    , s (c pushRightClass) [ ( "margin-left", "auto!important" ) ]
     , paddingStyle 0
     , paddingStyle 2
     , paddingStyle 5
@@ -501,6 +514,11 @@ alignStartClass =
 alignEndClass : String
 alignEndClass =
     "alend"
+
+
+pushRightClass : String
+pushRightClass =
+    "pushr"
 
 
 paddingStyle : Int -> Style

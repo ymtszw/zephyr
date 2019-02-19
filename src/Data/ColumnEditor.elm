@@ -1,12 +1,12 @@
 module Data.ColumnEditor exposing
     ( ColumnEditor(..), defaultEditors
-    , filtersToEditors, updateBuffer, reset, updateFile
+    , filtersToEditors, getBuffer, updateBuffer, reset, updateFile
     )
 
 {-| Editor data for Columns.
 
 @docs ColumnEditor, defaultEditors
-@docs filtersToEditors, updateBuffer, reset, updateFile
+@docs filtersToEditors, getBuffer, updateBuffer, reset, updateFile
 
 -}
 
@@ -58,6 +58,16 @@ filtersToEditors filters =
 defaultEditors : SelectArray ColumnEditor
 defaultEditors =
     SelectArray.singleton localMessageEditor
+
+
+getBuffer : ColumnEditor -> String
+getBuffer editor =
+    case editor of
+        DiscordMessageEditor opts ->
+            opts.buffer
+
+        LocalMessageEditor buffer ->
+            buffer
 
 
 updateBuffer : String -> ColumnEditor -> ColumnEditor
