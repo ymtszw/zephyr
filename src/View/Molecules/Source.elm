@@ -138,7 +138,7 @@ horizontalBlock14 source =
     div [ flexRow, flexCenter, spacingRow2, clip ] <|
         [ badge14 [ flexItem ] source
         , icon [ flexItem, Icon.rounded14, regular ] source
-        , div [ flexGrow, flexBasisAuto, nowrap, ellipsis ] (inline regularSize source)
+        , div [ flexGrow, flexBasisAuto, flexShrink, nowrap, ellipsis ] (inline regularSize source)
         ]
 
 
