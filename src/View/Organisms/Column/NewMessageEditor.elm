@@ -195,10 +195,10 @@ editorTextarea eff c editor =
                     lines =
                         List.length (String.split "\n" buffer)
                 in
-                [ flexBasis (px bufferHeight), colorText, Background.colorNote ]
+                [ flexBasis (px bufferHeight), colorText, phColorText, Background.colorNote ]
 
             else
-                [ flexBasis (px (regularSize * 2)), colorNote, Background.colorSub ]
+                [ flexBasis (px (regularSize * 2)), colorNote, phColorNote, Background.colorSub ]
     in
     textarea (baseAttrs ++ stateAttrs) [ t buffer ]
 
