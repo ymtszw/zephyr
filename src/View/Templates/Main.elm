@@ -63,8 +63,7 @@ type alias Effects msg =
     { sidebarEffects : Sidebar.Effects msg
     , -- DragStart is handled in Organisms.Column.Header
       columnDragEnd : msg
-    , columnDragOver : msg
-    , columnDragEnter : Int -> msg
+    , columnDragHover : Int -> msg
     }
 
 
@@ -222,13 +221,13 @@ columnWrapperKey eff contents index c =
             case c.dragStatus of
                 Grabbed ->
                     [ class grabbedClass
-                    , preventDefaultOn "dragover" (succeed ( eff.columnDragOver, True ))
+                    , preventDefaultOn "dragover" (succeed ( eff.columnDragHover index, True ))
                     ]
 
                 Droppable ->
                     [ class droppableClass
-                    , preventDefaultOn "dragenter" (succeed ( eff.columnDragEnter index, True ))
-                    , preventDefaultOn "dragover" (succeed ( eff.columnDragOver, True ))
+                    , preventDefaultOn "dragenter" (succeed ( eff.columnDragHover index, True ))
+                    , preventDefaultOn "dragover" (succeed ( eff.columnDragHover index, True ))
                     ]
 
                 Undroppable ->

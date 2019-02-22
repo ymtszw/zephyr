@@ -2854,8 +2854,7 @@ mainTemplate m =
                 , columnButtonClickerByIndex = always NoOp
                 }
             , columnDragEnd = NoOp
-            , columnDragEnter = \_ -> NoOp
-            , columnDragOver = NoOp
+            , columnDragHover = \_ -> NoOp
             }
 
         mainProps =
