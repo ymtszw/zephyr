@@ -2830,20 +2830,20 @@ columnNewMessageEditor m =
 
 columnItems : Html Msg
 columnItems =
+    let
+        themed theme_ themeStr =
+            section [ theme_ ]
+                [ h2 [ xProminent ] [ t themeStr ]
+                , withSourceInColumn """Items.render { scrollAttrs = [] }
+    { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }""" <|
+                    Items.render { scrollAttrs = [] }
+                        { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
+                ]
+    in
     section []
         [ h1 [ xxProminent ] [ t "Column.Items" ]
-        , section [ oneDark ]
-            [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn "" <|
-                Items.render { scrollAttrs = [] }
-                    { columnId = "CID", timezone = Time.utc, items = [], hasMore = False }
-            ]
-        , section [ aubergine ]
-            [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn "" <|
-                Items.render { scrollAttrs = [] }
-                    { columnId = "CID", timezone = Time.utc, items = [], hasMore = False }
-            ]
+        , themed oneDark "oneDark"
+        , themed aubergine "aubergine"
         ]
 
 
