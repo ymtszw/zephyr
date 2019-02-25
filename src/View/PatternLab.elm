@@ -2,6 +2,7 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Data.Column exposing (ColumnItem(..))
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
 import File exposing (File)
@@ -2444,7 +2445,7 @@ columnHeader m =
         [ h1 [ xxProminent ] [ t "Column.Header" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2472,7 +2473,7 @@ columnHeader m =
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
-            , withSourceInColumn """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2503,7 +2504,7 @@ columnHeader m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2537,7 +2538,7 @@ columnHeader m =
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
-            , withSourceInColumn """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2585,12 +2586,20 @@ columnHeader m =
         ]
 
 
-withSourceInColumn : String -> Html Msg -> Html Msg
-withSourceInColumn source_ toRender =
+withSourceInColumn : Int -> String -> Html Msg -> Html Msg
+withSourceInColumn height_ source_ toRender =
     withSource source_ <|
         div []
             [ t "(Contained)"
-            , div [ style "width" (px 350), style "height" (px 600), Border.w1, Border.solid, Border.colorBg ] [ toRender ]
+            , div
+                [ style "width" (px 350)
+                , style "height" (px height_)
+                , style "overflow" "auto"
+                , Border.w1
+                , Border.solid
+                , Border.colorBg
+                ]
+                [ toRender ]
             ]
 
 
@@ -2600,7 +2609,7 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn """ColumnConfig.render
+            , withSourceInColumn 400 """ColumnConfig.render
     { onCloseButtonClick = Toggle False
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
@@ -2653,7 +2662,7 @@ columnConfig m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn """ColumnConfig.render
+            , withSourceInColumn 400 """ColumnConfig.render
     { onCloseButtonClick = Toggle False
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
@@ -2713,7 +2722,7 @@ columnNewMessageEditor m =
         [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn """NewMessageEditor.render
+            , withSourceInColumn 400 """NewMessageEditor.render
     { onEditorSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
     , onTextInput = \\_ str -> TextInput str
@@ -2780,7 +2789,7 @@ columnNewMessageEditor m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn """NewMessageEditor.render
+            , withSourceInColumn 400 """NewMessageEditor.render
     { onEditorSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
     , onTextInput = \\_ str -> TextInput str
@@ -2834,10 +2843,32 @@ columnItems =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , withSourceInColumn """Items.render { scrollAttrs = [] }
-    { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }""" <|
-                    Items.render { scrollAttrs = [] }
+                , withSourceInColumn 100 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
                         { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
+                , withSourceInColumn 100 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID1"
+                        , timezone = Time.utc
+                        , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
+                        , hasMore = False
+                        }
+                , withSourceInColumn 100 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID2"
+                        , timezone = Time.utc
+                        , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
+                        , hasMore = True
+                        }
                 ]
     in
     section []
