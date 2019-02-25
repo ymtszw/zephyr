@@ -6,6 +6,7 @@ import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div)
 import Html.Keyed
+import List.Extra
 import ListExtra
 import Octicons
 import Time
@@ -27,7 +28,7 @@ type alias Effects msg =
 type alias Props =
     { timezone : Time.Zone
     , columnId : String
-    , items : List ColumnItem
+    , items : List ColumnItem -- Expects it to be sorted from latest to oldest
     , hasMore : Bool
     }
 
@@ -48,29 +49,30 @@ render eff props =
                         ++ eff.scrollAttrs
 
                 contents =
-                    items
-                        |> ListExtra.groupWhile shouldGroup
-                        |> List.map (itemGroupKey props.timezone)
+                    -- We reverse first, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
+                    List.reverse items
+                        |> List.Extra.groupWhile shouldGroup
+                        |> List.Extra.reverseMap (itemGroupKey props.timezone)
             in
             Html.Keyed.node "div" attrs <|
                 (contents ++ [ loadMoreOrButtonTokenKey (eff.onLoadMoreClick props.columnId) props.hasMore ])
 
 
 shouldGroup : ColumnItem -> ColumnItem -> Bool
-shouldGroup newer older =
-    case ( newer, older ) of
-        ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
-            shouldGroupDiscordMessage dNewer dOlder
+shouldGroup older newer =
+    case ( older, newer ) of
+        ( Product _ (DiscordItem dOlder), Product _ (DiscordItem dNewer) ) ->
+            shouldGroupDiscordMessage dOlder dNewer
 
-        ( Product _ (SlackItem sNewer), Product _ (SlackItem sOlder) ) ->
-            shouldGroupSlackMessage sNewer sOlder
+        ( Product _ (SlackItem sOlder), Product _ (SlackItem sNewer) ) ->
+            shouldGroupSlackMessage sOlder sNewer
 
         ( _, _ ) ->
             False
 
 
 shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool
-shouldGroupDiscordMessage dNewer dOlder =
+shouldGroupDiscordMessage dOlder dNewer =
     (dNewer.channelId == dOlder.channelId)
         && (dNewer.author == dOlder.author)
         && (ms dOlder.timestamp + groupingIntervalMillis > ms dNewer.timestamp)
@@ -82,7 +84,7 @@ groupingIntervalMillis =
 
 
 shouldGroupSlackMessage : Slack.Message -> Slack.Message -> Bool
-shouldGroupSlackMessage sNewer sOlder =
+shouldGroupSlackMessage sOlder sNewer =
     (sNewer.conversation == sOlder.conversation)
         && (sNewer.author == sOlder.author)
         && (ms (Slack.getPosix sOlder) + groupingIntervalMillis > ms (Slack.getPosix sNewer))
@@ -113,6 +115,6 @@ loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
 -- ITEM
 
 
-itemGroupKey : Time.Zone -> List ColumnItem -> ( String, Html msg )
-itemGroupKey tz groupedItems =
+itemGroupKey : Time.Zone -> ( ColumnItem, List ColumnItem ) -> ( String, Html msg )
+itemGroupKey tz ( oldestItem, subsequentItems ) =
     ( "todo", none )
