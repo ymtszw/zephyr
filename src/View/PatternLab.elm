@@ -113,7 +113,7 @@ routes =
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
     , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
     , R "column_new_message_editor" "Organisms" "Column.NewMessageEditor" <| \m -> pLab [ columnNewMessageEditor m ] m
-    , R "column_items" "Organisms" "Column.Items" <| pLab [ items ]
+    , R "column_items" "Organisms" "Column.Items" <| pLab [ columnItems ]
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -2847,8 +2847,8 @@ columnNewMessageEditor m =
         ]
 
 
-items : Html Msg
-items =
+columnItems : Html Msg
+columnItems =
     section []
         [ h1 [ xxProminent ] [ t "Column.Items" ]
         , section [ oneDark ]
