@@ -2851,17 +2851,20 @@ columnItems =
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
-                , withSourceInColumn 300 "" <|
+                , withSourceInColumn 200 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID1"
                         , timezone = Time.utc
-                        , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
+                        , items =
+                            [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha }
+                            , LocalMessage { id = "LM0", message = lorem ++ " " ++ iroha }
+                            ]
                         , hasMore = False
                         }
-                , withSourceInColumn 300 "" <|
+                , withSourceInColumn 150 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
