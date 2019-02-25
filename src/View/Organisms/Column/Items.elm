@@ -7,15 +7,20 @@ import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div)
 import Html.Keyed
 import ListExtra
+import Octicons
 import Time
 import TimeExtra exposing (ms)
+import View.Atoms.Background as Background
+import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Icon as Icon
 import View.Style exposing (none)
 
 
 type alias Effects msg =
     { scrollAttrs : List (Attribute msg) -- From Scroll.scrollAttrs; can be empty
+    , onLoadMoreClick : String -> msg
     }
 
 
@@ -48,7 +53,7 @@ render eff props =
                         |> List.map (itemGroupKey props.timezone)
             in
             Html.Keyed.node "div" attrs <|
-                (contents ++ [ loadMoreKey props.columnId props.hasMore ])
+                (contents ++ [ loadMoreOrButtonTokenKey (eff.onLoadMoreClick props.columnId) props.hasMore ])
 
 
 shouldGroup : ColumnItem -> ColumnItem -> Bool
@@ -88,8 +93,22 @@ itemGroupKey tz groupedItems =
     ( "todo", none )
 
 
-loadMoreKey : String -> Bool -> ( String, Html msg )
-loadMoreKey cId hasMore =
+loadMoreOrButtonTokenKey : msg -> Bool -> ( String, Html msg )
+loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
     -- This button is rarely visible due to auto adjusting.
     -- But sometimes appears around window resizing, rapid scrolling, or reaching bottom
-    ( "todo", none )
+    Tuple.pair "loadMoreOrBottomToken" <|
+        if hasMore then
+            Icon.octiconButton [ flexItem, flexColumn, flexCenter, padding15, Background.transparent ]
+                { onPress = onLoadMoreClick
+                , size = xxProminentSize
+                , shape = Octicons.commentDiscussion
+                }
+
+        else
+            div [ flexColumn, flexCenter, padding15 ]
+                [ Image.octicon
+                    { size = xxProminentSize
+                    , shape = Octicons.thumbsup
+                    }
+                ]
