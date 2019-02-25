@@ -1,7 +1,7 @@
 module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
-import Data.Column exposing (ColumnItem(..))
+import Data.Column exposing (ColumnItem(..), Media)
 import Data.Item exposing (Item(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -148,8 +148,7 @@ itemGroupKey tz ( oldestItem, subsequentItems ) =
             , Border.colorBd
             ]
             [ itemAuthorAvatar40 oldestItem
-
-            -- , itemGroupContents theme tz oldestItem subsequentItems
+            , itemGroupContents tz oldestItem subsequentItems
             ]
 
 
@@ -215,6 +214,83 @@ itemAuthorAvatar40 item =
 
         LocalMessage _ ->
             octiconAvatar40 Octicons.note
+
+
+itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
+itemGroupContents tz oldestItem subsequentItems =
+    Html.Keyed.node "div" [ flexColumn, flexBasisAuto, flexShrink, spacingColumn2 ] <|
+        case oldestItem of
+            SystemMessage { id, message, mediaMaybe } ->
+                [ simpleMessageKey id message mediaMaybe ]
+
+            LocalMessage { id, message } ->
+                [ simpleMessageKey id message Nothing ]
+
+            Product offset (DiscordItem oldestMessage) ->
+                let
+                    subsequentContents =
+                        List.filterMap unwrap subsequentItems
+
+                    unwrap item =
+                        case item of
+                            Product o (DiscordItem m) ->
+                                Just (discordMessageKey o m)
+
+                            _ ->
+                                Nothing
+                in
+                [ ( "itemGroupHeader", discordItemGroupHeader tz oldestMessage )
+                , discordMessageKey offset oldestMessage
+                ]
+                    ++ subsequentContents
+
+            Product offset (SlackItem oldestMessage) ->
+                let
+                    subsequentContents =
+                        List.filterMap unwrap subsequentItems
+
+                    unwrap item =
+                        case item of
+                            Product o (SlackItem m) ->
+                                Just (slackMessageKey o m)
+
+                            _ ->
+                                Nothing
+                in
+                [ ( "itemGroupHeader", slackItemGroupHeader tz oldestMessage )
+                , slackMessageKey offset oldestMessage
+                ]
+                    ++ subsequentContents
+
+
+discordItemGroupHeader : Time.Zone -> Discord.Message -> Html msg
+discordItemGroupHeader tz dm =
+    -- TODO
+    none
+
+
+slackItemGroupHeader : Time.Zone -> Slack.Message -> Html msg
+slackItemGroupHeader tz sm =
+    -- TODO
+    none
+
+
+simpleMessageKey : String -> String -> Maybe Media -> ( String, Html msg )
+simpleMessageKey id message mediaMaybe =
+    -- TODO
+    Tuple.pair id none
+
+
+discordMessageKey : Broker.Offset -> Discord.Message -> ( String, Html msg )
+discordMessageKey os dm =
+    -- TODO
+    Tuple.pair (Broker.offsetToString os) none
+
+
+slackMessageKey : Broker.Offset -> Slack.Message -> ( String, Html msg )
+slackMessageKey os sm =
+    -- TODO
+    Tuple.pair (Broker.offsetToString os) none
 
 
 
