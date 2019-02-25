@@ -14,6 +14,7 @@ import Octicons
 import SelectArray
 import StringExtra
 import Task
+import Time
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
@@ -36,6 +37,7 @@ import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
+import View.Organisms.Column.Items as Items
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
@@ -111,6 +113,7 @@ routes =
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
     , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
     , R "column_new_message_editor" "Organisms" "Column.NewMessageEditor" <| \m -> pLab [ columnNewMessageEditor m ] m
+    , R "column_items" "Organisms" "Column.Items" <| pLab [ items ]
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -2840,6 +2843,25 @@ columnNewMessageEditor m =
                             }
                         }
                     ]
+            ]
+        ]
+
+
+items : Html Msg
+items =
+    section []
+        [ h1 [ xxProminent ] [ t "Column.Items" ]
+        , section [ oneDark ]
+            [ h2 [ xProminent ] [ t "oneDark" ]
+            , withSource "" <|
+                Items.render { scrollAttrs = [] }
+                    { columnId = "CID", timezone = Time.utc, items = [], hasMore = False }
+            ]
+        , section [ aubergine ]
+            [ h2 [ xProminent ] [ t "aubergine" ]
+            , withSource "" <|
+                Items.render { scrollAttrs = [] }
+                    { columnId = "CID", timezone = Time.utc, items = [], hasMore = False }
             ]
         ]
 
