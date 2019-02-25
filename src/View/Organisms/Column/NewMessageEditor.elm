@@ -84,7 +84,7 @@ render eff props =
         [ flexColumn
         , padding5
         , spacingColumn5
-        , Border.colorBd
+        , Border.colorNote
         , Border.bot1
         , Border.solid
         ]
@@ -281,6 +281,7 @@ filePreview onDiscardFileButtonClick f dataUrl =
             div [ Background.transparent, padding5 ]
                 [ Icon.octiconButton
                     [ padding5
+                    , Image.hovText
                     , Border.elliptic
                     , Background.colorBg
                     , Background.hovBd
