@@ -18,6 +18,7 @@ import View.Molecules.Source as Source
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Header as Header
+import View.Organisms.Column.Items as Items
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Sidebar as Sidebar
@@ -58,6 +59,7 @@ rendered =
                 ++ Pref.styles
                 ++ Header.styles
                 ++ NewMessageEditor.styles
+                ++ Items.styles
                 ++ View.Templates.Main.styles
 
 

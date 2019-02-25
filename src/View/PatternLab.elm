@@ -2851,7 +2851,7 @@ columnItems =
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
-                , withSourceInColumn 100 "" <|
+                , withSourceInColumn 300 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
@@ -2861,7 +2861,7 @@ columnItems =
                         , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
                         , hasMore = False
                         }
-                , withSourceInColumn 100 "" <|
+                , withSourceInColumn 300 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
