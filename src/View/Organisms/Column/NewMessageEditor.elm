@@ -171,13 +171,7 @@ editorTextarea eff cId isActive editor =
             , widthFill
             , padding5
             , spellcheck True
-            , placeholder <|
-                case editor of
-                    DiscordMessageEditor _ ->
-                        "Message  (Ctrl + Enter to submit)"
-
-                    LocalMessageEditor _ ->
-                        "Memo  (Ctrl + Enter to submit)"
+            , placeholder placeholder_
             , Border.round5
             , onFocus (eff.onInteracted cId Authoring)
             , onInput (eff.onTextInput cId)
@@ -187,6 +181,23 @@ editorTextarea eff cId isActive editor =
               else
                 onCtrlEnterKeyDown (eff.onSubmit cId)
             ]
+
+        placeholder_ =
+            let
+                ctrlEnterInstruction base =
+                    if isActive then
+                        base ++ "  (Ctrl + Enter to submit)"
+
+                    else
+                        base
+            in
+            ctrlEnterInstruction <|
+                case editor of
+                    DiscordMessageEditor _ ->
+                        "Message"
+
+                    LocalMessageEditor _ ->
+                        "Memo"
 
         stateAttrs =
             if isActive then
