@@ -88,11 +88,6 @@ shouldGroupSlackMessage sNewer sOlder =
         && (ms (Slack.getPosix sOlder) + groupingIntervalMillis > ms (Slack.getPosix sNewer))
 
 
-itemGroupKey : Time.Zone -> List ColumnItem -> ( String, Html msg )
-itemGroupKey tz groupedItems =
-    ( "todo", none )
-
-
 loadMoreOrButtonTokenKey : msg -> Bool -> ( String, Html msg )
 loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
     -- This button is rarely visible due to auto adjusting.
@@ -112,3 +107,12 @@ loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
                     , shape = Octicons.thumbsup
                     }
                 ]
+
+
+
+-- ITEM
+
+
+itemGroupKey : Time.Zone -> List ColumnItem -> ( String, Html msg )
+itemGroupKey tz groupedItems =
+    ( "todo", none )
