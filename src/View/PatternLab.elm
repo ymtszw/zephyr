@@ -10,6 +10,7 @@ import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
+import List.Extra
 import ListExtra
 import Octicons
 import SelectArray
@@ -247,15 +248,15 @@ navi : Route -> Html Msg
 navi current =
     div [ flexColumn, flexCenter, spacingColumn10, padding15 ] <|
         List.map (naviRow current) <|
-            ListExtra.groupWhile (\r1 r2 -> r1.layer == r2.layer) routes
+            List.Extra.groupWhile (\r1 r2 -> r1.layer == r2.layer) routes
 
 
-naviRow : Route -> List R -> Html Msg
-naviRow current rs =
+naviRow : Route -> ( R, List R ) -> Html Msg
+naviRow current ( r, rs ) =
     div [ flexRow, flexCenter, spacingRow15 ]
-        [ h2 [ prominent, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
+        [ h2 [ prominent, bold ] [ t r.layer ]
         , div [ flexRow, flexGrow, flexWrap, flexCenter, spacingWrapped10 ] <|
-            List.map (naviButton current) rs
+            List.map (naviButton current) (r :: rs)
         ]
 
 
