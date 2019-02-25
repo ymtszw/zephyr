@@ -1445,6 +1445,8 @@ icon =
             Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))
         , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing""" <|
             Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing
+        , withSource """Icon.octiconBlock [ style "width" "75px", style "height" "75px" ] { size = 50, shape = Octicons.search }""" <|
+            Icon.octiconBlock [ style "width" "75px", style "height" "75px" ] { size = 50, shape = Octicons.search }
         , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
             Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
         , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|
