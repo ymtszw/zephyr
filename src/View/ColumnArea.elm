@@ -22,6 +22,7 @@ import Element.Lazy exposing (..)
 import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
+import List.Extra
 import ListExtra
 import Octicons
 import Scroll exposing (Scroll)
@@ -306,10 +307,11 @@ itemsEl theme tz cId items =
             hasMore =
                 List.length itemsVisible < Scroll.size items
         in
-        -- Do note that items are sorted from latest to oldest
-        itemsVisible
-            |> ListExtra.groupWhile shouldGroup
-            |> List.map (columnItemKeyEl theme tz)
+        -- Do note that items are sorted from latest to oldest at first.
+        -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
+        List.reverse itemsVisible
+            |> List.Extra.groupWhile shouldGroup
+            |> List.Extra.reverseMap (columnItemKeyEl theme tz)
             |> (\itemEls -> itemEls ++ [ loadMoreKeyEl theme cId hasMore ])
             |> Element.Keyed.column columnAttrs
 
@@ -327,7 +329,7 @@ helpTextSize =
 
 
 shouldGroup : ColumnItem -> ColumnItem -> Bool
-shouldGroup newer older =
+shouldGroup older newer =
     case ( newer, older ) of
         ( Product _ (DiscordItem dNewer), Product _ (DiscordItem dOlder) ) ->
             shouldGroupDiscordMessage dNewer dOlder
