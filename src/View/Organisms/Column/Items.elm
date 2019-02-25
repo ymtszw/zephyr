@@ -4,12 +4,13 @@ import Data.Column exposing (ColumnItem(..))
 import Data.Item exposing (Item(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html)
+import Html exposing (Attribute, Html, div)
 import Html.Keyed
 import ListExtra
 import Time
 import TimeExtra exposing (ms)
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Typography exposing (..)
 import View.Style exposing (none)
 
 
@@ -30,7 +31,7 @@ render : Effects msg -> Props -> Html msg
 render eff props =
     case props.items of
         [] ->
-            none
+            div [ flexColumn, flexCenter, padding15, colorNote ] [ t "Waiting for messages..." ]
 
         items ->
             let
