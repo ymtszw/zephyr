@@ -7,7 +7,6 @@ import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div)
 import Html.Keyed
 import List.Extra
-import ListExtra
 import Octicons
 import Time
 import TimeExtra exposing (ms)

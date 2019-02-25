@@ -23,7 +23,6 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import List.Extra
-import ListExtra
 import Octicons
 import Scroll exposing (Scroll)
 import Time
