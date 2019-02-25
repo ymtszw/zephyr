@@ -12,7 +12,7 @@ import Element.Events exposing (onFocus)
 import Element.Font as Font
 import Element.Input
 import File exposing (File)
-import ListExtra
+import List.Extra
 import Octicons
 import SelectArray
 import StringExtra
@@ -99,7 +99,7 @@ editorSelectOptionEl fam ( _, ce ) =
     case ce of
         DiscordMessageEditor { channelId } ->
             fam.ofDiscordChannel
-                |> Maybe.andThen (Tuple.second >> ListExtra.findOne (\c -> c.id == channelId))
+                |> Maybe.andThen (Tuple.second >> List.Extra.find (\c -> c.id == channelId))
                 |> Maybe.map (\c -> discordChannelEl [] { size = editorFontSize, channel = c })
                 |> Maybe.withDefault (text channelId)
 

@@ -8,7 +8,7 @@ import Html.Events exposing (on, onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
 import Json.DecodeExtra as D
-import ListExtra
+import List.Extra
 import Octicons
 import SelectArray exposing (SelectArray)
 import StringExtra
@@ -148,7 +148,7 @@ editorSelectOption sources ( index, editor ) =
                         _ ->
                             False
             in
-            case ListExtra.findOne matchingDiscordSource sources of
+            case List.Extra.find matchingDiscordSource sources of
                 Just s ->
                     Source.horizontalBlock14 s
 

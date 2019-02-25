@@ -63,7 +63,7 @@ import Html.Attributes
 import Html.Events
 import Json.Decode as D exposing (Decoder)
 import Json.Encode
-import ListExtra
+import List.Extra
 import Octicons
 import Time
 import TimeExtra
@@ -933,7 +933,7 @@ filterToIconEl attrs size fam filter elMaybe =
 withDiscordChannel : String -> FilterAtomMaterial -> (Discord.ChannelCache -> a) -> Maybe a
 withDiscordChannel cId fam mapper =
     fam.ofDiscordChannel
-        |> Maybe.andThen (\( _, caches ) -> ListExtra.findOne (\c -> c.id == cId) caches)
+        |> Maybe.andThen (\( _, caches ) -> List.Extra.find (\c -> c.id == cId) caches)
         |> Maybe.map mapper
 
 

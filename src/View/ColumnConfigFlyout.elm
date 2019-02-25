@@ -15,7 +15,7 @@ import Element.Border as BD
 import Element.Font as Font
 import Element.Input
 import Element.Lazy exposing (..)
-import ListExtra
+import List.Extra
 import Octicons
 import Scroll
 import String exposing (fromInt)
@@ -445,7 +445,7 @@ filterAtomVariableInputEl theme ss fam columnId fi ai fa =
                     Maybe.withDefault ( Nothing, [] ) (Maybe.map prepareOptions fam.ofDiscordChannel)
 
                 prepareOptions ( _, channels ) =
-                    ( ListExtra.findOne (.id >> (==) channelId) channels
+                    ( List.Extra.find (.id >> (==) channelId) channels
                     , List.map (\c -> ( c.id, c )) channels
                     )
             in
@@ -459,7 +459,7 @@ filterAtomVariableInputEl theme ss fam columnId fi ai fa =
                     Maybe.withDefault ( Nothing, [] ) (Maybe.map prepareOptions fam.ofSlackConversation)
 
                 prepareOptions { conversations } =
-                    ( ListExtra.findOne (Slack.getConversationIdStr >> (==) convIdStr) conversations
+                    ( List.Extra.find (Slack.getConversationIdStr >> (==) convIdStr) conversations
                     , List.map (\c -> ( Slack.getConversationIdStr c, c )) conversations
                     )
             in

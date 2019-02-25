@@ -11,7 +11,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import List.Extra
-import ListExtra
 import Octicons
 import SelectArray
 import StringExtra
@@ -144,7 +143,7 @@ urlToRoute url =
             U.map matchFirstPath U.string
 
         matchFirstPath firstPath =
-            case ListExtra.findOne (\r -> r.path == firstPath) routes of
+            case List.Extra.find (\r -> r.path == firstPath) routes of
                 Just _ ->
                     firstPath
 
@@ -230,7 +229,7 @@ view : Model -> { title : String, body : List (Html Msg) }
 view m =
     { title = "Zephyr: Pattern Lab"
     , body =
-        case ListExtra.findOne (\r -> r.path == m.route) routes of
+        case List.Extra.find (\r -> r.path == m.route) routes of
             Just r ->
                 View.Stylesheet.render :: r.view m
 
