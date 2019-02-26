@@ -15,6 +15,7 @@ import Octicons
 import SelectArray
 import StringExtra
 import Task
+import TextParser
 import Time
 import Url exposing (Url)
 import Url.Builder
@@ -32,6 +33,7 @@ import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
+import View.Molecules.MarkdownBlocks as MarkdownBlocks
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
@@ -104,6 +106,7 @@ routes =
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
+    , R "markdown_blocks" "Molecules" "MarkdownBlocks" <| pLab [ markdownBlocks ]
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
     , R "source" "Molecules" "Column" <| pLab [ column ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
@@ -1618,6 +1621,23 @@ table_ =
                 , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
                 , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
                 }
+        ]
+
+
+markdownBlocks : Html Msg
+markdownBlocks =
+    let
+        themed theme_ themeStr =
+            section [ theme_ ]
+                [ h2 [ xProminent ] [ t themeStr ]
+                , withSourceInColumn 100 "" <|
+                    div [] (MarkdownBlocks.render TextParser.defaultOptions lorem)
+                ]
+    in
+    section []
+        [ h1 [ xxProminent ] [ t "MarkdownBlocks" ]
+        , themed oneDark "oneDark"
+        , themed aubergine "aubergine"
         ]
 
 
