@@ -11,6 +11,7 @@ import Html.Events exposing (onClick)
 import Html.Keyed
 import List.Extra
 import Octicons
+import TextParser
 import Time
 import TimeExtra exposing (ms)
 import Url
@@ -20,6 +21,7 @@ import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
+import View.Molecules.MarkdownBlocks as MarkdownBlocks
 import View.Style exposing (..)
 
 
@@ -277,8 +279,26 @@ slackItemGroupHeader tz sm =
 
 simpleMessageKey : String -> String -> Maybe Media -> ( String, Html msg )
 simpleMessageKey id message mediaMaybe =
-    -- TODO
-    Tuple.pair id none
+    Tuple.pair id <|
+        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow ] <|
+            case mediaMaybe of
+                Just m ->
+                    markdownBlocks message
+                        ++ [-- mediaBlock m
+                           ]
+
+                Nothing ->
+                    markdownBlocks message
+
+
+markdownBlocks : String -> List (Html msg)
+markdownBlocks raw =
+    if String.isEmpty raw then
+        []
+
+    else
+        -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
+        MarkdownBlocks.render TextParser.defaultOptions raw
 
 
 discordMessageKey : Broker.Offset -> Discord.Message -> ( String, Html msg )
