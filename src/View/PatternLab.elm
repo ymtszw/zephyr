@@ -2631,7 +2631,7 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn 400 """ColumnConfig.render
+            , withSourceInColumn 300 """ColumnConfig.render
     { onCloseButtonClick = Toggle False
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
