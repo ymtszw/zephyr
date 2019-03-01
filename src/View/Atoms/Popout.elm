@@ -3,7 +3,7 @@ module View.Atoms.Popout exposing
     , Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredTo
     )
 
-{-| Shows an Html element in "popout" manner.
+{-| Shows Html elements in "popout" manner.
 
 "Popout" elements can literally pop out of their parent containers,
 so that it can float above parent scrollbars and boundaries.
@@ -60,8 +60,8 @@ In this example `myAnchor` is placed inside the scope of `withOne` or `withMany`
 Notice that rendering function `withOne` or `withMany` creates a scope within your view
 in which you can "control" visibility of your popout elements.
 
-So, in fact, point 2 MUST be placed inside the scope,
-whereas point 1 can actually live ANYWHERE in your view as long as it has a proper `id` is attached.
+So, in fact, elements with the 2nd purpose MUST be placed inside the scope,
+whereas one for the 1st purpose can actually live ANYWHERE in your view as long as it has a proper `id` attached.
 
 @docs State, Msg, init, update, show, hide
 @docs Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredTo
