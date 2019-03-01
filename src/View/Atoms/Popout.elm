@@ -126,19 +126,19 @@ update : Msg -> State -> ( State, Cmd Msg )
 update msg (State dict) =
     case msg of
         RequestShow popoutId anchorId ->
-            let
-                updater phaseMaybe =
-                    case phaseMaybe of
-                        Just _ ->
-                            -- Keep current phase, but dispatch new queryAnchorElement
-                            phaseMaybe
+            case Dict.get popoutId dict of
+                Just QueryingAnchorElement ->
+                    -- Not dispatching duplicated queryAnchorElement
+                    ( State dict, Cmd.none )
 
-                        Nothing ->
-                            Just QueryingAnchorElement
-            in
-            ( State (Dict.update popoutId updater dict)
-            , queryAnchorElement popoutId anchorId
-            )
+                Just (Shown _) ->
+                    -- Keep current phase, but dispatch new queryAnchorElement
+                    ( State dict, queryAnchorElement popoutId anchorId )
+
+                Nothing ->
+                    ( State (Dict.insert popoutId QueryingAnchorElement dict)
+                    , queryAnchorElement popoutId anchorId
+                    )
 
         GotAnchorElement popoutId (Ok anchorElement) ->
             ( State (Dict.update popoutId (\_ -> Just (Shown anchorElement)) dict), Cmd.none )
