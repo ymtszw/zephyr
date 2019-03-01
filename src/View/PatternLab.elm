@@ -9,7 +9,7 @@ import File exposing (File)
 import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (..)
 import List.Extra
 import Octicons
 import SelectArray
@@ -28,6 +28,7 @@ import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Popout as Popout
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
@@ -69,6 +70,7 @@ type alias Model =
     , route : Route
     , textInput : String
     , toggle : Bool
+    , popout : Popout.State
     , select : Select.State
     , selected : Maybe String
     , numColumns : Int
@@ -99,6 +101,7 @@ routes =
     , R "border" "Atoms" "Border" <| pLab [ border ]
     , R "background" "Atoms" "Background" <| pLab [ background ]
     , R "layout" "Atoms" "Layout" <| pLab [ layout ]
+    , R "popout" "Atoms" "Popout" <| \m -> pLab [ popout m ] m
     , R "image" "Atoms" "Image" <| pLab [ image ]
     , R "button" "Atoms" "Button" <| pLab [ button_ ]
     , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
@@ -128,6 +131,7 @@ init () url key =
       , route = urlToRoute url
       , textInput = ""
       , toggle = False
+      , popout = Popout.init
       , select = Select.AllClosed
       , selected = Nothing
       , numColumns = 4
@@ -162,6 +166,7 @@ type Msg
     | Arrived Url
     | TextInput String
     | Toggle Bool
+    | PopoutCtrl Popout.Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
@@ -193,6 +198,13 @@ update msg m =
 
         Toggle bool ->
             ( { m | toggle = bool }, Cmd.none )
+
+        PopoutCtrl pMsg ->
+            let
+                ( newPopout, cmd ) =
+                    Popout.update pMsg m.popout
+            in
+            ( { m | popout = newPopout }, Cmd.map PopoutCtrl cmd )
 
         SelectCtrl sMsg ->
             let
@@ -924,6 +936,42 @@ badge =
                 , bottomRight =
                     Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
                 }
+        ]
+
+
+popout : Model -> Html Msg
+popout m =
+    section []
+        [ h1 [ xxProminent ] [ t "Popout" ]
+        , withSourceInColumn 100 "" <|
+            let
+                myTooltip =
+                    Popout.withControl config m.popout <|
+                        \_ ->
+                            Popout.node "div"
+                                [ style "width" "500px"
+                                , style "height" "300px"
+                                , style "border" "1px solid red"
+                                ]
+                                [ t "I'm one huge tooltip!" ]
+
+                config =
+                    { id = "popoutElementId001"
+                    , msgTagger = PopoutCtrl
+                    , orientation = Popout.anchoredTo "anchorElementId001"
+                    }
+            in
+            div [] <|
+                Popout.withOne myTooltip <|
+                    \control ->
+                        div
+                            [ id "anchorElementId001"
+                            , style "height" "50px"
+                            , style "border" "1px solid black"
+                            , onMouseEnter control.show
+                            , onMouseLeave control.hide
+                            ]
+                            [ t "Hover cursor on me to reveal a tooltip!" ]
         ]
 
 
