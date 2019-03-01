@@ -963,7 +963,7 @@ popout m =
     config =
         { id = "popoutElementId001"
         , msgTagger = PopoutCtrl
-        , orientation = Popout.anchoredTo "anchorElementId001"
+        , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
         }
 in
 div [] <|
@@ -998,7 +998,7 @@ div [] <|
                 config =
                     { id = "popoutElementId001"
                     , msgTagger = PopoutCtrl
-                    , orientation = Popout.anchoredTo "anchorElementId001"
+                    , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
                     }
             in
             div [] <|

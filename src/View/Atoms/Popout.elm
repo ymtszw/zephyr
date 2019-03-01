@@ -1,6 +1,6 @@
 module View.Atoms.Popout exposing
-    ( State, Msg, init, update
-    , Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredTo
+    ( State, Msg, init, update, sub
+    , Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredVerticallyTo
     )
 
 {-| Shows Html elements in "popout" manner.
@@ -43,7 +43,7 @@ Useful for dropdowns, modals, and tooltips.
     myTooltip popoutState =
         Popout.control { id = "popoutElementId001" , msgTagger = PopoutMsg } <| \control ->
             Popout.node "div"
-                { orientation = Popout.anchoredTo "anchorElementId001"
+                { orientation = Popout.anchoredVerticallyTo "anchorElementId001"
                 , state = popoutState
                 }
                 [ style "width" "40px"
@@ -63,8 +63,8 @@ in which you can "control" visibility of your popout elements.
 So, in fact, elements with the 2nd purpose MUST be placed inside the scope,
 whereas one for the 1st purpose can actually live ANYWHERE in your view as long as it has a proper `id` attached.
 
-@docs State, Msg, init, update, show, hide
-@docs Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredTo
+@docs State, Msg, init, update, sub
+@docs Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredVerticallyTo
 
 -}
 
@@ -172,7 +172,7 @@ type alias Config msg =
 
 
 type Orientation
-    = AnchoredTo AnchorId
+    = AnchoredVerticallyTo AnchorId
 
 
 type alias AnchorId =
@@ -274,6 +274,8 @@ withMany popouts scopedContent =
     scopedContent controls :: popoutHtmls
 
 
-anchoredTo : String -> Orientation
-anchoredTo anchorIdStr =
-    AnchoredTo (Id.from anchorIdStr)
+{-| Anchor a Popout element vertically to an anchor target element.
+-}
+anchoredVerticallyTo : String -> Orientation
+anchoredVerticallyTo anchorIdStr =
+    AnchoredVerticallyTo (Id.from anchorIdStr)
