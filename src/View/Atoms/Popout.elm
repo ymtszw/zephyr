@@ -265,16 +265,59 @@ finalizeNode popoutId orientation (State dict) ( tagName, attrs, contents ) =
         Just (Shown a) ->
             let
                 positionedAttrs =
-                    [ id (Id.to popoutId)
-                    , style "position" "fixed"
-                    , style "left" (String.fromFloat (a.element.x + a.element.width) ++ "px")
-                    , style "top" (String.fromFloat a.element.y ++ "px")
-                    ]
+                    id (popoutIdPrefix ++ Id.to popoutId)
+                        :: style "position" "fixed"
+                        :: calculatePosition orientation a
             in
             Html.node tagName (attrs ++ positionedAttrs) contents
 
         _ ->
             text ""
+
+
+popoutIdPrefix : String
+popoutIdPrefix =
+    "popout__"
+
+
+calculatePosition : Orientation -> Browser.Dom.Element -> List (Attribute msg)
+calculatePosition orientation a =
+    case orientation of
+        AnchoredVerticallyTo _ ->
+            let
+                marginAboveAnchorInViewport =
+                    max 0 (anchorTop - viewportTop)
+
+                marginBelowAnchorInViewport =
+                    max 0 (viewportBottom - anchorBottom)
+
+                anchorTop =
+                    a.element.y
+
+                anchorBottom =
+                    a.element.y + a.element.height
+
+                viewportTop =
+                    a.viewport.y
+
+                viewportBottom =
+                    a.viewport.y + a.viewport.height
+            in
+            if marginBelowAnchorInViewport >= marginAboveAnchorInViewport then
+                let
+                    anchorBottomFromViewportTop =
+                        anchorBottom - viewportTop
+                in
+                [ style "top" (String.fromFloat anchorBottomFromViewportTop ++ "px") ]
+
+            else
+                let
+                    anchorTopFromViewportBottom =
+                        viewportBottom - anchorTop
+                in
+                -- bottom-anchored positioning becomes off when the viewport is vertically resized!
+                -- We must subscribe to resize events to hide Popouts.
+                [ style "bottom" (String.fromFloat anchorTopFromViewportBottom ++ "px") ]
 
 
 {-| Generate a popout element. Render using `withOne` or `withMany`.
