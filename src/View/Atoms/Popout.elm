@@ -70,9 +70,12 @@ whereas one for the 1st purpose can actually live ANYWHERE in your view as long 
 
 import AssocList as Dict exposing (Dict)
 import Browser.Dom
+import Browser.Events
 import Html exposing (Attribute, Html, h1, text)
 import Html.Attributes exposing (id, style)
 import Id exposing (Id)
+import Json.Decode exposing (Decoder, fail, field, lazy, list, oneOf, string, succeed)
+import Json.DecodeExtra exposing (do, optionField, when)
 import Task
 
 
@@ -163,6 +166,35 @@ queryAnchorElement popoutId anchorId =
     Task.attempt (GotAnchorElement popoutId) (Browser.Dom.getElement (Id.to anchorId))
 
 
+sub : Sub Msg
+sub =
+    Sub.batch
+        [ Browser.Events.onResize (\_ _ -> HideAll)
+        , Browser.Events.onKeyDown <|
+            when (field "key" string) ((==) "Escape") (succeed HideAll)
+        , Browser.Events.onClick <|
+            -- We do this because there isn't widely implemented property yet for getting Event bubbling path.
+            -- Event.path is Chrome-only, Event.composedPath() is a function.
+            field "target" recursivePathElementDecoder
+        ]
+
+
+recursivePathElementDecoder : Decoder Msg
+recursivePathElementDecoder =
+    do (field "id" string) <|
+        \id ->
+            if String.startsWith popoutIdPrefix id then
+                fail "Click inside Popout node"
+
+            else
+                oneOf
+                    [ field "parentElement" (lazy (\_ -> recursivePathElementDecoder))
+                    , -- EventTarget other than Element do not have id property.
+                      -- So if the parentElement does not have id, it means we reached the root
+                      succeed HideAll
+                    ]
+
+
 
 -- VIEW
 
@@ -215,7 +247,7 @@ withControl config state toNode =
 
         control =
             case config.orientation of
-                AnchoredTo anchorId ->
+                AnchoredVerticallyTo anchorId ->
                     { show = config.msgTagger (RequestShow popoutId anchorId)
                     , hide = config.msgTagger (RequestHide popoutId)
                     }

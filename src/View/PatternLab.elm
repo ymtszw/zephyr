@@ -59,7 +59,9 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \m -> Select.sub SelectCtrl m.select
+        , subscriptions =
+            \m ->
+                Sub.batch [ Select.sub SelectCtrl m.select, Sub.map PopoutCtrl Popout.sub ]
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
