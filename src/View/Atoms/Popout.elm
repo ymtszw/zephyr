@@ -120,6 +120,7 @@ type Msg
     = RequestShow PopoutId AnchorId
     | GotAnchorElement PopoutId (Result Browser.Dom.Error Browser.Dom.Element)
     | RequestHide PopoutId
+    | HideAll
 
 
 update : Msg -> State -> ( State, Cmd Msg )
@@ -148,6 +149,9 @@ update msg (State dict) =
 
         RequestHide popoutId ->
             ( State (Dict.remove popoutId dict), Cmd.none )
+
+        HideAll ->
+            ( State Dict.empty, Cmd.none )
 
 
 queryAnchorElement : PopoutId -> AnchorId -> Cmd Msg
