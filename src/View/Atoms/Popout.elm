@@ -71,7 +71,7 @@ whereas point 1 can actually live ANYWHERE in your view as long as it has a prop
 import AssocList as Dict exposing (Dict)
 import Browser.Dom
 import Html exposing (Attribute, Html, h1, text)
-import Html.Attributes exposing (id)
+import Html.Attributes exposing (id, style)
 import Id exposing (Id)
 import Task
 
@@ -212,9 +212,16 @@ type alias Node msg =
 finalizeNode : PopoutId -> Orientation -> State -> Node msg -> Html msg
 finalizeNode popoutId orientation (State dict) ( tagName, attrs, contents ) =
     case Dict.get popoutId dict of
-        Just (Shown anchorElement) ->
-            -- TODO Apply calculated position
-            Html.node tagName (attrs ++ [ id (Id.to popoutId) ]) contents
+        Just (Shown a) ->
+            let
+                positionedAttrs =
+                    [ id (Id.to popoutId)
+                    , style "position" "fixed"
+                    , style "left" (String.fromFloat (a.element.x + a.element.width) ++ "px")
+                    , style "top" (String.fromFloat a.element.y ++ "px")
+                    ]
+            in
+            Html.node tagName (attrs ++ positionedAttrs) contents
 
         _ ->
             text ""

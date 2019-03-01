@@ -943,7 +943,40 @@ popout : Model -> Html Msg
 popout m =
     section []
         [ h1 [ xxProminent ] [ t "Popout" ]
-        , withSourceInColumn 100 "" <|
+        , withSourceInColumn 100 """let
+    myTooltip =
+        Popout.withControl config m.popout <|
+            \\_ ->
+                Popout.node "div"
+                    [ style "width" "500px"
+                    , style "height" "300px"
+                    , style "color" "red"
+                    , style "border" "1px solid red"
+                    , style "background-color" "white"
+                    , style "z-index" "1000"
+                    ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! "
+                    , t "Note that z-index can be omitted if you include whole body in Popout control scope, "
+                    , t "since browsers naturally stack elements in order of appearance on the source code."
+                    ]
+
+    config =
+        { id = "popoutElementId001"
+        , msgTagger = PopoutCtrl
+        , orientation = Popout.anchoredTo "anchorElementId001"
+        }
+in
+div [] <|
+    Popout.withOne myTooltip <|
+        \\control ->
+            div
+                [ id "anchorElementId001"
+                , style "height" "50px"
+                , style "border" "1px solid black"
+                , onMouseEnter control.show
+                , onMouseLeave control.hide
+                ]
+                [ t "Hover cursor on me to reveal a tooltip!" ]""" <|
             let
                 myTooltip =
                     Popout.withControl config m.popout <|
@@ -951,9 +984,16 @@ popout m =
                             Popout.node "div"
                                 [ style "width" "500px"
                                 , style "height" "300px"
+                                , style "color" "red"
                                 , style "border" "1px solid red"
+                                , style "background-color" "white"
+                                , style "z-index" "1000"
                                 ]
-                                [ t "I'm one huge tooltip!" ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! "
+                                , t "Note that z-index can be omitted if you include whole body in Popout control scope, "
+                                , t "since browsers naturally stack elements in order of appearance on the source code. "
+                                , t "Popout.withOne or withMany places tooltip elements AFTER their contents to leverage this behavior."
+                                ]
 
                 config =
                     { id = "popoutElementId001"
