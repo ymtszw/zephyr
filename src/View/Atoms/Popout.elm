@@ -142,7 +142,11 @@ update msg (State dict) =
                     )
 
         GotAnchorElement popoutId (Ok anchorElement) ->
-            ( State (Dict.update popoutId (\_ -> Just (Shown anchorElement)) dict), Cmd.none )
+            let
+                updater =
+                    Maybe.map (\_ -> Shown anchorElement)
+            in
+            ( State (Dict.update popoutId updater dict), Cmd.none )
 
         GotAnchorElement popoutId (Err (Browser.Dom.NotFound _)) ->
             ( State (Dict.remove popoutId dict), Cmd.none )
