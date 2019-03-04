@@ -243,8 +243,10 @@ type alias Control msg =
     }
 
 
-withControl : Config msg -> State -> (Control msg -> Node msg) -> Popout msg
-withControl config state toNode =
+{-| Generate a Popout element. Use `node` to construct outermost node.
+-}
+generate : Config msg -> State -> (Control msg -> Node msg) -> Popout msg
+generate config state toNode =
     let
         popoutId =
             Id.from config.id
@@ -324,41 +326,22 @@ calculatePosition orientation a =
                 [ style "bottom" (String.fromFloat anchorTopFromViewportBottom ++ "px") ]
 
 
-{-| Generate a popout element. Render using `withOne` or `withMany`.
+{-| Creates a node related to your Popout. Use with `generate` or `render`.
 -}
 node : String -> List (Attribute msg) -> List (Html msg) -> Node msg
 node tagName attrs contents =
     ( tagName, attrs, contents )
 
 
-withOne : Popout msg -> (Control msg -> Html msg) -> List (Html msg)
-withOne (Popout ( _, control, popout )) scopedContent =
-    [ scopedContent control
-    , popout
-    ]
-
-
-{-| Read-only dictionary of Controls.
+{-| Render HTML of your Popout and Container.
 -}
-type alias Controls msg =
-    String -> Maybe (Control msg)
-
-
-withMany : List (Popout msg) -> (Controls msg -> Html msg) -> List (Html msg)
-withMany popouts scopedContent =
+render : Popout msg -> (Control msg -> Node msg) -> Html msg
+render (Popout ( _, control, popout )) innerContent =
     let
-        ( popoutHtmls, controlDict ) =
-            List.foldr reducer ( [], Dict.empty ) popouts
-
-        reducer (Popout ( popoutId, control, popout )) ( accHtmls, accDict ) =
-            ( popout :: accHtmls
-            , Dict.insert popoutId control accDict
-            )
-
-        controls popoutIdStr =
-            Dict.get (Id.from popoutIdStr) controlDict
+        ( tagName, attrs, contents ) =
+            innerContent control
     in
-    scopedContent controls :: popoutHtmls
+    Html.node tagName attrs (contents ++ [ popout ])
 
 
 {-| Anchor a Popout element vertically to an anchor target element.
