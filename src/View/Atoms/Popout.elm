@@ -76,7 +76,7 @@ thus Popouts should correctly move along with document scroll!
 import AssocList as Dict exposing (Dict)
 import Browser.Dom
 import Browser.Events
-import Html exposing (Attribute, Html, h1, text)
+import Html exposing (Attribute, Html, text)
 import Html.Attributes exposing (id, style)
 import Id exposing (Id)
 import Json.Decode exposing (Decoder, fail, field, lazy, list, oneOf, string, succeed)
@@ -100,8 +100,7 @@ type State
 
 
 type alias PopoutId =
-    -- Borrowing Phase as a phantom tag; just I'm being lazy
-    Id String Phase
+    Id String (Popout Msg)
 
 
 {-| Phase of each popout node.
