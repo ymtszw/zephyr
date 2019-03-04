@@ -10,6 +10,7 @@ import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Json.Decode exposing (succeed)
 import List.Extra
 import Octicons
 import SelectArray
@@ -945,144 +946,166 @@ popout : Model -> Html Msg
 popout m =
     section []
         [ h1 [ xxProminent ] [ t "Popout" ]
-        , withSourceInColumn 100 """let
+        , withSource """let
     myTooltip =
-        Popout.withControl config m.popout <|
+        let
+            config =
+                { id = "popoutElementId001"
+                , msgTagger = PopoutCtrl
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
+                }
+        in
+        Popout.generate config m.popout <|
             \\_ ->
                 Popout.node "div"
-                    [ style "width" "500px"
-                    , style "height" "300px"
-                    , style "color" "red"
-                    , style "border" "1px solid red"
-                    , style "background-color" "white"
-                    , style "z-index" "1000"
-                    ]
-                    [ t "I'm one huge tooltip! I'm not contained!!! "
-                    , t "Note that z-index can be omitted if you include whole body in Popout control scope, "
-                    , t "since browsers naturally stack elements in order of appearance on the source code."
-                    ]
-
-    config =
-        { id = "popoutElementId001"
-        , msgTagger = PopoutCtrl
-        , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
-        }
+                    [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
 in
-div [] <|
-    Popout.withOne myTooltip <|
-        \\control ->
-            div
+Popout.render myTooltip <|
+    \\control ->
+        Popout.node "div"
+            [ style "width" (px 350)
+            , style "height" (px 200)
+            , style "overflow" "auto"
+            , Border.w1
+            , Border.solid
+            , on "scroll" (succeed control.hide)
+            ]
+            [ div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            , div
                 [ id "anchorElementId001"
-                , style "height" "50px"
-                , style "border" "1px solid black"
+                , xProminent
+                , padding10
+                , Border.w1
+                , Border.dotted
                 , onMouseEnter control.show
                 , onMouseLeave control.hide
                 ]
-                [ t "Hover cursor on me to reveal a tooltip!" ]""" <|
+                [ t "Hover cursor on me to reveal a tooltip!" ]
+            , div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            ]""" <|
             let
                 myTooltip =
-                    Popout.withControl config m.popout <|
+                    let
+                        config =
+                            { id = "popoutElementId001"
+                            , msgTagger = PopoutCtrl
+                            , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
+                            }
+                    in
+                    Popout.generate config m.popout <|
                         \_ ->
                             Popout.node "div"
-                                [ style "width" "500px"
-                                , style "height" "300px"
-                                , style "color" "red"
-                                , style "border" "1px solid red"
-                                , style "background-color" "white"
-                                , style "z-index" "1000"
-                                ]
-                                [ t "I'm one huge tooltip! I'm not contained!!! "
-                                , t "Note that z-index can be omitted if you include whole body in Popout control scope, "
-                                , t "since browsers naturally stack elements in order of appearance on the source code. "
-                                , t "Popout.withOne or withMany places tooltip elements AFTER their contents to leverage this behavior."
-                                ]
-
-                config =
-                    { id = "popoutElementId001"
-                    , msgTagger = PopoutCtrl
-                    , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
-                    }
+                                [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
             in
-            div [] <|
-                Popout.withOne myTooltip <|
-                    \control ->
-                        div
+            Popout.render myTooltip <|
+                \control ->
+                    Popout.node "div"
+                        [ style "width" (px 350)
+                        , style "height" (px 200)
+                        , style "overflow" "auto"
+                        , Border.w1
+                        , Border.solid
+                        , on "scroll" (succeed control.hide)
+                        ]
+                        [ div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        , div
                             [ id "anchorElementId001"
-                            , style "height" "50px"
-                            , style "border" "1px solid black"
+                            , xProminent
+                            , padding10
+                            , Border.w1
+                            , Border.dotted
                             , onMouseEnter control.show
                             , onMouseLeave control.hide
                             ]
                             [ t "Hover cursor on me to reveal a tooltip!" ]
-        , withSourceInColumn 100 """let
+                        , div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        ]
+        , withSource """let
     myTooltip =
-        Popout.withControl config m.popout <|
+        let
+            config =
+                { id = "popoutElementId002"
+                , msgTagger = PopoutCtrl
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
+                }
+        in
+        Popout.generate config m.popout <|
             \\_ ->
                 Popout.node "div"
-                    [ style "width" "500px"
-                    , style "height" "300px"
-                    , style "color" "blue"
-                    , style "border" "1px solid blue"
-                    , style "background-color" "white"
-                    , style "z-index" "1000"
-                    ]
-                    [ t "I'm one huge tooltip! I'm not contained!!! "
-                    , t "Note that z-index can be omitted if you include whole body in Popout control scope, "
-                    , t "since browsers naturally stack elements in order of appearance on the source code."
-                    ]
-
-    config =
-        { id = "popoutElementId002"
-        , msgTagger = PopoutCtrl
-        , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
-        }
+                    [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
 in
-div [] <|
-    Popout.withOne myTooltip <|
-        \\control ->
-            div
+Popout.render myTooltip <|
+    \\control ->
+        Popout.node "div"
+            [ style "width" (px 350)
+            , style "height" (px 200)
+            , style "overflow" "auto"
+            , Border.w1
+            , Border.solid
+            , on "scroll" (succeed control.show)
+            ]
+            [ div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            , div
                 [ id "anchorElementId002"
-                , style "height" "50px"
-                , style "border" "1px solid black"
+                , xProminent
+                , padding10
+                , Border.w1
+                , Border.dotted
                 , onMouseEnter control.show
                 , onMouseLeave control.hide
                 ]
-                [ t "Hover cursor on me to reveal a tooltip!" ]""" <|
+                [ t "Hover cursor on me to reveal a tooltip!" ]
+            , div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            ]""" <|
             let
                 myTooltip =
-                    Popout.withControl config m.popout <|
-                        \control ->
+                    let
+                        config =
+                            { id = "popoutElementId002"
+                            , msgTagger = PopoutCtrl
+                            , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
+                            }
+                    in
+                    Popout.generate config m.popout <|
+                        \_ ->
                             Popout.node "div"
-                                [ style "width" "500px"
-                                , style "height" "300px"
-                                , style "color" "blue"
-                                , style "border" "1px solid blue"
-                                , style "background-color" "white"
-                                , style "z-index" "1000"
-                                ]
-                                [ t "I'm one huge tooltip! I'm not contained!!! "
-                                , t "Note that z-index can be omitted if you include whole body in Popout control scope, "
-                                , t "since browsers naturally stack elements in order of appearance on the source code. "
-                                , t "Popout.withOne or withMany places tooltip elements AFTER their contents to leverage this behavior."
-                                ]
-
-                config =
-                    { id = "popoutElementId002"
-                    , msgTagger = PopoutCtrl
-                    , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
-                    }
+                                [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
             in
-            div [] <|
-                Popout.withOne myTooltip <|
-                    \control ->
-                        div
+            Popout.render myTooltip <|
+                \control ->
+                    Popout.node "div"
+                        [ style "width" (px 350)
+                        , style "height" (px 200)
+                        , style "overflow" "auto"
+                        , Border.w1
+                        , Border.solid
+                        , on "scroll" (succeed control.show)
+                        ]
+                        [ div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        , div
                             [ id "anchorElementId002"
-                            , style "height" "50px"
-                            , style "border" "1px solid black"
+                            , xProminent
+                            , padding10
+                            , Border.w1
+                            , Border.dotted
                             , onMouseEnter control.show
                             , onMouseLeave control.hide
                             ]
                             [ t "Hover cursor on me to reveal a tooltip!" ]
+                        , div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        ]
         ]
 
 
