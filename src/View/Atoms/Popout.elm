@@ -272,7 +272,7 @@ finalizeNode popoutId orientation (State dict) ( tagName, attrs, contents ) =
             let
                 positionedAttrs =
                     id (popoutIdPrefix ++ Id.to popoutId)
-                        :: style "position" "fixed"
+                        :: style "position" "absolute"
                         :: calculatePosition orientation a
             in
             Html.node tagName (attrs ++ positionedAttrs) contents
@@ -310,20 +310,12 @@ calculatePosition orientation a =
                     a.viewport.y + a.viewport.height
             in
             if marginBelowAnchorInViewport >= marginAboveAnchorInViewport then
-                let
-                    anchorBottomFromViewportTop =
-                        anchorBottom - viewportTop
-                in
-                [ style "top" (String.fromFloat anchorBottomFromViewportTop ++ "px") ]
+                [ style "top" (String.fromFloat anchorBottom ++ "px") ]
 
             else
-                let
-                    anchorTopFromViewportBottom =
-                        viewportBottom - anchorTop
-                in
-                -- bottom-anchored positioning becomes off when the viewport is vertically resized!
-                -- We must subscribe to resize events to hide Popouts.
-                [ style "bottom" (String.fromFloat anchorTopFromViewportBottom ++ "px") ]
+                [ style "top" (String.fromFloat anchorBottom ++ "px")
+                , style "transform" ("translateY(calc(-" ++ String.fromFloat a.element.height ++ "px - 100%))")
+                ]
 
 
 {-| Creates a node related to your Popout. Use with `generate` or `render`.
