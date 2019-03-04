@@ -1,6 +1,6 @@
 module View.Atoms.Popout exposing
     ( State, Msg, init, update, sub
-    , Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredVerticallyTo
+    , Config, Orientation, Control, generate, node, render, anchoredVerticallyTo
     )
 
 {-| Shows Html elements in "popout" manner.
@@ -12,59 +12,64 @@ Useful for dropdowns, modals, and tooltips.
 
 ## Usage
 
-    -- With single popout:
-    Popout.withOne (myTooltip popoutState) <| \popoutControl ->
-        myAnchor (Just popoutControl)
-
-    -- Or with many:
-    Popout.withMany [ myTooltip popoutState ] <| \popoutControls ->
-        myAnchor (popoutControls "popoutElementId001")
-
-    myAnchor controlMaybe =
-        let
-            handlers =
-                case controlMaybe of
-                    Just control ->
-                        [ onMouseEnter control.show
-                        , onMouseLeave control.hide
-                        ]
-                    Nothing ->
-                        []
-        in
-        div
-            ([ id "anchorElementId001"
-            , style "width" "50px"
-            , style "height" "30px"
-            , style "border" "1px solid black"
-            ] ++ handlers)
-            [ text "Hover cursor on me to reveal a tooltip!" ]
+    Popout.render (myTooltip popoutState) <| \control ->
+        Popout.node "div"
+            [ style "overflow" "auto"
+            , on "scroll" (succeed control.hide)
+            ]
+            [ div
+                [ id "anchorElementId001"
+                , onMouseEnter control.show
+                , onMouseLeave control.hide
+                ]
+                [ text "Hover cursor on me to reveal a tooltip!" ]
+            , div [] [ text lorem ]
+            ]
 
     -- popoutState must be saved in your Model and supplied here
     myTooltip popoutState =
-        Popout.control { id = "popoutElementId001" , msgTagger = PopoutMsg } <| \control ->
-            Popout.node "div"
-                { orientation = Popout.anchoredVerticallyTo "anchorElementId001"
-                , state = popoutState
+        let
+            config =
+                { id = "popoutElementId001"
+                , msgTagger = PopoutMsg
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
                 }
-                [ style "width" "40px"
-                , style "height" "20px"
-                , style "border" "1px solid red"
-                ]
-                [ text "I'm a tooltip!" ]
+        in
+        Popout.generate config popoutState <| \control ->
+            Popout.node "div" [] [ text "I'm a tooltip!" ]
 
-In this example `myAnchor` is placed inside the scope of `withOne` or `withMany`, since it has TWO purposes:
+In this example an anchor element is placed inside the scope of `render`, since it has TWO purposes:
 
 1.  as an anchor element for `myTooltip` and,
 2.  as an element to which event handlers are attached
 
-Notice that rendering function `withOne` or `withMany` creates a scope within your view
+Notice that `render` function creates a scope within your view
 in which you can "control" visibility of your popout elements.
 
 So, in fact, elements with the 2nd purpose MUST be placed inside the scope,
 whereas one for the 1st purpose can actually live ANYWHERE in your view as long as it has a proper `id` attached.
 
+
+## Scroll handling
+
+You must be aware that when users scroll parent containers, anchor positions of popouts become off.
+There are two approaches for this: (a) update anchor postions on scroll, or (b) close popouts on scroll.
+
+Implementation for (b) is straighforward if the containers are placed inside `render` scopes.
+Emit `hide` Msg provided from `Control` records on container scrolls, like so: `on "scroll" (succeed control.hide)`.
+
+For (a), similarly, emitting `show` Msg should update anchor positions,
+although due to Task's asynchronous nature, Popouts follow anchors with slight delay.
+
+Both cases might not work well with keyboard navigation inside containers.
+
+Regarding to global document scroll, you do not have to mind about that
+since Popouts in this module are positioned with `absolute`.
+Absolutely positioned elements are (ultimately) positioned relative to document origin (not to viewport origin)
+thus Popouts should correctly move along with document scroll!
+
 @docs State, Msg, init, update, sub
-@docs Config, Orientation, Control, Controls, withControl, node, withOne, withMany, anchoredVerticallyTo
+@docs Config, Orientation, Control, generate, node, render, anchoredVerticallyTo
 
 -}
 
