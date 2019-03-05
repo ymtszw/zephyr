@@ -1810,9 +1810,83 @@ markdownBlocks =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , withSourceInColumn 100 "" <|
-                    div [] (MarkdownBlocks.render TextParser.defaultOptions lorem)
+                , col 200 "" <|
+                    MarkdownBlocks.render TextParser.defaultOptions """# Title h1
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
+incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
+officia deserunt mollit anim id est laborum.
+
+Horizontal rule below:
+
+---
+## Title h2
+いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん
+
+### Title h3
+With code: `<code>With Code</code>`,\\
+and hard line breaks!\\
+Raw link: <https://example.com>, and [Link with title][link]
+
+[link]: https://example.com "link"
+
+#### Title h4
+```
+This is a fenced code block.
+Should respect line breaks!
+```
+
+    This is an indented code block.
+        Should respect line breaks
+    This is a very long line in code block. Lorem ipsum dolor sit amet, consectetur
+    adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+    Ut enim ad minim veniam, quis nostrud
+
+##### Title h5
+> This is a block quote.
+>
+> Within it, everything is baseline italic.
+>
+> > Can be nested!!
+> >
+> > > Nested and even colored!!
+>
+> ```
+> Can have code block!
+> ```
+
+###### Title h6
+
+Images are not contained by default.
+You can however apply styles to `<img>` under the container.
+Utilize `object-fit`!
+
+![300x500 image](https://picsum.photos/300/500)
+"""
+                , col 100 "" <|
+                    MarkdownBlocks.render TextParser.defaultOptions <|
+                        "What if there are significantly long strings?\n\n"
+                            ++ String.repeat 100 "abcd0123"
                 ]
+
+        col height_ source_ contents =
+            withSource source_ <|
+                div []
+                    [ t "(Contained)"
+                    , div
+                        [ style "width" (px 350)
+                        , style "height" (px height_)
+                        , style "overflow" "auto"
+                        , flexColumn
+                        , spacingColumn2
+                        , Border.w1
+                        , Border.solid
+                        , Border.colorBg
+                        ]
+                        contents
+                    ]
     in
     section []
         [ h1 [ xxProminent ] [ t "MarkdownBlocks" ]
