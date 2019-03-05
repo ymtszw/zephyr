@@ -1,8 +1,8 @@
 module View.Molecules.Icon exposing
     ( rounded14, rounded20, rounded30, rounded40
     , button, link, abbr, imgOrAbbr
-    , octiconButton, octiconLink
-    , rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
+    , octiconBlock, octiconButton, octiconLink
+    , rehydrateButton, pinBadge14, botBadge14, discord10, slack10, discord14, slack14, discord20, slack20
     , discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
     , styles
     )
@@ -11,8 +11,8 @@ module View.Molecules.Icon exposing
 
 @docs rounded14, rounded20, rounded30, rounded40
 @docs button, link, abbr, imgOrAbbr
-@docs octiconButton, octiconLink
-@docs rehydrateButton, pinBadge14, discord10, slack10, discord14, slack14, discord20, slack20
+@docs octiconBlock, octiconButton, octiconLink
+@docs rehydrateButton, pinBadge14, botBadge14, discord10, slack10, discord14, slack14, discord20, slack20
 @docs discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
 @docs styles
 
@@ -21,7 +21,7 @@ module View.Molecules.Icon exposing
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div, img)
-import Html.Attributes exposing (alt, class, disabled, src)
+import Html.Attributes exposing (alt, class, disabled, src, title)
 import Html.Events exposing (onClick)
 import Octicons
 import View.Atoms.Animation as Animation
@@ -78,6 +78,11 @@ link attrs opts =
 
 abbr : List (Attribute msg) -> String -> Html msg
 abbr attrs desc =
+    centeredBlock attrs (t (String.left 1 desc))
+
+
+centeredBlock : List (Attribute msg) -> Html msg -> Html msg
+centeredBlock attrs content =
     div
         ([ class iconClass
          , flexColumn
@@ -87,18 +92,23 @@ abbr attrs desc =
          ]
             ++ attrs
         )
-        [ div [] [ t (String.left 1 desc) ]
+        [ div [] [ content ]
         ]
 
 
 imgOrAbbr : List (Attribute msg) -> String -> Maybe String -> Html msg
-imgOrAbbr attrs desc urlMaybe =
-    case urlMaybe of
-        Just url ->
-            img ([ class iconClass, src url, alt desc ] ++ attrs) []
+imgOrAbbr attrs desc srcMaybe =
+    case srcMaybe of
+        Just src_ ->
+            img ([ class iconClass, src src_, alt desc ] ++ attrs) []
 
         Nothing ->
             abbr attrs desc
+
+
+octiconBlock : List (Attribute msg) -> { size : Int, shape : Octicons.Options -> Html msg } -> Html msg
+octiconBlock attrs opts =
+    centeredBlock attrs (Image.octicon { size = opts.size, shape = opts.shape })
 
 
 octiconButton : List (Attribute msg) -> { onPress : msg, size : Int, shape : Octicons.Options -> Html msg } -> Html msg
@@ -145,10 +155,22 @@ pinBadge14 : Html msg
 pinBadge14 =
     div
         [ class rounded14Class
+        , title "Pinned"
         , Image.fillWarn
         , Image.rotate45
         ]
         [ Image.octicon { size = rounded14Size, shape = Octicons.pin } ]
+
+
+botBadge14 : Html msg
+botBadge14 =
+    div
+        [ class rounded14Class
+        , title "BOT"
+        , Image.fillText
+        , Background.colorSucc
+        ]
+        [ Image.octicon { size = rounded14Size, shape = Octicons.zap } ]
 
 
 discord10 : List (Attribute msg) -> Html msg

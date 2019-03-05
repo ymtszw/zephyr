@@ -2,18 +2,22 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Data.Column exposing (ColumnItem(..))
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
 import File exposing (File)
 import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
-import ListExtra
+import Html.Events exposing (..)
+import Json.Decode exposing (succeed)
+import List.Extra
 import Octicons
 import SelectArray
 import StringExtra
 import Task
+import TextParser
+import Time
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as U
@@ -25,17 +29,20 @@ import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Popout as Popout
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
+import View.Molecules.MarkdownBlocks as MarkdownBlocks
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
+import View.Organisms.Column.Items as Items
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
@@ -53,7 +60,9 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \m -> Select.sub SelectCtrl m.select
+        , subscriptions =
+            \m ->
+                Sub.batch [ Select.sub SelectCtrl m.select, Sub.map PopoutCtrl (Popout.sub m.popout) ]
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
@@ -64,6 +73,7 @@ type alias Model =
     , route : Route
     , textInput : String
     , toggle : Bool
+    , popout : Popout.State
     , select : Select.State
     , selected : Maybe String
     , numColumns : Int
@@ -94,6 +104,7 @@ routes =
     , R "border" "Atoms" "Border" <| pLab [ border ]
     , R "background" "Atoms" "Background" <| pLab [ background ]
     , R "layout" "Atoms" "Layout" <| pLab [ layout ]
+    , R "popout" "Atoms" "Popout" <| \m -> pLab [ popout m ] m
     , R "image" "Atoms" "Image" <| pLab [ image ]
     , R "button" "Atoms" "Button" <| pLab [ button_ ]
     , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
@@ -101,6 +112,7 @@ routes =
     , R "icon" "Molecules" "Icon" <| pLab [ icon ]
     , R "wallpaper" "Molecules" "Wallpaper" <| pLab [ wallpaper ]
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
+    , R "markdown_blocks" "Molecules" "MarkdownBlocks" <| pLab [ markdownBlocks ]
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
     , R "source" "Molecules" "Column" <| pLab [ column ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
@@ -111,6 +123,7 @@ routes =
     , R "column_header" "Organisms" "Column.Header" <| \m -> pLab [ columnHeader m ] m
     , R "column_config" "Organisms" "Column.Config" <| \m -> pLab [ columnConfig m ] m
     , R "column_new_message_editor" "Organisms" "Column.NewMessageEditor" <| \m -> pLab [ columnNewMessageEditor m ] m
+    , R "column_items" "Organisms" "Column.Items" <| pLab [ columnItems ]
     , R "main_template" "Templates" "Main" <| mainTemplate
     ]
 
@@ -121,7 +134,8 @@ init () url key =
       , route = urlToRoute url
       , textInput = ""
       , toggle = False
-      , select = Select.AllClosed
+      , popout = Popout.init
+      , select = Select.init
       , selected = Nothing
       , numColumns = 4
       , editorSeq = 0
@@ -139,7 +153,7 @@ urlToRoute url =
             U.map matchFirstPath U.string
 
         matchFirstPath firstPath =
-            case ListExtra.findOne (\r -> r.path == firstPath) routes of
+            case List.Extra.find (\r -> r.path == firstPath) routes of
                 Just _ ->
                     firstPath
 
@@ -155,6 +169,7 @@ type Msg
     | Arrived Url
     | TextInput String
     | Toggle Bool
+    | PopoutCtrl Popout.Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
@@ -186,6 +201,13 @@ update msg m =
 
         Toggle bool ->
             ( { m | toggle = bool }, Cmd.none )
+
+        PopoutCtrl pMsg ->
+            let
+                ( newPopout, cmd ) =
+                    Popout.update pMsg m.popout
+            in
+            ( { m | popout = newPopout }, Cmd.map PopoutCtrl cmd )
 
         SelectCtrl sMsg ->
             let
@@ -225,7 +247,7 @@ view : Model -> { title : String, body : List (Html Msg) }
 view m =
     { title = "Zephyr: Pattern Lab"
     , body =
-        case ListExtra.findOne (\r -> r.path == m.route) routes of
+        case List.Extra.find (\r -> r.path == m.route) routes of
             Just r ->
                 View.Stylesheet.render :: r.view m
 
@@ -243,15 +265,15 @@ navi : Route -> Html Msg
 navi current =
     div [ flexColumn, flexCenter, spacingColumn10, padding15 ] <|
         List.map (naviRow current) <|
-            ListExtra.groupWhile (\r1 r2 -> r1.layer == r2.layer) routes
+            List.Extra.groupWhile (\r1 r2 -> r1.layer == r2.layer) routes
 
 
-naviRow : Route -> List R -> Html Msg
-naviRow current rs =
+naviRow : Route -> ( R, List R ) -> Html Msg
+naviRow current ( r, rs ) =
     div [ flexRow, flexCenter, spacingRow15 ]
-        [ h2 [ prominent, bold ] [ t (Maybe.withDefault "" (Maybe.map .layer (List.head rs))) ]
+        [ h2 [ prominent, bold ] [ t r.layer ]
         , div [ flexRow, flexGrow, flexWrap, flexCenter, spacingWrapped10 ] <|
-            List.map (naviButton current) rs
+            List.map (naviButton current) (r :: rs)
         ]
 
 
@@ -920,6 +942,171 @@ badge =
         ]
 
 
+popout : Model -> Html Msg
+popout m =
+    section []
+        [ h1 [ xxProminent ] [ t "Popout" ]
+        , withSource """let
+    myTooltip =
+        let
+            config =
+                { id = "popoutElementId001"
+                , msgTagger = PopoutCtrl
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
+                }
+        in
+        Popout.generate config m.popout <|
+            \\_ ->
+                Popout.node "div"
+                    [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+in
+Popout.render myTooltip <|
+    \\control ->
+        Popout.node "div"
+            [ style "width" (px 350)
+            , style "height" (px 200)
+            , style "overflow" "auto"
+            , Border.w1
+            , Border.solid
+            , on "scroll" (succeed control.hide)
+            ]
+            [ div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            , div
+                [ id "anchorElementId001"
+                , xProminent
+                , padding10
+                , Border.w1
+                , Border.dotted
+                , onMouseEnter control.show
+                , onMouseLeave control.hide
+                ]
+                [ t "Hover cursor on me to reveal a tooltip!" ]
+            , div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            ]""" <|
+            let
+                myTooltip =
+                    let
+                        config =
+                            { id = "popoutElementId001"
+                            , msgTagger = PopoutCtrl
+                            , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
+                            }
+                    in
+                    Popout.generate config m.popout <|
+                        \_ ->
+                            Popout.node "div"
+                                [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+            in
+            Popout.render myTooltip <|
+                \control ->
+                    Popout.node "div"
+                        [ style "width" (px 350)
+                        , style "height" (px 200)
+                        , style "overflow" "auto"
+                        , Border.w1
+                        , Border.solid
+                        , on "scroll" (succeed control.hide)
+                        ]
+                        [ div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        , div
+                            [ id "anchorElementId001"
+                            , xProminent
+                            , padding10
+                            , Border.w1
+                            , Border.dotted
+                            , onMouseEnter control.show
+                            , onMouseLeave control.hide
+                            ]
+                            [ t "Hover cursor on me to reveal a tooltip!" ]
+                        , div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        ]
+        , withSource """let
+    myTooltip =
+        let
+            config =
+                { id = "popoutElementId002"
+                , msgTagger = PopoutCtrl
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
+                }
+        in
+        Popout.generate config m.popout <|
+            \\_ ->
+                Popout.node "div"
+                    [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+in
+Popout.render myTooltip <|
+    \\control ->
+        Popout.node "div"
+            [ style "width" (px 350)
+            , style "height" (px 100)
+            , style "overflow" "auto"
+            , Border.w1
+            , Border.solid
+            , on "scroll" (succeed control.hide)
+            ]
+            [ div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            , div
+                [ id "anchorElementId002"
+                , xProminent
+                , padding10
+                , Border.w1
+                , Border.dotted
+                , onClick control.show
+                ]
+                [ t "Click me to reveal a tooltip!" ]
+            , div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            ]""" <|
+            let
+                myTooltip =
+                    let
+                        config =
+                            { id = "popoutElementId002"
+                            , msgTagger = PopoutCtrl
+                            , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
+                            }
+                    in
+                    Popout.generate config m.popout <|
+                        \_ ->
+                            Popout.node "div"
+                                [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+            in
+            Popout.render myTooltip <|
+                \control ->
+                    Popout.node "div"
+                        [ style "width" (px 350)
+                        , style "height" (px 100)
+                        , style "overflow" "auto"
+                        , Border.w1
+                        , Border.solid
+                        , on "scroll" (succeed control.hide)
+                        ]
+                        [ div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        , div
+                            [ id "anchorElementId002"
+                            , xProminent
+                            , padding10
+                            , Border.w1
+                            , Border.dotted
+                            , onClick control.show
+                            ]
+                            [ t "Click me to reveal a tooltip!" ]
+                        , div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        ]
+        ]
+
+
 image : Html Msg
 image =
     section []
@@ -1441,6 +1628,8 @@ icon =
             Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" (Just (Image.ph 50 50))
         , withSource """Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing""" <|
             Icon.imgOrAbbr [ style "width" "50px", style "height" "50px" ] "Zephyr" Nothing
+        , withSource """Icon.octiconBlock [ style "width" "75px", style "height" "75px" ] { size = 50, shape = Octicons.search }""" <|
+            Icon.octiconBlock [ style "width" "75px", style "height" "75px" ] { size = 50, shape = Octicons.search }
         , withSource """Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }""" <|
             Icon.octiconButton [] { size = 50, onPress = NoOp, shape = Octicons.search }
         , withSource """Icon.octiconButton [ padding5, Background.colorSucc, Border.round5, newTab ] { size = 75, onPress = NoOp, shape = Octicons.search }""" <|
@@ -1612,6 +1801,23 @@ table_ =
                 , rowKey = \( size, _ ) -> "imageSize_" ++ String.fromInt size
                 , data = [ ( 50, Image.ph 50 50 ), ( 100, Image.ph 100 100 ), ( 300, Image.ph 300 300 ) ]
                 }
+        ]
+
+
+markdownBlocks : Html Msg
+markdownBlocks =
+    let
+        themed theme_ themeStr =
+            section [ theme_ ]
+                [ h2 [ xProminent ] [ t themeStr ]
+                , withSourceInColumn 100 "" <|
+                    div [] (MarkdownBlocks.render TextParser.defaultOptions lorem)
+                ]
+    in
+    section []
+        [ h1 [ xxProminent ] [ t "MarkdownBlocks" ]
+        , themed oneDark "oneDark"
+        , themed aubergine "aubergine"
         ]
 
 
@@ -2441,7 +2647,7 @@ columnHeader m =
         [ h1 [ xxProminent ] [ t "Column.Header" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSource """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2469,7 +2675,7 @@ columnHeader m =
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
-            , withSource """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2500,7 +2706,7 @@ columnHeader m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSource """Header.render
+            , withSourceInColumn 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2534,56 +2740,69 @@ columnHeader m =
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
-            , withSource """div [ style "width" (px 350) ]
-    [ Header.render
-        { onDragstart = \\_ _ _ -> NoOp
-        , onHeaderClick = Nothing
-        , onPinButtonClick = \\_ to -> Toggle to
-        , onConfigToggleButtonClick = \\_ to -> Toggle to
-        , onDismissButtonClick = always NoOp
-        }
-        0
-        { id = "DUMMYID"
-        , sources =
-            [ SlackSource
-                { id = "CID1"
-                , name = String.repeat 3 "Shrinks if constrained "
-                , teamName = "Team"
-                , teamIcon = Just (Image.ph 41 41)
-                , isPrivate = True
-                }
-            ]
-        , filters = List.repeat 3 "Shrinks if constrained"
-        , pinned = m.toggle
-        , configOpen = m.toggle
-        }
-    ]""" <|
-                div [ style "width" (px 350) ]
-                    [ Header.render
-                        { onDragstart = \_ _ _ -> NoOp
-                        , onHeaderClick = Nothing
-                        , onPinButtonClick = \_ to -> Toggle to
-                        , onConfigToggleButtonClick = \_ to -> Toggle to
-                        , onDismissButtonClick = always NoOp
-                        }
-                        0
-                        { id = "DUMMYID"
-                        , sources =
-                            [ SlackSource
-                                { id = "CID1"
-                                , name = String.repeat 3 "Shrinks if constrained "
-                                , teamName = "Team"
-                                , teamIcon = Just (Image.ph 41 41)
-                                , isPrivate = True
-                                }
-                            ]
-                        , filters = List.repeat 3 "Shrinks if constrained"
-                        , pinned = m.toggle
-                        , configOpen = m.toggle
-                        }
-                    ]
+            , withSourceInColumn 60 """Header.render
+    { onDragstart = \\_ _ _ -> NoOp
+    , onHeaderClick = Nothing
+    , onPinButtonClick = \\_ to -> Toggle to
+    , onConfigToggleButtonClick = \\_ to -> Toggle to
+    , onDismissButtonClick = always NoOp
+    }
+    0
+    { id = "DUMMYID"
+    , sources =
+        [ SlackSource
+            { id = "CID1"
+            , name = String.repeat 3 "Shrinks if constrained "
+            , teamName = "Team"
+            , teamIcon = Just (Image.ph 41 41)
+            , isPrivate = True
+            }
+        ]
+    , filters = List.repeat 3 "Shrinks if constrained"
+    , pinned = m.toggle
+    , configOpen = m.toggle
+    }""" <|
+                Header.render
+                    { onDragstart = \_ _ _ -> NoOp
+                    , onHeaderClick = Nothing
+                    , onPinButtonClick = \_ to -> Toggle to
+                    , onConfigToggleButtonClick = \_ to -> Toggle to
+                    , onDismissButtonClick = always NoOp
+                    }
+                    0
+                    { id = "DUMMYID"
+                    , sources =
+                        [ SlackSource
+                            { id = "CID1"
+                            , name = String.repeat 3 "Shrinks if constrained "
+                            , teamName = "Team"
+                            , teamIcon = Just (Image.ph 41 41)
+                            , isPrivate = True
+                            }
+                        ]
+                    , filters = List.repeat 3 "Shrinks if constrained"
+                    , pinned = m.toggle
+                    , configOpen = m.toggle
+                    }
             ]
         ]
+
+
+withSourceInColumn : Int -> String -> Html Msg -> Html Msg
+withSourceInColumn height_ source_ toRender =
+    withSource source_ <|
+        div []
+            [ t "(Contained)"
+            , div
+                [ style "width" (px 350)
+                , style "height" (px height_)
+                , style "overflow" "auto"
+                , Border.w1
+                , Border.solid
+                , Border.colorBg
+                ]
+                [ toRender ]
+            ]
 
 
 columnConfig : Model -> Html Msg
@@ -2592,121 +2811,109 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSource """div [ style "width" (px 350) ]
-    [ t "(Contained)"
-    , ColumnConfig.render
-        { onCloseButtonClick = Toggle False
-        , onColumnDeleteButtonClick = always NoOp
-        , onSourceSelect = \\_ _ -> NoOp
-        , selectMsgTagger = SelectCtrl
-        , onRemoveSourceButtonClick = \\_ _ -> NoOp
-        }
-        { selectState = m.select
-        , availableSourecs =
-            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+            , withSourceInColumn 300 """ColumnConfig.render
+    { onCloseButtonClick = Toggle False
+    , onColumnDeleteButtonClick = always NoOp
+    , onSourceSelect = \\_ _ -> NoOp
+    , selectMsgTagger = SelectCtrl
+    , onRemoveSourceButtonClick = \\_ _ -> NoOp
+    }
+    { selectState = m.select
+    , availableSourecs =
+        [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+        , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+        , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+        , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+        ]
+    , column =
+        { id = "DUMMYID1"
+        , numItems = 1000
+        , pinned = m.toggle
+        , sources =
+            [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
             ]
-        , column =
-            { id = "DUMMYID1"
-            , numItems = 1000
-            , pinned = m.toggle
-            , sources =
-                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-                ]
-            , filters = []
-            }
+        , filters = []
         }
-    ]""" <|
-                div [ style "width" (px 350) ]
-                    [ t "(Contained)"
-                    , ColumnConfig.render
-                        { onCloseButtonClick = Toggle False
-                        , onColumnDeleteButtonClick = always NoOp
-                        , onSourceSelect = \_ _ -> NoOp
-                        , selectMsgTagger = SelectCtrl
-                        , onRemoveSourceButtonClick = \_ _ -> NoOp
-                        }
-                        { selectState = m.select
-                        , availableSourecs =
-                            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-                            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+    }""" <|
+                ColumnConfig.render
+                    { onCloseButtonClick = Toggle False
+                    , onColumnDeleteButtonClick = always NoOp
+                    , onSourceSelect = \_ _ -> NoOp
+                    , selectMsgTagger = SelectCtrl
+                    , onRemoveSourceButtonClick = \_ _ -> NoOp
+                    }
+                    { selectState = m.select
+                    , availableSourecs =
+                        [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                        , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                        , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                        , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                        ]
+                    , column =
+                        { id = "DUMMYID1"
+                        , numItems = 1000
+                        , pinned = m.toggle
+                        , sources =
+                            [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
                             ]
-                        , column =
-                            { id = "DUMMYID1"
-                            , numItems = 1000
-                            , pinned = m.toggle
-                            , sources =
-                                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-                                ]
-                            , filters = []
-                            }
+                        , filters = []
                         }
-                    ]
+                    }
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSource """div [ style "width" (px 350) ]
-    [ t "(Contained)"
-    , ColumnConfig.render
-        { onCloseButtonClick = Toggle False
-        , onColumnDeleteButtonClick = always NoOp
-        , onSourceSelect = \\_ _ -> NoOp
-        , selectMsgTagger = SelectCtrl
-        , onRemoveSourceButtonClick = \\_ _ -> NoOp
-        }
-        { selectState = m.select
-        , availableSourecs =
-            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+            , withSourceInColumn 400 """ColumnConfig.render
+    { onCloseButtonClick = Toggle False
+    , onColumnDeleteButtonClick = always NoOp
+    , onSourceSelect = \\_ _ -> NoOp
+    , selectMsgTagger = SelectCtrl
+    , onRemoveSourceButtonClick = \\_ _ -> NoOp
+    }
+    { selectState = m.select
+    , availableSourecs =
+        [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+        , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+        , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+        , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+        ]
+    , column =
+        { id = "DUMMYID2"
+        , numItems = 1000
+        , pinned = m.toggle
+        , sources =
+            [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+            , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
             ]
-        , column =
-            { id = "DUMMYID2"
-            , numItems = 1000
-            , pinned = m.toggle
-            , sources =
-                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-                ]
-            , filters = []
-            }
+        , filters = []
         }
-    ]""" <|
-                div [ style "width" (px 350) ]
-                    [ t "(Contained)"
-                    , ColumnConfig.render
-                        { onCloseButtonClick = Toggle False
-                        , onColumnDeleteButtonClick = always NoOp
-                        , onSourceSelect = \_ _ -> NoOp
-                        , selectMsgTagger = SelectCtrl
-                        , onRemoveSourceButtonClick = \_ _ -> NoOp
-                        }
-                        { selectState = m.select
-                        , availableSourecs =
-                            [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                            , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                            , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-                            , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+    }""" <|
+                ColumnConfig.render
+                    { onCloseButtonClick = Toggle False
+                    , onColumnDeleteButtonClick = always NoOp
+                    , onSourceSelect = \_ _ -> NoOp
+                    , selectMsgTagger = SelectCtrl
+                    , onRemoveSourceButtonClick = \_ _ -> NoOp
+                    }
+                    { selectState = m.select
+                    , availableSourecs =
+                        [ DiscordSource { id = "DID1", name = "Discord Channel", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                        , DiscordSource { id = "DID2", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                        , SlackSource { id = "SID1", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
+                        , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
+                        ]
+                    , column =
+                        { id = "DUMMYID2"
+                        , numItems = 1000
+                        , pinned = m.toggle
+                        , sources =
+                            [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
+                            , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
                             ]
-                        , column =
-                            { id = "DUMMYID2"
-                            , numItems = 1000
-                            , pinned = m.toggle
-                            , sources =
-                                [ DiscordSource { id = "DID0", name = String.repeat 4 "Discord Channel ", guildName = "Guild", guildIcon = Just (Image.ph 20 20) }
-                                , SlackSource { id = "SID0", name = "Slack Conversation", teamName = "Team", teamIcon = Just (Image.ph 21 21), isPrivate = True }
-                                ]
-                            , filters = []
-                            }
+                        , filters = []
                         }
-                    ]
+                    }
             ]
         ]
 
@@ -2717,130 +2924,162 @@ columnNewMessageEditor m =
         [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSource """div [ style "width" (px 350) ]
-    [ t "(Contained)"
-    , NewMessageEditor.render
-        { onEditorSelect = \\_ _ -> NoOp
-        , selectMsgTagger = SelectCtrl
-        , onTextInput = \\_ str -> TextInput str
-        , onInteracted = \\_ action -> EditorInteracted action
-        , onResetButtonClick = always EditorReset
-        , onDiscardFileButtonClick = always EditorFileDiscard
-        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-        , onFileDrop = \\_ action f -> EditorFileSelected action f
-        , onSubmit = always EditorReset
+            , withSourceInColumn 400 """NewMessageEditor.render
+    { onEditorSelect = \\_ _ -> NoOp
+    , selectMsgTagger = SelectCtrl
+    , onTextInput = \\_ str -> TextInput str
+    , onInteracted = \\_ action -> EditorInteracted action
+    , onResetButtonClick = always EditorReset
+    , onDiscardFileButtonClick = always EditorFileDiscard
+    , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+    , onFileDrop = \\_ action f -> EditorFileSelected action f
+    , onSubmit = always EditorReset
+    }
+    { selectState = m.select
+    , column =
+        { id = "DUMMYID1"
+        , pinned = False
+        , sources =
+            [ DiscordSource
+                { id = "DID1"
+                , name = String.repeat 3 "Discord Channel "
+                , guildName = "Guild"
+                , guildIcon = Just (Image.ph 14 14)
+                }
+            ]
+        , filters = []
+        , userActionOnEditor = m.userActionOnEditor
+        , editorSeq = m.editorSeq
+        , editors =
+            SelectArray.fromLists []
+                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
+                [ LocalMessageEditor m.textInput ]
         }
-        { selectState = m.select
-        , column =
-            { id = "DUMMYID1"
-            , pinned = False
-            , sources =
-                [ DiscordSource
-                    { id = "DID1"
-                    , name = String.repeat 3 "Discord Channel "
-                    , guildName = "Guild"
-                    , guildIcon = Just (Image.ph 14 14)
+    }""" <|
+                NewMessageEditor.render
+                    { onEditorSelect = \_ _ -> NoOp
+                    , selectMsgTagger = SelectCtrl
+                    , onTextInput = \_ str -> TextInput str
+                    , onInteracted = \_ action -> EditorInteracted action
+                    , onResetButtonClick = always EditorReset
+                    , onDiscardFileButtonClick = always EditorFileDiscard
+                    , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+                    , onFileDrop = \_ action f -> EditorFileSelected action f
+                    , onSubmit = always EditorReset
                     }
-                ]
-            , filters = []
-            , userActionOnEditor = m.userActionOnEditor
-            , editorSeq = m.editorSeq
-            , editors =
-                SelectArray.fromLists []
-                    (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
-                    [ LocalMessageEditor m.textInput ]
-            }
-        }
-    ]""" <|
-                div [ style "width" (px 350) ]
-                    [ t "(Contained)"
-                    , NewMessageEditor.render
-                        { onEditorSelect = \_ _ -> NoOp
-                        , selectMsgTagger = SelectCtrl
-                        , onTextInput = \_ str -> TextInput str
-                        , onInteracted = \_ action -> EditorInteracted action
-                        , onResetButtonClick = always EditorReset
-                        , onDiscardFileButtonClick = always EditorFileDiscard
-                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-                        , onFileDrop = \_ action f -> EditorFileSelected action f
-                        , onSubmit = always EditorReset
+                    { selectState = m.select
+                    , column =
+                        { id = "DUMMYID1"
+                        , pinned = False
+                        , sources =
+                            [ DiscordSource
+                                { id = "DID1"
+                                , name = String.repeat 3 "Discord Channel "
+                                , guildName = "Guild"
+                                , guildIcon = Just (Image.ph 14 14)
+                                }
+                            ]
+                        , filters = []
+                        , userActionOnEditor = m.userActionOnEditor
+                        , editorSeq = m.editorSeq
+                        , editors =
+                            SelectArray.fromLists []
+                                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
+                                [ LocalMessageEditor m.textInput ]
                         }
-                        { selectState = m.select
-                        , column =
-                            { id = "DUMMYID1"
-                            , pinned = False
-                            , sources =
-                                [ DiscordSource
-                                    { id = "DID1"
-                                    , name = String.repeat 3 "Discord Channel "
-                                    , guildName = "Guild"
-                                    , guildIcon = Just (Image.ph 14 14)
-                                    }
-                                ]
-                            , filters = []
-                            , userActionOnEditor = m.userActionOnEditor
-                            , editorSeq = m.editorSeq
-                            , editors =
-                                SelectArray.fromLists []
-                                    (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
-                                    [ LocalMessageEditor m.textInput ]
-                            }
-                        }
-                    ]
+                    }
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSource """div [ style "width" (px 350) ]
-    [ t "(Contained)"
-    , NewMessageEditor.render
-        { onEditorSelect = \\_ _ -> NoOp
-        , selectMsgTagger = SelectCtrl
-        , onTextInput = \\_ str -> TextInput str
-        , onInteracted = \\_ action -> EditorInteracted action
-        , onResetButtonClick = always EditorReset
-        , onDiscardFileButtonClick = always EditorFileDiscard
-        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-        , onFileDrop = \\_ action f -> EditorFileSelected action f
-        , onSubmit = always EditorReset
+            , withSourceInColumn 400 """NewMessageEditor.render
+    { onEditorSelect = \\_ _ -> NoOp
+    , selectMsgTagger = SelectCtrl
+    , onTextInput = \\_ str -> TextInput str
+    , onInteracted = \\_ action -> EditorInteracted action
+    , onResetButtonClick = always EditorReset
+    , onDiscardFileButtonClick = always EditorFileDiscard
+    , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+    , onFileDrop = \\_ action f -> EditorFileSelected action f
+    , onSubmit = always EditorReset
+    }
+    { selectState = m.select
+    , column =
+        { id = "DUMMYID2"
+        , pinned = False
+        , sources = []
+        , filters = []
+        , userActionOnEditor = m.userActionOnEditor
+        , editorSeq = m.editorSeq
+        , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
         }
-        { selectState = m.select
-        , column =
-            { id = "DUMMYID2"
-            , pinned = False
-            , sources = []
-            , filters = []
-            , userActionOnEditor = m.userActionOnEditor
-            , editorSeq = m.editorSeq
-            , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
-            }
-        }
-    ]""" <|
-                div [ style "width" (px 350) ]
-                    [ t "(Contained)"
-                    , NewMessageEditor.render
-                        { onEditorSelect = \_ _ -> NoOp
-                        , selectMsgTagger = SelectCtrl
-                        , onTextInput = \_ str -> TextInput str
-                        , onInteracted = \_ action -> EditorInteracted action
-                        , onResetButtonClick = always EditorReset
-                        , onDiscardFileButtonClick = always EditorFileDiscard
-                        , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-                        , onFileDrop = \_ action f -> EditorFileSelected action f
-                        , onSubmit = always EditorReset
+    }""" <|
+                NewMessageEditor.render
+                    { onEditorSelect = \_ _ -> NoOp
+                    , selectMsgTagger = SelectCtrl
+                    , onTextInput = \_ str -> TextInput str
+                    , onInteracted = \_ action -> EditorInteracted action
+                    , onResetButtonClick = always EditorReset
+                    , onDiscardFileButtonClick = always EditorFileDiscard
+                    , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
+                    , onFileDrop = \_ action f -> EditorFileSelected action f
+                    , onSubmit = always EditorReset
+                    }
+                    { selectState = m.select
+                    , column =
+                        { id = "DUMMYID2"
+                        , pinned = False
+                        , sources = []
+                        , filters = []
+                        , userActionOnEditor = m.userActionOnEditor
+                        , editorSeq = m.editorSeq
+                        , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
                         }
-                        { selectState = m.select
-                        , column =
-                            { id = "DUMMYID2"
-                            , pinned = False
-                            , sources = []
-                            , filters = []
-                            , userActionOnEditor = m.userActionOnEditor
-                            , editorSeq = m.editorSeq
-                            , editors = SelectArray.singleton (LocalMessageEditor m.textInput)
-                            }
-                        }
-                    ]
+                    }
             ]
+        ]
+
+
+columnItems : Html Msg
+columnItems =
+    let
+        themed theme_ themeStr =
+            section [ theme_ ]
+                [ h2 [ xProminent ] [ t themeStr ]
+                , withSourceInColumn 100 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
+                , withSourceInColumn 200 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID1"
+                        , timezone = Time.utc
+                        , items =
+                            [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha }
+                            , LocalMessage { id = "LM0", message = lorem ++ " " ++ iroha }
+                            ]
+                        , hasMore = False
+                        }
+                , withSourceInColumn 150 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID2"
+                        , timezone = Time.utc
+                        , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
+                        , hasMore = True
+                        }
+                ]
+    in
+    section []
+        [ h1 [ xxProminent ] [ t "Column.Items" ]
+        , themed oneDark "oneDark"
+        , themed aubergine "aubergine"
         ]
 
 

@@ -8,7 +8,7 @@ import Html.Events exposing (on, onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
 import Json.DecodeExtra as D
-import ListExtra
+import List.Extra
 import Octicons
 import SelectArray exposing (SelectArray)
 import StringExtra
@@ -84,7 +84,7 @@ render eff props =
         [ flexColumn
         , padding5
         , spacingColumn5
-        , Border.colorBd
+        , Border.colorNote
         , Border.bot1
         , Border.solid
         ]
@@ -148,7 +148,7 @@ editorSelectOption sources ( index, editor ) =
                         _ ->
                             False
             in
-            case ListExtra.findOne matchingDiscordSource sources of
+            case List.Extra.find matchingDiscordSource sources of
                 Just s ->
                     Source.horizontalBlock14 s
 
@@ -171,13 +171,7 @@ editorTextarea eff cId isActive editor =
             , widthFill
             , padding5
             , spellcheck True
-            , placeholder <|
-                case editor of
-                    DiscordMessageEditor _ ->
-                        "Message  (Ctrl + Enter to submit)"
-
-                    LocalMessageEditor _ ->
-                        "Memo  (Ctrl + Enter to submit)"
+            , placeholder placeholder_
             , Border.round5
             , onFocus (eff.onInteracted cId Authoring)
             , onInput (eff.onTextInput cId)
@@ -187,6 +181,23 @@ editorTextarea eff cId isActive editor =
               else
                 onCtrlEnterKeyDown (eff.onSubmit cId)
             ]
+
+        placeholder_ =
+            let
+                ctrlEnterInstruction base =
+                    if isActive then
+                        base ++ "  (Ctrl + Enter to submit)"
+
+                    else
+                        base
+            in
+            ctrlEnterInstruction <|
+                case editor of
+                    DiscordMessageEditor _ ->
+                        "Message"
+
+                    LocalMessageEditor _ ->
+                        "Memo"
 
         stateAttrs =
             if isActive then
@@ -281,6 +292,7 @@ filePreview onDiscardFileButtonClick f dataUrl =
             div [ Background.transparent, padding5 ]
                 [ Icon.octiconButton
                     [ padding5
+                    , Image.hovText
                     , Border.elliptic
                     , Background.colorBg
                     , Background.hovBd

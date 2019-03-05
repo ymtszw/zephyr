@@ -40,7 +40,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
-import ListExtra
+import List.Extra
 import Markdown.Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser)
 import Task exposing (Task)
@@ -2321,7 +2321,7 @@ getUser users (UserId userIdStr) =
 
 getConversationFromCache : ConversationIdStr -> List ConversationCache -> Maybe ConversationCache
 getConversationFromCache convIdStr caches =
-    ListExtra.findOne (\c -> c.id == ConversationId convIdStr) caches
+    List.Extra.find (\c -> c.id == ConversationId convIdStr) caches
 
 
 isChannel : Conversation -> Bool

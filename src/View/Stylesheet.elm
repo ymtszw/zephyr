@@ -18,6 +18,7 @@ import View.Molecules.Source as Source
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Header as Header
+import View.Organisms.Column.Items as Items
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Sidebar as Sidebar
@@ -58,6 +59,7 @@ rendered =
                 ++ Pref.styles
                 ++ Header.styles
                 ++ NewMessageEditor.styles
+                ++ Items.styles
                 ++ View.Templates.Main.styles
 
 
@@ -108,7 +110,6 @@ resetUserAgentStyles =
         , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading ancestors' font settings to descendants
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
-        , ( "position", "relative" ) -- We use position: absolute; blocks for badges, which requires non-static (non-default) containing ancestor block
         ]
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]

@@ -55,7 +55,7 @@ styles =
 
 baseTextBlockStyle : Style
 baseTextBlockStyle =
-    s "p,pre,textarea,h1,h2,h3,h4,h5,h6" [ ( "line-height", "1.3em" ) ]
+    s "p,pre,textarea,h1,h2,h3,h4,h5,h6" [ ( "line-height", "1.4em" ) ]
 
 
 forceBreakStyle : Style

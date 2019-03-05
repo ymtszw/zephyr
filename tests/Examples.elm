@@ -15,7 +15,6 @@ import Hex
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E exposing (Value)
 import Json.EncodeExtra as E
-import ListExtra
 import Markdown.Block exposing (Block(..), CodeBlock(..))
 import Markdown.Inline exposing (Inline(..))
 import Parser
@@ -33,7 +32,6 @@ suite : Test
 suite =
     describe "test"
         [ selectArraySuite
-        , listSuite
         , stringSuite
         , arraySuite
         , uniqueIdSuite
@@ -97,40 +95,6 @@ testIndexedMap ( initialF, initialS, initialR ) expected =
     test ("should work with: " ++ Debug.toString initial) <|
         \_ ->
             initial |> SelectArray.indexedMap (\{ selected, index } -> ( index, selected )) |> Expect.equal expected
-
-
-
--- ListExtra
-
-
-listSuite : Test
-listSuite =
-    describe "ListExtra"
-        [ describe "groupWhile"
-            [ testGroupWhile (==) [] []
-            , testGroupWhile (==) [ 0 ] [ [ 0 ] ]
-            , testGroupWhile (==) [ 0, 1, 2 ] [ [ 0 ], [ 1 ], [ 2 ] ]
-            , testGroupWhile (==) [ 0, 0, 2 ] [ [ 0, 0 ], [ 2 ] ]
-            , testGroupWhile (==) [ 0, 1, 1 ] [ [ 0 ], [ 1, 1 ] ]
-            , testGroupWhile (==) [ 0, 1, 0 ] [ [ 0 ], [ 1 ], [ 0 ] ]
-            , testGroupWhile (<) [ 0, 1, 2 ] [ [ 0, 1, 2 ] ]
-            , testGroupWhile (<) [ 0, 1, 0 ] [ [ 0, 1 ], [ 0 ] ]
-            , testGroupWhile (<) [ 2, 1, 0 ] [ [ 2 ], [ 1 ], [ 0 ] ]
-            , testGroupWhile (<) [ 2, 1, 2 ] [ [ 2 ], [ 1, 2 ] ]
-            ]
-        ]
-
-
-testGroupWhile : (Int -> Int -> Bool) -> List Int -> List (List Int) -> Test
-testGroupWhile checker initial expected =
-    test ("should group " ++ Debug.toString initial ++ " to " ++ Debug.toString expected) <|
-        \_ ->
-            initial
-                |> ListExtra.groupWhile checker
-                |> Expect.all
-                    [ Expect.equal expected
-                    , List.concat >> Expect.equal initial
-                    ]
 
 
 

@@ -2,16 +2,23 @@
 
 [![CircleCI](https://circleci.com/gh/ymtszw/zephyr.svg?style=svg)](https://circleci.com/gh/ymtszw/zephyr)
 
-Elm 0.19 exploration app.
+Multi-column message reader, inspired by Tweetdeck, kato.im, and others.
 
 ## Development
 
 - Globally install:
-  - Elm 0.19 platform
-  - [elm-live](https://github.com/wking-io/elm-live) (>= 3.0.4)
-  - [uglifyjs](https://github.com/mishoo/UglifyJS2) (>= 3.4)
-- `make`
+  - Elm compiler (0.19)
+  - [elm-live](https://github.com/wking-io/elm-live)
+  - [google-closure-compiler](https://github.com/google/closure-compiler-npm)
+- Run `make`
 - Open <http://localhot:8000>
+
+### Atomic Design: PatternLab
+
+Zephyr now utilizes Atomic Design, and has its own PatternLab mini-app for development!
+
+- Run `make lab`
+- Open <http://localhost:8001>
 
 ## In Windows
 

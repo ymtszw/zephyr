@@ -21,30 +21,23 @@ import View.Parts exposing (brightness, columnCodeBlockMaxHeight, columnItemAvat
 import View.TextRenderer as TextRenderer
 
 
-columnItemKeyEl : ColorTheme -> Time.Zone -> List ColumnItem -> ( String, Element Msg )
-columnItemKeyEl theme tz closeItems =
-    -- Reverse, since we want to show closeItems in oldest to latest, opposite from other places
-    case List.reverse closeItems of
-        [] ->
-            -- Should not happen
-            ( "", Element.none )
-
-        (item :: items) as reversed ->
-            row
-                [ widthFill
-                , flex
-                , grow
-                , paddingXY 0 rectElementInnerPadding
-                , style "border-bottom" <|
-                    String.join " " [ "solid", px columnItemBorderBottom, cssRgba theme.bd ]
-                , fontSize baseFontSize
-                , fluidContainer
-                ]
-                [ itemAvatarEl theme item
-                , itemContentsEl theme tz item items
-                ]
-                |> Element.html
-                |> Tuple.pair (columnItemKey reversed)
+columnItemKeyEl : ColorTheme -> Time.Zone -> ( ColumnItem, List ColumnItem ) -> ( String, Element Msg )
+columnItemKeyEl theme tz ( oldestItem, subsequentItems ) =
+    row
+        [ widthFill
+        , flex
+        , grow
+        , paddingXY 0 rectElementInnerPadding
+        , style "border-bottom" <|
+            String.join " " [ "solid", px columnItemBorderBottom, cssRgba theme.bd ]
+        , fontSize baseFontSize
+        , fluidContainer
+        ]
+        [ itemAvatarEl theme oldestItem
+        , itemContentsEl theme tz oldestItem subsequentItems
+        ]
+        |> Element.html
+        |> Tuple.pair (columnItemKey (oldestItem :: subsequentItems))
 
 
 baseFontSize : Int
