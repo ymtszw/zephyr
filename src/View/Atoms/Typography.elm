@@ -42,7 +42,7 @@ t =
     Html.text
 
 
-{-| Creates a link. In this app we always target new tabs.
+{-| Creates a link.
 
 Mostly for inlines, but usable for blocks too.
 Texts in links are automatically styled according to its upstream theme.
