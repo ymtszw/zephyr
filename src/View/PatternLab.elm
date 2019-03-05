@@ -62,7 +62,7 @@ main =
         , update = update
         , subscriptions =
             \m ->
-                Sub.batch [ Select.sub SelectCtrl m.select, Sub.map PopoutCtrl Popout.sub ]
+                Sub.batch [ Select.sub SelectCtrl m.select, Sub.map PopoutCtrl (Popout.sub m.popout) ]
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
@@ -1045,11 +1045,11 @@ Popout.render myTooltip <|
     \\control ->
         Popout.node "div"
             [ style "width" (px 350)
-            , style "height" (px 200)
+            , style "height" (px 100)
             , style "overflow" "auto"
             , Border.w1
             , Border.solid
-            , on "scroll" (succeed control.show)
+            , on "scroll" (succeed control.hide)
             ]
             [ div [ Border.w1, Border.dotted ] [ t lorem ]
             , div [ Border.w1, Border.dotted ] [ t iroha ]
@@ -1059,10 +1059,9 @@ Popout.render myTooltip <|
                 , padding10
                 , Border.w1
                 , Border.dotted
-                , onMouseEnter control.show
-                , onMouseLeave control.hide
+                , onClick control.show
                 ]
-                [ t "Hover cursor on me to reveal a tooltip!" ]
+                [ t "Click me to reveal a tooltip!" ]
             , div [ Border.w1, Border.dotted ] [ t lorem ]
             , div [ Border.w1, Border.dotted ] [ t iroha ]
             ]""" <|
@@ -1085,11 +1084,11 @@ Popout.render myTooltip <|
                 \control ->
                     Popout.node "div"
                         [ style "width" (px 350)
-                        , style "height" (px 200)
+                        , style "height" (px 100)
                         , style "overflow" "auto"
                         , Border.w1
                         , Border.solid
-                        , on "scroll" (succeed control.show)
+                        , on "scroll" (succeed control.hide)
                         ]
                         [ div [ Border.w1, Border.dotted ] [ t lorem ]
                         , div [ Border.w1, Border.dotted ] [ t iroha ]
@@ -1099,10 +1098,9 @@ Popout.render myTooltip <|
                             , padding10
                             , Border.w1
                             , Border.dotted
-                            , onMouseEnter control.show
-                            , onMouseLeave control.hide
+                            , onClick control.show
                             ]
-                            [ t "Hover cursor on me to reveal a tooltip!" ]
+                            [ t "Click me to reveal a tooltip!" ]
                         , div [ Border.w1, Border.dotted ] [ t lorem ]
                         , div [ Border.w1, Border.dotted ] [ t iroha ]
                         ]

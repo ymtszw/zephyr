@@ -58,8 +58,11 @@ There are two approaches for this: (a) update anchor postions on scroll, or (b) 
 Implementation for (b) is straighforward if the containers are placed inside `render` scopes.
 Emit `hide` Msg provided from `Control` records on container scrolls, like so: `on "scroll" (succeed control.hide)`.
 
-For (a), similarly, emitting `show` Msg should update anchor positions,
-although due to Task's asynchronous nature, Popouts follow anchors with slight delay.
+For (a), similarly, if we define `update` Msg, just emitting one should update anchor positions.
+Although due to Task's asynchronous nature, Popouts follow anchors with slight delay.
+Additionally, in order to tell anchor element is actually visible (within the viewport of scrolling container,)
+we need to query more bounding box information.
+Since it is cubmersome and too complex in implementation, we do not provide that. **Just hide on scroll**.
 
 Both cases might not work well with keyboard navigation inside containers.
 
@@ -162,7 +165,16 @@ update msg (State dict) =
             ( State (Dict.remove popoutId dict), Cmd.none )
 
         HideAll ->
-            ( State Dict.empty, Cmd.none )
+            let
+                keepCurrentlyQueried _ phase =
+                    case phase of
+                        QueryingAnchorElement ->
+                            True
+
+                        Shown _ ->
+                            False
+            in
+            ( State (Dict.filter keepCurrentlyQueried dict), Cmd.none )
 
 
 queryAnchorElement : PopoutId -> AnchorId -> Cmd Msg
@@ -170,21 +182,25 @@ queryAnchorElement popoutId anchorId =
     Task.attempt (GotAnchorElement popoutId) (Browser.Dom.getElement (Id.to anchorId))
 
 
-sub : Sub Msg
-sub =
-    Sub.batch
-        [ Browser.Events.onResize (\_ _ -> HideAll)
-        , Browser.Events.onKeyDown <|
-            when (field "key" string) ((==) "Escape") (succeed HideAll)
-        , Browser.Events.onClick <|
-            -- We do this because there isn't widely implemented property yet for getting Event bubbling path.
-            -- Event.path is Chrome-only, Event.composedPath() is a function.
-            field "target" recursivePathElementDecoder
-        ]
+sub : State -> Sub Msg
+sub (State dict) =
+    if Dict.isEmpty dict then
+        Sub.none
+
+    else
+        Sub.batch
+            [ Browser.Events.onResize (\_ _ -> HideAll)
+            , Browser.Events.onKeyDown <|
+                when (field "key" string) ((==) "Escape") (succeed HideAll)
+            , Browser.Events.onClick <|
+                -- We do this because there isn't widely implemented property yet for getting Event bubbling path.
+                -- Event.path is Chrome-only, Event.composedPath() is a function.
+                field "target" recursivelyCheckIfClickout
+            ]
 
 
-recursivePathElementDecoder : Decoder Msg
-recursivePathElementDecoder =
+recursivelyCheckIfClickout : Decoder Msg
+recursivelyCheckIfClickout =
     do (field "id" string) <|
         \id ->
             if String.startsWith popoutIdPrefix id then
@@ -192,7 +208,7 @@ recursivePathElementDecoder =
 
             else
                 oneOf
-                    [ field "parentElement" (lazy (\_ -> recursivePathElementDecoder))
+                    [ field "parentElement" (lazy (\_ -> recursivelyCheckIfClickout))
                     , -- EventTarget other than Element do not have id property.
                       -- So if the parentElement does not have id, it means we reached the root
                       succeed HideAll
