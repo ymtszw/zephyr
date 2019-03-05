@@ -1,5 +1,5 @@
 module View.Atoms.Input.Select exposing
-    ( State(..), Msg(..), update, sub
+    ( State, Msg, init, hideUnsafe, update, sub
     , Options, render, styles
     )
 
@@ -9,7 +9,10 @@ Since this select input is implemented in pure Elm,
 it is a component with State and Msg, in order to control its toggle state,
 and filtering feature.
 
-@docs State, Msg, update, sub
+In order to "popout" option dropdowns and control their visibilities,
+it uses Popout module under the hood. Thus its slightly odd API described below.
+
+@docs State, Msg, init, hideUnsafe, update, sub
 @docs Options, render, styles
 
 -}
@@ -20,7 +23,7 @@ import Debounce exposing (Debounce)
 import Extra exposing (emit)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (on, onInput, stopPropagationOn)
+import Html.Events exposing (on, onClick, onInput)
 import Html.Keyed
 import Json.Decode exposing (at, field, string, succeed)
 import Json.DecodeExtra exposing (when)
@@ -30,6 +33,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Popout as Popout
 import View.Atoms.Theme exposing (Theme, aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
 import View.Style exposing (..)
 
@@ -45,14 +49,33 @@ Therefore you should only have one instance of this type in your application's m
 
 -}
 type State
-    = Open
-        { id : String
-        , filter : String
-        , filterSettled : String
-        , filterDebouncer : Debounce String
-        , readyToClose : Bool
+    = State
+        { opened : Maybe Opened
+        , popoutState : Popout.State
         }
-    | AllClosed
+
+
+type alias Opened =
+    { filter : String
+    , filterSettled : String
+    , filterDebouncer : Debounce String
+    }
+
+
+init : State
+init =
+    State
+        { opened = Nothing
+        , popoutState = Popout.init
+        }
+
+
+initOpened : Opened
+initOpened =
+    { filter = ""
+    , filterSettled = ""
+    , filterDebouncer = Debounce.init
+    }
 
 
 
@@ -60,65 +83,66 @@ type State
 
 
 type Msg msg
-    = Toggle String Bool
-    | ReadyToClose
-    | Pick msg
+    = Pick Popout.Msg msg
     | FilterInput String
     | FilterSettle String
     | DebounceMsg Debounce.Msg
+    | PopoutMsg Popout.Msg
+
+
+hideUnsafe : String -> Msg msg
+hideUnsafe idStr =
+    PopoutMsg (Popout.hideUnsafe idStr)
 
 
 update : (Msg msg -> msg) -> Msg msg -> State -> ( State, Cmd msg )
-update msgTagger msg state =
+update msgTagger msg (State s) =
     case msg of
-        Toggle id True ->
-            ( Open { id = id, filter = "", filterSettled = "", filterDebouncer = Debounce.init, readyToClose = False }, Cmd.none )
-
-        Toggle _ False ->
-            ( AllClosed, Cmd.none )
-
-        ReadyToClose ->
-            case state of
-                Open record ->
-                    ( Open { record | readyToClose = True }, Cmd.none )
-
-                AllClosed ->
-                    ( AllClosed, Cmd.none )
-
-        Pick x ->
-            ( AllClosed, emit x )
+        Pick pMsg toEmit ->
+            let
+                ( newState, cmd ) =
+                    handlePopoutMsg msgTagger pMsg (State s)
+            in
+            ( newState, Cmd.batch [ cmd, emit toEmit ] )
 
         FilterInput filter ->
-            case state of
-                Open record ->
+            case s.opened of
+                Just opened ->
                     let
-                        ( filterDebouncer, cmd ) =
-                            Debounce.push filterDebouncerConfig filter record.filterDebouncer
+                        ( deb, cmd ) =
+                            Debounce.push filterDebouncerConfig filter opened.filterDebouncer
                     in
-                    ( Open { record | filter = filter, filterDebouncer = filterDebouncer }, Cmd.map msgTagger cmd )
+                    ( State { s | opened = Just { opened | filter = filter, filterDebouncer = deb } }
+                    , Cmd.map msgTagger cmd
+                    )
 
-                AllClosed ->
-                    ( AllClosed, Cmd.none )
+                Nothing ->
+                    ( State s, Cmd.none )
 
         FilterSettle filterSettled ->
-            case state of
-                Open record ->
-                    ( Open { record | filterSettled = filterSettled }, Cmd.none )
+            case s.opened of
+                Just opened ->
+                    ( State { s | opened = Just { opened | filterSettled = filterSettled } }, Cmd.none )
 
-                AllClosed ->
-                    ( AllClosed, Cmd.none )
+                Nothing ->
+                    ( State s, Cmd.none )
 
         DebounceMsg dMsg ->
-            case state of
-                Open record ->
+            case s.opened of
+                Just opened ->
                     let
-                        ( filterDebouncer, cmd ) =
-                            Debounce.update filterDebouncerConfig emitOnSettle dMsg record.filterDebouncer
+                        ( deb, cmd ) =
+                            Debounce.update filterDebouncerConfig emitOnSettle dMsg opened.filterDebouncer
                     in
-                    ( Open { record | filterDebouncer = filterDebouncer }, Cmd.map msgTagger cmd )
+                    ( State { s | opened = Just { opened | filterDebouncer = deb } }
+                    , Cmd.map msgTagger cmd
+                    )
 
-                AllClosed ->
-                    ( AllClosed, Cmd.none )
+                Nothing ->
+                    ( State s, Cmd.none )
+
+        PopoutMsg pMsg ->
+            handlePopoutMsg msgTagger pMsg (State s)
 
 
 filterDebouncerConfig : Debounce.Config (Msg msg)
@@ -136,46 +160,34 @@ emitOnSettle =
     Debounce.takeLast (emit << FilterSettle)
 
 
-isOpen : String -> State -> Bool
-isOpen id state =
-    case state of
-        Open record ->
-            record.id == id
+handlePopoutMsg : (Msg msg -> msg) -> Popout.Msg -> State -> ( State, Cmd msg )
+handlePopoutMsg msgTagger pMsg (State s) =
+    let
+        ( popoutState, pCmd ) =
+            Popout.update pMsg s.popoutState
 
-        AllClosed ->
-            False
+        newOpened =
+            case ( s.opened, Popout.allClosed popoutState ) of
+                ( Just _, True ) ->
+                    Nothing
+
+                ( Just _, False ) ->
+                    s.opened
+
+                ( Nothing, True ) ->
+                    Nothing
+
+                ( Nothing, False ) ->
+                    Just initOpened
+    in
+    ( State { s | opened = newOpened, popoutState = popoutState }
+    , Cmd.map (msgTagger << PopoutMsg) pCmd
+    )
 
 
 sub : (Msg msg -> msg) -> State -> Sub msg
-sub msgTagger state =
-    case state of
-        Open { id, readyToClose } ->
-            if readyToClose then
-                let
-                    closer =
-                        msgTagger (Toggle id False)
-                in
-                Sub.batch
-                    [ Browser.Events.onClick <|
-                        let
-                            targetIsNotSelectParts className =
-                                List.all (\class_ -> not (String.contains class_ className))
-                                    -- Other targets should stop propagation of click events on bubbling phase
-                                    [ optionsClass, optionFilterClass ]
-                        in
-                        when (at [ "target", "className" ] string) targetIsNotSelectParts (succeed closer)
-                    , Browser.Events.onKeyDown <|
-                        when (field "key" string) ((==) "Escape") (succeed closer)
-                    ]
-
-            else
-                -- This additional step is required due to a bug:
-                -- https://discourse.elm-lang.org/t/mouse-clicks-subscription-created-and-executed-following-click-event/1067
-                Browser.Events.onAnimationFrame <|
-                    \_ -> msgTagger ReadyToClose
-
-        AllClosed ->
-            Sub.none
+sub msgTagger (State s) =
+    Sub.map (msgTagger << PopoutMsg) (Popout.sub s.popoutState)
 
 
 
@@ -185,9 +197,7 @@ sub msgTagger state =
 type alias Options a msg =
     { state : State
     , msgTagger : Msg msg -> msg
-    , -- This `id` is not actually set as `id` attribute, since handmade select inputs are not "labelable" elements.
-      -- They cannot be associated with `<label for="id">` elements, therefore there's no point in actually setting them.
-      id : String
+    , id : String
     , thin : Bool
     , onSelect : a -> msg
     , selectedOption : Maybe a
@@ -208,9 +218,6 @@ By default it is a block element.
 render : List (Attribute msg) -> Options a msg -> Html msg
 render userAttrs opts =
     let
-        opened =
-            isOpen opts.id opts.state
-
         attrs =
             [ class selectClass
             , attribute "role" <|
@@ -222,27 +229,24 @@ render userAttrs opts =
                         "listbox"
             ]
                 ++ userAttrs
-
-        onHeaderPress =
-            opts.msgTagger (Toggle opts.id (not opened))
     in
-    div attrs
-        [ header onHeaderPress opts
-        , optionsWithFilter opened opts
-        ]
+    Popout.render (optionsDropdown opts) <|
+        \control ->
+            Popout.node "div" attrs [ header control.toggle opts ]
 
 
 header : msg -> Options a msg -> Html msg
 header onPress opts =
     div
-        [ flexRow
+        [ id opts.id
+        , flexRow
         , flexCenter
         , headerPadding opts.thin
         , spacingRow2
         , Border.round5
         , Background.colorNote
         , Cursor.pointer
-        , stopPropagationOn "click" (succeed ( onPress, True ))
+        , onClick onPress
         , onEnterKeyDown onPress
         , tabindex 0
         ]
@@ -267,61 +271,66 @@ headerPadding thin =
         padding5
 
 
-optionsWithFilter : Bool -> Options a msg -> Html msg
-optionsWithFilter opened opts =
-    if opened then
-        div
-            [ class optionsClass
-            , Border.round5
-            , Background.colorNote
-            ]
-            [ optionFilter opts
-            , optionList opts
-            ]
+optionsDropdown : Options a msg -> Popout.Popout msg
+optionsDropdown opts =
+    let
+        config =
+            { id = opts.id
+            , msgTagger = opts.msgTagger << PopoutMsg
+            , orientation = Popout.anchoredVerticallyTo opts.id
+            }
 
-    else
-        none
+        (State s) =
+            opts.state
+    in
+    Popout.generate config s.popoutState <|
+        \_ ->
+            let
+                contents =
+                    case ( s.opened, opts.filterMatch ) of
+                        ( Just opened, Just _ ) ->
+                            [ optionFilter (opts.msgTagger << FilterInput) opened.filter
+                            , optionList opts opened
+                            ]
 
+                        ( Just opened, Nothing ) ->
+                            [ optionList opts opened ]
 
-optionFilter : Options a msg -> Html msg
-optionFilter opts =
-    case opts.filterMatch of
-        Just _ ->
-            Html.input
-                [ type_ "text"
-                , class optionFilterClass
-                , placeholder "Filter"
-                , onInput (opts.msgTagger << FilterInput)
-                , widthFill
-                , padding2
-                , Border.y1
-                , Border.solid
+                        ( Nothing, _ ) ->
+                            []
+            in
+            Popout.node "div"
+                [ class optionsClass
+                , Border.round5
                 , Background.colorNote
-                , value <|
-                    case opts.state of
-                        Open { filter } ->
-                            filter
-
-                        AllClosed ->
-                            ""
                 ]
-                []
-
-        Nothing ->
-            none
+                contents
 
 
-optionList : Options a msg -> Html msg
-optionList opts =
+optionFilter : (String -> msg) -> String -> Html msg
+optionFilter onInput_ filter =
+    Html.input
+        [ type_ "text"
+        , class optionFilterClass
+        , placeholder "Filter"
+        , onInput onInput_
+        , widthFill
+        , padding2
+        , Border.y1
+        , Border.solid
+        , Background.colorNote
+        , value filter
+        ]
+        []
+
+
+optionList : Options a msg -> Opened -> Html msg
+optionList opts opened =
     Html.Keyed.node "div" [ class optionListClass, flexColumn ] <|
         List.map (optionRowKey opts) <|
-            case ( opts.state, opts.filterMatch ) of
-                ( Open { filterSettled }, Just matcher ) ->
-                    if filterSettled /= "" then
-                        List.filter (Tuple.second >> matcher filterSettled) opts.options
-
-                    else
-                        opts.options
+            case ( opts.filterMatch, not (String.isEmpty opened.filterSettled) ) of
+                ( Just matcher, True ) ->
+                    List.filter (Tuple.second >> matcher opened.filterSettled) opts.options
 
                 _ ->
                     opts.options
@@ -331,7 +340,7 @@ optionRowKey : Options a msg -> ( String, a ) -> ( String, Html msg )
 optionRowKey opts ( optionKey, option ) =
     let
         onSelect =
-            opts.msgTagger (Pick (opts.onSelect option))
+            opts.msgTagger (Pick (Popout.hideUnsafe opts.id) (opts.onSelect option))
     in
     Tuple.pair optionKey <|
         div
@@ -339,7 +348,7 @@ optionRowKey opts ( optionKey, option ) =
             , attribute "role" "option"
             , Cursor.pointer
             , tabindex 0
-            , stopPropagationOn "click" (succeed ( onSelect, True ))
+            , onClick onSelect
             , onEnterKeyDown onSelect
             , if opts.selectedOption == Just option then
                 Background.colorPrim

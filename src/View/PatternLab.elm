@@ -9,7 +9,8 @@ import File exposing (File)
 import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (..)
+import Json.Decode exposing (succeed)
 import List.Extra
 import Octicons
 import SelectArray
@@ -28,6 +29,7 @@ import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Popout as Popout
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
@@ -58,7 +60,9 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \m -> Select.sub SelectCtrl m.select
+        , subscriptions =
+            \m ->
+                Sub.batch [ Select.sub SelectCtrl m.select, Sub.map PopoutCtrl (Popout.sub m.popout) ]
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
@@ -69,6 +73,7 @@ type alias Model =
     , route : Route
     , textInput : String
     , toggle : Bool
+    , popout : Popout.State
     , select : Select.State
     , selected : Maybe String
     , numColumns : Int
@@ -99,6 +104,7 @@ routes =
     , R "border" "Atoms" "Border" <| pLab [ border ]
     , R "background" "Atoms" "Background" <| pLab [ background ]
     , R "layout" "Atoms" "Layout" <| pLab [ layout ]
+    , R "popout" "Atoms" "Popout" <| \m -> pLab [ popout m ] m
     , R "image" "Atoms" "Image" <| pLab [ image ]
     , R "button" "Atoms" "Button" <| pLab [ button_ ]
     , R "input" "Atoms" "Input" <| \m -> pLab [ input_ m ] m
@@ -128,7 +134,8 @@ init () url key =
       , route = urlToRoute url
       , textInput = ""
       , toggle = False
-      , select = Select.AllClosed
+      , popout = Popout.init
+      , select = Select.init
       , selected = Nothing
       , numColumns = 4
       , editorSeq = 0
@@ -162,6 +169,7 @@ type Msg
     | Arrived Url
     | TextInput String
     | Toggle Bool
+    | PopoutCtrl Popout.Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
@@ -193,6 +201,13 @@ update msg m =
 
         Toggle bool ->
             ( { m | toggle = bool }, Cmd.none )
+
+        PopoutCtrl pMsg ->
+            let
+                ( newPopout, cmd ) =
+                    Popout.update pMsg m.popout
+            in
+            ( { m | popout = newPopout }, Cmd.map PopoutCtrl cmd )
 
         SelectCtrl sMsg ->
             let
@@ -924,6 +939,171 @@ badge =
                 , bottomRight =
                     Just (div [ Background.colorErr ] [ t "I'm bottom-right badge!" ])
                 }
+        ]
+
+
+popout : Model -> Html Msg
+popout m =
+    section []
+        [ h1 [ xxProminent ] [ t "Popout" ]
+        , withSource """let
+    myTooltip =
+        let
+            config =
+                { id = "popoutElementId001"
+                , msgTagger = PopoutCtrl
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
+                }
+        in
+        Popout.generate config m.popout <|
+            \\_ ->
+                Popout.node "div"
+                    [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+in
+Popout.render myTooltip <|
+    \\control ->
+        Popout.node "div"
+            [ style "width" (px 350)
+            , style "height" (px 200)
+            , style "overflow" "auto"
+            , Border.w1
+            , Border.solid
+            , on "scroll" (succeed control.hide)
+            ]
+            [ div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            , div
+                [ id "anchorElementId001"
+                , xProminent
+                , padding10
+                , Border.w1
+                , Border.dotted
+                , onMouseEnter control.show
+                , onMouseLeave control.hide
+                ]
+                [ t "Hover cursor on me to reveal a tooltip!" ]
+            , div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            ]""" <|
+            let
+                myTooltip =
+                    let
+                        config =
+                            { id = "popoutElementId001"
+                            , msgTagger = PopoutCtrl
+                            , orientation = Popout.anchoredVerticallyTo "anchorElementId001"
+                            }
+                    in
+                    Popout.generate config m.popout <|
+                        \_ ->
+                            Popout.node "div"
+                                [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+            in
+            Popout.render myTooltip <|
+                \control ->
+                    Popout.node "div"
+                        [ style "width" (px 350)
+                        , style "height" (px 200)
+                        , style "overflow" "auto"
+                        , Border.w1
+                        , Border.solid
+                        , on "scroll" (succeed control.hide)
+                        ]
+                        [ div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        , div
+                            [ id "anchorElementId001"
+                            , xProminent
+                            , padding10
+                            , Border.w1
+                            , Border.dotted
+                            , onMouseEnter control.show
+                            , onMouseLeave control.hide
+                            ]
+                            [ t "Hover cursor on me to reveal a tooltip!" ]
+                        , div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        ]
+        , withSource """let
+    myTooltip =
+        let
+            config =
+                { id = "popoutElementId002"
+                , msgTagger = PopoutCtrl
+                , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
+                }
+        in
+        Popout.generate config m.popout <|
+            \\_ ->
+                Popout.node "div"
+                    [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                    [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+in
+Popout.render myTooltip <|
+    \\control ->
+        Popout.node "div"
+            [ style "width" (px 350)
+            , style "height" (px 100)
+            , style "overflow" "auto"
+            , Border.w1
+            , Border.solid
+            , on "scroll" (succeed control.hide)
+            ]
+            [ div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            , div
+                [ id "anchorElementId002"
+                , xProminent
+                , padding10
+                , Border.w1
+                , Border.dotted
+                , onClick control.show
+                ]
+                [ t "Click me to reveal a tooltip!" ]
+            , div [ Border.w1, Border.dotted ] [ t lorem ]
+            , div [ Border.w1, Border.dotted ] [ t iroha ]
+            ]""" <|
+            let
+                myTooltip =
+                    let
+                        config =
+                            { id = "popoutElementId002"
+                            , msgTagger = PopoutCtrl
+                            , orientation = Popout.anchoredVerticallyTo "anchorElementId002"
+                            }
+                    in
+                    Popout.generate config m.popout <|
+                        \_ ->
+                            Popout.node "div"
+                                [ style "width" (px 600), colorSucc, padding10, Border.round5, Background.colorBg ]
+                                [ t "I'm one huge tooltip! I'm not contained!!! ", t lorem ]
+            in
+            Popout.render myTooltip <|
+                \control ->
+                    Popout.node "div"
+                        [ style "width" (px 350)
+                        , style "height" (px 100)
+                        , style "overflow" "auto"
+                        , Border.w1
+                        , Border.solid
+                        , on "scroll" (succeed control.hide)
+                        ]
+                        [ div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        , div
+                            [ id "anchorElementId002"
+                            , xProminent
+                            , padding10
+                            , Border.w1
+                            , Border.dotted
+                            , onClick control.show
+                            ]
+                            [ t "Click me to reveal a tooltip!" ]
+                        , div [ Border.w1, Border.dotted ] [ t lorem ]
+                        , div [ Border.w1, Border.dotted ] [ t iroha ]
+                        ]
         ]
 
 

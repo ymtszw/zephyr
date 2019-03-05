@@ -6,6 +6,7 @@
     "elm-version": "0.19.0",
     "dependencies": {
         "direct": {
+            "Punie/elm-id": "1.0.3",
             "capitalist/elm-octicons": "2.3.0",
             "elm/browser": "1.0.1",
             "elm/core": "1.0.2",
@@ -22,6 +23,7 @@
             "justinmimbs/timezone-data": "2.0.2",
             "mdgriffith/elm-ui": "1.1.0",
             "pablohirafuji/elm-markdown": "2.0.5",
+            "pzp1997/assoc-list": "1.0.0",
             "rtfeldman/elm-hex": "1.0.0",
             "rtfeldman/elm-iso8601-date-strings": "1.1.2",
             "ymtszw/elm-broker": "1.0.0"

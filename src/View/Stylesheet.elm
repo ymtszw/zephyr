@@ -110,7 +110,6 @@ resetUserAgentStyles =
         , ( "font-size", "inherit" ) -- These two inheritances are necessary for cascading ancestors' font settings to descendants
         , ( "font", "inherit" )
         , ( "vertical-align", "baseline" )
-        , ( "position", "relative" ) -- We use position: absolute; blocks for badges, which requires non-static (non-default) containing ancestor block
         ]
     , s "article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section"
         [ ( "display", "block" ) ]
