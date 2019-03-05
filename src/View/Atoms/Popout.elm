@@ -1,6 +1,6 @@
 module View.Atoms.Popout exposing
-    ( State, Msg, init, update, sub
-    , Config, Orientation, Control, generate, node, render, anchoredVerticallyTo
+    ( State, Msg, init, hideUnsafe, update, sub, allClosed
+    , Config, Orientation, Control, Popout, Node, generate, node, render, anchoredVerticallyTo
     )
 
 {-| Shows Html elements in "popout" manner.
@@ -71,8 +71,8 @@ since Popouts in this module are positioned with `absolute`.
 Absolutely positioned elements are (ultimately) positioned relative to document origin (not to viewport origin)
 thus Popouts should correctly move along with document scroll!
 
-@docs State, Msg, init, update, sub
-@docs Config, Orientation, Control, generate, node, render, anchoredVerticallyTo
+@docs State, Msg, init, hideUnsafe, update, sub, allClosed
+@docs Config, Orientation, Control, Popout, Node, generate, node, render, anchoredVerticallyTo
 
 -}
 
@@ -131,6 +131,11 @@ type Msg
     | GotAnchorElement PopoutId (Result Browser.Dom.Error Browser.Dom.Element)
     | RequestHide PopoutId
     | HideAll
+
+
+hideUnsafe : String -> Msg
+hideUnsafe idStr =
+    RequestHide (Id.from idStr)
 
 
 update : Msg -> State -> ( State, Cmd Msg )
@@ -215,6 +220,11 @@ recursivelyCheckIfClickout =
                     ]
 
 
+allClosed : State -> Bool
+allClosed (State dict) =
+    Dict.isEmpty dict
+
+
 
 -- VIEW
 
@@ -256,13 +266,18 @@ in order to show or hide the Popout element.
 type alias Control msg =
     { show : msg
     , hide : msg
+    , toggle : msg
     }
+
+
+type Node msg
+    = Node String (List (Attribute msg)) (List (Html msg))
 
 
 {-| Generate a Popout element. Use `node` to construct outermost node.
 -}
 generate : Config msg -> State -> (Control msg -> Node msg) -> Popout msg
-generate config state toNode =
+generate config (State dict) toNode =
     let
         popoutId =
             Id.from config.id
@@ -272,29 +287,33 @@ generate config state toNode =
                 AnchoredVerticallyTo anchorId ->
                     { show = config.msgTagger (RequestShow popoutId anchorId)
                     , hide = config.msgTagger (RequestHide popoutId)
+                    , toggle =
+                        case Dict.get popoutId dict of
+                            Just (Shown _) ->
+                                config.msgTagger (RequestHide popoutId)
+
+                            _ ->
+                                config.msgTagger (RequestShow popoutId anchorId)
                     }
+
+        finalizedNode =
+            case Dict.get popoutId dict of
+                Just (Shown a) ->
+                    let
+                        (Node tagName attrs contents) =
+                            toNode control
+
+                        positionedAttrs =
+                            id (popoutIdPrefix ++ Id.to popoutId)
+                                :: style "position" "absolute"
+                                :: calculatePosition config.orientation a
+                    in
+                    Html.node tagName (attrs ++ positionedAttrs) contents
+
+                _ ->
+                    text ""
     in
-    Popout ( popoutId, control, finalizeNode popoutId config.orientation state (toNode control) )
-
-
-type alias Node msg =
-    ( String, List (Attribute msg), List (Html msg) )
-
-
-finalizeNode : PopoutId -> Orientation -> State -> Node msg -> Html msg
-finalizeNode popoutId orientation (State dict) ( tagName, attrs, contents ) =
-    case Dict.get popoutId dict of
-        Just (Shown a) ->
-            let
-                positionedAttrs =
-                    id (popoutIdPrefix ++ Id.to popoutId)
-                        :: style "position" "absolute"
-                        :: calculatePosition orientation a
-            in
-            Html.node tagName (attrs ++ positionedAttrs) contents
-
-        _ ->
-            text ""
+    Popout ( popoutId, control, finalizedNode )
 
 
 popoutIdPrefix : String
@@ -338,7 +357,7 @@ calculatePosition orientation a =
 -}
 node : String -> List (Attribute msg) -> List (Html msg) -> Node msg
 node tagName attrs contents =
-    ( tagName, attrs, contents )
+    Node tagName attrs contents
 
 
 {-| Render HTML of your Popout and Container.
@@ -346,7 +365,7 @@ node tagName attrs contents =
 render : Popout msg -> (Control msg -> Node msg) -> Html msg
 render (Popout ( _, control, popout )) innerContent =
     let
-        ( tagName, attrs, contents ) =
+        (Node tagName attrs contents) =
             innerContent control
     in
     Html.node tagName attrs (contents ++ [ popout ])
