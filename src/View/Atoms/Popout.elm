@@ -206,18 +206,21 @@ sub (State dict) =
 
 recursivelyCheckIfClickout : Decoder Msg
 recursivelyCheckIfClickout =
-    do (field "id" string) <|
-        \id ->
-            if String.startsWith popoutIdPrefix id then
-                fail "Click inside Popout node"
+    do (field "tagName" string) <|
+        \tagName ->
+            case tagName of
+                "HTML" ->
+                    -- Reached Element Node root
+                    succeed HideAll
 
-            else
-                oneOf
-                    [ field "parentElement" (lazy (\_ -> recursivelyCheckIfClickout))
-                    , -- EventTarget other than Element do not have id property.
-                      -- So if the parentElement does not have id, it means we reached the root
-                      succeed HideAll
-                    ]
+                _ ->
+                    do (field "id" string) <|
+                        \id ->
+                            if String.startsWith popoutIdPrefix id then
+                                fail "Click inside Popout node"
+
+                            else
+                                field "parentElement" (lazy (\_ -> recursivelyCheckIfClickout))
 
 
 allClosed : State -> Bool
