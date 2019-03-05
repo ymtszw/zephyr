@@ -1,5 +1,5 @@
 module TextParser exposing
-    ( Parsed(..), ParseOptions, parse, parseOptions, defaultOptions
+    ( Parsed, ParseOptions, map, parse, parseOptions, defaultOptions
     , shortenUrl
     )
 
@@ -13,7 +13,7 @@ Using pure-Elm Markdown parser: <https://package.elm-lang.org/packages/pablohira
 Therefore it is slower than other Markdown parser solutions,
 so you should consider parsing only once and storing `Parsed` IR for later uses.
 
-@docs Parsed, ParseOptions, parse, parseOptions, defaultOptions
+@docs Parsed, ParseOptions, map, parse, parseOptions, defaultOptions
 @docs shortenUrl
 
 -}
@@ -25,14 +25,21 @@ import Parser exposing ((|.), (|=), Parser, Step(..))
 import Url exposing (Url)
 
 
-{-| IR of parsed texts. Meant to be persisted for later uses.
+{-| Intermediate representation of parsed texts.
+
+Can be persisted for later uses.
 
 Its internal data structure is Markdown.Block with removing
-"original text" from items with children (in order to reduce IndexedDB usage).
+"original text" from items with children (in order to reduce storage usage).
 
 -}
 type Parsed
     = Parsed (List (Block () ()))
+
+
+map : (Block () () -> a) -> Parsed -> List a
+map mapper (Parsed blocks) =
+    List.map mapper blocks
 
 
 {-| Parse options.
