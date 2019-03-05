@@ -23,7 +23,7 @@ import SlackTestData
 import String exposing (fromInt, toInt)
 import StringExtra
 import Test exposing (..)
-import TextParser exposing (Parsed(..), parseOptions)
+import TextParser exposing (parseOptions)
 import Time exposing (Posix)
 import TimeExtra exposing (po)
 
@@ -445,7 +445,12 @@ testDefaultParse initial expected =
     test ("should parse: " ++ initial ++ "") <|
         \_ ->
             TextParser.parse TextParser.defaultOptions initial
-                |> Expect.equal (Parsed expected)
+                |> equalParsed expected
+
+
+equalParsed : List (Block () ()) -> TextParser.Parsed -> Expect.Expectation
+equalParsed expected parsed =
+    Expect.equalLists expected (TextParser.map identity parsed)
 
 
 testSlackParse : String -> List (Block () ()) -> Test
@@ -453,7 +458,7 @@ testSlackParse initial expected =
     test ("should parse: " ++ initial ++ "") <|
         \_ ->
             TextParser.parse Slack.parseOptions initial
-                |> Expect.equal (Parsed expected)
+                |> equalParsed expected
 
 
 autoLinkerSuite : Test
@@ -508,7 +513,7 @@ testAutoLinker initial expected =
     test ("should work for text: '" ++ initial ++ "'") <|
         \_ ->
             TextParser.parse { parseOptions | autoLink = True } initial
-                |> Expect.equal (Parsed [ Paragraph "" expected ])
+                |> equalParsed [ Paragraph "" expected ]
 
 
 unescapeTagsSuite : Test
@@ -539,7 +544,7 @@ testUnescapeTags initial expected =
     test ("should work for text: '" ++ initial ++ "'") <|
         \_ ->
             TextParser.parse { parseOptions | unescapeTags = True } initial
-                |> Expect.equal (Parsed [ Paragraph "" expected ])
+                |> equalParsed [ Paragraph "" expected ]
 
 
 
