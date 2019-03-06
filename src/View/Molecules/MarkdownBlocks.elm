@@ -43,7 +43,13 @@ renderBlock quoteLevel block =
                     else
                         noAttr
             in
-            Html.node ("h" ++ String.fromInt level) [ breakWords, size ] (List.map renderInline inlines)
+            Html.node ("h" ++ String.fromInt level)
+                [ breakWords
+                , size
+                , Border.bot1
+                , Border.solid
+                ]
+                (List.map renderInline inlines)
 
         CodeBlock _ raw ->
             pre [ breakWords, padding2, Border.round2, Background.colorBg ] [ t raw ]

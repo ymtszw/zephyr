@@ -141,4 +141,5 @@ globalStyles =
         , ( "outline", "none" )
         ]
     , s "input,textarea,button" [ ( "color", "inherit" ) ]
+    , s "hr" [ ( "width", "100%" ) ]
     ]
