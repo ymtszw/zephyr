@@ -117,8 +117,6 @@ resetUserAgentStyles =
         |> inject Typography.regularStyle
         |> inject Typography.sansSerifStyle
         |> inject Background.oneDarkMainStyle
-    , s "ol,ul"
-        [ ( "list-style", "none" ) ]
     , s "blockquote,q"
         [ ( "quotes", "none" ) ]
     , s "blockquote:before,blockquote:after,q:before,q:after"

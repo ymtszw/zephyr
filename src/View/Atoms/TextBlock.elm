@@ -63,11 +63,12 @@ styles =
     , s (c ellipsisClass) [ ( "overflow", "hidden" ), ( "text-overflow", "ellipsis" ) ]
     , preStyle
     ]
+        ++ listStyles
 
 
 baseTextBlockStyle : Style
 baseTextBlockStyle =
-    s "p,pre,blockquote,textarea,h1,h2,h3,h4,h5,h6" [ ( "line-height", "1.4em" ) ]
+    s "p,pre,blockquote,textarea,h1,h2,h3,h4,h5,h6,ul,ol" [ ( "line-height", "1.4em" ) ]
 
 
 forceBreakStyle : Style
@@ -112,3 +113,19 @@ clipClass =
 ellipsisClass : String
 ellipsisClass =
     "ellip"
+
+
+listStyles : List Style
+listStyles =
+    [ s "ul,ol"
+        [ ( "list-style-position", "outside" )
+        , ( "padding-left", px 20 ) -- Somewhat crude adjustment, compensating bullet points; effects may vary between browsers
+        ]
+
+    -- For unordered lists, just follow user-agent's default bullet point styles
+    -- In Chrome it is disc > circle > square > square > square > ...
+    , s "ol ol ol ol" [ ( "list-style-type", "decimal" ) ] -- 4 levels and thereafter, keep using decimal
+    , s "ol ol ol" [ ( "list-style-type", "lower-latin" ) ]
+    , s "ol ol" [ ( "list-style-type", "lower-roman" ) ]
+    , s "ol" [ ( "list-style-type", "decimal" ) ]
+    ]
