@@ -1825,6 +1825,26 @@ Horizontal rule below:
 ## Title h2
 いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん
 
+- This is an unordered list
+- Can be *nested*
+    - like
+    - this
+    - What happens if there are very long lines and words?
+      abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123
+        - More nest
+            - And more
+                - And yet more
+                    - This is the end
+
+0. And this is an ordered list, starting from zero
+1. Should be nestable
+    1. Like
+    2. this
+        1. More nest
+            1. And more
+                1. And yet more
+                    1. This is the end
+
 ### Title h3
 With code: `<code>With Code</code>`,\\
 and hard line breaks!\\
@@ -1856,6 +1876,11 @@ Should respect line breaks!
 > ```
 > Can have code block!
 > ```
+>
+> - Can have lists!
+>     - Like
+>     - This
+> - Foo!
 
 ###### Title h6
 

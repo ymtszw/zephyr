@@ -1,7 +1,7 @@
 module View.Molecules.MarkdownBlocks exposing (render)
 
-import Html exposing (Html, blockquote, br, code, hr, img, p, pre, span)
-import Html.Attributes exposing (alt, src, style, title)
+import Html exposing (Html, blockquote, br, code, hr, img, li, ol, p, pre, span, ul)
+import Html.Attributes exposing (alt, src, start, style, title)
 import Markdown.Block exposing (Block(..))
 import Markdown.Inline exposing (Inline(..))
 import TextParser
@@ -20,10 +20,6 @@ render opts raw =
 
 renderBlock : Int -> Block a b -> Html msg
 renderBlock quoteLevel block =
-    let
-        paragraph inlines =
-            p [ breakWords, padding2 ] (List.map renderInline inlines)
-    in
     case block of
         BlankLine _ ->
             none
@@ -55,7 +51,7 @@ renderBlock quoteLevel block =
             pre [ breakWords, padding2, Border.round2, Background.colorBg ] [ t raw ]
 
         Paragraph _ inlines ->
-            paragraph inlines
+            p [ breakWords, padding2 ] (List.map renderInline inlines)
 
         BlockQuote blocks ->
             let
@@ -69,13 +65,24 @@ renderBlock quoteLevel block =
             blockquote [ italic, breakWords, padding2, Border.gutter, bgColor ]
                 (List.map (renderBlock (quoteLevel + 1)) blocks)
 
-        List listBlockBlockMarkdown ibBlockBlockMarkdownListListListList ->
-            -- TODO
-            none
+        List listBlock items ->
+            let
+                renderedListItems =
+                    List.map (\blocks -> li [] (List.map (renderBlock quoteLevel) blocks)) items
+            in
+            case listBlock.type_ of
+                Markdown.Block.Unordered ->
+                    ul [] renderedListItems
+
+                Markdown.Block.Ordered 1 ->
+                    ol [] renderedListItems
+
+                Markdown.Block.Ordered from ->
+                    ol [ start from ] renderedListItems
 
         PlainInlines inlines ->
-            -- Just treat them as a Paragraph; seemingly there are no practical cases where this variant used?
-            paragraph inlines
+            -- Found in list items; for easier implementation, we just wrap them in `span`
+            span [ breakWords ] (List.map renderInline inlines)
 
         Markdown.Block.Custom _ _ ->
             none
