@@ -1,4 +1,6 @@
-module StringExtra exposing (appendWithSpace, containsCaseIgnored, punctuateNumber, splitAt)
+module StringExtra exposing (appendWithSpace, containsCaseIgnored, punctuateNumber, splitAt, toUrlUnsafe)
+
+import Url
 
 
 splitAt : Int -> String -> List String
@@ -42,3 +44,16 @@ punctuateNumber decimal =
 containsCaseIgnored : String -> String -> Bool
 containsCaseIgnored query str =
     String.contains (String.toLower query) (String.toLower str)
+
+
+toUrlUnsafe : String -> Url.Url
+toUrlUnsafe raw =
+    Url.fromString raw
+        |> Maybe.withDefault
+            { protocol = Url.Https
+            , host = "example.com"
+            , port_ = Nothing
+            , path = ""
+            , fragment = Nothing
+            , query = Nothing
+            }
