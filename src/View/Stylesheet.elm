@@ -139,5 +139,5 @@ globalStyles =
         , ( "outline", "none" )
         ]
     , s "input,textarea,button" [ ( "color", "inherit" ) ]
-    , s "hr" [ ( "width", "100%" ) ]
+    , s "hr" [ ( "width", "100%" ), ( "border", "none" ) ] -- Erase user-agent's hr style, apply in Border module
     ]
