@@ -1,10 +1,10 @@
 module TextParser exposing
-    ( Parsed, ParseOptions, map, parse, parseOptions, defaultOptions
+    ( Parsed, ParseOptions, map, apply, parse, parseOptions, defaultOptions
     , shortenUrl
     )
 
 {-| Parses various marked-up texts into intermediate representaitons (IR)
-which can then be fed into TextRenderer for actual rendering.
+which can then be fed into View modules for actual rendering.
 
 Primarily it exists for parsing Markdown texts,
 but it also parses other service-specific markups.
@@ -13,7 +13,7 @@ Using pure-Elm Markdown parser: <https://package.elm-lang.org/packages/pablohira
 Therefore it is slower than other Markdown parser solutions,
 so you should consider parsing only once and storing `Parsed` IR for later uses.
 
-@docs Parsed, ParseOptions, map, parse, parseOptions, defaultOptions
+@docs Parsed, ParseOptions, map, apply, parse, parseOptions, defaultOptions
 @docs shortenUrl
 
 -}
@@ -40,6 +40,13 @@ type Parsed
 map : (Block () () -> a) -> Parsed -> List a
 map mapper (Parsed blocks) =
     List.map mapper blocks
+
+
+{-| Used from TextRenderer; to be removed after Atomic Design Migration.
+-}
+apply : (List (Block () ()) -> a) -> Parsed -> a
+apply renderer (Parsed blocks) =
+    renderer blocks
 
 
 {-| Parse options.

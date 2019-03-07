@@ -10,7 +10,7 @@ import Html.Lazy exposing (..)
 import Markdown.Block as Block exposing (Block(..), ListBlock)
 import Markdown.Inline as Inline exposing (Inline(..))
 import Octicons
-import TextParser exposing (Parsed(..))
+import TextParser
 import View.HtmlParts exposing (..)
 import View.Parts exposing (columnCodeBlockMaxHeight, scale12, scaleByQuarter)
 
@@ -19,17 +19,13 @@ type alias RenderOptions =
     { theme : ColorTheme
     , fontSize : Int
     , maxMediaWidth : Int
-    , parsed : Parsed
+    , parsed : TextParser.Parsed
     }
 
 
 render : RenderOptions -> List (Html msg)
 render opts =
-    let
-        (Parsed blocks) =
-            opts.parsed
-    in
-    renderImpl opts blocks []
+    TextParser.apply (\blocks -> renderImpl opts blocks []) opts.parsed
 
 
 renderImpl : RenderOptions -> List (Block () ()) -> List (Html msg) -> List (Html msg)
