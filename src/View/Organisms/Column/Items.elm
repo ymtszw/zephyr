@@ -19,7 +19,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
-import View.Atoms.TextBlock exposing (clip)
+import View.Atoms.TextBlock exposing (breakWords, clip)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
@@ -254,7 +254,7 @@ itemGroupContents tz oldestItem subsequentItems =
                             _ ->
                                 Nothing
                 in
-                [ ( "itemGroupHeader", discordItemGroupHeader tz oldestMessage )
+                [ itemGroupHeaderKey tz oldestMessage.timestamp (Discord.getAuthorName oldestMessage)
                 , discordMessageKey offset oldestMessage
                 ]
                     ++ subsequentContents
@@ -272,22 +272,19 @@ itemGroupContents tz oldestItem subsequentItems =
                             _ ->
                                 Nothing
                 in
-                [ ( "itemGroupHeader", slackItemGroupHeader tz oldestMessage )
+                [ itemGroupHeaderKey tz (Slack.getPosix oldestMessage) (Slack.getAuthorName oldestMessage)
                 , slackMessageKey offset oldestMessage
                 ]
                     ++ subsequentContents
 
 
-discordItemGroupHeader : Time.Zone -> Discord.Message -> Html msg
-discordItemGroupHeader tz dm =
-    -- TODO
-    none
-
-
-slackItemGroupHeader : Time.Zone -> Slack.Message -> Html msg
-slackItemGroupHeader tz sm =
-    -- TODO
-    none
+itemGroupHeaderKey : Time.Zone -> Time.Posix -> String -> ( String, Html msg )
+itemGroupHeaderKey tz posixTimestamp username =
+    Tuple.pair "itemGroupHeader" <|
+        div [ flexRow ]
+            [ div [ flexGrow, flexBasisAuto, breakWords, bold, prominent ] [ t username ]
+            , div [ colorNote ] [ t (TimeExtra.local tz posixTimestamp) ]
+            ]
 
 
 blockWithKey : String -> List (Html msg) -> ( String, Html msg )

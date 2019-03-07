@@ -5,7 +5,7 @@ module Data.Producer.Slack exposing
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
+    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     , parseOptions, resolveAngleCmd
     )
@@ -21,7 +21,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
+@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 @docs parseOptions, resolveAngleCmd
 
@@ -2431,6 +2431,22 @@ getTs { ts } =
             ts
     in
     ts_
+
+
+getAuthorName : { x | author : Author, username : Maybe String } -> String
+getAuthorName { author, username } =
+    case author of
+        UserAuthor user ->
+            Maybe.withDefault user.profile.realName user.profile.displayName
+
+        BotAuthor bot ->
+            Maybe.withDefault bot.name username
+
+        UserAuthorId (UserId str) ->
+            str
+
+        BotAuthorId (BotId str) ->
+            str
 
 
 defaultIconUrl : Maybe Int -> String
