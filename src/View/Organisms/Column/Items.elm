@@ -311,17 +311,19 @@ imageBlock opts =
         Just url_ ->
             ntLink []
                 { url = url_
-                , children = [ img [ flexItem, src opts.src, alt opts.description ] [] ]
+                , children = [ img [ flexItem, alignStart, src opts.src, alt opts.description ] [] ]
                 }
 
         Nothing ->
-            img [ flexItem, src opts.src, alt opts.description ] []
+            img [ flexItem, alignStart, src opts.src, alt opts.description ] []
 
 
 videoBlock : Maybe String -> String -> Html msg
 videoBlock posterMaybe url =
     video
-        [ controls True
+        [ flexItem
+        , alignStart
+        , controls True
         , src url
         , Maybe.withDefault noAttr (Maybe.map poster posterMaybe)
         ]

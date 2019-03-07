@@ -3172,8 +3172,11 @@ columnItems =
                         , timezone = Time.utc
                         , items =
                             [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha }
-                            , SystemMessage { id = "SM1", mediaMaybe = Just (Image sampleImage), message = "With image (contained)" }
+                            , SystemMessage { id = "SM1", mediaMaybe = Just (Image sampleImage500x500), message = "With image (contained)" }
                             , SystemMessage { id = "SM2", mediaMaybe = Just (Video sampleVideo), message = "With video (contained)" }
+                            , SystemMessage { id = "SM3", mediaMaybe = Just (Image sampleImage100x100), message = "With image (smaller)" }
+                            , SystemMessage { id = "SM4", mediaMaybe = Just (Image sampleImage100x600), message = "With image (tall)" }
+                            , SystemMessage { id = "SM5", mediaMaybe = Just (Image sampleImage600x100), message = "With image (landscape)" }
                             , LocalMessage { id = "LM0", message = lorem ++ " " ++ iroha }
                             ]
                         , hasMore = False
@@ -3190,8 +3193,17 @@ columnItems =
                         }
                 ]
 
-        sampleImage =
+        sampleImage500x500 =
             StringExtra.toUrlUnsafe (Image.ph 500 500)
+
+        sampleImage100x100 =
+            StringExtra.toUrlUnsafe (Image.ph 100 100)
+
+        sampleImage100x600 =
+            StringExtra.toUrlUnsafe (Image.ph 100 600)
+
+        sampleImage600x100 =
+            StringExtra.toUrlUnsafe (Image.ph 600 100)
 
         sampleVideo =
             StringExtra.toUrlUnsafe "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
