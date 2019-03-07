@@ -2,7 +2,7 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
-import Data.Column exposing (ColumnItem(..))
+import Data.Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Dict
 import File exposing (File)
@@ -3163,7 +3163,7 @@ columnItems =
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
-                , withSourceInColumn 200 "" <|
+                , withSourceInColumn 500 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
@@ -3172,6 +3172,8 @@ columnItems =
                         , timezone = Time.utc
                         , items =
                             [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha }
+                            , SystemMessage { id = "SM1", mediaMaybe = Just (Image sampleImage), message = "With image (contained)" }
+                            , SystemMessage { id = "SM2", mediaMaybe = Just (Video sampleVideo), message = "With video (contained)" }
                             , LocalMessage { id = "LM0", message = lorem ++ " " ++ iroha }
                             ]
                         , hasMore = False
@@ -3187,6 +3189,12 @@ columnItems =
                         , hasMore = True
                         }
                 ]
+
+        sampleImage =
+            StringExtra.toUrlUnsafe (Image.ph 500 500)
+
+        sampleVideo =
+            StringExtra.toUrlUnsafe "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
     in
     section []
         [ h1 [ xxProminent ] [ t "Column.Items" ]

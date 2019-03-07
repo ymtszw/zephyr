@@ -1,12 +1,12 @@
 module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
-import Data.Column exposing (ColumnItem(..), Media)
+import Data.Column exposing (ColumnItem(..), Media(..))
 import Data.Item exposing (Item(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html, div)
-import Html.Attributes exposing (class, title)
+import Html exposing (Attribute, Html, div, img, video)
+import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Html.Keyed
 import List.Extra
@@ -19,6 +19,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (clip)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
@@ -220,13 +221,25 @@ itemAuthorAvatar40 item =
 
 itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
 itemGroupContents tz oldestItem subsequentItems =
-    Html.Keyed.node "div" [ flexColumn, flexBasisAuto, flexShrink, spacingColumn2 ] <|
+    Html.Keyed.node "div" [ class itemGroupContentsClass, clip, flexColumn, flexBasisAuto, flexShrink, spacingColumn2 ] <|
         case oldestItem of
             SystemMessage { id, message, mediaMaybe } ->
-                [ simpleMessageKey id message mediaMaybe ]
+                [ blockWithKey id <|
+                    case mediaMaybe of
+                        Just (Image url) ->
+                            markdownBlocks message
+                                ++ [ imageBlock { src = Url.toString url, description = Url.toString url, url = Nothing } ]
+
+                        Just (Video url) ->
+                            markdownBlocks message
+                                ++ [ videoBlock Nothing (Url.toString url) ]
+
+                        Nothing ->
+                            markdownBlocks message
+                ]
 
             LocalMessage { id, message } ->
-                [ simpleMessageKey id message Nothing ]
+                [ blockWithKey id (markdownBlocks message) ]
 
             Product offset (DiscordItem oldestMessage) ->
                 let
@@ -277,18 +290,9 @@ slackItemGroupHeader tz sm =
     none
 
 
-simpleMessageKey : String -> String -> Maybe Media -> ( String, Html msg )
-simpleMessageKey id message mediaMaybe =
-    Tuple.pair id <|
-        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow ] <|
-            case mediaMaybe of
-                Just m ->
-                    markdownBlocks message
-                        ++ [-- mediaBlock m
-                           ]
-
-                Nothing ->
-                    markdownBlocks message
+blockWithKey : String -> List (Html msg) -> ( String, Html msg )
+blockWithKey id children =
+    ( id, div [ flexColumn, flexBasisAuto, flexShrink, flexGrow ] children )
 
 
 markdownBlocks : String -> List (Html msg)
@@ -299,6 +303,31 @@ markdownBlocks raw =
     else
         -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
         MarkdownBlocks.render TextParser.defaultOptions raw
+
+
+imageBlock : { src : String, description : String, url : Maybe String } -> Html msg
+imageBlock opts =
+    case opts.url of
+        Just url_ ->
+            ntLink []
+                { url = url_
+                , children = [ img [ flexItem, src opts.src, alt opts.description ] [] ]
+                }
+
+        Nothing ->
+            img [ flexItem, src opts.src, alt opts.description ] []
+
+
+videoBlock : Maybe String -> String -> Html msg
+videoBlock posterMaybe url =
+    video
+        [ controls True
+        , src url
+        , Maybe.withDefault noAttr (Maybe.map poster posterMaybe)
+        ]
+        [ t "Embedded video not supported. "
+        , ntLink [] { url = url, children = [ t "[Source]" ] }
+        ]
 
 
 discordMessageKey : Broker.Offset -> Discord.Message -> ( String, Html msg )
@@ -323,6 +352,11 @@ styles =
         [ ( "padding-top", px itemGroupPaddingY )
         , ( "padding-bottom", px itemGroupPaddingY )
         ]
+    , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
+        [ ( "max-width", "100%" )
+        , ( "max-height", px maxMediaHeight )
+        , ( "object-fit", "scale-down" )
+        ]
     ]
 
 
@@ -334,3 +368,13 @@ itemGroupClass =
 itemGroupPaddingY : Int
 itemGroupPaddingY =
     5
+
+
+itemGroupContentsClass : String
+itemGroupContentsClass =
+    "cigc"
+
+
+maxMediaHeight : Int
+maxMediaHeight =
+    400
