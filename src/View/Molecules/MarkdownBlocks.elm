@@ -1,6 +1,6 @@
 module View.Molecules.MarkdownBlocks exposing (render)
 
-import Html exposing (Html, blockquote, br, code, hr, img, li, ol, p, pre, span, ul)
+import Html exposing (Html, blockquote, br, code, em, hr, img, li, ol, p, pre, span, strong, ul)
 import Html.Attributes exposing (alt, src, start, style, title)
 import Markdown.Block exposing (Block(..))
 import Markdown.Inline exposing (Inline(..))
@@ -122,13 +122,13 @@ renderInline inline =
                 decorated =
                     case level of
                         1 ->
-                            span [ italic ]
+                            em []
 
                         2 ->
-                            span [ bold ]
+                            strong []
 
                         _ ->
-                            span [ bold, underline ]
+                            em [] >> List.singleton >> strong []
             in
             decorated (List.map renderInline inlines)
 

@@ -276,7 +276,9 @@ styles =
     , monospaceStyle
     , -- Font decorations
       s (c italicClass) [ ( "font-style", "italic" ) ]
+    , s "em" [ ( "font-style", "italic" ) ]
     , s (c boldClass) [ ( "font-weight", "700" ) ]
+    , s "strong" [ ( "font-weight", "700" ) ]
     , s (c underlineClass) [ ( "text-decoration", "underline" ) ]
     ]
         ++ fontColorStyles

@@ -1812,8 +1812,8 @@ markdownBlocks =
                 [ h2 [ xProminent ] [ t themeStr ]
                 , col 200 "" <|
                     MarkdownBlocks.render TextParser.defaultOptions """# Title h1
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+*Lorem* ipsum **dolor** sit ***amet***, consectetur ****adipisicing**** elit, sed do eiusmod tempor
+_incididunt_ ut __labore__ et ___dolore___ magna ____aliqua____. Ut enim ad minim veniam, quis nostrud
 exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
 irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
 pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
@@ -1826,7 +1826,7 @@ Horizontal rule below:
 いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん
 
 - This is an unordered list
-- Can be *nested*
+- Can be nested
     - like
     - this
     - What happens if there are very long lines and words?
