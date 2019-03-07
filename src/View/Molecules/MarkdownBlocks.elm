@@ -90,48 +90,12 @@ renderBlock quoteLevel block =
 
 renderInline : Inline a -> Html msg
 renderInline inline =
+    -- Note that images are inline by default. In order to make it appear as blocks,
+    -- users should wrap them with blank lines (parsed as wrapper paragraph).
     case inline of
-        Text s ->
-            t s
-
-        HardLineBreak ->
-            br [] []
-
-        CodeInline c ->
-            code [] [ t c ]
-
         Link urlStr titleMaybe inlines ->
             ntLink [ Maybe.withDefault noAttr (Maybe.map title titleMaybe) ]
                 { url = urlStr, children = List.map renderInline inlines }
 
-        Image src_ titleMaybe _ ->
-            -- Images are inline by default. In order to make it appear as blocks,
-            -- users should wrap them with blank lines (parsed as wrapper paragraph).
-            -- Discarding attached inlines since we believe there are no practical cases where it is not empty.
-            img [ src src_, Maybe.withDefault noAttr (Maybe.map alt titleMaybe), style "object-fit" "scale-down" ] []
-
-        HtmlInline tagName attrs inlines ->
-            let
-                toAttr ( attrName, valueMaybe ) =
-                    Html.Attributes.attribute attrName (Maybe.withDefault attrName valueMaybe)
-            in
-            Html.node tagName (List.map toAttr attrs) (List.map renderInline inlines)
-
-        Emphasis level inlines ->
-            let
-                decorated =
-                    case level of
-                        1 ->
-                            em []
-
-                        2 ->
-                            strong []
-
-                        _ ->
-                            em [] >> List.singleton >> strong []
-            in
-            decorated (List.map renderInline inlines)
-
-        Markdown.Inline.Custom _ _ ->
-            -- Unused
-            none
+        _ ->
+            Markdown.Inline.defaultHtml (Just renderInline) inline
