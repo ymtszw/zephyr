@@ -1911,11 +1911,15 @@ Should respect line breaks!
 
 ###### Title h6
 
-Images are not contained by default.
+Images are inline elements. ![20x20 image](https://picsum.photos/20/20) Like this.
+
+And they are not contained by default.
 You can however apply styles to `<img>` under the container.
 Utilize `object-fit`!
 
-![300x500 image](https://picsum.photos/300/500)
+[![300x500 image](https://picsum.photos/300/500)](https://example.com)
+
+They can be linked, of course.
 """
     in
     section []
