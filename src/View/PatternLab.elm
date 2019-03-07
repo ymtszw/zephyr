@@ -1810,7 +1810,85 @@ markdownBlocks =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , col 200 "" <|
+                , col 800 """MarkdownBlocks.render TextParser.defaultOptions \"\"\"# Title h1
+*Lorem* ipsum **dolor** sit ***amet***, consectetur ****adipisicing**** elit, sed do eiusmod tempor
+_incididunt_ ut __labore__ et ___dolore___ magna ____aliqua____. Ut enim ad minim veniam, quis nostrud
+exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
+officia deserunt mollit anim id est laborum.
+
+Horizontal rule below:
+
+---
+## Title h2
+いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん
+
+- This is an unordered list
+- Can be nested
+- like
+- this
+- What happens if there are very long lines and words?
+  abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123
+    - More nest
+        - And more
+            - And yet more
+                - This is the end
+
+0. And this is an ordered list, starting from zero
+1. Should be nestable
+1. Like
+2. this
+    1. More nest
+        1. And more
+            1. And yet more
+                1. This is the end
+
+### Title h3
+With code: `<code>With Code</code>`,\\
+and hard line breaks!\\
+Raw link: <https://example.com>, and [Link with title][link]
+
+[link]: https://example.com "link"
+
+#### Title h4
+```
+This is a fenced code block.
+Should respect line breaks!
+```
+
+This is an indented code block.
+    Should respect line breaks
+This is a very long line in code block. Lorem ipsum dolor sit amet, consectetur
+adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud
+
+##### Title h5
+> This is a block quote.
+>
+> Within it, everything is baseline italic.
+>
+> > Can be nested!!
+> >
+> > > Nested and even colored!!
+>
+> ```
+> Can have code block!
+> ```
+>
+> - Can have lists!
+>     - Like
+>     - This
+> - Foo!
+
+###### Title h6
+
+Images are not contained by default.
+You can however apply styles to `<img>` under the container.
+Utilize `object-fit`!
+
+![300x500 image](https://picsum.photos/300/500)
+\"\"\"""" <|
                     MarkdownBlocks.render TextParser.defaultOptions """# Title h1
 *Lorem* ipsum **dolor** sit ***amet***, consectetur ****adipisicing**** elit, sed do eiusmod tempor
 _incididunt_ ut __labore__ et ___dolore___ magna ____aliqua____. Ut enim ad minim veniam, quis nostrud
@@ -1890,7 +1968,9 @@ Utilize `object-fit`!
 
 ![300x500 image](https://picsum.photos/300/500)
 """
-                , col 100 "" <|
+                , col 100 """MarkdownBlocks.render TextParser.defaultOptions <|
+    "What if there are significantly long strings?\\n\\n"
+        ++ String.repeat 100 "abcd0123\"""" <|
                     MarkdownBlocks.render TextParser.defaultOptions <|
                         "What if there are significantly long strings?\n\n"
                             ++ String.repeat 100 "abcd0123"

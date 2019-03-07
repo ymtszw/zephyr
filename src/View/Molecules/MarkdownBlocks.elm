@@ -72,17 +72,17 @@ renderBlock quoteLevel block =
             in
             case listBlock.type_ of
                 Markdown.Block.Unordered ->
-                    ul [] renderedListItems
+                    ul [ breakWords ] renderedListItems
 
                 Markdown.Block.Ordered 1 ->
-                    ol [] renderedListItems
+                    ol [ breakWords ] renderedListItems
 
                 Markdown.Block.Ordered from ->
-                    ol [ start from ] renderedListItems
+                    ol [ breakWords, start from ] renderedListItems
 
         PlainInlines inlines ->
             -- Found in list items; for easier implementation, we just wrap them in `span`
-            span [ breakWords ] (List.map renderInline inlines)
+            span [] (List.map renderInline inlines)
 
         Markdown.Block.Custom _ _ ->
             none
