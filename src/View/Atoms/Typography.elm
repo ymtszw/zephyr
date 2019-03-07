@@ -280,6 +280,7 @@ styles =
     , s (c boldClass) [ ( "font-weight", "700" ) ]
     , s "strong" [ ( "font-weight", "700" ) ]
     , s (c underlineClass) [ ( "text-decoration", "underline" ) ]
+    , s "strong > strong" [ ( "text-decoration", "underline" ) ] -- Nested strong should semantically mean "stronger", applying underline to visually express that
     ]
         ++ fontColorStyles
         ++ inlineCodeStyles
