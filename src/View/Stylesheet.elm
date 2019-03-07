@@ -117,8 +117,6 @@ resetUserAgentStyles =
         |> inject Typography.regularStyle
         |> inject Typography.sansSerifStyle
         |> inject Background.oneDarkMainStyle
-    , s "ol,ul"
-        [ ( "list-style", "none" ) ]
     , s "blockquote,q"
         [ ( "quotes", "none" ) ]
     , s "blockquote:before,blockquote:after,q:before,q:after"
@@ -141,4 +139,5 @@ globalStyles =
         , ( "outline", "none" )
         ]
     , s "input,textarea,button" [ ( "color", "inherit" ) ]
+    , s "hr" [ ( "width", "100%" ), ( "border", "none" ) ] -- Erase user-agent's hr style, apply in Border module
     ]

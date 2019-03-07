@@ -151,6 +151,7 @@ styles =
     , bdc aubergineClass colorBgClass aubergineTheme.bg
     , bdc aubergineClass colorSubClass aubergineTheme.sub
     , bdc aubergineClass colorNoteClass aubergineTheme.note
+    , s "hr" [ ( "border-top-width", "1px" ), ( "border-top-style", "solid" ) ]
     ]
 
 

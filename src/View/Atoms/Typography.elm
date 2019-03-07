@@ -42,7 +42,7 @@ t =
     Html.text
 
 
-{-| Creates a link. In this app we always target new tabs.
+{-| Creates a link.
 
 Mostly for inlines, but usable for blocks too.
 Texts in links are automatically styled according to its upstream theme.
@@ -276,8 +276,11 @@ styles =
     , monospaceStyle
     , -- Font decorations
       s (c italicClass) [ ( "font-style", "italic" ) ]
+    , s "em" [ ( "font-style", "italic" ) ]
     , s (c boldClass) [ ( "font-weight", "700" ) ]
+    , s "strong" [ ( "font-weight", "700" ) ]
     , s (c underlineClass) [ ( "text-decoration", "underline" ) ]
+    , s "strong > strong" [ ( "text-decoration", "underline" ) ] -- Nested strong should semantically mean "stronger", applying underline to visually express that
     ]
         ++ fontColorStyles
         ++ inlineCodeStyles

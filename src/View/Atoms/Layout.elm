@@ -383,7 +383,7 @@ autoFlexItemStyle =
 
 autoFlexItemSelectors : List String
 autoFlexItemSelectors =
-    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "table", "textarea" ]
+    [ "div", "pre", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "table", "textarea", "ul", "ol" ]
 
 
 flexItemStyle : Style
