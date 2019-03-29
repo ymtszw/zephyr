@@ -1,19 +1,19 @@
 module Data.ColumnItem.NamedEntity exposing
     ( NamedEntity, Avatar(..), new
-    , secondary, avatar, url
+    , secondaryName, avatar, url
     )
 
 {-| NamedEntity (mainly author information) in ColumnItem, and its builder functions.
 
 @docs NamedEntity, Avatar, new
-@docs secondary, avatar, url
+@docs secondaryName, avatar, url
 
 -}
 
 
 type alias NamedEntity =
-    { primary : String
-    , secondary : Maybe String
+    { primaryName : String
+    , secondaryName : Maybe String
     , avatar : Maybe Avatar
     , url : Maybe String
     }
@@ -26,17 +26,17 @@ type Avatar
 
 
 new : String -> NamedEntity
-new primary =
-    { primary = primary
-    , secondary = Nothing
+new primaryName =
+    { primaryName = primaryName
+    , secondaryName = Nothing
     , avatar = Nothing
     , url = Nothing
     }
 
 
-secondary : String -> NamedEntity -> NamedEntity
-secondary val old =
-    { old | secondary = Just val }
+secondaryName : String -> NamedEntity -> NamedEntity
+secondaryName val old =
+    { old | secondaryName = Just val }
 
 
 avatar : Avatar -> NamedEntity -> NamedEntity
