@@ -1,11 +1,10 @@
 module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
-import Data.Column exposing (ColumnItem(..), Media(..))
-import Data.Item exposing (Item(..))
-import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
-import Html exposing (Attribute, Html, div, img, video)
+import Data.ColumnItem exposing (ColumnItem)
+import Data.ColumnItem.Contents exposing (AttachedFile(..), Text(..), VisualMedia(..))
+import Data.ColumnItem.NamedEntity exposing (Avatar(..))
+import Html exposing (Attribute, Html, div, img, p, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Html.Keyed
@@ -35,18 +34,19 @@ type alias Effects msg =
 type alias Props =
     { timezone : Time.Zone
     , columnId : String
-    , items : List ColumnItem -- Expects it to be sorted from latest to oldest
+    , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
+      itemGroups : List ( ColumnItem, List ColumnItem )
     , hasMore : Bool
     }
 
 
 render : Effects msg -> Props -> Html msg
 render eff props =
-    case props.items of
+    case props.itemGroups of
         [] ->
             div [ flexColumn, flexCenter, padding15, colorNote ] [ t "Waiting for messages..." ]
 
-        items ->
+        itemGroups ->
             let
                 attrs =
                     [ flexBasisAuto
@@ -57,45 +57,10 @@ render eff props =
                         ++ eff.scrollAttrs
 
                 contents =
-                    -- We reverse first, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
-                    List.reverse items
-                        |> List.Extra.groupWhile shouldGroup
-                        |> List.Extra.reverseMap (itemGroupKey props.timezone)
+                    List.map (itemGroupKey props.timezone) itemGroups
             in
             Html.Keyed.node "div" attrs <|
                 (contents ++ [ loadMoreOrButtonTokenKey (eff.onLoadMoreClick props.columnId) props.hasMore ])
-
-
-shouldGroup : ColumnItem -> ColumnItem -> Bool
-shouldGroup older newer =
-    case ( older, newer ) of
-        ( Product _ (DiscordItem dOlder), Product _ (DiscordItem dNewer) ) ->
-            shouldGroupDiscordMessage dOlder dNewer
-
-        ( Product _ (SlackItem sOlder), Product _ (SlackItem sNewer) ) ->
-            shouldGroupSlackMessage sOlder sNewer
-
-        ( _, _ ) ->
-            False
-
-
-shouldGroupDiscordMessage : Discord.Message -> Discord.Message -> Bool
-shouldGroupDiscordMessage dOlder dNewer =
-    (dNewer.channelId == dOlder.channelId)
-        && (dNewer.author == dOlder.author)
-        && (ms dOlder.timestamp + groupingIntervalMillis > ms dNewer.timestamp)
-
-
-groupingIntervalMillis : Int
-groupingIntervalMillis =
-    60000
-
-
-shouldGroupSlackMessage : Slack.Message -> Slack.Message -> Bool
-shouldGroupSlackMessage sOlder sNewer =
-    (sNewer.conversation == sOlder.conversation)
-        && (sNewer.author == sOlder.author)
-        && (ms (Slack.getPosix sOlder) + groupingIntervalMillis > ms (Slack.getPosix sNewer))
 
 
 loadMoreOrButtonTokenKey : msg -> Bool -> ( String, Html msg )
@@ -127,20 +92,7 @@ loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
 
 itemGroupKey : Time.Zone -> ( ColumnItem, List ColumnItem ) -> ( String, Html msg )
 itemGroupKey tz ( oldestItem, subsequentItems ) =
-    let
-        key =
-            (++) "itemGroup_" <|
-                case oldestItem of
-                    Product offset _ ->
-                        Broker.offsetToString offset
-
-                    SystemMessage { id } ->
-                        id
-
-                    LocalMessage { id } ->
-                        id
-    in
-    Tuple.pair key <|
+    Tuple.pair ("itemGroup_" ++ oldestItem.id) <|
         div
             [ class itemGroupClass
             , flexRow
@@ -158,13 +110,6 @@ itemGroupKey tz ( oldestItem, subsequentItems ) =
 itemAuthorAvatar40 : ColumnItem -> Html msg
 itemAuthorAvatar40 item =
     let
-        badgedAvatar40 badgeMaybe description srcMaybe =
-            withBadge [ badgeOutset ]
-                { topRight = Nothing
-                , bottomRight = badgeMaybe
-                , content = Icon.imgOrAbbr [ serif, xProminent, Icon.rounded40 ] description srcMaybe
-                }
-
         octiconAvatar40 shape =
             Icon.octiconBlock
                 [ Icon.rounded40
@@ -173,123 +118,86 @@ itemAuthorAvatar40 item =
                 { size = xProminentSize
                 , shape = shape
                 }
+
+        wrapInLink child =
+            case item.author.url of
+                Just url ->
+                    ntLink [] { url = url, children = [ child ] }
+
+                Nothing ->
+                    child
     in
-    case item of
-        Product _ (DiscordItem { author }) ->
-            let
-                ( user, badgeMaybe ) =
-                    case author of
-                        Discord.UserAuthor u ->
-                            ( u, Nothing )
+    wrapInLink <|
+        case item.author.avatar of
+            Just OcticonInfo ->
+                octiconAvatar40 Octicons.info
 
-                        Discord.WebhookAuthor u ->
-                            ( u, Just Icon.botBadge14 )
-            in
-            badgedAvatar40 badgeMaybe user.username <|
-                Just (Icon.discordImageUrlWithFallback40 user.discriminator user.avatar)
+            Just OcticonNote ->
+                octiconAvatar40 Octicons.note
 
-        Product _ (SlackItem m) ->
-            let
-                ( name, srcMaybe, badgeMaybe ) =
-                    case m.author of
-                        Slack.UserAuthor u ->
-                            ( Maybe.withDefault u.profile.realName u.profile.displayName
-                            , Just (Url.toString u.profile.image48)
-                            , Nothing
-                            )
+            Just (ImageOrAbbr opts) ->
+                withBadge [ badgeOutset ]
+                    { topRight = Nothing
+                    , bottomRight =
+                        if opts.isBot then
+                            Just Icon.botBadge14
 
-                        Slack.UserAuthorId (Slack.UserId str) ->
-                            ( str, Nothing, Nothing )
+                        else
+                            Nothing
+                    , content = Icon.imgOrAbbr [ serif, xProminent, Icon.rounded40 ] opts.name opts.src
+                    }
 
-                        Slack.BotAuthor b ->
-                            ( Maybe.withDefault b.name m.username
-                            , Just (Url.toString b.icons.image48)
-                            , Just Icon.botBadge14
-                            )
-
-                        Slack.BotAuthorId (Slack.BotId str) ->
-                            ( str, Nothing, Just Icon.botBadge14 )
-            in
-            badgedAvatar40 badgeMaybe name srcMaybe
-
-        SystemMessage _ ->
-            octiconAvatar40 Octicons.info
-
-        LocalMessage _ ->
-            octiconAvatar40 Octicons.note
+            Nothing ->
+                Icon.imgOrAbbr [ serif, xProminent, Icon.rounded40 ] item.author.primaryName Nothing
 
 
 itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
 itemGroupContents tz oldestItem subsequentItems =
     Html.Keyed.node "div" [ class itemGroupContentsClass, clip, flexColumn, flexBasisAuto, flexShrink, spacingColumn2 ] <|
-        case oldestItem of
-            SystemMessage { id, message, mediaMaybe } ->
-                [ blockWithKey id <|
-                    case mediaMaybe of
-                        Just (Image url) ->
-                            markdownBlocks message
-                                ++ [ imageBlock { src = Url.toString url, description = Url.toString url, url = Nothing } ]
-
-                        Just (Video url) ->
-                            markdownBlocks message
-                                ++ [ videoBlock Nothing (Url.toString url) ]
-
-                        Nothing ->
-                            markdownBlocks message
-                ]
-
-            LocalMessage { id, message } ->
-                [ blockWithKey id (markdownBlocks message) ]
-
-            Product offset (DiscordItem oldestMessage) ->
-                let
-                    subsequentContents =
-                        List.filterMap unwrap subsequentItems
-
-                    unwrap item =
-                        case item of
-                            Product o (DiscordItem m) ->
-                                Just (discordMessageKey o m)
-
-                            _ ->
-                                Nothing
-                in
-                [ itemGroupHeaderKey tz oldestMessage.timestamp (Discord.getAuthorName oldestMessage)
-                , discordMessageKey offset oldestMessage
-                ]
-                    ++ subsequentContents
-
-            Product offset (SlackItem oldestMessage) ->
-                let
-                    subsequentContents =
-                        List.filterMap unwrap subsequentItems
-
-                    unwrap item =
-                        case item of
-                            Product o (SlackItem m) ->
-                                Just (slackMessageKey o m)
-
-                            _ ->
-                                Nothing
-                in
-                [ itemGroupHeaderKey tz (Slack.getPosix oldestMessage) (Slack.getAuthorName oldestMessage)
-                , slackMessageKey offset oldestMessage
-                ]
-                    ++ subsequentContents
+        (::) (itemGroupHeaderKey tz oldestItem) <|
+            List.map itemBlockKey (oldestItem :: subsequentItems)
 
 
-itemGroupHeaderKey : Time.Zone -> Time.Posix -> String -> ( String, Html msg )
-itemGroupHeaderKey tz posixTimestamp username =
+itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
+itemGroupHeaderKey tz item =
     Tuple.pair "itemGroupHeader" <|
         div [ flexRow ]
-            [ div [ flexGrow, flexBasisAuto, breakWords, bold, prominent ] [ t username ]
-            , div [ colorNote ] [ t (TimeExtra.local tz posixTimestamp) ]
+            [ div [ flexShrink, flexBasisAuto, breakWords, bold, prominent ] [ t item.author.primaryName ]
+            , case item.author.secondaryName of
+                Just secondaryName ->
+                    div [ colorNote, flexShrink, flexBasisAuto, breakWords ] [ t secondaryName ]
+
+                Nothing ->
+                    none
+            , case item.timestamp of
+                Just posixTime ->
+                    div [ colorNote, pushRight, flexBasisAuto ] [ t (TimeExtra.local tz posixTime) ]
+
+                Nothing ->
+                    none
             ]
 
 
-blockWithKey : String -> List (Html msg) -> ( String, Html msg )
-blockWithKey id children =
-    ( id, div [ flexColumn, flexBasisAuto, flexShrink, flexGrow ] children )
+itemBlockKey : ColumnItem -> ( String, Html msg )
+itemBlockKey item =
+    let
+        attachedFileBlocks =
+            List.map attachedFileBlock item.attachedFiles
+    in
+    Tuple.pair item.id <|
+        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow ] <|
+            bodyBlocks item.body
+                ++ attachedFileBlocks
+
+
+bodyBlocks : Text -> List (Html msg)
+bodyBlocks text =
+    case text of
+        Plain string ->
+            [ p [] [ t string ] ]
+
+        Markdown string ->
+            markdownBlocks string
 
 
 markdownBlocks : String -> List (Html msg)
@@ -302,43 +210,50 @@ markdownBlocks raw =
         MarkdownBlocks.render TextParser.defaultOptions raw
 
 
-imageBlock : { src : String, description : String, url : Maybe String } -> Html msg
-imageBlock opts =
-    case opts.url of
-        Just url_ ->
+attachedFileBlock : AttachedFile -> Html msg
+attachedFileBlock attachedFile =
+    let
+        dimensionAttrs dim =
+            case dim of
+                Just ( w, h ) ->
+                    [ width w, height h ]
+
+                Nothing ->
+                    []
+    in
+    case attachedFile of
+        VisualFile (Image record) ->
             ntLink []
-                { url = url_
-                , children = [ img [ flexItem, alignStart, src opts.src, alt opts.description ] [] ]
+                { url = record.src
+                , children =
+                    [ img
+                        ([ flexItem
+                         , alignStart
+                         , src record.src
+                         , alt (Maybe.withDefault "Attached image" record.description)
+                         ]
+                            ++ dimensionAttrs record.dimension
+                        )
+                        []
+                    ]
                 }
 
-        Nothing ->
-            img [ flexItem, alignStart, src opts.src, alt opts.description ] []
+        VisualFile (Video record) ->
+            video
+                ([ flexItem
+                 , alignStart
+                 , controls True
+                 , src record.src
+                 ]
+                    ++ dimensionAttrs record.dimension
+                )
+                [ t "Embedded video not supported. "
+                , ntLink [] { url = record.src, children = [ t "[Source]" ] }
+                ]
 
-
-videoBlock : Maybe String -> String -> Html msg
-videoBlock posterMaybe url =
-    video
-        [ flexItem
-        , alignStart
-        , controls True
-        , src url
-        , Maybe.withDefault noAttr (Maybe.map poster posterMaybe)
-        ]
-        [ t "Embedded video not supported. "
-        , ntLink [] { url = url, children = [ t "[Source]" ] }
-        ]
-
-
-discordMessageKey : Broker.Offset -> Discord.Message -> ( String, Html msg )
-discordMessageKey os dm =
-    -- TODO
-    Tuple.pair (Broker.offsetToString os) none
-
-
-slackMessageKey : Broker.Offset -> Slack.Message -> ( String, Html msg )
-slackMessageKey os sm =
-    -- TODO
-    Tuple.pair (Broker.offsetToString os) none
+        OtherFile record ->
+            -- TODO
+            none
 
 
 
