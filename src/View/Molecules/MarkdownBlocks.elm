@@ -51,7 +51,7 @@ renderBlock quoteLevel block =
             pre [ breakWords, padding2, Border.round2, Background.colorBg ] [ t raw ]
 
         Paragraph _ inlines ->
-            p [ breakWords, padding2 ] (List.map renderInline inlines)
+            p [ breakWords ] (List.map renderInline inlines)
 
         BlockQuote blocks ->
             let
