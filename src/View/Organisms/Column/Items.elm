@@ -2,9 +2,9 @@ module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
 import Data.ColumnItem exposing (ColumnItem)
-import Data.ColumnItem.Contents exposing (AttachedFile(..), Text(..), VisualMedia(..))
+import Data.ColumnItem.Contents exposing (..)
 import Data.ColumnItem.NamedEntity exposing (Avatar(..))
-import Html exposing (Attribute, Html, div, img, p, video)
+import Html exposing (Attribute, Html, button, div, img, p, pre, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Html.Keyed
@@ -14,11 +14,12 @@ import TextParser
 import Time
 import TimeExtra exposing (ms)
 import Url
+import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
-import View.Atoms.TextBlock exposing (breakWords, clip)
+import View.Atoms.TextBlock exposing (breakWords, clip, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
@@ -153,9 +154,16 @@ itemAuthorAvatar40 item =
 
 itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
 itemGroupContents tz oldestItem subsequentItems =
-    Html.Keyed.node "div" [ class itemGroupContentsClass, clip, flexColumn, flexBasisAuto, flexShrink, spacingColumn2 ] <|
-        (::) (itemGroupHeaderKey tz oldestItem) <|
-            List.map itemBlockKey (oldestItem :: subsequentItems)
+    Html.Keyed.node "div"
+        [ class itemGroupContentsClass
+        , clip
+        , flexColumn
+        , flexBasisAuto
+        , flexGrow
+        , flexShrink
+        , spacingColumn2
+        ]
+        (itemGroupHeaderKey tz oldestItem :: List.map itemBlockKey (oldestItem :: subsequentItems))
 
 
 itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
@@ -185,8 +193,11 @@ itemBlockKey item =
             List.map attachedFileBlock item.attachedFiles
     in
     Tuple.pair item.id <|
-        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow ] <|
+        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn2 ] <|
             bodyBlocks item.body
+                -- TODO embeddedBlocks
+                -- TODO KTS
+                -- TODO reactions
                 ++ attachedFileBlocks
 
 
@@ -194,7 +205,7 @@ bodyBlocks : Text -> List (Html msg)
 bodyBlocks text =
     case text of
         Plain string ->
-            [ p [ breakWords, padding2 ] [ t string ] ]
+            [ p [ breakWords ] [ t string ] ]
 
         Markdown string ->
             markdownBlocks string
@@ -223,24 +234,19 @@ attachedFileBlock attachedFile =
     in
     case attachedFile of
         VisualFile (Image record) ->
-            ntLink []
+            ntLink
+                [ flexItem
+                , flexBasisAuto
+                , alignStart
+                ]
                 { url = record.src
-                , children =
-                    [ img
-                        ([ flexItem
-                         , alignStart
-                         , src record.src
-                         , alt record.description
-                         ]
-                            ++ dimensionAttrs record.dimension
-                        )
-                        []
-                    ]
+                , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
                 }
 
         VisualFile (Video record) ->
             video
                 ([ flexItem
+                 , flexBasisAuto
                  , alignStart
                  , controls True
                  , src record.src
@@ -252,8 +258,36 @@ attachedFileBlock attachedFile =
                 ]
 
         OtherFile record ->
-            -- TODO
-            none
+            let
+                fileLink =
+                    let
+                        linkImpl linkAttrs linkLabel linkIcon url =
+                            div [ nowrap, pushRight, padding5 ]
+                                [ ntLink linkAttrs
+                                    { url = url
+                                    , children = [ t linkLabel, Image.octicon { size = prominentSize, shape = linkIcon } ]
+                                    }
+                                ]
+                    in
+                    div [ flexRow ]
+                        [ p [ breakWords, flexShrink, flexBasisAuto, padding5 ] [ t record.description ]
+                        , case record.fileUrl of
+                            ExternalLink url ->
+                                linkImpl [] "See original file " Octicons.linkExternal url
+
+                            DownloadUrl url ->
+                                linkImpl [ download "" ] "Download original file " Octicons.cloudDownload url
+                        ]
+            in
+            case record.preview of
+                Just raw ->
+                    div [ flexColumn, Border.round5, Border.w1, Border.solid ]
+                        [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
+                        , pre [ flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
+                        ]
+
+                Nothing ->
+                    div [ Border.round5, Border.w1, Border.solid, Background.colorSub ] [ fileLink ]
 
 
 
