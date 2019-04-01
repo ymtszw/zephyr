@@ -194,7 +194,7 @@ bodyBlocks : Text -> List (Html msg)
 bodyBlocks text =
     case text of
         Plain string ->
-            [ p [] [ t string ] ]
+            [ p [ breakWords, padding2 ] [ t string ] ]
 
         Markdown string ->
             markdownBlocks string
@@ -269,7 +269,7 @@ styles =
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
-        , ( "object-fit", "scale-down" )
+        , ( "object-fit", "cover" )
         ]
     ]
 
