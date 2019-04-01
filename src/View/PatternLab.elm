@@ -3088,62 +3088,84 @@ columnItems =
                         { columnId = themeStr ++ "CID1"
                         , timezone = Time.utc
                         , itemGroups =
-                            [ ColumnItem.new "SM0" (NamedEntity.new "System") (Plain (lorem ++ " " ++ iroha))
-                            , ColumnItem.new "SM1" (NamedEntity.new "System") (Plain (String.repeat 50 "significantlylongstring"))
-                            , ColumnItem.new "SM2" (NamedEntity.new "System") (Plain "With image (contained)")
-                                |> ColumnItem.attachedFiles [ sampleImage500x500 ]
-                            , ColumnItem.new "SM3" (NamedEntity.new "System") (Plain "With video (contained)")
-                                |> ColumnItem.attachedFiles [ sampleVideo ]
-                            , ColumnItem.new "SM4" (NamedEntity.new "System") (Plain "With image (smaller)")
-                                |> ColumnItem.attachedFiles [ sampleImage100x100 ]
-                            , ColumnItem.new "SM5" (NamedEntity.new "System") (Plain "With image (tall)")
-                                |> ColumnItem.attachedFiles [ sampleImage100x600 ]
-                            , ColumnItem.new "SM6" (NamedEntity.new "System") (Plain "With image (landscape)")
-                                |> ColumnItem.attachedFiles [ sampleImage600x100 ]
-                            , ColumnItem.new "LM0" (NamedEntity.new "Memo") (Plain (lorem ++ " " ++ iroha))
-                            ]
-                                |> List.map unit
+                            List.map unit
+                                [ ColumnItem.new "SM0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+                                , ColumnItem.new "SM1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+                                , ColumnItem.new "SM2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                                ]
                         , hasMore = False
                         }
-                , withSourceInColumn 150 "" <|
+                , withSourceInColumn 1000 "" <|
+                    let
+                        sampleImage500x500 =
+                            attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
+
+                        sampleImage100x100 =
+                            attachedImage (Image.ph 100 100) |> attachedFileDimension ( 100, 100 )
+
+                        sampleImage100x600 =
+                            attachedImage (Image.ph 100 600) |> attachedFileDimension ( 100, 600 )
+
+                        sampleImage600x100 =
+                            attachedImage (Image.ph 600 100) |> attachedFileDimension ( 600, 100 )
+
+                        sampleVideo =
+                            attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+
+                        samplePreview =
+                            """<!DOCTYPE HTML>
+<html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Sample</title>
+    </head>
+    <body>
+        Hi!
+    </body>
+</html>
+"""
+                    in
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID2"
                         , timezone = Time.utc
-                        , itemGroups = [ unit (ColumnItem.new "SM0" (NamedEntity.new "System") (Plain (lorem ++ " " ++ iroha))) ]
-                        , hasMore = True
-                        }
-                , withSourceInColumn 300 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID2"
-                        , timezone = Time.utc
-                        , itemGroups = [ unit (ColumnItem.new "SM0" (NamedEntity.new "Markdown Sample") (Markdown MarkdownBlocks.sampleSource)) ]
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "SM1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+                                    |> ColumnItem.attachedFiles [ sampleImage500x500 ]
+                                , ColumnItem.new "SM2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+                                    |> ColumnItem.attachedFiles [ sampleImage100x100 ]
+                                , ColumnItem.new "SM3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+                                    |> ColumnItem.attachedFiles [ sampleImage100x600 ]
+                                , ColumnItem.new "SM4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+                                    |> ColumnItem.attachedFiles [ sampleImage600x100 ]
+                                , ColumnItem.new "SM5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+                                    |> ColumnItem.attachedFiles [ sampleVideo ]
+                                , ColumnItem.new "SM6" (NamedEntity.new "Attachement") (Plain "External file")
+                                    |> ColumnItem.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
+                                , ColumnItem.new "SM7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+                                    |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
+                                , ColumnItem.new "SM8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+                                    |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
+                                , ColumnItem.new "SM9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+                                    |> ColumnItem.attachedFiles
+                                        [ attachedOther (DownloadUrl "/image.html")
+                                            |> attachedFileDescription (String.repeat 10 "longstring")
+                                        ]
+                                , ColumnItem.new "SM10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+                                    |> ColumnItem.attachedFiles
+                                        [ attachedOther (ExternalLink "/index.html")
+                                            |> attachedFilePreview samplePreview
+                                        ]
+                                ]
                         , hasMore = True
                         }
                 ]
 
         unit item =
             ( item, [] )
-
-        sampleImage500x500 =
-            attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
-
-        sampleImage100x100 =
-            attachedImage (Image.ph 100 100) |> attachedFileDimension ( 100, 100 )
-
-        sampleImage100x600 =
-            attachedImage (Image.ph 100 600) |> attachedFileDimension ( 100, 600 )
-
-        sampleImage600x100 =
-            attachedImage (Image.ph 600 100) |> attachedFileDimension ( 600, 100 )
-
-        sampleVideo =
-            attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
     in
     section []
         [ h1 [ xxProminent ] [ t "Column.Items" ]
