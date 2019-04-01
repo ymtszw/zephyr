@@ -1,12 +1,12 @@
 module Data.ColumnItem.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
-    , attachedImage, attachedVideo, attachedFileDescription, attachedFilePreview, attachedFileDimension
+    , attachedImage, attachedVideo, attachedOther, attachedFileDescription, attachedFilePreview, attachedFileDimension
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
-@docs attachedImage, attachedVideo, attachedFileDescription, attachedFilePreview, attachedFileDimension
+@docs attachedImage, attachedVideo, attachedOther, attachedFileDescription, attachedFilePreview, attachedFileDimension
 
 -}
 
@@ -26,7 +26,7 @@ type AttachedFile
     = VisualFile VisualMedia
     | OtherFile
         { fileUrl : FileUrl
-        , description : Maybe String
+        , description : String
         , preview : Maybe String -- If present, it is rendered in code block. Non-text previews are not supported
         }
 
@@ -45,12 +45,17 @@ type alias MediaRecord =
 
 attachedImage : String -> AttachedFile
 attachedImage src =
-    VisualFile (Image (MediaRecord src "attached image" Nothing))
+    VisualFile (Image (MediaRecord src "Attached image" Nothing))
 
 
 attachedVideo : String -> AttachedFile
 attachedVideo src =
-    VisualFile (Video (MediaRecord src "attached video" Nothing))
+    VisualFile (Video (MediaRecord src "Attached video" Nothing))
+
+
+attachedOther : FileUrl -> AttachedFile
+attachedOther fileUrl =
+    OtherFile { fileUrl = fileUrl, description = "Attached file", preview = Nothing }
 
 
 attachedFileDescription : String -> AttachedFile -> AttachedFile
@@ -63,7 +68,7 @@ attachedFileDescription description f =
             VisualFile (Video { record | description = description })
 
         OtherFile record ->
-            OtherFile { record | description = Just description }
+            OtherFile { record | description = description }
 
 
 attachedFilePreview : String -> AttachedFile -> AttachedFile
