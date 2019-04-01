@@ -230,7 +230,7 @@ attachedFileBlock attachedFile =
                         ([ flexItem
                          , alignStart
                          , src record.src
-                         , alt (Maybe.withDefault "Attached image" record.description)
+                         , alt record.description
                          ]
                             ++ dimensionAttrs record.dimension
                         )
