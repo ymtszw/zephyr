@@ -1,6 +1,6 @@
 module View.Atoms.Border exposing
     ( solid, dotted, dashed
-    , w1, y1, bot1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
+    , w1, y1, bot1, noRound, round2, round5, elliptic, topRound5, bottomRound5, leftRound5, rightRound5, gutter
     , color, colorBd, colorBg, colorSub, colorNote
     , styles, round2Style, round5Style
     )
@@ -8,7 +8,7 @@ module View.Atoms.Border exposing
 {-| Border Atoms.
 
 @docs solid, dotted, dashed
-@docs w1, y1, bot1, noRound, round2, round5, elliptic, leftRound5, rightRound5, gutter
+@docs w1, y1, bot1, noRound, round2, round5, elliptic, topRound5, bottomRound5, leftRound5, rightRound5, gutter
 @docs color, colorBd, colorBg, colorSub, colorNote
 @docs styles, round2Style, round5Style
 
@@ -73,6 +73,16 @@ elliptic =
     Attributes.class ellipticClass
 
 
+topRound5 : Attribute msg
+topRound5 =
+    Attributes.class topRound5Class
+
+
+bottomRound5 : Attribute msg
+bottomRound5 =
+    Attributes.class bottomRound5Class
+
+
 leftRound5 : Attribute msg
 leftRound5 =
     Attributes.class leftRound5Class
@@ -130,6 +140,18 @@ styles =
     , round2Style
     , round5Style
     , s (c ellipticClass) [ ( "border-radius", "50%" ) ]
+    , s (c topRound5Class)
+        [ ( "border-top-left-radius", "5px" )
+        , ( "border-top-right-radius", "5px" )
+        , ( "border-bottom-right-radius", "0px" )
+        , ( "border-bottom-left-radius", "0px" )
+        ]
+    , s (c bottomRound5Class)
+        [ ( "border-top-left-radius", "0px" )
+        , ( "border-top-right-radius", "0px" )
+        , ( "border-bottom-right-radius", "5px" )
+        , ( "border-bottom-left-radius", "5px" )
+        ]
     , s (c leftRound5Class)
         [ ( "border-top-left-radius", "5px" )
         , ( "border-top-right-radius", "0px" )
@@ -213,6 +235,16 @@ round5Class =
 ellipticClass : String
 ellipticClass =
     "boell"
+
+
+topRound5Class : String
+topRound5Class =
+    "botr5"
+
+
+bottomRound5Class : String
+bottomRound5Class =
+    "bobr5"
 
 
 leftRound5Class : String
