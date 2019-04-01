@@ -2,8 +2,10 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
-import Data.Column exposing (ColumnItem(..), Media(..))
 import Data.ColumnEditor exposing (ColumnEditor(..))
+import Data.ColumnItem as ColumnItem exposing (ColumnItem)
+import Data.ColumnItem.Contents exposing (..)
+import Data.ColumnItem.NamedEntity as NamedEntity exposing (NamedEntity)
 import Dict
 import File exposing (File)
 import File.Select
@@ -3162,7 +3164,7 @@ columnItems =
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
-                        { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
+                        { columnId = themeStr ++ "CID0", timezone = Time.utc, itemGroups = [], hasMore = False }
                 , withSourceInColumn 500 "" <|
                     Items.render
                         { scrollAttrs = []
@@ -3170,15 +3172,22 @@ columnItems =
                         }
                         { columnId = themeStr ++ "CID1"
                         , timezone = Time.utc
-                        , items =
-                            [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha }
-                            , SystemMessage { id = "SM1", mediaMaybe = Just (Image sampleImage500x500), message = "With image (contained)" }
-                            , SystemMessage { id = "SM2", mediaMaybe = Just (Video sampleVideo), message = "With video (contained)" }
-                            , SystemMessage { id = "SM3", mediaMaybe = Just (Image sampleImage100x100), message = "With image (smaller)" }
-                            , SystemMessage { id = "SM4", mediaMaybe = Just (Image sampleImage100x600), message = "With image (tall)" }
-                            , SystemMessage { id = "SM5", mediaMaybe = Just (Image sampleImage600x100), message = "With image (landscape)" }
-                            , LocalMessage { id = "LM0", message = lorem ++ " " ++ iroha }
+                        , itemGroups =
+                            [ ColumnItem.new "SM0" (NamedEntity.new "System") (Plain (lorem ++ " " ++ iroha))
+                            , ColumnItem.new "SM1" (NamedEntity.new "System") (Plain (String.repeat 50 "significantlylongstring"))
+                            , ColumnItem.new "SM2" (NamedEntity.new "System") (Plain "With image (contained)")
+                                |> ColumnItem.attachedFiles [ sampleImage500x500 ]
+                            , ColumnItem.new "SM3" (NamedEntity.new "System") (Plain "With video (contained)")
+                                |> ColumnItem.attachedFiles [ sampleVideo ]
+                            , ColumnItem.new "SM4" (NamedEntity.new "System") (Plain "With image (smaller)")
+                                |> ColumnItem.attachedFiles [ sampleImage100x100 ]
+                            , ColumnItem.new "SM5" (NamedEntity.new "System") (Plain "With image (tall)")
+                                |> ColumnItem.attachedFiles [ sampleImage100x600 ]
+                            , ColumnItem.new "SM6" (NamedEntity.new "System") (Plain "With image (landscape)")
+                                |> ColumnItem.attachedFiles [ sampleImage600x100 ]
+                            , ColumnItem.new "LM0" (NamedEntity.new "Memo") (Plain (lorem ++ " " ++ iroha))
                             ]
+                                |> List.map unit
                         , hasMore = False
                         }
                 , withSourceInColumn 150 "" <|
@@ -3188,25 +3197,28 @@ columnItems =
                         }
                         { columnId = themeStr ++ "CID2"
                         , timezone = Time.utc
-                        , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
+                        , itemGroups = [ unit (ColumnItem.new "SM0" (NamedEntity.new "System") (Plain (lorem ++ " " ++ iroha))) ]
                         , hasMore = True
                         }
                 ]
 
+        unit item =
+            ( item, [] )
+
         sampleImage500x500 =
-            StringExtra.toUrlUnsafe (Image.ph 500 500)
+            attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
 
         sampleImage100x100 =
-            StringExtra.toUrlUnsafe (Image.ph 100 100)
+            attachedImage (Image.ph 100 100) |> attachedFileDimension ( 100, 100 )
 
         sampleImage100x600 =
-            StringExtra.toUrlUnsafe (Image.ph 100 600)
+            attachedImage (Image.ph 100 600) |> attachedFileDimension ( 100, 600 )
 
         sampleImage600x100 =
-            StringExtra.toUrlUnsafe (Image.ph 600 100)
+            attachedImage (Image.ph 600 100) |> attachedFileDimension ( 600, 100 )
 
         sampleVideo =
-            StringExtra.toUrlUnsafe "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+            attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
     in
     section []
         [ h1 [ xxProminent ] [ t "Column.Items" ]
