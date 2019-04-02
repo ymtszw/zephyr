@@ -188,17 +188,13 @@ itemGroupHeaderKey tz item =
 
 itemBlockKey : ColumnItem -> ( String, Html msg )
 itemBlockKey item =
-    let
-        attachedFileBlocks =
-            List.map attachedFileBlock item.attachedFiles
-    in
     Tuple.pair item.id <|
         div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn2 ] <|
             bodyBlocks item.body
                 -- TODO embeddedBlocks
                 -- TODO KTS
                 -- TODO reactions
-                ++ attachedFileBlocks
+                ++ List.map attachedFileBlock item.attachedFiles
 
 
 bodyBlocks : Text -> List (Html msg)
