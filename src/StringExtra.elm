@@ -1,4 +1,16 @@
-module StringExtra exposing (appendWithSpace, containsCaseIgnored, punctuateNumber, splitAt, toUrlUnsafe)
+module StringExtra exposing
+    ( splitAt, appendWithSpace, containsCaseIgnored
+    , punctuateNumber
+    , fromUrlShortened, toUrlUnsafe, truncateUrlLikeAt30
+    )
+
+{-| String (and Url) manipulations.
+
+@docs splitAt, appendWithSpace, containsCaseIgnored
+@docs punctuateNumber
+@docs fromUrlShortened, toUrlUnsafe, truncateUrlLikeAt30
+
+-}
 
 import Url
 
@@ -44,6 +56,42 @@ punctuateNumber decimal =
 containsCaseIgnored : String -> String -> Bool
 containsCaseIgnored query str =
     String.contains (String.toLower query) (String.toLower str)
+
+
+fromUrlShortened : Url.Url -> String
+fromUrlShortened url =
+    let
+        shortUrl =
+            url.host ++ url.path
+    in
+    if String.endsWith "/" shortUrl then
+        String.dropRight 1 shortUrl
+
+    else
+        shortUrl
+
+
+truncateUrlLikeAt30 : String -> String
+truncateUrlLikeAt30 urlLike =
+    let
+        dropScheme s =
+            if String.startsWith "http://" s then
+                String.dropLeft 7 s
+
+            else if String.startsWith "https://" s then
+                String.dropLeft 8 s
+
+            else
+                s
+
+        ellipsis30 s =
+            if String.length s > 30 then
+                String.left 30 s ++ "..."
+
+            else
+                s
+    in
+    ellipsis30 (dropScheme urlLike)
 
 
 toUrlUnsafe : String -> Url.Url

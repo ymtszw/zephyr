@@ -1,7 +1,4 @@
-module TextParser exposing
-    ( Parsed, ParseOptions, map, apply, parse, parseOptions, defaultOptions
-    , shortenUrl
-    )
+module TextParser exposing (Parsed, ParseOptions, map, apply, parse, parseOptions, defaultOptions)
 
 {-| Parses various marked-up texts into intermediate representaitons (IR)
 which can then be fed into View modules for actual rendering.
@@ -14,7 +11,6 @@ Therefore it is slower than other Markdown parser solutions,
 so you should consider parsing only once and storing `Parsed` IR for later uses.
 
 @docs Parsed, ParseOptions, map, apply, parse, parseOptions, defaultOptions
-@docs shortenUrl
 
 -}
 
@@ -22,6 +18,7 @@ import Markdown.Block as Block exposing (Block(..))
 import Markdown.Config
 import Markdown.Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser, Step(..))
+import StringExtra
 import Url exposing (Url)
 
 
@@ -281,7 +278,7 @@ chompUrlLike =
             in
             case Url.fromString urlCandidate of
                 Just url ->
-                    Link urlCandidate Nothing [ Text (shortenUrl url) ]
+                    Link urlCandidate Nothing [ Text (StringExtra.fromUrlShortened url) ]
 
                 Nothing ->
                     -- Restoring original text which started with "http" but not a valid URL
@@ -290,19 +287,6 @@ chompUrlLike =
     Parser.succeed parseAsUrl
         |. Parser.token "http"
         |= Parser.getChompedString (Parser.chompWhile nonTerminator)
-
-
-shortenUrl : Url -> String
-shortenUrl url =
-    let
-        shortUrl =
-            url.host ++ url.path
-    in
-    if String.endsWith "/" shortUrl then
-        String.dropRight 1 shortUrl
-
-    else
-        shortUrl
 
 
 chompNonUrl : Parser String

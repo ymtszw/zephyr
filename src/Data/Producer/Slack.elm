@@ -43,6 +43,7 @@ import Json.EncodeExtra as E
 import List.Extra
 import Markdown.Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser)
+import StringExtra as StringExtra
 import Task exposing (Task)
 import TextParser
 import Time exposing (Posix)
@@ -2667,4 +2668,4 @@ convertAngleCmd convs users angleCmd =
                             convIdStr
 
         Link url ph ->
-            "[" ++ (placeholderOr "" ph <| \() -> TextParser.shortenUrl url) ++ "](" ++ Url.toString url ++ ")"
+            "[" ++ (placeholderOr "" ph <| \() -> StringExtra.fromUrlShortened url) ++ "](" ++ Url.toString url ++ ")"
