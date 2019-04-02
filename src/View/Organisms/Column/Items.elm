@@ -6,12 +6,13 @@ import Data.ColumnItem exposing (ColumnItem)
 import Data.ColumnItem.Contents exposing (..)
 import Data.ColumnItem.EmbeddedMatter exposing (EmbeddedMatter)
 import Data.ColumnItem.NamedEntity exposing (Avatar(..))
-import Html exposing (Attribute, Html, button, div, img, p, pre, video)
+import Html exposing (Attribute, Html, button, div, img, p, pre, span, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Html.Keyed
 import List.Extra
 import Octicons
+import StringExtra
 import TextParser
 import Time
 import TimeExtra exposing (ms)
@@ -225,9 +226,9 @@ markdownBlocks raw =
 embeddedMatterBlock : EmbeddedMatter -> Html msg
 embeddedMatterBlock matter =
     -- { color : Maybe Color
-    -- , author : Maybe NamedEntity TODO
-    -- , title : Maybe String TODO
-    -- , url : Maybe String TODO
+    -- , author : Maybe NamedEntity
+    -- , title : Maybe Text
+    -- , url : Maybe String
     -- , body : Text
     -- , kts : KTS TODO
     -- , thumbnail : Maybe VisualMedia TODO
@@ -235,11 +236,74 @@ embeddedMatterBlock matter =
     -- , origin : Maybe NamedEntity TODO
     -- }
     let
+        wrapInLink urlMaybe children =
+            case urlMaybe of
+                Just url ->
+                    [ ntLink [] { url = url, children = children } ]
+
+                Nothing ->
+                    children
+
         gutterColor =
             Maybe.withDefault Color.gray matter.color
+
+        authorBlock =
+            case matter.author of
+                Just namedEntity ->
+                    [ div [] <|
+                        wrapInLink namedEntity.url <|
+                            List.intersperse (t " ") <|
+                                [ case namedEntity.avatar of
+                                    Just (ImageOrAbbr opts) ->
+                                        -- Bot badges are not meant to be used here
+                                        Icon.imgOrAbbr [ serif, Icon.rounded20 ] opts.name opts.src
+
+                                    _ ->
+                                        -- EmbeddedMatters are not expected to use Octicons
+                                        Icon.imgOrAbbr [ serif, Icon.rounded20 ] namedEntity.primaryName Nothing
+                                , t namedEntity.primaryName
+                                , case namedEntity.secondaryName of
+                                    Just sn ->
+                                        span [ colorNote ] [ t sn ]
+
+                                    Nothing ->
+                                        none
+                                ]
+                    ]
+
+                Nothing ->
+                    []
+
+        titleBlock =
+            case matter.title of
+                Just (Plain "") ->
+                    []
+
+                Just (Plain plainTitle) ->
+                    [ div [ prominent, Border.bot1, Border.solid ] [ t plainTitle ] ]
+
+                Just (Markdown "") ->
+                    []
+
+                Just (Markdown mdTitle) ->
+                    [ div [ prominent, Border.bot1, Border.solid ] <| markdownBlocks mdTitle ]
+
+                Nothing ->
+                    []
+
+        permalink =
+            case matter.url of
+                Just url ->
+                    [ div [ alignEnd ] [ ntLink [ breakWords ] { url = url, children = [ t (StringExtra.truncateUrlLikeAt30 url) ] } ] ]
+
+                Nothing ->
+                    []
     in
     div [ flexColumn, flexBasisAuto, padding5, spacingColumn2, Border.gutter, Border.color gutterColor ] <|
-        bodyBlocks matter.body
+        authorBlock
+            ++ titleBlock
+            ++ bodyBlocks matter.body
+            ++ permalink
 
 
 attachedFileBlock : AttachedFile -> Html msg

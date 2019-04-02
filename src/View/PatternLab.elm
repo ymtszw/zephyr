@@ -3201,8 +3201,16 @@ columnItems =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
                                     |> ColumnItem.embeddedMatters
-                                        [ EmbeddedMatter.new (Plain "This is body text.")
+                                        [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                            |> EmbeddedMatter.author
+                                                (NamedEntity.new "With Avatar"
+                                                    |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
+                                                    |> NamedEntity.url "https://example.com/user"
+                                                    |> NamedEntity.secondaryName "@with_avatar"
+                                                )
+                                            |> EmbeddedMatter.title (Plain "This is title")
+                                            |> EmbeddedMatter.url "https://example.com/verylongpath/morethan30/index.html"
                                         ]
                                 ]
                         , hasMore = False
