@@ -3221,8 +3221,9 @@ columnItems =
                                         ]
                                 , ColumnItem.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
                                     |> ColumnItem.embeddedMatters
-                                        [ EmbeddedMatter.new (Plain "200x200 image and video")
+                                        [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just ( 100, 100 )))
                                             |> EmbeddedMatter.attachedFiles
                                                 [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"

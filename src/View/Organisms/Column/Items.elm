@@ -247,6 +247,18 @@ embeddedMatterBlock matter =
         gutterColor =
             Maybe.withDefault Color.gray matter.color
 
+        textContentsAndThumbnailBlock =
+            case matter.thumbnail of
+                Just visualMedia ->
+                    [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
+                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ bodyBlocks matter.body
+                        , visualMediaBlock visualMedia
+                        ]
+                    ]
+
+                Nothing ->
+                    authorBlock ++ titleBlock ++ bodyBlocks matter.body
+
         authorBlock =
             case matter.author of
                 Just namedEntity ->
@@ -300,48 +312,16 @@ embeddedMatterBlock matter =
                     []
     in
     div [ flexColumn, flexBasisAuto, padding5, spacingColumn2, Border.gutter, Border.color gutterColor ] <|
-        authorBlock
-            ++ titleBlock
-            ++ bodyBlocks matter.body
+        textContentsAndThumbnailBlock
             ++ List.map attachedFileBlock matter.attachedFiles
             ++ permalink
 
 
 attachedFileBlock : AttachedFile -> Html msg
 attachedFileBlock attachedFile =
-    let
-        dimensionAttrs dim =
-            case dim of
-                Just ( w, h ) ->
-                    [ width w, height h ]
-
-                Nothing ->
-                    []
-    in
     case attachedFile of
-        VisualFile (Image record) ->
-            ntLink
-                [ flexItem
-                , flexBasisAuto
-                , alignStart
-                ]
-                { url = record.src
-                , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
-                }
-
-        VisualFile (Video record) ->
-            video
-                ([ flexItem
-                 , flexBasisAuto
-                 , alignStart
-                 , controls True
-                 , src record.src
-                 ]
-                    ++ dimensionAttrs record.dimension
-                )
-                [ t "Embedded video not supported. "
-                , ntLink [] { url = record.src, children = [ t "[Source]" ] }
-                ]
+        VisualFile visualMedia ->
+            visualMediaBlock visualMedia
 
         OtherFile record ->
             let
@@ -376,6 +356,43 @@ attachedFileBlock attachedFile =
                     div [ Border.round5, Border.w1, Border.solid, Background.colorSub ] [ fileLink ]
 
 
+visualMediaBlock : VisualMedia -> Html msg
+visualMediaBlock visualMedia =
+    let
+        dimensionAttrs dim =
+            case dim of
+                Just ( w, h ) ->
+                    [ width w, height h ]
+
+                Nothing ->
+                    []
+    in
+    case visualMedia of
+        Image record ->
+            ntLink
+                [ flexItem
+                , flexBasisAuto
+                , alignStart
+                ]
+                { url = record.src
+                , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
+                }
+
+        Video record ->
+            video
+                ([ flexItem
+                 , flexBasisAuto
+                 , alignStart
+                 , controls True
+                 , src record.src
+                 ]
+                    ++ dimensionAttrs record.dimension
+                )
+                [ t "Embedded video not supported. "
+                , ntLink [] { url = record.src, children = [ t "[Source]" ] }
+                ]
+
+
 
 -- STYLES
 
@@ -390,6 +407,10 @@ styles =
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
         , ( "object-fit", "cover" )
+        ]
+    , s (descOf (c thumbnailParentClass) "img:last-child," ++ descOf (c thumbnailParentClass) "video:last-child")
+        [ ( "max-width", px maxThumbnailSize )
+        , ( "max-height", px maxThumbnailSize )
         ]
     ]
 
@@ -412,3 +433,13 @@ itemGroupContentsClass =
 maxMediaHeight : Int
 maxMediaHeight =
     400
+
+
+thumbnailParentClass : String
+thumbnailParentClass =
+    "cithp"
+
+
+maxThumbnailSize : Int
+maxThumbnailSize =
+    80
