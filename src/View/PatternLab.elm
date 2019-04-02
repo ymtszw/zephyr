@@ -2,9 +2,11 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
+import Color
 import Data.ColumnEditor exposing (ColumnEditor(..))
 import Data.ColumnItem as ColumnItem exposing (ColumnItem)
 import Data.ColumnItem.Contents exposing (..)
+import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
 import Data.ColumnItem.NamedEntity as NamedEntity exposing (NamedEntity)
 import Dict
 import File exposing (File)
@@ -3185,6 +3187,23 @@ columnItems =
                                 , ColumnItem.new "ci5"
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
                                     (Plain "ImageOrAbbr")
+                                ]
+                        , hasMore = False
+                        }
+                , withSourceInColumn 300 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID4"
+                        , timezone = Time.utc
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Plain "This is body text.")
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                        ]
                                 ]
                         , hasMore = False
                         }
