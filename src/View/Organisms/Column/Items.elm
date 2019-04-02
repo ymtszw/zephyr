@@ -232,7 +232,7 @@ embeddedMatterBlock matter =
     -- , body : Text
     -- , kts : KTS TODO
     -- , thumbnail : Maybe VisualMedia TODO
-    -- , attachedFiles : List AttachedFile TODO
+    -- , attachedFiles : List AttachedFile
     -- , origin : Maybe NamedEntity TODO
     -- }
     let
@@ -303,6 +303,7 @@ embeddedMatterBlock matter =
         authorBlock
             ++ titleBlock
             ++ bodyBlocks matter.body
+            ++ List.map attachedFileBlock matter.attachedFiles
             ++ permalink
 
 
