@@ -3215,9 +3215,18 @@ columnItems =
                                 , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
                                     |> ColumnItem.embeddedMatters
                                         [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
-                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#733557")
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
                                             |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
                                             |> EmbeddedMatter.title (Markdown "**Marked-up title**")
+                                        ]
+                                , ColumnItem.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Plain "200x200 image and video")
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                                            |> EmbeddedMatter.attachedFiles
+                                                [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
+                                                , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                                                ]
                                         ]
                                 ]
                         , hasMore = False
