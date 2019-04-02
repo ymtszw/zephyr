@@ -204,6 +204,9 @@ itemBlockKey item =
 bodyBlocks : Text -> List (Html msg)
 bodyBlocks text =
     case text of
+        Plain "" ->
+            []
+
         Plain string ->
             [ p [ breakWords ] [ t string ] ]
 
