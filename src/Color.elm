@@ -1,12 +1,14 @@
 module Color exposing
     ( Color, encode, decoder, hexDecoder
     , setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
+    , black, gray, white
     )
 
 {-| Color type and functions. Mimicks Element.Color in elm-ui.
 
 @docs Color, encode, decoder, hexDecoder
 @docs setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
+@docs black, gray, white
 
 -}
 
@@ -102,6 +104,16 @@ fromRgba { red, green, blue, alpha } =
 black : Color
 black =
     Color (ColorRecord (CFloat 0) (CFloat 0) (CFloat 0) (CFloat 1))
+
+
+gray : Color
+gray =
+    Color (ColorRecord (CFloat 0.867) (CFloat 0.867) (CFloat 0.867) (CFloat 1))
+
+
+white : Color
+white =
+    Color (ColorRecord (CFloat 1) (CFloat 1) (CFloat 1) (CFloat 1))
 
 
 {-| Shift brightness of a Color (RGB) by a power of 1.15, without altering alpha.
