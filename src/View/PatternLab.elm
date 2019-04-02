@@ -3089,9 +3089,9 @@ columnItems =
                         , timezone = Time.utc
                         , itemGroups =
                             List.map unit
-                                [ ColumnItem.new "SM0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
-                                , ColumnItem.new "SM1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
-                                , ColumnItem.new "SM2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                                [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+                                , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+                                , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
                                 ]
                         , hasMore = False
                         }
@@ -3133,28 +3133,28 @@ columnItems =
                         , timezone = Time.utc
                         , itemGroups =
                             List.map unit
-                                [ ColumnItem.new "SM1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+                                [ ColumnItem.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
                                     |> ColumnItem.attachedFiles [ sampleImage500x500 ]
-                                , ColumnItem.new "SM2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+                                , ColumnItem.new "ci2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
                                     |> ColumnItem.attachedFiles [ sampleImage100x100 ]
-                                , ColumnItem.new "SM3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+                                , ColumnItem.new "ci3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
                                     |> ColumnItem.attachedFiles [ sampleImage100x600 ]
-                                , ColumnItem.new "SM4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+                                , ColumnItem.new "ci4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
                                     |> ColumnItem.attachedFiles [ sampleImage600x100 ]
-                                , ColumnItem.new "SM5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+                                , ColumnItem.new "ci5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
                                     |> ColumnItem.attachedFiles [ sampleVideo ]
-                                , ColumnItem.new "SM6" (NamedEntity.new "Attachement") (Plain "External file")
+                                , ColumnItem.new "ci6" (NamedEntity.new "Attachement") (Plain "External file")
                                     |> ColumnItem.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
-                                , ColumnItem.new "SM7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+                                , ColumnItem.new "ci7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
                                     |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
-                                , ColumnItem.new "SM8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+                                , ColumnItem.new "ci8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
                                     |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
-                                , ColumnItem.new "SM9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+                                , ColumnItem.new "ci9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
                                     |> ColumnItem.attachedFiles
                                         [ attachedOther (DownloadUrl "/image.html")
                                             |> attachedFileDescription (String.repeat 10 "longstring")
                                         ]
-                                , ColumnItem.new "SM10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+                                , ColumnItem.new "ci10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
                                     |> ColumnItem.attachedFiles
                                         [ attachedOther (ExternalLink "/index.html")
                                             |> attachedFilePreview samplePreview
@@ -3171,18 +3171,18 @@ columnItems =
                         , timezone = Time.utc
                         , itemGroups =
                             List.map unit
-                                [ ColumnItem.new "SM0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
-                                , ColumnItem.new "SM1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
-                                , ColumnItem.new "SM2"
+                                [ ColumnItem.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+                                , ColumnItem.new "ci1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+                                , ColumnItem.new "ci2"
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
                                     (Plain "ImageOrAbbr")
-                                , ColumnItem.new "SM3"
+                                , ColumnItem.new "ci3"
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
                                     (Plain "ImageOrAbbr")
-                                , ColumnItem.new "SM4"
+                                , ColumnItem.new "ci4"
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
                                     (Plain "ImageOrAbbr")
-                                , ColumnItem.new "SM5"
+                                , ColumnItem.new "ci5"
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
                                     (Plain "ImageOrAbbr")
                                 ]
