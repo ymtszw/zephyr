@@ -1,12 +1,12 @@
 module Data.ColumnItem.NamedEntity exposing
     ( NamedEntity, Avatar(..), new
-    , secondaryName, avatar, url
+    , secondaryName, avatar, url, imageOrAbbr
     )
 
 {-| NamedEntity (mainly author information) in ColumnItem, and its builder functions.
 
 @docs NamedEntity, Avatar, new
-@docs secondaryName, avatar, url
+@docs secondaryName, avatar, url, imageOrAbbr
 
 -}
 
@@ -47,3 +47,8 @@ avatar val old =
 url : String -> NamedEntity -> NamedEntity
 url val old =
     { old | url = Just val }
+
+
+imageOrAbbr : Maybe String -> String -> Bool -> Avatar
+imageOrAbbr src name isBot =
+    ImageOrAbbr { src = src, name = name, isBot = isBot }
