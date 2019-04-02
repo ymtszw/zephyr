@@ -625,6 +625,12 @@ badgeStyles =
     [ s (c badgeOuterClass)
         [ ( "display", "flex" )
         , ( "flex-direction", "row-reverse" )
+        , -- This is crucial; since badge children are positioned `absolute`-ly,
+          -- and absolutely-positioned elements are positioned relative to its "nearest positioned ancestor".
+          -- Nearest positioned ancestors mean containing block elements
+          -- that has `position` property other than `static` (default value).
+          -- <https://developer.mozilla.org/en-US/docs/Web/CSS/position#Absolute_positioning>
+          ( "position", "relative" )
         ]
     , s (c badgeTopRightClass)
         [ ( "position", "absolute" )
