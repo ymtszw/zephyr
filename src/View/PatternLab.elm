@@ -3162,6 +3162,32 @@ columnItems =
                                 ]
                         , hasMore = True
                         }
+                , withSourceInColumn 300 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID3"
+                        , timezone = Time.utc
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "SM0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+                                , ColumnItem.new "SM1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+                                , ColumnItem.new "SM2"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
+                                    (Plain "ImageOrAbbr")
+                                , ColumnItem.new "SM3"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
+                                    (Plain "ImageOrAbbr")
+                                , ColumnItem.new "SM4"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
+                                    (Plain "ImageOrAbbr")
+                                , ColumnItem.new "SM5"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
+                                    (Plain "ImageOrAbbr")
+                                ]
+                        , hasMore = False
+                        }
                 ]
 
         unit item =
