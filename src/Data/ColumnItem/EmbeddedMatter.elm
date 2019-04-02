@@ -18,7 +18,7 @@ import Data.ColumnItem.NamedEntity exposing (NamedEntity)
 type alias EmbeddedMatter =
     { color : Maybe Color
     , author : Maybe NamedEntity
-    , title : Maybe String
+    , title : Maybe Text
     , url : Maybe String
     , body : Text
     , kts : KTS
@@ -52,7 +52,7 @@ author val old =
     { old | author = Just val }
 
 
-title : String -> EmbeddedMatter -> EmbeddedMatter
+title : Text -> EmbeddedMatter -> EmbeddedMatter
 title val old =
     { old | title = Just val }
 
