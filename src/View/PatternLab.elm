@@ -3212,6 +3212,13 @@ columnItems =
                                             |> EmbeddedMatter.title (Plain "This is title")
                                             |> EmbeddedMatter.url "https://example.com/verylongpath/morethan30/index.html"
                                         ]
+                                , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#733557")
+                                            |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
+                                            |> EmbeddedMatter.title (Markdown "**Marked-up title**")
+                                        ]
                                 ]
                         , hasMore = False
                         }
