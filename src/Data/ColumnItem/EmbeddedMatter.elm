@@ -1,11 +1,11 @@
-module Data.ColumnItem.EmbeddedBlock exposing
-    ( EmbeddedBlock, new
+module Data.ColumnItem.EmbeddedMatter exposing
+    ( EmbeddedMatter, new
     , color, author, title, url, kts, thumbnail, attachedFiles, origin
     )
 
-{-| EmbeddedBlock in ColumnItem, and its builder functions.
+{-| EmbeddedMatter in ColumnItem, and its builder functions.
 
-@docs EmbeddedBlock, new
+@docs EmbeddedMatter, new
 @docs color, author, title, url, kts, thumbnail, attachedFiles, origin
 
 -}
@@ -15,7 +15,7 @@ import Data.ColumnItem.Contents exposing (..)
 import Data.ColumnItem.NamedEntity exposing (NamedEntity)
 
 
-type alias EmbeddedBlock =
+type alias EmbeddedMatter =
     { color : Maybe Color
     , author : Maybe NamedEntity
     , title : Maybe String
@@ -28,7 +28,7 @@ type alias EmbeddedBlock =
     }
 
 
-new : Text -> EmbeddedBlock
+new : Text -> EmbeddedMatter
 new body =
     { color = Nothing
     , author = Nothing
@@ -42,41 +42,41 @@ new body =
     }
 
 
-color : Color -> EmbeddedBlock -> EmbeddedBlock
+color : Color -> EmbeddedMatter -> EmbeddedMatter
 color val old =
     { old | color = Just val }
 
 
-author : NamedEntity -> EmbeddedBlock -> EmbeddedBlock
+author : NamedEntity -> EmbeddedMatter -> EmbeddedMatter
 author val old =
     { old | author = Just val }
 
 
-title : String -> EmbeddedBlock -> EmbeddedBlock
+title : String -> EmbeddedMatter -> EmbeddedMatter
 title val old =
     { old | title = Just val }
 
 
-url : String -> EmbeddedBlock -> EmbeddedBlock
+url : String -> EmbeddedMatter -> EmbeddedMatter
 url val old =
     { old | url = Just val }
 
 
-kts : KTS -> EmbeddedBlock -> EmbeddedBlock
+kts : KTS -> EmbeddedMatter -> EmbeddedMatter
 kts val old =
     { old | kts = val }
 
 
-thumbnail : VisualMedia -> EmbeddedBlock -> EmbeddedBlock
+thumbnail : VisualMedia -> EmbeddedMatter -> EmbeddedMatter
 thumbnail val old =
     { old | thumbnail = Just val }
 
 
-attachedFiles : List AttachedFile -> EmbeddedBlock -> EmbeddedBlock
+attachedFiles : List AttachedFile -> EmbeddedMatter -> EmbeddedMatter
 attachedFiles val old =
     { old | attachedFiles = val }
 
 
-origin : NamedEntity -> EmbeddedBlock -> EmbeddedBlock
+origin : NamedEntity -> EmbeddedMatter -> EmbeddedMatter
 origin val old =
     { old | origin = Just val }
