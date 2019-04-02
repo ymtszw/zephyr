@@ -119,8 +119,8 @@ Horizontal rule below:
 
 - This is an unordered list
 - Can be nested
-- like
-- this
+    - like
+        - this
 - What happens if there are very long lines and words?
   abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123
     - More nest
@@ -130,16 +130,16 @@ Horizontal rule below:
 
 0. And this is an ordered list, starting from zero
 1. Should be nestable
-1. Like
-2. this
-    1. More nest
-        1. And more
-            1. And yet more
-                1. This is the end
+    1. Like
+    2. this
+        1. More nest
+            1. And more
+                1. And yet more
+                    1. This is the end
 
 ### Title h3
 With code: `<code>With Code</code>`,\\
-and hard line breaks!\\
+and hard line breaks (`\\n`)!\\
 Raw link: <https://example.com>, and [Link with title][link]
 
 [link]: https://example.com "link"
@@ -150,11 +150,10 @@ This is a fenced code block.
 Should respect line breaks!
 ```
 
-This is an indented code block.
-    Should respect line breaks
-This is a very long line in code block. Lorem ipsum dolor sit amet, consectetur
-adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-Ut enim ad minim veniam, quis nostrud
+    This is an indented code block.
+        Should respect line breaks and further indents.
+    This is a very long line in a code block. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+    And a very long word abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123
 
 ##### Title h5
 > This is a block quote.
