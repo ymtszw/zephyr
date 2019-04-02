@@ -1,11 +1,13 @@
 module Data.ColumnItem.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
+    , imageMedia, videoMedia
     , attachedImage, attachedVideo, attachedOther, attachedFileDescription, attachedFilePreview, attachedFileDimension
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
+@docs imageMedia, videoMedia
 @docs attachedImage, attachedVideo, attachedOther, attachedFileDescription, attachedFilePreview, attachedFileDimension
 
 -}
@@ -43,14 +45,24 @@ type alias MediaRecord =
     }
 
 
+imageMedia : String -> String -> Maybe ( Int, Int ) -> VisualMedia
+imageMedia src description dimension =
+    Image (MediaRecord src description dimension)
+
+
+videoMedia : String -> String -> Maybe ( Int, Int ) -> VisualMedia
+videoMedia src description dimension =
+    Video (MediaRecord src description dimension)
+
+
 attachedImage : String -> AttachedFile
 attachedImage src =
-    VisualFile (Image (MediaRecord src "Attached image" Nothing))
+    VisualFile (imageMedia src "Attached image" Nothing)
 
 
 attachedVideo : String -> AttachedFile
 attachedVideo src =
-    VisualFile (Video (MediaRecord src "Attached video" Nothing))
+    VisualFile (videoMedia src "Attached video" Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
