@@ -1,8 +1,10 @@
 module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
+import Color
 import Data.ColumnItem exposing (ColumnItem)
 import Data.ColumnItem.Contents exposing (..)
+import Data.ColumnItem.EmbeddedMatter exposing (EmbeddedMatter)
 import Data.ColumnItem.NamedEntity exposing (Avatar(..))
 import Html exposing (Attribute, Html, button, div, img, p, pre, video)
 import Html.Attributes exposing (..)
@@ -191,7 +193,7 @@ itemBlockKey item =
     Tuple.pair item.id <|
         div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn2 ] <|
             bodyBlocks item.body
-                -- TODO embeddedBlocks
+                ++ List.map embeddedMatterBlock item.embeddedMatters
                 -- TODO KTS
                 -- TODO reactions
                 ++ List.map attachedFileBlock item.attachedFiles
@@ -218,6 +220,26 @@ markdownBlocks raw =
     else
         -- TODO consider storing parsed result, rather than parsing every time. https://github.com/ymtszw/zephyr/issues/23
         MarkdownBlocks.render TextParser.defaultOptions raw
+
+
+embeddedMatterBlock : EmbeddedMatter -> Html msg
+embeddedMatterBlock matter =
+    -- { color : Maybe Color
+    -- , author : Maybe NamedEntity TODO
+    -- , title : Maybe String TODO
+    -- , url : Maybe String TODO
+    -- , body : Text
+    -- , kts : KTS TODO
+    -- , thumbnail : Maybe VisualMedia TODO
+    -- , attachedFiles : List AttachedFile TODO
+    -- , origin : Maybe NamedEntity TODO
+    -- }
+    let
+        gutterColor =
+            Maybe.withDefault Color.gray matter.color
+    in
+    div [ flexColumn, flexBasisAuto, padding5, spacingColumn2, Border.gutter, Border.color gutterColor ] <|
+        bodyBlocks matter.body
 
 
 attachedFileBlock : AttachedFile -> Html msg
