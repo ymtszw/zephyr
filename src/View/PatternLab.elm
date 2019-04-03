@@ -321,9 +321,7 @@ introduction =
             ]
         , section []
             [ h2 [ prominent ] [ t "Imports" ]
-            , sourceBlock """import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+            , sourceBlock """(Other elm/* imports are omitted)
 import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
@@ -332,19 +330,27 @@ import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Popout as Popout
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
+import View.Molecules.MarkdownBlocks as MarkdownBlocks
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Config as ColumnConfig
+import View.Organisms.Column.Header as Header
+import View.Organisms.Column.Items as Items
+import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
 import View.Organisms.Config.Status as Status
 import View.Organisms.Sidebar as Sidebar
-import View.Style exposing (none, px)
+import View.Style exposing (noAttr, none, px)
 import View.Stylesheet
 import View.Templates.Main exposing (DragStatus(..))"""
             ]
