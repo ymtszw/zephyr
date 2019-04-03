@@ -2556,7 +2556,7 @@ configSlack m =
         { id = "DUMMYTEAMID" ++ String.fromInt index
         , name = String.fromInt index ++ "TEAM"
         , domain = String.fromInt index ++ "team"
-        , image48 =
+        , image44 =
             if modBy 2 index == 0 then
                 Just (Image.ph 48 48)
 
@@ -2625,7 +2625,7 @@ Slack.render
                     { id = "DUMMYTEAMID" ++ String.fromInt index
                     , name = String.fromInt index ++ "TEAM"
                     , domain = String.fromInt index ++ "team"
-                    , image48 =
+                    , image44 =
                         if modBy 2 index == 0 then
                             Just (Image.ph 48 48)
 

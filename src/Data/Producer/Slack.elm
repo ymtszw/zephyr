@@ -5,7 +5,7 @@ module Data.Producer.Slack exposing
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
+    , getUser, isChannel, isPrivate, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     , parseOptions, resolveAngleCmd
     )
@@ -21,7 +21,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
+@docs getUser, isChannel, isPrivate, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 @docs parseOptions, resolveAngleCmd
 
@@ -2339,6 +2339,22 @@ isChannel conv =
 
         MPIM ->
             False
+
+
+isPrivate : Conversation -> Bool
+isPrivate conv =
+    case conv.type_ of
+        PublicChannel _ ->
+            False
+
+        PrivateChannel ->
+            True
+
+        IM ->
+            True
+
+        MPIM ->
+            True
 
 
 compareByMembersipThenName :

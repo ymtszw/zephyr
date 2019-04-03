@@ -61,7 +61,7 @@ type alias TeamSnip =
     { id : String
     , name : String
     , domain : String
-    , image48 : Maybe String
+    , image44 : Maybe String
     }
 
 
@@ -158,7 +158,7 @@ teamAndUser onRehydrateButtonClick rehydrating team user =
 teamNameAndIcon : TeamSnip -> Html msg
 teamNameAndIcon team =
     div [ flexRow, flexGrow, spacingRow5 ]
-        [ Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] team.name team.image48
+        [ Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] team.name team.image44
         , div [ flexGrow ] <|
             let
                 teamUrl =
