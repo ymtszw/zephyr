@@ -1,4 +1,4 @@
-module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamState(..), UserSnip, hydratedOnce, render)
+module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
 
 import Data.Producer.Slack as Slack
 import Html exposing (Html, div, img, p)
@@ -109,7 +109,7 @@ render eff props =
                 }
             )
     in
-    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
+    Html.Keyed.node "div" [ flexColumn, padding5, spacingColumn5 ] <|
         teamStates
             ++ [ tokenFormKey ]
 
