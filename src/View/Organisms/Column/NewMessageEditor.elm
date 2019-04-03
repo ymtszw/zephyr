@@ -1,4 +1,4 @@
-module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserAction(..), render, styles)
+module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserAction(..), render, selectId, styles)
 
 import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
 import File exposing (File)
@@ -126,13 +126,18 @@ editorSelect eff props editor =
         { state = props.selectState
         , msgTagger = eff.selectMsgTagger
         , thin = True
-        , id = "editorSelect_" ++ props.column.id
+        , id = selectId props.column.id
         , onSelect = \( newIndex, _ ) -> eff.onEditorSelect props.column.id newIndex
         , selectedOption = Just ( selectedIndex, editor )
         , filterMatch = Nothing
         , options = indexedEditors
         , optionHtml = editorSelectOption props.column.sources
         }
+
+
+selectId : String -> String
+selectId columnId =
+    "editorSelect_" ++ columnId
 
 
 editorSelectOption : List Source -> ( Int, ColumnEditor ) -> Html msg

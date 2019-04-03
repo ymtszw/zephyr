@@ -53,7 +53,7 @@ import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
 import View.Organisms.Config.Status as Status
 import View.Organisms.Sidebar as Sidebar
-import View.Style exposing (none, px)
+import View.Style exposing (noAttr, none, px)
 import View.Stylesheet
 import View.Templates.Main exposing (DragStatus(..))
 
@@ -2678,7 +2678,7 @@ columnHeader m =
         [ h1 [ xxProminent ] [ t "Column.Header" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn 60 """Header.render
+            , withSourceInColumn Nothing 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2706,7 +2706,7 @@ columnHeader m =
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
-            , withSourceInColumn 60 """Header.render
+            , withSourceInColumn Nothing 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2737,7 +2737,7 @@ columnHeader m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn 60 """Header.render
+            , withSourceInColumn Nothing 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2771,7 +2771,7 @@ columnHeader m =
                     , pinned = m.toggle
                     , configOpen = m.toggle
                     }
-            , withSourceInColumn 60 """Header.render
+            , withSourceInColumn Nothing 60 """Header.render
     { onDragstart = \\_ _ _ -> NoOp
     , onHeaderClick = Nothing
     , onPinButtonClick = \\_ to -> Toggle to
@@ -2819,8 +2819,8 @@ columnHeader m =
         ]
 
 
-withSourceInColumn : Int -> String -> Html Msg -> Html Msg
-withSourceInColumn height_ source_ toRender =
+withSourceInColumn : Maybe String -> Int -> String -> Html Msg -> Html Msg
+withSourceInColumn selectIdMaybe height_ source_ toRender =
     withSource source_ <|
         div []
             [ t "(Contained)"
@@ -2831,6 +2831,12 @@ withSourceInColumn height_ source_ toRender =
                 , Border.w1
                 , Border.solid
                 , Border.colorBg
+                , case selectIdMaybe of
+                    Just id ->
+                        on "scroll" (succeed (SelectCtrl (Select.hideUnsafe id)))
+
+                    Nothing ->
+                        noAttr
                 ]
                 [ toRender ]
             ]
@@ -2842,7 +2848,7 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn 300 """ColumnConfig.render
+            , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID1")) 300 """ColumnConfig.render
     { onCloseButtonClick = Toggle False
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
@@ -2895,7 +2901,7 @@ columnConfig m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn 400 """ColumnConfig.render
+            , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID2")) 400 """ColumnConfig.render
     { onCloseButtonClick = Toggle False
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
@@ -2955,7 +2961,7 @@ columnNewMessageEditor m =
         [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn 400 """NewMessageEditor.render
+            , withSourceInColumn (Just (NewMessageEditor.selectId "DUMMYID1")) 400 """NewMessageEditor.render
     { onEditorSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
     , onTextInput = \\_ str -> TextInput str
@@ -3022,7 +3028,7 @@ columnNewMessageEditor m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn 400 """NewMessageEditor.render
+            , withSourceInColumn (Just (NewMessageEditor.selectId "DUMMYID2")) 400 """NewMessageEditor.render
     { onEditorSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
     , onTextInput = \\_ str -> TextInput str
@@ -3076,13 +3082,13 @@ columnItems =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , withSourceInColumn 100 "" <|
+                , withSourceInColumn Nothing 100 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID0", timezone = Time.utc, itemGroups = [], hasMore = False }
-                , withSourceInColumn 500 "" <|
+                , withSourceInColumn Nothing 500 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
@@ -3102,7 +3108,7 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn 1000 "" <|
+                , withSourceInColumn Nothing 1000 "" <|
                     let
                         sampleImage500x500 =
                             attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
@@ -3171,7 +3177,7 @@ columnItems =
                                 ]
                         , hasMore = True
                         }
-                , withSourceInColumn 300 "" <|
+                , withSourceInColumn Nothing 300 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
@@ -3197,7 +3203,7 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn 300 "" <|
+                , withSourceInColumn Nothing 300 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp

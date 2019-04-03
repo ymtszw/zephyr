@@ -1,4 +1,4 @@
-module View.Organisms.Column.Config exposing (Effects, render)
+module View.Organisms.Column.Config exposing (Effects, render, selectId)
 
 import Html exposing (Html, button, div, p, span)
 import Html.Events exposing (onClick)
@@ -116,7 +116,7 @@ sourceSelector eff props =
     Select.render []
         { state = props.selectState
         , msgTagger = eff.selectMsgTagger
-        , id = "sourceSelect_" ++ props.column.id
+        , id = selectId props.column.id
         , thin = True
         , onSelect = eff.onSourceSelect props.column.id
         , selectedOption = Nothing
@@ -124,6 +124,11 @@ sourceSelector eff props =
         , options = List.map (\s -> ( Source.id s, s )) props.availableSourecs
         , optionHtml = Source.horizontalBlock14
         }
+
+
+selectId : String -> String
+selectId columnId =
+    "sourceSelect_" ++ columnId
 
 
 sourceFilterMatch : String -> Source -> Bool
