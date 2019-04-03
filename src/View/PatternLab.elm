@@ -3161,6 +3161,8 @@ columnItems =
                                         [ attachedOther (ExternalLink "/index.html")
                                             |> attachedFilePreview samplePreview
                                         ]
+                                , ColumnItem.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
+                                    |> ColumnItem.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
                                 ]
                         , hasMore = True
                         }
@@ -3228,6 +3230,11 @@ columnItems =
                                                 [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                                                 ]
+                                        ]
+                                , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533")
                                         ]
                                 ]
                         , hasMore = False

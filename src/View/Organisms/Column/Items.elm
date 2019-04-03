@@ -192,7 +192,7 @@ itemGroupHeaderKey tz item =
 itemBlockKey : ColumnItem -> ( String, Html msg )
 itemBlockKey item =
     Tuple.pair item.id <|
-        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn2 ] <|
+        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5 ] <|
             bodyBlocks item.body
                 ++ List.map embeddedMatterBlock item.embeddedMatters
                 -- TODO KTS
@@ -231,7 +231,7 @@ embeddedMatterBlock matter =
     -- , url : Maybe String
     -- , body : Text
     -- , kts : KTS TODO
-    -- , thumbnail : Maybe VisualMedia TODO
+    -- , thumbnail : Maybe VisualMedia
     -- , attachedFiles : List AttachedFile
     -- , origin : Maybe NamedEntity TODO
     -- }
@@ -311,7 +311,7 @@ embeddedMatterBlock matter =
                 Nothing ->
                     []
     in
-    div [ flexColumn, flexBasisAuto, padding5, spacingColumn2, Border.gutter, Border.color gutterColor ] <|
+    div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
         textContentsAndThumbnailBlock
             ++ List.map attachedFileBlock matter.attachedFiles
             ++ permalink
