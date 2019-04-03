@@ -24,7 +24,7 @@ import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
-import Data.Msg exposing (Msg(..))
+import Data.Msg exposing (..)
 import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -40,7 +40,7 @@ import View.Atoms.Input.Select
 import View.Pages.Main
 import View.Stylesheet
 import View.Templates.Main exposing (columnAreaParentId, columnWidth)
-import Worque exposing (Work(..))
+import Worque exposing (..)
 
 
 
@@ -541,6 +541,7 @@ sub m =
 
                         Browser.Events.Hidden ->
                             False
+        , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
         ]
 
 
