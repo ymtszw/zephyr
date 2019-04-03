@@ -195,9 +195,17 @@ itemBlockKey item =
         div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5 ] <|
             bodyBlocks item.body
                 ++ List.map embeddedMatterBlock item.embeddedMatters
-                -- TODO KTS
+                ++ List.map ktBlock item.kts
                 -- TODO reactions
                 ++ List.map attachedFileBlock item.attachedFiles
+
+
+ktBlock : ( String, Text ) -> Html msg
+ktBlock ( key, text ) =
+    div []
+        [ div [ bold ] [ t key ]
+        , div [ padding2 ] (bodyBlocks text)
+        ]
 
 
 bodyBlocks : Text -> List (Html msg)
@@ -225,16 +233,6 @@ markdownBlocks raw =
 
 embeddedMatterBlock : EmbeddedMatter -> Html msg
 embeddedMatterBlock matter =
-    -- { color : Maybe Color
-    -- , author : Maybe NamedEntity
-    -- , title : Maybe Text
-    -- , url : Maybe String
-    -- , body : Text
-    -- , kts : KTS TODO
-    -- , thumbnail : Maybe VisualMedia
-    -- , attachedFiles : List AttachedFile
-    -- , origin : Maybe NamedEntity
-    -- }
     let
         wrapInLink urlMaybe children =
             case urlMaybe of
@@ -251,13 +249,13 @@ embeddedMatterBlock matter =
             case matter.thumbnail of
                 Just visualMedia ->
                     [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
-                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ bodyBlocks matter.body
+                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ bodyBlocks matter.body ++ List.map ktBlock matter.kts
                         , visualMediaBlock visualMedia
                         ]
                     ]
 
                 Nothing ->
-                    authorBlock ++ titleBlock ++ bodyBlocks matter.body
+                    authorBlock ++ titleBlock ++ bodyBlocks matter.body ++ List.map ktBlock matter.kts
 
         authorBlock =
             case matter.author of

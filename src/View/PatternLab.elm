@@ -3094,6 +3094,11 @@ columnItems =
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
                                 , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
                                 , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                                , ColumnItem.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                                    |> ColumnItem.kts
+                                        [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                                        , ( "キー2", Markdown "Marked up **text**" )
+                                        ]
                                 ]
                         , hasMore = False
                         }
@@ -3218,6 +3223,10 @@ columnItems =
                                                     |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 20 20)) "Origin Service" False)
                                                     |> NamedEntity.url "https://example.com/origin"
                                                 )
+                                            |> EmbeddedMatter.kts
+                                                [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                                                , ( "キー2", Markdown "Marked up **text**" )
+                                                ]
                                         ]
                                 , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
                                     |> ColumnItem.embeddedMatters
