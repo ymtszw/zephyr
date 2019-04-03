@@ -30,6 +30,7 @@ import View.Atoms.Border as Border
 import View.Atoms.Button as Button
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography exposing (t)
 import View.Style exposing (..)
 
@@ -78,7 +79,7 @@ link attrs opts =
 
 abbr : List (Attribute msg) -> String -> Html msg
 abbr attrs desc =
-    centeredBlock attrs (t (String.left 1 desc))
+    centeredBlock (TextBlock.clip :: attrs) (t (String.left 1 desc))
 
 
 centeredBlock : List (Attribute msg) -> Html msg -> Html msg
