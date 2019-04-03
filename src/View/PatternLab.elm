@@ -2668,11 +2668,11 @@ Slack.render
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
+                , selectMsgTagger = SelectCtrl
                 }
                 { token = m.textInput
                 , tokenSubmittable = True
                 , teamStates = List.range 0 2 |> List.map dummyTeamState
-                , selectMsgTagger = SelectCtrl
                 , selectState = m.select
                 }
         ]
