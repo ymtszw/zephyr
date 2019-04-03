@@ -1,4 +1,4 @@
-module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, render)
+module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, SubbableChannel, SubbedChannel, hydratedOnce, render)
 
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
@@ -61,6 +61,23 @@ type CurrentState
         , guilds : Dict String Discord.Guild
         , subbableChannels : List SubbableChannel
         , subbedChannels : List SubbedChannel -- Must be sorted already
+        }
+
+
+hydratedOnce :
+    Bool
+    -> Discord.User
+    -> Dict String Discord.Guild
+    -> List SubbableChannel
+    -> List SubbedChannel
+    -> CurrentState
+hydratedOnce rehydrating user guilds_ subbableChannels subbedChannels =
+    HydratedOnce
+        { rehydrating = rehydrating
+        , user = user
+        , guilds = guilds_
+        , subbableChannels = subbableChannels
+        , subbedChannels = subbedChannels
         }
 
 
@@ -136,12 +153,7 @@ guilds guilds_ =
 guildIconKey : Discord.Guild -> ( String, Html msg )
 guildIconKey g =
     Tuple.pair g.id <|
-        case Maybe.map Icon.discordImageUrl40 g.icon of
-            Just src_ ->
-                img [ Icon.rounded40, src src_, alt g.name ] []
-
-            Nothing ->
-                Icon.abbr [ Icon.rounded40, serif, xProminent ] g.name
+        Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] g.name (Maybe.map Icon.discordImageUrl40 g.icon)
 
 
 channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg
