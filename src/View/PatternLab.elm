@@ -2663,7 +2663,7 @@ Slack.render
             Slack.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
-                , onRehydrateButtonClick = Toggle (not m.toggle)
+                , onRehydrateButtonClick = always (Toggle (not m.toggle))
                 , onConvSelect = always NoOp
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp

@@ -20,7 +20,7 @@ import View.Style exposing (..)
 type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
-    , onRehydrateButtonClick : msg
+    , onRehydrateButtonClick : String -> msg
     , onConvSelect : String -> msg
     , onForceFetchButtonClick : String -> msg
     , onCreateColumnButtonClick : String -> msg
@@ -120,10 +120,10 @@ teamState eff props ( team, ts ) =
         div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1, Border.solid ] <|
             case ts of
                 NowHydrating user ->
-                    [ teamAndUser eff.onRehydrateButtonClick True team user ]
+                    [ teamAndUser (eff.onRehydrateButtonClick team.id) True team user ]
 
                 HydratedOnce opts ->
-                    [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user
+                    [ teamAndUser (eff.onRehydrateButtonClick team.id) opts.rehydrating team opts.user
                     , ProducerConfig.subSelect eff.onConvSelect
                         { id = "slackConvSubscribeInput_" ++ team.id
                         , selectMsgTagger = eff.selectMsgTagger
