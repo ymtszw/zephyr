@@ -2271,9 +2271,9 @@ sidebar m =
         }
 in
 Sidebar.render
-    { configOpener = Toggle (not m.toggle)
-    , columnAdder = AddColumn
-    , columnButtonClickerByIndex = always NoOp
+    { onConfigToggleClick = Toggle
+    , onAddColumnClick = AddColumn
+    , onColumnButtonClickByIndex = always NoOp
     }
     { configOpen = m.toggle
     , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
@@ -2304,9 +2304,9 @@ Sidebar.render
                     }
             in
             Sidebar.render
-                { configOpener = Toggle (not m.toggle)
-                , columnAdder = AddColumn
-                , columnButtonClickerByIndex = always NoOp
+                { onConfigToggleClick = Toggle
+                , onAddColumnClick = AddColumn
+                , onColumnButtonClickByIndex = always NoOp
                 }
                 { configOpen = m.toggle
                 , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
@@ -3277,9 +3277,9 @@ mainTemplate m =
     let
         mainEffects =
             { sidebarEffects =
-                { configOpener = Toggle (not m.toggle)
-                , columnAdder = AddColumn
-                , columnButtonClickerByIndex = always NoOp
+                { onConfigToggleClick = Toggle
+                , onAddColumnClick = AddColumn
+                , onColumnButtonClickByIndex = always NoOp
                 }
             , columnDragEnd = NoOp
             , columnDragHover = \_ -> NoOp
