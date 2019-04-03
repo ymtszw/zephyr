@@ -3213,6 +3213,11 @@ columnItems =
                                                 )
                                             |> EmbeddedMatter.title (Plain "This is title")
                                             |> EmbeddedMatter.url "https://example.com/verylongpath/morethan30/index.html"
+                                            |> EmbeddedMatter.origin
+                                                (NamedEntity.new "Origin Service"
+                                                    |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 20 20)) "Origin Service" False)
+                                                    |> NamedEntity.url "https://example.com/origin"
+                                                )
                                         ]
                                 , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
                                     |> ColumnItem.embeddedMatters
@@ -3220,6 +3225,7 @@ columnItems =
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
                                             |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
                                             |> EmbeddedMatter.title (Markdown "**Marked-up title**")
+                                            |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
                                         ]
                                 , ColumnItem.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
                                     |> ColumnItem.embeddedMatters

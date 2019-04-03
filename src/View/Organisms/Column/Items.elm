@@ -233,7 +233,7 @@ embeddedMatterBlock matter =
     -- , kts : KTS TODO
     -- , thumbnail : Maybe VisualMedia
     -- , attachedFiles : List AttachedFile
-    -- , origin : Maybe NamedEntity TODO
+    -- , origin : Maybe NamedEntity
     -- }
     let
         wrapInLink urlMaybe children =
@@ -310,11 +310,43 @@ embeddedMatterBlock matter =
 
                 Nothing ->
                     []
+
+        originBlock =
+            case matter.origin of
+                Just namedEntity ->
+                    [ div [ minuscule ] <|
+                        wrapInLink namedEntity.url <|
+                            List.intersperse (t " ") <|
+                                let
+                                    originIcon =
+                                        case namedEntity.avatar of
+                                            Just (ImageOrAbbr opts) ->
+                                                [ Icon.imgOrAbbr [ serif, Icon.rounded14 ] opts.name opts.src ]
+
+                                            _ ->
+                                                []
+                                in
+                                originIcon
+                                    ++ [ span [ colorNote ]
+                                            [ t namedEntity.primaryName
+                                            , case namedEntity.secondaryName of
+                                                Just sn ->
+                                                    span [ colorNote ] [ t sn ]
+
+                                                Nothing ->
+                                                    none
+                                            ]
+                                       ]
+                    ]
+
+                Nothing ->
+                    []
     in
     div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
         textContentsAndThumbnailBlock
             ++ List.map attachedFileBlock matter.attachedFiles
             ++ permalink
+            ++ originBlock
 
 
 attachedFileBlock : AttachedFile -> Html msg
