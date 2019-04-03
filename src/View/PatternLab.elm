@@ -2,8 +2,12 @@ module View.PatternLab exposing (main)
 
 import Browser
 import Browser.Navigation exposing (Key)
-import Data.Column exposing (ColumnItem(..))
+import Color
 import Data.ColumnEditor exposing (ColumnEditor(..))
+import Data.ColumnItem as ColumnItem exposing (ColumnItem)
+import Data.ColumnItem.Contents exposing (..)
+import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
+import Data.ColumnItem.NamedEntity as NamedEntity exposing (NamedEntity)
 import Dict
 import File exposing (File)
 import File.Select
@@ -1810,8 +1814,8 @@ markdownBlocks =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , col 400 "MarkdownBlocks.render TextParser.defaultOptions sampleMarkdown" <|
-                    MarkdownBlocks.render TextParser.defaultOptions sampleMarkdown
+                , col 400 "MarkdownBlocks.render TextParser.defaultOptions MarkdownBlocks.sampleSource" <|
+                    MarkdownBlocks.render TextParser.defaultOptions MarkdownBlocks.sampleSource
                 , col 100 """MarkdownBlocks.render TextParser.defaultOptions <|
     "What if there are significantly long strings?\\n\\n"
         ++ String.repeat 100 "abcd0123\"""" <|
@@ -1836,91 +1840,6 @@ markdownBlocks =
                         ]
                         contents
                     ]
-
-        sampleMarkdown =
-            """# Title h1
-*Lorem* ipsum **dolor** sit ***amet***, consectetur ****adipisicing**** elit, sed do eiusmod tempor
-_incididunt_ ut __labore__ et ___dolore___ magna ____aliqua____. Ut enim ad minim veniam, quis nostrud
-exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
-irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
-officia deserunt mollit anim id est laborum.
-
-Horizontal rule below:
-
----
-## Title h2
-いろはにほへと散りぬるをわかよ誰そ常ならむ有為の奥山今日越えてあさきゆめみしゑひもせすん
-
-- This is an unordered list
-- Can be nested
-    - like
-    - this
-    - What happens if there are very long lines and words?
-      abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123abcd0123
-        - More nest
-            - And more
-                - And yet more
-                    - This is the end
-
-0. And this is an ordered list, starting from zero
-1. Should be nestable
-    1. Like
-    2. this
-        1. More nest
-            1. And more
-                1. And yet more
-                    1. This is the end
-
-### Title h3
-With code: `<code>With Code</code>`,\\
-and hard line breaks!\\
-Raw link: <https://example.com>, and [Link with title][link]
-
-[link]: https://example.com "link"
-
-#### Title h4
-```
-This is a fenced code block.
-Should respect line breaks!
-```
-
-    This is an indented code block.
-        Should respect line breaks
-    This is a very long line in code block. Lorem ipsum dolor sit amet, consectetur
-    adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-    Ut enim ad minim veniam, quis nostrud
-
-##### Title h5
-> This is a block quote.
->
-> Within it, everything is baseline italic.
->
-> > Can be nested!!
-> >
-> > > Nested and even colored!!
->
-> ```
-> Can have code block!
-> ```
->
-> - Can have lists!
->     - Like
->     - This
-> - Foo!
-
-###### Title h6
-
-Images are inline elements. ![20x20 image](https://picsum.photos/20/20) Like this.
-
-And they are not contained by default.
-You can however apply styles to `<img>` under the container.
-Utilize `object-fit`!
-
-[![300x500 image](https://picsum.photos/300/500)](https://example.com)
-
-They can be linked, of course.
-"""
     in
     section []
         [ h1 [ xxProminent ] [ t "MarkdownBlocks" ]
@@ -1928,7 +1847,7 @@ They can be linked, of course.
         , themed aubergine "aubergine"
         , section []
             [ h2 [ xProminent ] [ t "Sample Markdown" ]
-            , sourceBlock sampleMarkdown
+            , sourceBlock MarkdownBlocks.sampleSource
             ]
         ]
 
@@ -3162,31 +3081,183 @@ columnItems =
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
-                        { columnId = themeStr ++ "CID0", timezone = Time.utc, items = [], hasMore = False }
-                , withSourceInColumn 200 "" <|
+                        { columnId = themeStr ++ "CID0", timezone = Time.utc, itemGroups = [], hasMore = False }
+                , withSourceInColumn 500 "" <|
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID1"
                         , timezone = Time.utc
-                        , items =
-                            [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha }
-                            , LocalMessage { id = "LM0", message = lorem ++ " " ++ iroha }
-                            ]
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+                                , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+                                , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                                , ColumnItem.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                                    |> ColumnItem.kts
+                                        [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                                        , ( "キー2", Markdown "Marked up **text**" )
+                                        ]
+                                ]
                         , hasMore = False
                         }
-                , withSourceInColumn 150 "" <|
+                , withSourceInColumn 1000 "" <|
+                    let
+                        sampleImage500x500 =
+                            attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
+
+                        sampleImage100x100 =
+                            attachedImage (Image.ph 100 100) |> attachedFileDimension ( 100, 100 )
+
+                        sampleImage100x600 =
+                            attachedImage (Image.ph 100 600) |> attachedFileDimension ( 100, 600 )
+
+                        sampleImage600x100 =
+                            attachedImage (Image.ph 600 100) |> attachedFileDimension ( 600, 100 )
+
+                        sampleVideo =
+                            attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+
+                        samplePreview =
+                            """<!DOCTYPE HTML>
+<html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Sample</title>
+    </head>
+    <body>
+        Hi!
+    </body>
+</html>
+"""
+                    in
                     Items.render
                         { scrollAttrs = []
                         , onLoadMoreClick = always NoOp
                         }
                         { columnId = themeStr ++ "CID2"
                         , timezone = Time.utc
-                        , items = [ SystemMessage { id = "SM0", mediaMaybe = Nothing, message = lorem ++ " " ++ iroha } ]
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+                                    |> ColumnItem.attachedFiles [ sampleImage500x500 ]
+                                , ColumnItem.new "ci2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+                                    |> ColumnItem.attachedFiles [ sampleImage100x100 ]
+                                , ColumnItem.new "ci3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+                                    |> ColumnItem.attachedFiles [ sampleImage100x600 ]
+                                , ColumnItem.new "ci4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+                                    |> ColumnItem.attachedFiles [ sampleImage600x100 ]
+                                , ColumnItem.new "ci5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+                                    |> ColumnItem.attachedFiles [ sampleVideo ]
+                                , ColumnItem.new "ci6" (NamedEntity.new "Attachement") (Plain "External file")
+                                    |> ColumnItem.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
+                                , ColumnItem.new "ci7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+                                    |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
+                                , ColumnItem.new "ci8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+                                    |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
+                                , ColumnItem.new "ci9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+                                    |> ColumnItem.attachedFiles
+                                        [ attachedOther (DownloadUrl "/image.html")
+                                            |> attachedFileDescription (String.repeat 10 "longstring")
+                                        ]
+                                , ColumnItem.new "ci10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+                                    |> ColumnItem.attachedFiles
+                                        [ attachedOther (ExternalLink "/index.html")
+                                            |> attachedFilePreview samplePreview
+                                        ]
+                                , ColumnItem.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
+                                    |> ColumnItem.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+                                ]
                         , hasMore = True
                         }
+                , withSourceInColumn 300 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID3"
+                        , timezone = Time.utc
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+                                , ColumnItem.new "ci1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+                                , ColumnItem.new "ci2"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
+                                    (Plain "ImageOrAbbr")
+                                , ColumnItem.new "ci3"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
+                                    (Plain "ImageOrAbbr")
+                                , ColumnItem.new "ci4"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
+                                    (Plain "ImageOrAbbr")
+                                , ColumnItem.new "ci5"
+                                    (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
+                                    (Plain "ImageOrAbbr")
+                                ]
+                        , hasMore = False
+                        }
+                , withSourceInColumn 300 "" <|
+                    Items.render
+                        { scrollAttrs = []
+                        , onLoadMoreClick = always NoOp
+                        }
+                        { columnId = themeStr ++ "CID4"
+                        , timezone = Time.utc
+                        , itemGroups =
+                            List.map unit
+                                [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                            |> EmbeddedMatter.author
+                                                (NamedEntity.new "With Avatar"
+                                                    |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
+                                                    |> NamedEntity.url "https://example.com/user"
+                                                    |> NamedEntity.secondaryName "@with_avatar"
+                                                )
+                                            |> EmbeddedMatter.title (Plain "This is title")
+                                            |> EmbeddedMatter.url "https://example.com/verylongpath/morethan30/index.html"
+                                            |> EmbeddedMatter.origin
+                                                (NamedEntity.new "Origin Service"
+                                                    |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 20 20)) "Origin Service" False)
+                                                    |> NamedEntity.url "https://example.com/origin"
+                                                )
+                                            |> EmbeddedMatter.kts
+                                                [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                                                , ( "キー2", Markdown "Marked up **text**" )
+                                                ]
+                                        ]
+                                , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
+                                            |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
+                                            |> EmbeddedMatter.title (Markdown "**Marked-up title**")
+                                            |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
+                                        ]
+                                , ColumnItem.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
+                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just ( 100, 100 )))
+                                            |> EmbeddedMatter.attachedFiles
+                                                [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
+                                                , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                                                ]
+                                        ]
+                                , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
+                                    |> ColumnItem.embeddedMatters
+                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533")
+                                        ]
+                                ]
+                        , hasMore = False
+                        }
                 ]
+
+        unit item =
+            ( item, [] )
     in
     section []
         [ h1 [ xxProminent ] [ t "Column.Items" ]

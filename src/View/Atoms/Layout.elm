@@ -433,7 +433,7 @@ growItemClass =
 flexGrowStyle : Style
 flexGrowStyle =
     let
-        growingChildlen =
+        growingChildren =
             String.join ","
                 [ c flexRowClass ++ ">" ++ c flexGrowClass
                 , c flexColumnClass ++ ">" ++ c flexGrowClass
@@ -441,7 +441,7 @@ flexGrowStyle =
                 , c growColumnClass ++ ">" ++ c flexGrowClass
                 ]
     in
-    s growingChildlen [ ( "flex-grow", "10000" ) ]
+    s growingChildren [ ( "flex-grow", "10000" ) ]
 
 
 flexGrowClass : String
@@ -452,7 +452,7 @@ flexGrowClass =
 flexShrinkStyle : Style
 flexShrinkStyle =
     let
-        shrinkingChildlen =
+        shrinkingChildren =
             String.join ","
                 [ c flexRowClass ++ ">" ++ c flexShrinkClass
                 , c flexColumnClass ++ ">" ++ c flexShrinkClass
@@ -460,7 +460,7 @@ flexShrinkStyle =
                 , c growColumnClass ++ ">" ++ c flexShrinkClass
                 ]
     in
-    s shrinkingChildlen [ ( "flex-shrink", "1" ) ]
+    s shrinkingChildren [ ( "flex-shrink", "1" ) ]
 
 
 flexShrinkClass : String
@@ -490,7 +490,7 @@ flexCenterClass =
 flexBasisAutoStyle : Style
 flexBasisAutoStyle =
     let
-        childlen =
+        children =
             String.join ","
                 [ c flexRowClass ++ ">" ++ c flexBasisAutoClass
                 , c flexColumnClass ++ ">" ++ c flexBasisAutoClass
@@ -498,7 +498,7 @@ flexBasisAutoStyle =
                 , c growColumnClass ++ ">" ++ c flexBasisAutoClass
                 ]
     in
-    s childlen [ ( "flex-basis", "auto" ) ]
+    s children [ ( "flex-basis", "auto" ) ]
 
 
 flexBasisAutoClass : String
@@ -625,6 +625,12 @@ badgeStyles =
     [ s (c badgeOuterClass)
         [ ( "display", "flex" )
         , ( "flex-direction", "row-reverse" )
+        , -- This is crucial; since badge children are positioned `absolute`-ly,
+          -- and absolutely-positioned elements are positioned relative to its "nearest positioned ancestor".
+          -- Nearest positioned ancestors mean containing block elements
+          -- that has `position` property other than `static` (default value).
+          -- <https://developer.mozilla.org/en-US/docs/Web/CSS/position#Absolute_positioning>
+          ( "position", "relative" )
         ]
     , s (c badgeTopRightClass)
         [ ( "position", "absolute" )

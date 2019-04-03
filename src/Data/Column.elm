@@ -34,6 +34,7 @@ import Json.Encode as E
 import Json.EncodeExtra as E
 import Scroll exposing (Scroll)
 import SelectArray exposing (SelectArray)
+import StringExtra
 import Task
 import Url
 import View.Parts exposing (columnHeaderHeight, columnItemMinimumHeight)
@@ -279,17 +280,13 @@ welcomeItem id =
     SystemMessage
         { id = id
         , message = "Welcome to Zephyr app! 🚀\n\nThis is Elm-powered multi-service feed reader!\n\nLet's start with configuring column filters above!"
-        , mediaMaybe =
-            Just <|
-                Image
-                    { protocol = Url.Https
-                    , host = "cdn.dribbble.com"
-                    , port_ = Nothing
-                    , path = "/users/27231/screenshots/2432051/welcome.gif"
-                    , fragment = Nothing
-                    , query = Nothing
-                    }
+        , mediaMaybe = Just (Image welcomeGif)
         }
+
+
+welcomeGif : Url.Url
+welcomeGif =
+    StringExtra.toUrlUnsafe "https://cdn.dribbble.com/users/27231/screenshots/2432051/welcome.gif"
 
 
 new : Int -> UniqueIdGen -> String -> ( Column, UniqueIdGen )

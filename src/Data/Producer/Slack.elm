@@ -5,7 +5,7 @@ module Data.Producer.Slack exposing
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
+    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     , parseOptions, resolveAngleCmd
     )
@@ -21,7 +21,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs
+@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 @docs parseOptions, resolveAngleCmd
 
@@ -43,6 +43,7 @@ import Json.EncodeExtra as E
 import List.Extra
 import Markdown.Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser)
+import StringExtra as StringExtra
 import Task exposing (Task)
 import TextParser
 import Time exposing (Posix)
@@ -2433,6 +2434,22 @@ getTs { ts } =
     ts_
 
 
+getAuthorName : { x | author : Author, username : Maybe String } -> String
+getAuthorName { author, username } =
+    case author of
+        UserAuthor user ->
+            Maybe.withDefault user.profile.realName user.profile.displayName
+
+        BotAuthor bot ->
+            Maybe.withDefault bot.name username
+
+        UserAuthorId (UserId str) ->
+            str
+
+        BotAuthorId (BotId str) ->
+            str
+
+
 defaultIconUrl : Maybe Int -> String
 defaultIconUrl sizeMaybe =
     logoCdnUrl sizeMaybe "/pl546j-7le8zk-199wkt/Slack%20Mark.png"
@@ -2651,4 +2668,4 @@ convertAngleCmd convs users angleCmd =
                             convIdStr
 
         Link url ph ->
-            "[" ++ (placeholderOr "" ph <| \() -> TextParser.shortenUrl url) ++ "](" ++ Url.toString url ++ ")"
+            "[" ++ (placeholderOr "" ph <| \() -> StringExtra.fromUrlShortened url) ++ "](" ++ Url.toString url ++ ")"

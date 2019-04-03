@@ -234,6 +234,7 @@ styles =
         , ( "flex-basis", "auto!important" )
         , ( "justify-content", "center" )
         , ( "user-select", "none" )
+        , ( "display", "inline-flex" )
         ]
     , s (c rounded10Class)
         [ ( "width", px rounded10Size )
