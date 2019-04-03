@@ -21,20 +21,20 @@ type alias Effects msg =
     , onForceFetchButtonClick : String -> msg
     , onCreateColumnButtonClick : String -> msg
     , onUnsubscribeButtonClick : String -> msg
+    , selectMsgTagger : Select.Msg msg -> msg
     }
 
 
-type alias Props msg =
+type alias Props =
     { token : String
     , tokenSubmitButtonText : String
     , tokenSubmittable : Bool
     , currentState : CurrentState
-    , selectMsgTagger : Select.Msg msg -> msg
     , selectState : Select.State
     }
 
 
-render : Effects msg -> Props msg -> Html msg
+render : Effects msg -> Props -> Html msg
 render eff props =
     div
         [ flexColumn
@@ -80,7 +80,7 @@ type alias SubbedChannel =
     }
 
 
-currentState : Effects msg -> Props msg -> Html msg
+currentState : Effects msg -> Props -> Html msg
 currentState eff props =
     case props.currentState of
         NotIdentified ->
@@ -95,7 +95,7 @@ currentState eff props =
                 , guilds opts.guilds
                 , ProducerConfig.subSelect eff.onChannelSelect
                     { id = "discordChannelSubscribeInput"
-                    , selectMsgTagger = props.selectMsgTagger
+                    , selectMsgTagger = eff.selectMsgTagger
                     , selectState = props.selectState
                     , options = opts.subbableChannels
                     , filterMatch = Discord.channelFilter

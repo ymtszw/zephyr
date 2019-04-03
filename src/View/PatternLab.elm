@@ -2516,12 +2516,12 @@ Discord.render
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
+                , selectMsgTagger = SelectCtrl
                 }
                 { token = m.textInput
                 , tokenSubmitButtonText = "Submit"
                 , tokenSubmittable = True
                 , currentState = Discord.HydratedOnce dummyOpts
-                , selectMsgTagger = SelectCtrl
                 , selectState = m.select
                 }
         ]
