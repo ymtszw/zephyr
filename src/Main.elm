@@ -36,9 +36,10 @@ import Task exposing (Task)
 import Time exposing (Posix)
 import TimeZone
 import Url
-import View
-import View.Parts exposing (columnAreaParentId, columnWidth)
-import View.Select
+import View.Atoms.Input.Select
+import View.Pages.Main
+import View.Stylesheet
+import View.Templates.Main exposing (columnAreaParentId, columnWidth)
 import Worque exposing (Work(..))
 
 
@@ -140,7 +141,7 @@ update msg m_ =
         SelectCtrl sMsg ->
             let
                 ( ss, cmd ) =
-                    View.Select.update SelectCtrl sMsg viewState.selectState
+                    View.Atoms.Input.Select.update SelectCtrl sMsg viewState.selectState
             in
             noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
@@ -550,5 +551,5 @@ sub m =
 view : Model -> Browser.Document Msg
 view m =
     { title = "Zephyr"
-    , body = View.body m
+    , body = View.Stylesheet.render :: View.Pages.Main.render m
     }
