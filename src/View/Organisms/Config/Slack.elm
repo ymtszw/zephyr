@@ -21,10 +21,10 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : String -> msg
-    , onConvSelect : String -> msg
-    , onForceFetchButtonClick : String -> msg
+    , onConvSelect : String -> String -> msg
+    , onForceFetchButtonClick : String -> String -> msg
     , onCreateColumnButtonClick : String -> msg
-    , onUnsubscribeButtonClick : String -> msg
+    , onUnsubscribeButtonClick : String -> String -> msg
     , selectMsgTagger : Select.Msg msg -> msg
     }
 
@@ -124,7 +124,7 @@ teamState eff props ( team, ts ) =
 
                 HydratedOnce opts ->
                     [ teamAndUser (eff.onRehydrateButtonClick team.id) opts.rehydrating team opts.user
-                    , ProducerConfig.subSelect eff.onConvSelect
+                    , ProducerConfig.subSelect (eff.onConvSelect team.id)
                         { id = "slackConvSubscribeInput_" ++ team.id
                         , selectMsgTagger = eff.selectMsgTagger
                         , selectState = props.selectState
@@ -132,7 +132,14 @@ teamState eff props ( team, ts ) =
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
                         , optionHtml = div [] << Source.slackInline regularSize
                         }
-                    , ProducerConfig.subbedTable eff
+                    , let
+                        eff_ =
+                            { onCreateColumnButtonClick = eff.onCreateColumnButtonClick
+                            , onForceFetchButtonClick = eff.onForceFetchButtonClick team.id
+                            , onUnsubscribeButtonClick = eff.onUnsubscribeButtonClick team.id
+                            }
+                      in
+                      ProducerConfig.subbedTable eff_
                         { items = opts.subbedConvs
                         , itemHtml = div [] << Source.slackInline regularSize
                         }

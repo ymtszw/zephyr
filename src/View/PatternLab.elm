@@ -2664,10 +2664,10 @@ Slack.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = always (Toggle (not m.toggle))
-                , onConvSelect = always NoOp
-                , onForceFetchButtonClick = always NoOp
+                , onConvSelect = \_ _ -> NoOp
+                , onForceFetchButtonClick = \_ _ -> NoOp
                 , onCreateColumnButtonClick = always NoOp
-                , onUnsubscribeButtonClick = always NoOp
+                , onUnsubscribeButtonClick = \_ _ -> NoOp
                 , selectMsgTagger = SelectCtrl
                 }
                 { token = m.textInput
