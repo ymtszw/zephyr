@@ -1,6 +1,7 @@
 module View.Templates.Main exposing
     ( Props, Effects, Contents, DragStatus(..), render
     , styles
+    , columnAreaParentId, columnWidth
     )
 
 {-| Template of Main view.
@@ -15,6 +16,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 
 @docs Props, Effects, Contents, DragStatus, render
 @docs styles
+@docs columnAreaParentId, columnWidth
 
 -}
 
