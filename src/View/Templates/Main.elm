@@ -271,14 +271,14 @@ styles =
         , ( "padding-bottom", px configDrawerPaddingY )
         , ( "overflow-y", "auto" )
         , ( "transition", "all 0.15s" )
+        , ( "display", "block" )
         , -- Default hidden
           ( "visibility", "hidden" )
         , ( "opacity", "0" )
         , ( "transform", "translateX(-50px)" ) -- The value sufficient for slide-in effect to be recognizable
         ]
     , s (c configDrawerClass ++ c drawerOpenClass)
-        [ ( "display", "block" )
-        , ( "visibility", "visible" )
+        [ ( "visibility", "visible" )
         , ( "opacity", "1" )
         , ( "transform", "translateX(0px)" )
         ]
