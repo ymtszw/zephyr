@@ -116,7 +116,8 @@ itemAuthorAvatar40 item =
     let
         octiconAvatar40 shape =
             Icon.octiconBlock
-                [ Icon.rounded40
+                [ alignStart
+                , Icon.rounded40
                 , Border.colorNote
                 ]
                 { size = xProminentSize
@@ -140,7 +141,7 @@ itemAuthorAvatar40 item =
                 octiconAvatar40 Octicons.note
 
             Just (ImageOrAbbr opts) ->
-                withBadge [ badgeOutset ]
+                withBadge [ alignStart, badgeOutset ]
                     { topRight = Nothing
                     , bottomRight =
                         if opts.isBot then
@@ -152,7 +153,7 @@ itemAuthorAvatar40 item =
                     }
 
             Nothing ->
-                Icon.imgOrAbbr [ serif, xProminent, Icon.rounded40 ] item.author.primaryName Nothing
+                Icon.imgOrAbbr [ serif, xProminent, alignStart, Icon.rounded40 ] item.author.primaryName Nothing
 
 
 itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg

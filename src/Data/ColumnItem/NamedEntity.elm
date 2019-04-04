@@ -1,11 +1,11 @@
 module Data.ColumnItem.NamedEntity exposing
-    ( NamedEntity, Avatar(..), new
+    ( NamedEntity, Avatar(..), desiredIconSize, new
     , secondaryName, avatar, url, imageOrAbbr
     )
 
 {-| NamedEntity (mainly author information) in ColumnItem, and its builder functions.
 
-@docs NamedEntity, Avatar, new
+@docs NamedEntity, Avatar, desiredIconSize, new
 @docs secondaryName, avatar, url, imageOrAbbr
 
 -}
@@ -23,6 +23,11 @@ type Avatar
     = OcticonInfo
     | OcticonNote
     | ImageOrAbbr { src : Maybe String, name : String, isBot : Bool }
+
+
+desiredIconSize : Int
+desiredIconSize =
+    40
 
 
 new : String -> NamedEntity
