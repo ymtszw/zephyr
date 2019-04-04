@@ -40,6 +40,7 @@ render : Effects msg -> Props c -> Html msg
 render eff props =
     div
         [ flexColumn
+        , flexBasisAuto
         , padding5
         , spacingColumn5
         , Background.colorSub
@@ -54,7 +55,8 @@ render eff props =
             (status props.column)
         , configSection
             [ span [ Image.fillPrim ] [ Image.octicon { size = xProminentSize, shape = Octicons.beaker } ]
-            , t " Sources"
+            , t " Sources "
+            , span [ bold, colorErr ] [ t "[WIP] Broken right now!" ] -- TODO
             ]
             (sources eff props)
         , configSection
@@ -81,6 +83,7 @@ configSection headerTexts contents =
         wrappedContents =
             div
                 [ flexColumn
+                , flexBasisAuto
                 , padding5
                 , spacingColumn5
                 , Border.round5
@@ -88,7 +91,7 @@ configSection headerTexts contents =
                 ]
                 contents
     in
-    div [ flexColumn, spacingColumn2 ] [ header, wrappedContents ]
+    div [ flexColumn, flexBasisAuto, spacingColumn2 ] [ header, wrappedContents ]
 
 
 status : ColumnProps { c | id : String, numItems : Int } -> List (Html msg)
