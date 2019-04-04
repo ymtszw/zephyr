@@ -32,16 +32,16 @@ render m =
         effects =
             case m.viewState.columnSwapMaybe of
                 Just swap ->
-                    { columnDragHover =
+                    { onColumnDragHover =
                         \newIndex ->
                             DragEnter (ArrayExtra.moveFromTo swap.originalIndex newIndex swap.originalOrder)
-                    , columnDragEnd = DragEnd
+                    , onColumnDragEnd = DragEnd
                     , sidebarEffects = sidebarEffects
                     }
 
                 Nothing ->
-                    { columnDragHover = always NoOp
-                    , columnDragEnd = NoOp
+                    { onColumnDragHover = always NoOp
+                    , onColumnDragEnd = NoOp
                     , sidebarEffects = sidebarEffects
                     }
 
@@ -53,18 +53,6 @@ render m =
 
         props =
             let
-                -- { id : String
-                -- , items : Scroll ColumnItem
-                -- , filters : Array Filter
-                -- , offset : Maybe Offset
-                -- , pinned : Bool
-                -- , recentlyTouched : Bool -- This property may become stale, though it should have no harm
-                -- , configOpen : Bool
-                -- , pendingFilters : Array Filter
-                -- , editors : SelectArray ColumnEditor
-                -- , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/mdgriffith/elm-ui/issues/5
-                -- , editorActive : Bool
-                -- , deleteGate : String
                 marshalVisibleColumn fam index c =
                     let
                         ( sources, filters ) =
