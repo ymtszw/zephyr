@@ -1,11 +1,12 @@
 module View.Pages.Main exposing (render)
 
-import Array
+import Array exposing (Array)
 import ArrayExtra
 import Broker
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore
-import Data.Filter as Filter
+import Data.Filter as Filter exposing (Filter)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConversation)
 import Data.Model exposing (Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref
@@ -16,12 +17,13 @@ import Data.ProducerRegistry as ProducerRegistry
 import Dict
 import Html exposing (Html)
 import Url
+import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
 import View.Organisms.Config.Status
 import View.Style exposing (none)
-import View.Templates.Main
+import View.Templates.Main exposing (DragStatus(..))
 
 
 render : Model -> List (Html Msg)
@@ -50,8 +52,43 @@ render m =
             }
 
         props =
+            let
+                -- { id : String
+                -- , items : Scroll ColumnItem
+                -- , filters : Array Filter
+                -- , offset : Maybe Offset
+                -- , pinned : Bool
+                -- , recentlyTouched : Bool -- This property may become stale, though it should have no harm
+                -- , configOpen : Bool
+                -- , pendingFilters : Array Filter
+                -- , editors : SelectArray ColumnEditor
+                -- , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/mdgriffith/elm-ui/issues/5
+                -- , editorActive : Bool
+                -- , deleteGate : String
+                marshalVisibleColumn fam index c =
+                    let
+                        ( sources, filters ) =
+                            marshalSourcesAndFilters m.columnStore.fam c.filters
+
+                        dragStatus =
+                            case m.viewState.columnSwapMaybe of
+                                Just swap ->
+                                    if swap.grabbedId == c.id then
+                                        Grabbed
+
+                                    else if swap.pinned == c.pinned then
+                                        Droppable
+
+                                    else
+                                        Undroppable
+
+                                Nothing ->
+                                    Settled
+                    in
+                    { id = c.id, pinned = c.pinned, sources = sources, filters = filters, dragStatus = dragStatus, configOpen = c.configOpen }
+            in
             { configOpen = m.viewState.configOpen
-            , visibleColumns = []
+            , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
             }
 
         contents =
@@ -72,8 +109,71 @@ render m =
     View.Templates.Main.render effects props contents
 
 
+marshalSourcesAndFilters : FilterAtomMaterial -> Array Filter -> ( List Source, List String )
+marshalSourcesAndFilters fam filters =
+    let
+        collectSourceAndFilter f ( accSoures, accFilters ) =
+            Tuple.mapBoth ((++) accSoures) ((++) accFilters) (Filter.foldl findSourceOrFilter ( [], [] ) f)
+
+        findSourceOrFilter fa ( accSources, accFilters ) =
+            case fa of
+                Filter.OfDiscordChannel channelId ->
+                    let
+                        withGuild =
+                            Maybe.andThen (\c -> Maybe.map (Tuple.pair c) c.guildMaybe)
+                    in
+                    -- TODO support DMs
+                    case withGuild (findDiscordChannel channelId fam) of
+                        Just ( c, g ) ->
+                            ( Source.discord channelId
+                                c.name
+                                g.name
+                                (Maybe.map (PDiscord.imageUrlNoFallback (Just Source.desiredIconSize)) g.icon)
+                                :: accSources
+                            , accFilters
+                            )
+
+                        Nothing ->
+                            ( accSources, accFilters )
+
+                Filter.OfSlackConversation convId ->
+                    -- TODO support IM/MPIMs
+                    case findSlackConversation convId fam of
+                        Just c ->
+                            ( Source.slack convId c.name c.team.name (teamIcon44 c.team) (PSlack.isPrivate c) :: accSources, accFilters )
+
+                        Nothing ->
+                            ( accSources, accFilters )
+
+                Filter.ByMessage text ->
+                    -- Wrap in extra quotation
+                    ( accSources, ("\"" ++ text ++ "\"") :: accFilters )
+
+                Filter.ByMedia Filter.HasImage ->
+                    ( accSources, "Has Image" :: accFilters )
+
+                Filter.ByMedia Filter.HasVideo ->
+                    ( accSources, "Has Video" :: accFilters )
+
+                Filter.ByMedia Filter.HasNone ->
+                    ( accSources, "Without Media" :: accFilters )
+
+                Filter.RemoveMe ->
+                    ( accSources, accFilters )
+    in
+    Array.foldl collectSourceAndFilter ( [], [] ) filters
+
+
 renderConfigPref : Model -> Html Msg
 renderConfigPref m =
+    let
+        marshalShadowColumn c =
+            let
+                ( sources, filters ) =
+                    marshalSourcesAndFilters m.columnStore.fam c.filters
+            in
+            { id = c.id, pinned = c.pinned, sources = sources, filters = filters }
+    in
     View.Organisms.Config.Pref.render
         { onZephyrModeChange = PrefCtrl << Pref.ZephyrMode
         , onShowColumnButtonClick = ShowColumn
@@ -83,9 +183,18 @@ renderConfigPref m =
         { zephyrMode = m.pref.zephyrMode
         , evictThreshold = m.pref.evictThreshold
         , columnSlotsAvailable = not m.pref.zephyrMode || ColumnStore.sizePinned m.columnStore < m.pref.evictThreshold
-        , shadowColumns = []
+        , shadowColumns = List.map marshalShadowColumn (ColumnStore.listShadow m.columnStore)
         , logging = m.pref.logging
         }
+
+
+teamIcon44 : PSlack.Team -> Maybe String
+teamIcon44 t =
+    if t.icon.imageDefault then
+        Nothing
+
+    else
+        Just (Url.toString t.icon.image44)
 
 
 renderConfigSlack : Model -> Html Msg
@@ -116,12 +225,7 @@ renderConfigSlack m =
                                     ( marshalTeam pov.team, hydratedOnce False pov )
 
                         marshalTeam t =
-                            VSlack.TeamSnip teamId t.name t.domain <|
-                                if t.icon.imageDefault then
-                                    Nothing
-
-                                else
-                                    Just (Url.toString t.icon.image44)
+                            VSlack.TeamSnip teamId t.name t.domain (teamIcon44 t)
 
                         marshalUser u =
                             VSlack.UserSnip u.profile.realName u.profile.displayName (Url.toString u.profile.image48)
