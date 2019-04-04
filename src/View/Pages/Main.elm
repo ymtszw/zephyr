@@ -11,11 +11,14 @@ import Data.Msg exposing (..)
 import Data.Pref as Pref
 import Data.Producer.Discord as PDiscord
 import Data.Producer.FetchStatus as FetchStatus
+import Data.Producer.Slack as PSlack
 import Data.ProducerRegistry as ProducerRegistry
 import Dict
 import Html exposing (Html)
+import Url
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
+import View.Organisms.Config.Slack as VSlack
 import View.Organisms.Config.Status
 import View.Style exposing (none)
 import View.Templates.Main
@@ -54,9 +57,7 @@ render m =
         contents =
             { configContents =
                 { pref = renderConfigPref m
-
-                -- , slack = renderConfigSlack m
-                , slack = none
+                , slack = renderConfigSlack m
                 , discord = renderConfigDiscord m
                 , status = renderConfigStatus m
                 }
@@ -87,21 +88,96 @@ renderConfigPref m =
         }
 
 
+renderConfigSlack : Model -> Html Msg
+renderConfigSlack m =
+    let
+        msgTagger =
+            ProducerCtrl << ProducerRegistry.SlackMsg
 
--- renderConfigSlack : Model -> Html Msg
--- renderConfigSlack m =
---     View.Organisms.Config.Pref.render
---         { onZephyrModeChange = PrefCtrl Pref.ZephyrMode
---         , onShowColumnButtonClick = ShowColumn
---         , onDeleteColumnButtonClick = DelColumn
---         , onLoggingChange = PrefCtrl Pref.Logging
---         }
---         { zephyrMode = m.pref.zephyrMode
---         , evictThreshold = m.pref.evictThreshold
---         , columnSlotsAvailable = not m.pref.zephyrMode || ColumnStore.sizePinned m.columnStore < m.pref.evictThreshold
---         , shadowColumns = ColumnStore.listShadow m.columnStore
---         , logging = m.pref.logging
---         }
+        teamStates =
+            let
+                marshal teamId teamState acc =
+                    let
+                        pair =
+                            case teamState of
+                                PSlack.Identified s ->
+                                    ( marshalTeam s.team, VSlack.NowHydrating (marshalUser s.user) )
+
+                                PSlack.Hydrated _ pov ->
+                                    ( marshalTeam pov.team, hydratedOnce False pov )
+
+                                PSlack.Rehydrating _ pov ->
+                                    ( marshalTeam pov.team, hydratedOnce True pov )
+
+                                PSlack.Revisit pov ->
+                                    ( marshalTeam pov.team, hydratedOnce True pov )
+
+                                PSlack.Expired _ pov ->
+                                    ( marshalTeam pov.team, hydratedOnce False pov )
+
+                        marshalTeam t =
+                            VSlack.TeamSnip teamId t.name t.domain <|
+                                if t.icon.imageDefault then
+                                    Nothing
+
+                                else
+                                    Just (Url.toString t.icon.image44)
+
+                        marshalUser u =
+                            VSlack.UserSnip u.profile.realName u.profile.displayName (Url.toString u.profile.image48)
+
+                        hydratedOnce rehydrating pov =
+                            let
+                                ( subbable, subbed ) =
+                                    -- TODO support IM/MPIM
+                                    Dict.values pov.conversations
+                                        |> List.filter (\c -> not c.isArchived && PSlack.isChannel c)
+                                        |> List.sortWith PSlack.compareByMembersipThenName
+                                        |> List.foldr partitionThenMarshal ( [], [] )
+
+                                partitionThenMarshal c ( accNotSubbed, accSubbed ) =
+                                    if FetchStatus.dormant c.fetchStatus then
+                                        ( VSlack.SubbableConv (PSlack.getConversationIdStr c)
+                                            c.name
+                                            (PSlack.isPrivate c)
+                                            :: accNotSubbed
+                                        , accSubbed
+                                        )
+
+                                    else
+                                        let
+                                            marshalled =
+                                                VSlack.SubbedConv (PSlack.getConversationIdStr c)
+                                                    c.name
+                                                    (PSlack.isPrivate c)
+                                                    (FetchStatus.fetching c.fetchStatus)
+                                                    (FetchStatus.subscribed c.fetchStatus)
+                                        in
+                                        ( accNotSubbed, marshalled :: accSubbed )
+                            in
+                            VSlack.hydratedOnce rehydrating (marshalUser pov.user) subbable subbed
+                    in
+                    pair :: acc
+            in
+            Dict.foldr marshal [] m.producerRegistry.slack.dict
+    in
+    VSlack.render
+        { onTokenInput = msgTagger << PSlack.UTokenInput
+        , onTokenSubmit = msgTagger PSlack.UTokenCommit
+        , onRehydrateButtonClick = msgTagger << PSlack.IRehydrate
+        , onConvSelect = \teamId convId -> msgTagger (PSlack.ISubscribe teamId convId)
+        , onForceFetchButtonClick = \_ _ -> NoOp -- TODO
+        , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation
+        , onUnsubscribeButtonClick = \teamId convId -> msgTagger (PSlack.IUnsubscribe teamId convId)
+        , selectMsgTagger = SelectCtrl
+        }
+    <|
+        case m.producerRegistry.slack.unidentified of
+            PSlack.TokenWritable token ->
+                VSlack.Props token True teamStates m.viewState.selectState
+
+            PSlack.TokenIdentifying token ->
+                VSlack.Props token False teamStates m.viewState.selectState
 
 
 renderConfigDiscord : Model -> Html Msg
@@ -112,26 +188,27 @@ renderConfigDiscord m =
 
         hydratedOnce rehydrating pov =
             let
-                ( notSubbed, subbed ) =
+                ( subbable, subbed ) =
                     Dict.values pov.channels
                         |> List.sortWith PDiscord.compareByNames
-                        |> List.partition (.fetchStatus >> FetchStatus.dormant)
+                        |> List.foldr partitionThenMarshal ( [], [] )
 
-                subbable =
-                    List.map (\c -> VDiscord.SubbableChannel c.id c.name c.guildMaybe) notSubbed
+                partitionThenMarshal c ( accNotSubbed, accSubbed ) =
+                    if FetchStatus.dormant c.fetchStatus then
+                        ( VDiscord.SubbableChannel c.id c.name c.guildMaybe :: accNotSubbed, accSubbed )
 
-                subbed_ =
-                    let
-                        marshal c =
-                            VDiscord.SubbedChannel c.id
-                                c.name
-                                c.guildMaybe
-                                (FetchStatus.fetching c.fetchStatus)
-                                (FetchStatus.subscribed c.fetchStatus)
-                    in
-                    List.map marshal subbed
+                    else
+                        let
+                            marshalled =
+                                VDiscord.SubbedChannel c.id
+                                    c.name
+                                    c.guildMaybe
+                                    (FetchStatus.fetching c.fetchStatus)
+                                    (FetchStatus.subscribed c.fetchStatus)
+                        in
+                        ( accNotSubbed, marshalled :: accSubbed )
             in
-            VDiscord.hydratedOnce rehydrating pov.user pov.guilds subbable subbed_
+            VDiscord.hydratedOnce rehydrating pov.user pov.guilds subbable subbed
     in
     VDiscord.render
         { onTokenInput = msgTagger << PDiscord.TokenInput
