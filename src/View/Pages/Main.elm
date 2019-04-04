@@ -4,9 +4,14 @@ import Array exposing (Array)
 import ArrayExtra
 import Broker
 import Data.Column as Column
+import Data.ColumnItem as ColumnItem
+import Data.ColumnItem.Contents exposing (..)
+import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
+import Data.ColumnItem.NamedEntity as NamedEntity
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConversation)
+import Data.Item
 import Data.Model exposing (Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref
@@ -16,11 +21,14 @@ import Data.Producer.Slack as PSlack
 import Data.ProducerRegistry as ProducerRegistry
 import Dict
 import Html exposing (Html)
+import List.Extra
 import Scroll
+import TimeExtra exposing (ms)
 import Url
 import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
+import View.Organisms.Column.Items
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
@@ -84,6 +92,7 @@ render m =
                     , configOpen = c.configOpen
                     , scrolled = Scroll.scrolled c.items
                     , numItems = Scroll.size c.items
+                    , items = c.items
                     }
             in
             { configOpen = m.viewState.configOpen
@@ -133,8 +142,27 @@ render m =
                             , availableSourecs = List.filter (\s -> not (List.member s c.sources)) availableSources
                             , column = c
                             }
-                , newMessageEditor = \column -> none
-                , items = \column -> none
+                , newMessageEditor = \c -> none
+                , items =
+                    \c ->
+                        let
+                            itemsVisible =
+                                Scroll.toList c.items
+                        in
+                        View.Organisms.Column.Items.render
+                            { scrollAttrs = Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
+                            , onLoadMoreClick = \cId -> ColumnCtrl cId (Column.ScrollMsg Scroll.LoadMore)
+                            }
+                            { timezone = m.viewState.timezone
+                            , columnId = c.id
+                            , itemGroups =
+                                -- Do note that items are sorted from "newest to oldest" at the moment it came out from Scrolls.
+                                -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
+                                List.Extra.reverseMap marshalColumnItem itemsVisible
+                                    |> List.Extra.groupWhile shouldGroupColumnItem
+                                    |> List.reverse
+                            , hasMore = List.length itemsVisible < Scroll.size c.items
+                            }
                 }
             }
 
@@ -225,6 +253,134 @@ marshalSourcesAndFilters fam filters =
                     ( accSources, accFilters )
     in
     Array.foldl collectSourceAndFilter ( [], [] ) filters
+
+
+marshalColumnItem : Column.ColumnItem -> ColumnItem.ColumnItem
+marshalColumnItem item =
+    case item of
+        Column.Product offset (Data.Item.DiscordItem message) ->
+            marshalDiscordMessage (Broker.offsetToString offset) message
+
+        Column.Product offset (Data.Item.SlackItem message) ->
+            marshalSlackMessage (Broker.offsetToString offset) message
+
+        Column.SystemMessage sm ->
+            let
+                marshalMedia media =
+                    case media of
+                        Column.Image url ->
+                            ColumnItem.attachedFiles [ attachedImage (Url.toString url) ]
+
+                        Column.Video url ->
+                            ColumnItem.attachedFiles [ attachedVideo (Url.toString url) ]
+            in
+            ColumnItem.new sm.id (NamedEntity.new "System Message") (Markdown sm.message)
+                |> apOrId marshalMedia sm.mediaMaybe
+
+        Column.LocalMessage lm ->
+            ColumnItem.new lm.id (NamedEntity.new "Memo") (Markdown lm.message)
+
+
+apOrId : (a -> (b -> b)) -> Maybe a -> b -> b
+apOrId toFunc =
+    Maybe.withDefault identity << Maybe.map toFunc
+
+
+shouldGroupColumnItem : ColumnItem.ColumnItem -> ColumnItem.ColumnItem -> Bool
+shouldGroupColumnItem older newer =
+    let
+        sourceIdsMatch =
+            -- (newer.sourceId == older.sourceId) TODO add sourceId to ColumnItem
+            True
+
+        authorsMatch =
+            newer.author == older.author
+
+        timestampsAreClose =
+            case ( older.timestamp, newer.timestamp ) of
+                ( Just tsOld, Just tsNew ) ->
+                    ms tsOld + groupingIntervalMillis > ms tsNew
+
+                _ ->
+                    False
+
+        groupingIntervalMillis =
+            60000
+    in
+    sourceIdsMatch && authorsMatch && timestampsAreClose
+
+
+marshalDiscordMessage : String -> PDiscord.Message -> ColumnItem.ColumnItem
+marshalDiscordMessage id m =
+    -- XXX Possibly, m.id can be used for interaction handler
+    let
+        author =
+            let
+                authorImpl isBot u =
+                    NamedEntity.new u.username
+                        |> NamedEntity.secondaryName ("#" ++ u.discriminator)
+                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (avatarSrc u)) u.username isBot)
+
+                avatarSrc u =
+                    PDiscord.imageUrlWithFallback (Just NamedEntity.desiredIconSize) u.discriminator u.avatar
+            in
+            case m.author of
+                PDiscord.UserAuthor u ->
+                    authorImpl False u
+
+                PDiscord.WebhookAuthor u ->
+                    authorImpl True u
+
+        marshalEmbed e =
+            -- { title : Maybe String
+            -- , description : Maybe String
+            -- , url : Maybe Url
+            -- , color : Maybe Element.Color -- TODO change to Color
+            -- , image : Maybe EmbedImage
+            -- , thumbnail : Maybe EmbedImage -- Embed thumbnail and image are identical in structure
+            -- , video : Maybe EmbedVideo
+            -- , author : Maybe EmbedAuthor
+            -- }
+            EmbeddedMatter.new (Markdown (Maybe.withDefault "" e.description))
+                |> apOrId (Plain >> EmbeddedMatter.title) e.title
+                |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
+    in
+    ColumnItem.new id author (Markdown m.content)
+        |> ColumnItem.timestamp m.timestamp
+        -- |> ColumnItem.attachedFiles marshalAttachment m.attachements
+        |> ColumnItem.embeddedMatters (List.map marshalEmbed m.embeds)
+
+
+marshalSlackMessage : String -> PSlack.Message -> ColumnItem.ColumnItem
+marshalSlackMessage id m =
+    let
+        author =
+            case m.author of
+                PSlack.UserAuthor u ->
+                    let
+                        username =
+                            Maybe.withDefault u.profile.realName u.profile.displayName
+                    in
+                    NamedEntity.new username
+                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Url.toString u.profile.image48)) username False)
+
+                PSlack.UserAuthorId (PSlack.UserId str) ->
+                    NamedEntity.new str
+
+                PSlack.BotAuthor b ->
+                    let
+                        username =
+                            Maybe.withDefault b.name m.username
+                    in
+                    NamedEntity.new username
+                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Url.toString b.icons.image48)) username True)
+
+                PSlack.BotAuthorId (PSlack.BotId str) ->
+                    NamedEntity.new str
+                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing str True)
+    in
+    ColumnItem.new id author (Markdown m.text)
+        |> ColumnItem.timestamp (PSlack.getPosix m)
 
 
 renderConfigPref : Model -> Html Msg
