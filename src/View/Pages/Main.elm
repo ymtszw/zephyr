@@ -19,6 +19,7 @@ import Html exposing (Html)
 import Scroll
 import Url
 import View.Molecules.Source as Source exposing (Source)
+import View.Organisms.Column.Config
 import View.Organisms.Column.Header
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
@@ -58,7 +59,7 @@ render m =
                 marshalVisibleColumn fam index c =
                     let
                         ( sources, filters ) =
-                            marshalSourcesAndFilters m.columnStore.fam c.filters
+                            marshalSourcesAndFilters m.columnStore.fam c.pendingFilters
 
                         dragStatus =
                             case m.viewState.columnSwapMaybe of
@@ -82,6 +83,7 @@ render m =
                     , dragStatus = dragStatus
                     , configOpen = c.configOpen
                     , scrolled = Scroll.scrolled c.items
+                    , numItems = Scroll.size c.items
                     }
             in
             { configOpen = m.viewState.configOpen
@@ -104,11 +106,68 @@ render m =
                         , onConfigToggleButtonClick = \cId open -> ColumnCtrl cId (Column.ToggleConfig open)
                         , onDismissButtonClick = DismissColumn
                         }
-                , config = \index column -> none
+                , config =
+                    \index c ->
+                        View.Organisms.Column.Config.render
+                            { onCloseButtonClick = \cId -> ColumnCtrl cId (Column.ToggleConfig False)
+                            , onColumnDeleteButtonClick = DelColumn
+                            , onSourceSelect =
+                                \cId source ->
+                                    -- TODO Use brandnew & precise source update Msg
+                                    -- Currently it is not working properly!!
+                                    -- case source of
+                                    --     Source.DiscordSource opts ->
+                                    --         ColumnCtrl cId (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfDiscordChannel opts.id })
+                                    --
+                                    --     Source.SlackSource opts ->
+                                    --         ColumnCtrl cId (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfSlackConversation opts.id })
+                                    NoOp
+                            , selectMsgTagger = SelectCtrl
+                            , onRemoveSourceButtonClick =
+                                \cId atomIndex ->
+                                    -- TODO Use brandnew & precise source update Msg
+                                    -- ColumnCtrl cId (Column.DelFilterAtom { filterIndex = 0, atomIndex = atomIndex })
+                                    NoOp
+                            }
+                            { selectState = m.viewState.selectState
+                            , availableSourecs = List.filter (\s -> not (List.member s c.sources)) availableSources
+                            , column = c
+                            }
                 , newMessageEditor = \column -> none
                 , items = \column -> none
                 }
             }
+
+        availableSources =
+            List.concat
+                [ case m.columnStore.fam.ofDiscordChannel of
+                    Just ( _, channels ) ->
+                        let
+                            marshalWithGuild c =
+                                Maybe.map
+                                    (\g ->
+                                        Source.discord c.id
+                                            c.name
+                                            g.name
+                                            (Maybe.map (PDiscord.imageUrlNoFallback (Just Source.desiredIconSize)) g.icon)
+                                    )
+                                    c.guildMaybe
+                        in
+                        List.filterMap marshalWithGuild channels
+
+                    Nothing ->
+                        []
+                , case m.columnStore.fam.ofSlackConversation of
+                    Just { conversations } ->
+                        let
+                            marshal c =
+                                Source.slack (PSlack.getConversationIdStr c) c.name c.team.name (teamIcon44 c.team) (PSlack.isPrivate c)
+                        in
+                        List.map marshal conversations
+
+                    Nothing ->
+                        []
+                ]
     in
     View.Templates.Main.render effects props contents
 
