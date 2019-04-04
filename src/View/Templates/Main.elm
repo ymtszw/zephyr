@@ -259,7 +259,7 @@ columnWrapperKey eff contents index c =
 styles : List Style
 styles =
     [ s (c configDrawerClass)
-        [ ( "position", "fixed" )
+        [ ( "position", "fixed" ) -- Becomes a positioned element
         , ( "left", px (sidebarWidth + sidebarExpansionWidth) )
         , ( "top", "0" )
         , ( "width", px configDrawerWidth )
