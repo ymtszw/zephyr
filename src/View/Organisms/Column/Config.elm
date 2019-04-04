@@ -16,7 +16,7 @@ import View.Molecules.Source as Source exposing (Source(..))
 
 
 type alias Effects msg =
-    { onCloseButtonClick : msg
+    { onCloseButtonClick : String -> msg
     , onColumnDeleteButtonClick : String -> msg
     , onSourceSelect : String -> Source -> msg
     , selectMsgTagger : Select.Msg msg -> msg
@@ -62,7 +62,7 @@ render eff props =
             , span [ colorErr ] [ t " Danger Zone" ]
             ]
             (dangerZone eff props.column)
-        , closeButton eff.onCloseButtonClick
+        , closeButton (eff.onCloseButtonClick props.column.id)
         ]
 
 

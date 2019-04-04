@@ -2863,7 +2863,7 @@ columnConfig m =
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID1")) 300 """ColumnConfig.render
-    { onCloseButtonClick = Toggle False
+    { onCloseButtonClick = always (Toggle False)
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
@@ -2888,7 +2888,7 @@ columnConfig m =
         }
     }""" <|
                 ColumnConfig.render
-                    { onCloseButtonClick = Toggle False
+                    { onCloseButtonClick = always (Toggle False)
                     , onColumnDeleteButtonClick = always NoOp
                     , onSourceSelect = \_ _ -> NoOp
                     , selectMsgTagger = SelectCtrl
@@ -2916,7 +2916,7 @@ columnConfig m =
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
             , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID2")) 400 """ColumnConfig.render
-    { onCloseButtonClick = Toggle False
+    { onCloseButtonClick = always (Toggle False)
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
@@ -2941,7 +2941,7 @@ columnConfig m =
         }
     }""" <|
                 ColumnConfig.render
-                    { onCloseButtonClick = Toggle False
+                    { onCloseButtonClick = always (Toggle False)
                     , onColumnDeleteButtonClick = always NoOp
                     , onSourceSelect = \_ _ -> NoOp
                     , selectMsgTagger = SelectCtrl
