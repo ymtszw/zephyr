@@ -16,8 +16,10 @@ import Data.Producer.Slack as PSlack
 import Data.ProducerRegistry as ProducerRegistry
 import Dict
 import Html exposing (Html)
+import Scroll
 import Url
 import View.Molecules.Source as Source exposing (Source)
+import View.Organisms.Column.Header
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
@@ -73,7 +75,14 @@ render m =
                                 Nothing ->
                                     Settled
                     in
-                    { id = c.id, pinned = c.pinned, sources = sources, filters = filters, dragStatus = dragStatus, configOpen = c.configOpen }
+                    { id = c.id
+                    , pinned = c.pinned
+                    , sources = sources
+                    , filters = filters
+                    , dragStatus = dragStatus
+                    , configOpen = c.configOpen
+                    , scrolled = Scroll.scrolled c.items
+                    }
             in
             { configOpen = m.viewState.configOpen
             , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
@@ -87,7 +96,14 @@ render m =
                 , status = renderConfigStatus m
                 }
             , columnContents =
-                { header = \index column -> none
+                { header =
+                    View.Organisms.Column.Header.render
+                        { onColumnDragStart = \pinned index_ id -> DragStart { id = id, index = index_, pinned = pinned }
+                        , onHeaderClickWhenScrolled = \cId -> ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)
+                        , onPinButtonClick = \cId pinned -> ColumnCtrl cId (Column.Pin pinned)
+                        , onConfigToggleButtonClick = \cId open -> ColumnCtrl cId (Column.ToggleConfig open)
+                        , onDismissButtonClick = DismissColumn
+                        }
                 , config = \index column -> none
                 , newMessageEditor = \column -> none
                 , items = \column -> none
