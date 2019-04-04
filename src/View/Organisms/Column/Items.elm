@@ -380,7 +380,7 @@ attachedFileBlock attachedFile =
                 Just raw ->
                     div [ flexColumn, Border.round5, Border.w1, Border.solid ]
                         [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
-                        , pre [ flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
+                        , pre [ minuscule, flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
                         ]
 
                 Nothing ->
