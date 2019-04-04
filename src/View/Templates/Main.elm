@@ -64,8 +64,8 @@ type DragStatus
 type alias Effects msg =
     { sidebarEffects : Sidebar.Effects msg
     , -- DragStart is handled in Organisms.Column.Header
-      columnDragEnd : msg
-    , columnDragHover : Int -> msg
+      onColumnDragEnd : msg
+    , onColumnDragHover : Int -> msg
     }
 
 
@@ -190,7 +190,7 @@ columnContainer eff visibleColumns contents =
         , id columnAreaParentId
         , flexRow
         , oneDark
-        , on "dragend" (succeed eff.columnDragEnd)
+        , on "dragend" (succeed eff.onColumnDragEnd)
         ]
         (List.indexedMap (columnWrapperKey eff contents) visibleColumns)
 
@@ -223,13 +223,13 @@ columnWrapperKey eff contents index c =
             case c.dragStatus of
                 Grabbed ->
                     [ class grabbedClass
-                    , preventDefaultOn "dragover" (succeed ( eff.columnDragHover index, True ))
+                    , preventDefaultOn "dragover" (succeed ( eff.onColumnDragHover index, True ))
                     ]
 
                 Droppable ->
                     [ class droppableClass
-                    , preventDefaultOn "dragenter" (succeed ( eff.columnDragHover index, True ))
-                    , preventDefaultOn "dragover" (succeed ( eff.columnDragHover index, True ))
+                    , preventDefaultOn "dragenter" (succeed ( eff.onColumnDragHover index, True ))
+                    , preventDefaultOn "dragover" (succeed ( eff.onColumnDragHover index, True ))
                     ]
 
                 Undroppable ->

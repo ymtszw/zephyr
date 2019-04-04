@@ -2685,8 +2685,8 @@ columnHeader m =
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2697,10 +2697,11 @@ columnHeader m =
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2711,10 +2712,11 @@ columnHeader m =
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2725,10 +2727,11 @@ columnHeader m =
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2739,13 +2742,14 @@ columnHeader m =
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2759,10 +2763,11 @@ columnHeader m =
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2776,10 +2781,11 @@ columnHeader m =
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2798,10 +2804,11 @@ columnHeader m =
     , filters = List.repeat 3 "Shrinks if constrained"
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2820,6 +2827,7 @@ columnHeader m =
                     , filters = List.repeat 3 "Shrinks if constrained"
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             ]
         ]
@@ -3287,8 +3295,8 @@ mainTemplate m =
                 , onAddColumnClick = AddColumn
                 , onColumnButtonClickByIndex = always NoOp
                 }
-            , columnDragEnd = NoOp
-            , columnDragHover = \_ -> NoOp
+            , onColumnDragEnd = NoOp
+            , onColumnDragHover = \_ -> NoOp
             }
 
         mainProps =
