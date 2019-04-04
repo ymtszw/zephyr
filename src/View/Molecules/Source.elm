@@ -1,5 +1,5 @@
 module View.Molecules.Source exposing
-    ( Source(..), id, theme, headTheme
+    ( Source(..), discord, slack, desiredIconSize, id, theme, headTheme
     , inline, slackInline, concatInline, horizontalBlock14
     , icon, badge10, badge14
     , styles
@@ -7,7 +7,14 @@ module View.Molecules.Source exposing
 
 {-| Data source Molecule.
 
-@docs Source, id, theme, headTheme
+Note that the Source data type here is "joined" as it is essentially a ViewModel.
+Persisted data of Sources should be identifiers for said Sources,
+and they must be "resolved" on marshalling to ViewModel.
+(e.g. Resolve guild and channel information for DiscordSource,
+from channel ID and required entity dictionaries)
+<https://github.com/ymtszw/zephyr/issues/64>
+
+@docs Source, discord, slack, desiredIconSize, id, theme, headTheme
 @docs inline, slackInline, concatInline, horizontalBlock14
 @docs icon, badge10, badge14
 @docs styles
@@ -27,6 +34,9 @@ import View.Style exposing (..)
 
 
 {-| Representation of data sources for columns.
+
+In current usages, the maximum desired icon size is 40px (desiredIconSize).
+
 -}
 type Source
     = DiscordSource
@@ -42,6 +52,21 @@ type Source
         , teamIcon : Maybe String
         , isPrivate : Bool
         }
+
+
+discord : String -> String -> String -> Maybe String -> Source
+discord id_ name guildName guildIcon =
+    DiscordSource { id = id_, name = name, guildName = guildName, guildIcon = guildIcon }
+
+
+slack : String -> String -> String -> Maybe String -> Bool -> Source
+slack id_ name teamName teamIcon isPrivate =
+    SlackSource { id = id_, name = name, teamName = teamName, teamIcon = teamIcon, isPrivate = isPrivate }
+
+
+desiredIconSize : Int
+desiredIconSize =
+    40
 
 
 id : Source -> String

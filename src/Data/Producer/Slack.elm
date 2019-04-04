@@ -2325,7 +2325,7 @@ getConversationFromCache convIdStr caches =
     List.Extra.find (\c -> c.id == ConversationId convIdStr) caches
 
 
-isChannel : Conversation -> Bool
+isChannel : { x | type_ : ConversationType } -> Bool
 isChannel conv =
     case conv.type_ of
         PublicChannel _ ->
@@ -2341,7 +2341,7 @@ isChannel conv =
             False
 
 
-isPrivate : Conversation -> Bool
+isPrivate : { x | type_ : ConversationType } -> Bool
 isPrivate conv =
     case conv.type_ of
         PublicChannel _ ->
