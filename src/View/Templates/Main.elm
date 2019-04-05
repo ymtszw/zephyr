@@ -27,6 +27,7 @@ import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
 import Octicons
+import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Image as Image
@@ -51,6 +52,7 @@ type alias VisibleColumn c =
         { c
             | dragStatus : DragStatus
             , configOpen : Bool
+            , recentlyTouched : Bool
         }
 
 
@@ -66,6 +68,7 @@ type alias Effects c msg =
     , -- DragStart is handled in Organisms.Column.Header
       onColumnDragEnd : msg
     , onColumnDragHover : Int -> msg
+    , onColumnBorderFlashEnd : String -> msg
     , -- From Scroll.scrollAttrs; can be empty
       columnItemsScrollAttrs : VisibleColumn c -> List (Attribute msg)
     }
@@ -219,6 +222,12 @@ columnWrapperKey eff contents index c =
             , Border.colorBg
             , Background.colorMain
             , Source.headTheme c.sources
+            , if c.recentlyTouched then
+                Animation.borderFlash
+
+              else
+                noAttr
+            , on "animationend" (succeed (eff.onColumnBorderFlashEnd c.id))
             ]
 
         dragHandlers =
