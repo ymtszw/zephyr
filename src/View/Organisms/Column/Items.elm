@@ -471,4 +471,4 @@ thumbnailParentClass =
 
 maxThumbnailSize : Int
 maxThumbnailSize =
-    80
+    60
