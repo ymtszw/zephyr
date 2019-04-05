@@ -36,16 +36,26 @@ type alias Props c =
 
 render : Effects msg -> Int -> Props c -> Html msg
 render eff index props =
-    div
-        [ flexRow
-        , flexCenter
-        , flexBasisAuto
-        , padding5
-        , spacingRow5
-        , Background.colorSub
-        ]
+    let
+        staticAttrs =
+            [ flexRow
+            , flexCenter
+            , flexBasisAuto
+            , padding5
+            , spacingRow5
+            , Background.colorSub
+            ]
+
+        headerClickAttrs =
+            if props.scrolled then
+                [ onClick (eff.onHeaderClickWhenScrolled props.id), Cursor.pointer ]
+
+            else
+                []
+    in
+    div (staticAttrs ++ headerClickAttrs)
         [ grabbableIcon (eff.onColumnDragStart props.pinned index props.id) props
-        , headerText eff.onHeaderClickWhenScrolled props
+        , Column.blockTitle [ flexGrow ] props
         , if props.pinned then
             none
 
@@ -113,19 +123,6 @@ grabbableIcon onColumnDragStart props =
         ]
         [ Column.icon30 props
         ]
-
-
-headerText : (String -> msg) -> Props c -> Html msg
-headerText onHeaderClickWhenScrolled props =
-    let
-        attrs =
-            if props.scrolled then
-                [ flexGrow, onClick (onHeaderClickWhenScrolled props.id), Cursor.pointer ]
-
-            else
-                [ flexGrow ]
-    in
-    Column.blockTitle attrs props
 
 
 styles : List Style
