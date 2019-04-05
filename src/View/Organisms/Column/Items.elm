@@ -31,13 +31,12 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { scrollAttrs : List (Attribute msg) -- From Scroll.scrollAttrs; can be empty
-    , onLoadMoreClick : String -> msg
+    , onLoadMoreClick : msg
     }
 
 
 type alias Props =
     { timezone : Time.Zone
-    , columnId : String
     , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
       itemGroups : List ( ColumnItem, List ColumnItem )
     , hasMore : Bool
@@ -64,11 +63,11 @@ render eff props =
                     List.map (itemGroupKey props.timezone) itemGroups
             in
             Html.Keyed.node "div" attrs <|
-                (contents ++ [ loadMoreOrButtonTokenKey (eff.onLoadMoreClick props.columnId) props.hasMore ])
+                (contents ++ [ loadMoreOrBottomMarkerKey eff.onLoadMoreClick props.hasMore ])
 
 
-loadMoreOrButtonTokenKey : msg -> Bool -> ( String, Html msg )
-loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
+loadMoreOrBottomMarkerKey : msg -> Bool -> ( String, Html msg )
+loadMoreOrBottomMarkerKey onLoadMoreClick hasMore =
     -- This clickable area is rarely visible due to auto adjusting.
     -- But sometimes appears around window resizing, rapid scrolling, or reaching bottom
     let
@@ -81,7 +80,7 @@ loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
             else
                 ( Octicons.thumbsup, [ title "All read!" ] )
     in
-    Tuple.pair "loadMoreOrBottomToken" <|
+    Tuple.pair "loadMoreOrBottomMarker" <|
         div ([ flexColumn, flexCenter, padding15 ] ++ additionalAttrs)
             [ Image.octicon
                 { size = xxProminentSize
