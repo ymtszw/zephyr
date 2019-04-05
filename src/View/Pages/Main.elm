@@ -3,6 +3,7 @@ module View.Pages.Main exposing (render)
 import Array exposing (Array)
 import ArrayExtra
 import Broker
+import Color exposing (Color)
 import Data.Column as Column
 import Data.ColumnItem as ColumnItem
 import Data.ColumnItem.Contents exposing (..)
@@ -20,6 +21,7 @@ import Data.Producer.FetchStatus as FetchStatus
 import Data.Producer.Slack as PSlack
 import Data.ProducerRegistry as ProducerRegistry
 import Dict
+import Element
 import Html exposing (Html)
 import List.Extra
 import Scroll
@@ -340,7 +342,7 @@ marshalDiscordMessage id m =
             -- { title : Maybe String
             -- , description : Maybe String
             -- , url : Maybe Url
-            -- , color : Maybe Element.Color -- TODO change to Color
+            -- , color : Maybe Element.Color
             -- , image : Maybe EmbedImage
             -- , thumbnail : Maybe EmbedImage -- Embed thumbnail and image are identical in structure
             -- , video : Maybe EmbedVideo
@@ -349,11 +351,17 @@ marshalDiscordMessage id m =
             EmbeddedMatter.new (Markdown (Maybe.withDefault "" e.description))
                 |> apOrId (Plain >> EmbeddedMatter.title) e.title
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
+                |> apOrId (marshalColor >> EmbeddedMatter.color) e.color
     in
     ColumnItem.new id author (Markdown m.content)
         |> ColumnItem.timestamp m.timestamp
         -- |> ColumnItem.attachedFiles marshalAttachment m.attachements
         |> ColumnItem.embeddedMatters (List.map marshalEmbed m.embeds)
+
+
+marshalColor : Element.Color -> Color
+marshalColor =
+    Element.toRgb >> Color.fromRgba
 
 
 marshalSlackMessage : String -> PSlack.Message -> ColumnItem.ColumnItem
