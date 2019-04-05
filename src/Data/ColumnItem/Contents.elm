@@ -41,16 +41,16 @@ type VisualMedia
 type alias MediaRecord =
     { src : String
     , description : String
-    , dimension : Maybe ( Int, Int )
+    , dimension : Maybe { width : Int, height : Int }
     }
 
 
-imageMedia : String -> String -> Maybe ( Int, Int ) -> VisualMedia
+imageMedia : String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
 imageMedia src description dimension =
     Image (MediaRecord src description dimension)
 
 
-videoMedia : String -> String -> Maybe ( Int, Int ) -> VisualMedia
+videoMedia : String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
 videoMedia src description dimension =
     Video (MediaRecord src description dimension)
 
@@ -93,7 +93,7 @@ attachedFilePreview preview f =
             OtherFile { record | preview = Just preview }
 
 
-attachedFileDimension : ( Int, Int ) -> AttachedFile -> AttachedFile
+attachedFileDimension : { width : Int, height : Int } -> AttachedFile -> AttachedFile
 attachedFileDimension dimension f =
     case f of
         VisualFile (Image record) ->

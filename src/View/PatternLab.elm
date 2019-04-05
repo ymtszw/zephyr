@@ -3173,16 +3173,16 @@ columnItems =
     }""" <|
                     let
                         sampleImage500x500 =
-                            attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
+                            attachedImage (Image.ph 500 500) |> attachedFileDimension { width = 500, height = 500 }
 
                         sampleImage100x100 =
-                            attachedImage (Image.ph 100 100) |> attachedFileDimension ( 100, 100 )
+                            attachedImage (Image.ph 100 100) |> attachedFileDimension { width = 100, height = 100 }
 
                         sampleImage100x600 =
-                            attachedImage (Image.ph 100 600) |> attachedFileDimension ( 100, 600 )
+                            attachedImage (Image.ph 100 600) |> attachedFileDimension { width = 100, height = 600 }
 
                         sampleImage600x100 =
-                            attachedImage (Image.ph 600 100) |> attachedFileDimension ( 600, 100 )
+                            attachedImage (Image.ph 600 100) |> attachedFileDimension { width = 600, height = 100 }
 
                         sampleVideo =
                             attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
@@ -3315,9 +3315,9 @@ columnItems =
                 |> ColumnItem.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                         |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
-                        |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just ( 100, 100 )))
+                        |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                         |> EmbeddedMatter.attachedFiles
-                            [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
+                            [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                             , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                             ]
                     ]
@@ -3367,9 +3367,9 @@ columnItems =
                                     |> ColumnItem.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
-                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just ( 100, 100 )))
+                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                                             |> EmbeddedMatter.attachedFiles
-                                                [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
+                                                [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                                                 ]
                                         ]

@@ -387,8 +387,8 @@ visualMediaBlock visualMedia =
     let
         dimensionAttrs dim =
             case dim of
-                Just ( w, h ) ->
-                    [ width w, height h ]
+                Just d ->
+                    [ width d.width, height d.height ]
 
                 Nothing ->
                     []
