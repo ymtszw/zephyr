@@ -1619,6 +1619,8 @@ animation =
             img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
         , withSource """img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
             img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []
+        , withSource """img [ Border.w1, Border.solid, Animation.borderFlash, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
+            img [ Border.w1, Border.solid, Animation.borderFlash, src (Image.ph 50 50), alt "50x50 image" ] []
         ]
 
 
@@ -3402,6 +3404,7 @@ mainTemplate m =
                 }
             , onColumnDragEnd = NoOp
             , onColumnDragHover = always NoOp
+            , onColumnBorderFlashEnd = always NoOp
             , columnItemsScrollAttrs = always [ on "scroll" (succeed NoOp) ]
             }
 
@@ -3435,6 +3438,13 @@ mainTemplate m =
 
                     _ ->
                         Grabbed
+            , recentlyTouched =
+                case modBy 5 index of
+                    0 ->
+                        True
+
+                    _ ->
+                        False
             , sources =
                 case modBy 3 index of
                     0 ->
