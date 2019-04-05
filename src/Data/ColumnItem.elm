@@ -21,6 +21,7 @@ import Time
 
 
 type alias ColumnItem =
+    -- TODO Add sourceType property in order to apply per-item style change, such as different markdown options
     { id : String
     , author : NamedEntity
     , timestamp : Maybe Time.Posix
