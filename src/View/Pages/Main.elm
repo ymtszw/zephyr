@@ -151,10 +151,9 @@ render m =
                         in
                         View.Organisms.Column.Items.render
                             { scrollAttrs = Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
-                            , onLoadMoreClick = \cId -> ColumnCtrl cId (Column.ScrollMsg Scroll.LoadMore)
+                            , onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
                             }
                             { timezone = m.viewState.timezone
-                            , columnId = c.id
                             , itemGroups =
                                 -- Do note that items are sorted from "newest to oldest" at the moment it came out from Scrolls.
                                 -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
