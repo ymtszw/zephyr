@@ -168,7 +168,7 @@ itemGroupContents tz oldestItem subsequentItems =
 itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
 itemGroupHeaderKey tz item =
     Tuple.pair "itemGroupHeader" <|
-        div [ flexRow ]
+        div [ flexRow, flexCenter, spacingRow2 ]
             [ div [ flexShrink, flexBasisAuto, breakWords, bold, prominent ] [ t item.author.primaryName ]
             , case item.author.secondaryName of
                 Just secondaryName ->
