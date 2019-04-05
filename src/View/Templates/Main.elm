@@ -249,7 +249,7 @@ columnWrapperKey eff contents index c =
                 Settled ->
                     []
     in
-    Tuple.pair ("column_" ++ String.fromInt index) <|
+    Tuple.pair c.id <|
         div (staticAttrs ++ dragHandlers)
             [ contents.header index c
             , if c.configOpen then
