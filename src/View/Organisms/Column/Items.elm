@@ -258,23 +258,26 @@ embeddedMatterBlock matter =
                 Just namedEntity ->
                     [ div [] <|
                         wrapInLink namedEntity.url <|
-                            List.intersperse (t " ") <|
-                                [ case namedEntity.avatar of
-                                    Just (ImageOrAbbr opts) ->
-                                        -- Bot badges are not meant to be used here
-                                        Icon.imgOrAbbr [ serif, Icon.rounded20 ] opts.name opts.src
+                            let
+                                avatar =
+                                    case namedEntity.avatar of
+                                        Just (ImageOrAbbr opts) ->
+                                            -- Bot badges are not meant to be used here
+                                            [ Icon.imgOrAbbr [ serif, Icon.rounded20 ] opts.name opts.src, t " " ]
 
-                                    _ ->
-                                        -- EmbeddedMatters are not expected to use Octicons
-                                        Icon.imgOrAbbr [ serif, Icon.rounded20 ] namedEntity.primaryName Nothing
-                                , t namedEntity.primaryName
-                                , case namedEntity.secondaryName of
-                                    Just sn ->
-                                        span [ colorNote ] [ t sn ]
+                                        _ ->
+                                            -- EmbeddedMatters are not expected to use Octicons
+                                            []
 
-                                    Nothing ->
-                                        none
-                                ]
+                                secondaryName =
+                                    case namedEntity.secondaryName of
+                                        Just sn ->
+                                            [ t " ", span [ colorNote ] [ t sn ] ]
+
+                                        Nothing ->
+                                            []
+                            in
+                            avatar ++ [ t namedEntity.primaryName ] ++ secondaryName
                     ]
 
                 Nothing ->
