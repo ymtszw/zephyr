@@ -61,11 +61,13 @@ type DragStatus
     | Settled
 
 
-type alias Effects msg =
+type alias Effects c msg =
     { sidebarEffects : Sidebar.Effects msg
     , -- DragStart is handled in Organisms.Column.Header
       onColumnDragEnd : msg
     , onColumnDragHover : Int -> msg
+    , -- From Scroll.scrollAttrs; can be empty
+      columnItemsScrollAttrs : VisibleColumn c -> List (Attribute msg)
     }
 
 
@@ -91,7 +93,7 @@ type alias ColumnContents c msg =
     }
 
 
-render : Effects msg -> Props c -> Contents c msg -> List (Html msg)
+render : Effects c msg -> Props c -> Contents c msg -> List (Html msg)
 render eff props contents =
     -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
@@ -180,7 +182,7 @@ statusTitle =
 
 
 columnContainer :
-    Effects msg
+    Effects c msg
     -> List (VisibleColumn c)
     -> ColumnContents c msg
     -> Html msg
@@ -201,7 +203,7 @@ columnAreaParentId =
 
 
 columnWrapperKey :
-    Effects msg
+    Effects c msg
     -> ColumnContents c msg
     -> Int
     -> VisibleColumn c
@@ -248,10 +250,12 @@ columnWrapperKey eff contents index c =
                 none
             , contents.newMessageEditor c
             , div
-                [ class itemsWrapperClass
-                , flexBasisAuto
-                , flexShrink
-                ]
+                ([ class itemsWrapperClass
+                 , flexBasisAuto
+                 , flexShrink
+                 ]
+                    ++ eff.columnItemsScrollAttrs c
+                )
                 [ contents.items c ]
             ]
 

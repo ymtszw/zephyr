@@ -30,8 +30,7 @@ import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { scrollAttrs : List (Attribute msg) -- From Scroll.scrollAttrs; can be empty
-    , onLoadMoreClick : msg
+    { onLoadMoreClick : msg
     }
 
 
@@ -51,18 +50,15 @@ render eff props =
 
         itemGroups ->
             let
-                attrs =
-                    [ flexBasisAuto
-                    , flexShrink
-                    , flexColumn
-                    , padding5
-                    ]
-                        ++ eff.scrollAttrs
-
                 contents =
                     List.map (itemGroupKey props.timezone) itemGroups
             in
-            Html.Keyed.node "div" attrs <|
+            Html.Keyed.node "div"
+                [ flexBasisAuto
+                , flexShrink
+                , flexColumn
+                , padding5
+                ]
                 (contents ++ [ loadMoreOrBottomMarkerKey eff.onLoadMoreClick props.hasMore ])
 
 

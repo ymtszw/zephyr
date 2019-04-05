@@ -3096,11 +3096,11 @@ columnItems =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , withSourceInColumn Nothing 100 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                , withSourceInColumn Nothing 100 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc, itemGroups = [], hasMore = False }""" <|
-                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                    Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc, itemGroups = [], hasMore = False }
-                , withSourceInColumn Nothing 500 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                , withSourceInColumn Nothing 500 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
     , itemGroups =
         List.map unit
@@ -3115,7 +3115,7 @@ columnItems =
             ]
     , hasMore = False
     }""" <|
-                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                    Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
                         , itemGroups =
                             List.map unit
@@ -3130,7 +3130,7 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn Nothing 1000 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                , withSourceInColumn Nothing 1000 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
     , itemGroups =
         List.map unit
@@ -3194,7 +3194,7 @@ columnItems =
 </html>
 """
                     in
-                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                    Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
                         , itemGroups =
                             List.map unit
@@ -3229,7 +3229,7 @@ columnItems =
                                 ]
                         , hasMore = True
                         }
-                , withSourceInColumn Nothing 300 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                , withSourceInColumn Nothing 300 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
     , itemGroups =
         List.map unit
@@ -3250,7 +3250,7 @@ columnItems =
             ]
     , hasMore = False
     }""" <|
-                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                    Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
                         , itemGroups =
                             List.map unit
@@ -3271,7 +3271,7 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn Nothing 1000 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                , withSourceInColumn Nothing 1000 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
     , itemGroups =
         List.map unit
@@ -3323,7 +3323,7 @@ columnItems =
             ]
     , hasMore = False
     }""" <|
-                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                    Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
                         , itemGroups =
                             List.map unit
@@ -3397,7 +3397,8 @@ mainTemplate m =
                 , onColumnButtonClickByIndex = always NoOp
                 }
             , onColumnDragEnd = NoOp
-            , onColumnDragHover = \_ -> NoOp
+            , onColumnDragHover = always NoOp
+            , columnItemsScrollAttrs = always [ on "scroll" (succeed NoOp) ]
             }
 
         mainProps =
