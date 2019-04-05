@@ -91,6 +91,8 @@ It practically just flattens Maybe value obtained from
 
 Also useful when introducing new field in serialized JSON format.
 
+It ALWAYS succeds. In the worst case, with Nothing.
+
 -}
 maybeField : String -> Decoder a -> Decoder (Maybe a)
 maybeField fieldName decoder =

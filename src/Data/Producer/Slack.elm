@@ -1189,8 +1189,10 @@ attachmentAuthorDecoder =
         -- From Slack API; in official app, author and service are both presented but it felt kind of redundant
         , D.map3 AttachmentAuthor
             (D.oneOf [ D.field "author_name" D.string, D.field "service_name" D.string ])
-            (D.oneOf [ D.maybeField "author_link" D.url, D.maybeField "service_url" D.url ])
-            (D.oneOf [ D.maybeField "author_icon" D.url, D.maybeField "service_icon" D.url ])
+            -- Subtle, but an important difference; in oneOf, earlier decoders must "fail" in order to proceed to other decoders.
+            -- D.maybeField always succeeds (with Nothing, at least) so it can shadow remaining decoders when used earlier.
+            (D.oneOf [ D.field "author_link" D.url |> D.map Just, D.maybeField "service_url" D.url ])
+            (D.oneOf [ D.field "author_icon" D.url |> D.map Just, D.maybeField "service_icon" D.url ])
         ]
 
 
