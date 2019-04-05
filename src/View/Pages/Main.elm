@@ -288,7 +288,7 @@ marshalColumnItem item =
             ColumnItem.new lm.id (NamedEntity.new "Memo") (Markdown lm.message)
 
 
-apOrId : (a -> (b -> b)) -> Maybe a -> b -> b
+apOrId : (a -> b -> b) -> Maybe a -> b -> b
 apOrId toFunc =
     Maybe.withDefault identity << Maybe.map toFunc
 
