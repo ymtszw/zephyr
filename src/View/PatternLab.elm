@@ -189,6 +189,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
         NoOp ->
+            let
+                _ =
+                    Debug.log "NoOp" m
+            in
             ( m, Cmd.none )
 
         GoTo (Browser.Internal url) ->
