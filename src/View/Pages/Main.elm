@@ -339,19 +339,37 @@ marshalDiscordMessage id m =
                     authorImpl True u
 
         marshalEmbed e =
-            -- { title : Maybe String
-            -- , description : Maybe String
-            -- , url : Maybe Url
-            -- , color : Maybe Element.Color
-            -- , image : Maybe EmbedImage
-            -- , thumbnail : Maybe EmbedImage -- Embed thumbnail and image are identical in structure
-            -- , video : Maybe EmbedVideo
-            -- , author : Maybe EmbedAuthor
-            -- }
+            let
+                marshalAuthor eAuthor =
+                    let
+                        marshalIcon url =
+                            NamedEntity.imageOrAbbr (Just (Url.toString url)) eAuthor.name False
+                    in
+                    NamedEntity.new eAuthor.name
+                        |> apOrId (Url.toString >> NamedEntity.url) eAuthor.url
+                        |> apOrId (marshalIcon >> NamedEntity.avatar) eAuthor.proxyIconUrl
+
+                marshalEmbedImage eImage =
+                    imageMedia (Url.toString eImage.url) "Embedded image" (Maybe.map2 dimenstion eImage.width eImage.height)
+
+                attachedFiles =
+                    List.filterMap identity
+                        [ Maybe.map (marshalEmbedImage >> VisualFile) e.image
+                        , Maybe.map
+                            (\v ->
+                                attachedVideo (Url.toString v.url)
+                                    |> apOrId attachedFileDimension (Maybe.map2 dimenstion v.width v.height)
+                            )
+                            e.video
+                        ]
+            in
             EmbeddedMatter.new (Markdown (Maybe.withDefault "" e.description))
                 |> apOrId (Plain >> EmbeddedMatter.title) e.title
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
                 |> apOrId (marshalColor >> EmbeddedMatter.color) e.color
+                |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
+                |> apOrId (marshalEmbedImage >> EmbeddedMatter.thumbnail) e.thumbnail
+                |> EmbeddedMatter.attachedFiles attachedFiles
     in
     ColumnItem.new id author (Markdown m.content)
         |> ColumnItem.timestamp m.timestamp
@@ -362,6 +380,11 @@ marshalDiscordMessage id m =
 marshalColor : Element.Color -> Color
 marshalColor =
     Element.toRgb >> Color.fromRgba
+
+
+dimenstion : Int -> Int -> { width : Int, height : Int }
+dimenstion w h =
+    { width = w, height = h }
 
 
 marshalSlackMessage : String -> PSlack.Message -> ColumnItem.ColumnItem
@@ -391,9 +414,39 @@ marshalSlackMessage id m =
                 PSlack.BotAuthorId (PSlack.BotId str) ->
                     NamedEntity.new str
                         |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing str True)
+
+        marshalAttachment a =
+            -- { pretext : Maybe String -- Optional leading text before attachment block
+            -- , imageUrl : Maybe Url -- Optional image. It is a (possibly external) permalink and not resized/proxied by Slack
+            -- , thumbUrl : Maybe Url -- Optional icon-like thumbnails. Preferred size is 75x75
+            -- , fallback : String -- Plain-text fallback contents without any markup
+            let
+                marshalTitle aTitle =
+                    Markdown <|
+                        case aTitle.link of
+                            Just url ->
+                                "[" ++ aTitle.name ++ "](" ++ Url.toString url ++ ")"
+
+                            Nothing ->
+                                aTitle.name
+
+                marshalAuthor aAuthor =
+                    let
+                        marshalIcon url =
+                            NamedEntity.imageOrAbbr (Just (Url.toString url)) aAuthor.name False
+                    in
+                    NamedEntity.new aAuthor.name
+                        |> apOrId (Url.toString >> NamedEntity.url) aAuthor.link
+                        |> apOrId (marshalIcon >> NamedEntity.avatar) aAuthor.icon
+            in
+            EmbeddedMatter.new (Markdown a.text)
+                |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
+                |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
+                |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
     in
     ColumnItem.new id author (Markdown m.text)
         |> ColumnItem.timestamp (PSlack.getPosix m)
+        |> ColumnItem.embeddedMatters (List.map marshalAttachment m.attachments)
 
 
 renderConfigPref : Model -> Html Msg
