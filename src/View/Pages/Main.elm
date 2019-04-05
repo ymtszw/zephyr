@@ -47,12 +47,18 @@ render m =
                         \newIndex ->
                             DragEnter (ArrayExtra.moveFromTo swap.originalIndex newIndex swap.originalOrder)
                     , onColumnDragEnd = DragEnd
+                    , columnItemsScrollAttrs =
+                        \c ->
+                            Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
                     , sidebarEffects = sidebarEffects
                     }
 
                 Nothing ->
                     { onColumnDragHover = always NoOp
                     , onColumnDragEnd = NoOp
+                    , columnItemsScrollAttrs =
+                        \c ->
+                            Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
                     , sidebarEffects = sidebarEffects
                     }
 
@@ -150,8 +156,7 @@ render m =
                                 Scroll.toList c.items
                         in
                         View.Organisms.Column.Items.render
-                            { scrollAttrs = Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
-                            , onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
+                            { onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
                             }
                             { timezone = m.viewState.timezone
                             , itemGroups =
