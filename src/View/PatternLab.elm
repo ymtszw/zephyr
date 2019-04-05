@@ -3096,19 +3096,27 @@ columnItems =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , withSourceInColumn Nothing 100 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID0", timezone = Time.utc, itemGroups = [], hasMore = False }
-                , withSourceInColumn Nothing 500 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID1"
-                        , timezone = Time.utc
+                , withSourceInColumn Nothing 100 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+    { timezone = Time.utc, itemGroups = [], hasMore = False }""" <|
+                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                        { timezone = Time.utc, itemGroups = [], hasMore = False }
+                , withSourceInColumn Nothing 500 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+            , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+            , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+            , ColumnItem.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                |> ColumnItem.kts
+                    [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                    , ( "キー2", Markdown "Marked up **text**" )
+                    ]
+            ]
+    , hasMore = False
+    }""" <|
+                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
@@ -3122,7 +3130,41 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn Nothing 1000 "" <|
+                , withSourceInColumn Nothing 1000 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+                |> ColumnItem.attachedFiles [ sampleImage500x500 ]
+            , ColumnItem.new "ci2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+                |> ColumnItem.attachedFiles [ sampleImage100x100 ]
+            , ColumnItem.new "ci3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+                |> ColumnItem.attachedFiles [ sampleImage100x600 ]
+            , ColumnItem.new "ci4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+                |> ColumnItem.attachedFiles [ sampleImage600x100 ]
+            , ColumnItem.new "ci5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+                |> ColumnItem.attachedFiles [ sampleVideo ]
+            , ColumnItem.new "ci6" (NamedEntity.new "Attachement") (Plain "External file")
+                |> ColumnItem.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
+            , ColumnItem.new "ci7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+                |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
+            , ColumnItem.new "ci8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+                |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
+            , ColumnItem.new "ci9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+                |> ColumnItem.attachedFiles
+                    [ attachedOther (DownloadUrl "/image.html")
+                        |> attachedFileDescription (String.repeat 10 "longstring")
+                    ]
+            , ColumnItem.new "ci10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+                |> ColumnItem.attachedFiles
+                    [ attachedOther (ExternalLink "/index.html")
+                        |> attachedFilePreview samplePreview
+                    ]
+            , ColumnItem.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
+                |> ColumnItem.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+            ]
+    , hasMore = True
+    }""" <|
                     let
                         sampleImage500x500 =
                             attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
@@ -3152,12 +3194,8 @@ columnItems =
 </html>
 """
                     in
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID2"
-                        , timezone = Time.utc
+                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
@@ -3191,13 +3229,29 @@ columnItems =
                                 ]
                         , hasMore = True
                         }
-                , withSourceInColumn Nothing 300 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID3"
-                        , timezone = Time.utc
+                , withSourceInColumn Nothing 300 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+            , ColumnItem.new "ci1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+            , ColumnItem.new "ci2"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
+                (Plain "ImageOrAbbr")
+            , ColumnItem.new "ci3"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
+                (Plain "ImageOrAbbr")
+            , ColumnItem.new "ci4"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
+                (Plain "ImageOrAbbr")
+            , ColumnItem.new "ci5"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
+                (Plain "ImageOrAbbr")
+            ]
+    , hasMore = False
+    }""" <|
+                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
@@ -3217,13 +3271,60 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn Nothing 300 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID4"
-                        , timezone = Time.utc
+                , withSourceInColumn Nothing 1000 """Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
+                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                        |> EmbeddedMatter.author
+                            (NamedEntity.new "With Avatar"
+                                |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
+                                |> NamedEntity.url "https://example.com/user"
+                                |> NamedEntity.secondaryName "@with_avatar"
+                            )
+                        |> EmbeddedMatter.title (Plain "This is title")
+                        |> EmbeddedMatter.url "https://example.com/verylongpath/morethan30/index.html"
+                        |> EmbeddedMatter.origin
+                            (NamedEntity.new "Origin Service"
+                                |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 20 20)) "Origin Service" False)
+                                |> NamedEntity.url "https://example.com/origin"
+                            )
+                        |> EmbeddedMatter.kts
+                            [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                            , ( "キー2", Markdown "Marked up **text**" )
+                            ]
+                    ]
+            , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
+                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
+                        |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
+                        |> EmbeddedMatter.title (Markdown "**Marked-up title**")
+                        |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
+                    ]
+            , ColumnItem.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
+                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                        |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just ( 100, 100 )))
+                        |> EmbeddedMatter.attachedFiles
+                            [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
+                            , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                            ]
+                    ]
+            , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                    , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533")
+                    ]
+            ]
+    , hasMore = False
+    }""" <|
+                    Items.render { scrollAttrs = [], onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
