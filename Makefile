@@ -24,6 +24,7 @@ before_build:
 dist/zephyr.js:
 	elm make --optimize --output=dist/zephyr-optimized.js src/Main.elm
 	google-closure-compiler --js=dist/zephyr-optimized.js --js_output_file=dist/zephyr.js && rm -v dist/zephyr-optimized.js
+	du -h dist/zephyr.js
 
 .PHONY: lab
 lab:
