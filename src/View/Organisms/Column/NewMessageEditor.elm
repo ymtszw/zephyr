@@ -172,11 +172,7 @@ editorTextarea eff cId isActive editor =
             , Border.round5
             , onFocus (eff.onInteracted cId Authoring)
             , onInput (eff.onTextInput cId)
-            , if isNotReadyToSubmit editor then
-                noAttr
-
-              else
-                onCtrlEnterKeyDown (eff.onSubmit cId)
+            , onKeyDown (isNotReadyToSubmit editor) (eff.onInteracted cId OutOfFocus) (eff.onSubmit cId)
             ]
 
         placeholder_ =
@@ -227,12 +223,23 @@ isNotReadyToSubmit editor =
             String.isEmpty buffer
 
 
-onCtrlEnterKeyDown : msg -> Attribute msg
-onCtrlEnterKeyDown onPress =
+onKeyDown : Bool -> msg -> msg -> Attribute msg
+onKeyDown notReady onEsc onCtrlEnter =
+    let
+        onEscKeyDown =
+            D.when (D.field "key" D.string) ((==) "Escape") (D.succeed onEsc)
+    in
     on "keydown" <|
-        D.when (D.field "ctrlKey" D.bool) identity <|
-            D.when (D.field "key" D.string) ((==) "Enter") <|
-                D.succeed onPress
+        D.oneOf <|
+            if notReady then
+                [ onEscKeyDown ]
+
+            else
+                [ onEscKeyDown
+                , D.when (D.field "ctrlKey" D.bool) identity <|
+                    D.when (D.field "key" D.string) ((==) "Enter") <|
+                        D.succeed onCtrlEnter
+                ]
 
 
 selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
