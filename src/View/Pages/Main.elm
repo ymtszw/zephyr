@@ -417,9 +417,6 @@ marshalSlackMessage id m =
 
         marshalAttachment a =
             -- { pretext : Maybe String -- Optional leading text before attachment block
-            -- , imageUrl : Maybe Url -- Optional image. It is a (possibly external) permalink and not resized/proxied by Slack
-            -- , thumbUrl : Maybe Url -- Optional icon-like thumbnails. Preferred size is 75x75
-            -- , fallback : String -- Plain-text fallback contents without any markup
             let
                 marshalTitle aTitle =
                     Markdown <|
@@ -438,11 +435,17 @@ marshalSlackMessage id m =
                     NamedEntity.new aAuthor.name
                         |> apOrId (Url.toString >> NamedEntity.url) aAuthor.link
                         |> apOrId (marshalIcon >> NamedEntity.avatar) aAuthor.icon
+
+                marshalImageUrl url =
+                    imageMedia (Url.toString url) "Embedded image" Nothing
             in
             EmbeddedMatter.new (Markdown a.text)
                 |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
+                |> apOrId (marshalImageUrl >> EmbeddedMatter.thumbnail) a.thumbUrl
+                |> EmbeddedMatter.attachedFiles
+                    (List.filterMap identity [ Maybe.map (marshalImageUrl >> VisualFile) a.imageUrl ])
     in
     ColumnItem.new id author (Markdown m.text)
         |> ColumnItem.timestamp (PSlack.getPosix m)
