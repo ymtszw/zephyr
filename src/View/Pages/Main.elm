@@ -416,7 +416,6 @@ marshalSlackMessage id m =
                         |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing str True)
 
         marshalAttachment a =
-            -- { pretext : Maybe String -- Optional leading text before attachment block
             let
                 marshalTitle aTitle =
                     Markdown <|
@@ -441,6 +440,7 @@ marshalSlackMessage id m =
             in
             EmbeddedMatter.new (Markdown a.text)
                 |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
+                |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
                 |> apOrId (marshalImageUrl >> EmbeddedMatter.thumbnail) a.thumbUrl
