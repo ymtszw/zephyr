@@ -31,6 +31,7 @@ import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
 import View.Organisms.Column.Items
+import View.Organisms.Column.NewMessageEditor
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
@@ -102,6 +103,9 @@ render m =
                     , numItems = Scroll.size c.items
                     , items = c.items
                     , recentlyTouched = c.recentlyTouched
+                    , editors = c.editors
+                    , editorSeq = c.editorSeq
+                    , userActionOnEditor = c.userActionOnEditor
                     }
             in
             { configOpen = m.viewState.configOpen
@@ -151,7 +155,20 @@ render m =
                             , availableSourecs = List.filter (\s -> not (List.member s c.sources)) availableSources
                             , column = c
                             }
-                , newMessageEditor = \c -> none
+                , newMessageEditor =
+                    \c ->
+                        View.Organisms.Column.NewMessageEditor.render
+                            { onEditorSelect = \cId -> ColumnCtrl cId << Column.SelectEditor
+                            , selectMsgTagger = SelectCtrl
+                            , onTextInput = \cId -> ColumnCtrl cId << Column.EditorInput
+                            , onInteracted = \cId -> ColumnCtrl cId << Column.EditorInteracted
+                            , onResetButtonClick = \cId -> ColumnCtrl cId Column.EditorReset
+                            , onDiscardFileButtonClick = \cId -> ColumnCtrl cId Column.EditorFileDiscard
+                            , onRequestFileAreaClick = \cId -> ColumnCtrl cId (Column.EditorFileRequest [ "*/*" ])
+                            , onFileDrop = \cId -> ColumnCtrl cId << Column.EditorFileSelected
+                            , onSubmit = \cId -> ColumnCtrl cId Column.EditorSubmit
+                            }
+                            { selectState = m.viewState.selectState, column = c }
                 , items =
                     \c ->
                         let
