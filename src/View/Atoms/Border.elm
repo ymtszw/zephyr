@@ -260,7 +260,7 @@ rightRound5Class =
 gutterStyle : Style
 gutterStyle =
     s (c gutterClass)
-        [ ( "border-left-width", "5px" )
+        [ ( "border-left-width", "3px" )
         , ( "border-left-style", "solid" )
         , ( "border-top-left-radius", "3px" )
         , ( "border-bottom-left-radius", "3px" )
