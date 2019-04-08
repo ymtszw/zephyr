@@ -411,7 +411,7 @@ visualMediaBlock visualMedia =
                 , flexBasisAuto
                 , alignStart
                 ]
-                { url = record.src
+                { url = record.link
                 , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
                 }
 
@@ -426,7 +426,7 @@ visualMediaBlock visualMedia =
                     ++ dimensionAttrs record.dimension
                 )
                 [ t "Embedded video not supported. "
-                , ntLink [] { url = record.src, children = [ t "[Source]" ] }
+                , ntLink [] { url = record.link, children = [ t "[Source]" ] }
                 ]
 
 

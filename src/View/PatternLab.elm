@@ -3316,7 +3316,7 @@ columnItems =
                 |> ColumnItem.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                         |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
-                        |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
+                        |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                         |> EmbeddedMatter.attachedFiles
                             [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                             , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
@@ -3369,7 +3369,7 @@ columnItems =
                                     |> ColumnItem.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
-                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
+                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                                             |> EmbeddedMatter.attachedFiles
                                                 [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"

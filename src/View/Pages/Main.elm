@@ -349,12 +349,15 @@ marshalDiscordMessage id m =
                         |> apOrId (Url.toString >> NamedEntity.url) eAuthor.url
                         |> apOrId (marshalIcon >> NamedEntity.avatar) eAuthor.proxyIconUrl
 
-                marshalEmbedImage eImage =
-                    imageMedia (Url.toString eImage.url) "Embedded image" (Maybe.map2 dimension eImage.width eImage.height)
+                marshalEmbedImage linkMaybe eImage =
+                    imageMedia (Url.toString eImage.url)
+                        (Url.toString (Maybe.withDefault eImage.url linkMaybe))
+                        "Embedded image"
+                        (Maybe.map2 dimension eImage.width eImage.height)
 
                 attachedFiles =
                     List.filterMap identity
-                        [ Maybe.map (marshalEmbedImage >> VisualFile) e.image
+                        [ Maybe.map (marshalEmbedImage Nothing >> VisualFile) e.image
                         , Maybe.map
                             (\v ->
                                 attachedVideo (Url.toString v.url)
@@ -368,17 +371,19 @@ marshalDiscordMessage id m =
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
                 |> apOrId (marshalColor >> EmbeddedMatter.color) e.color
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
-                |> apOrId (marshalEmbedImage >> EmbeddedMatter.thumbnail) e.thumbnail
+                |> apOrId (marshalEmbedImage e.url >> EmbeddedMatter.thumbnail) e.thumbnail
                 |> EmbeddedMatter.attachedFiles attachedFiles
 
         marshalAttachment a =
             if Data.Item.extIsImage a.filename then
                 attachedImage (Url.toString a.proxyUrl)
+                    |> attachedFileLink (Url.toString a.url)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
             else if Data.Item.extIsVideo a.filename then
                 attachedVideo (Url.toString a.proxyUrl)
+                    |> attachedFileLink (Url.toString a.url)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
@@ -450,21 +455,49 @@ marshalSlackMessage id m =
                         |> apOrId (Url.toString >> NamedEntity.url) aAuthor.link
                         |> apOrId (marshalIcon >> NamedEntity.avatar) aAuthor.icon
 
-                marshalImageUrl url =
-                    imageMedia (Url.toString url) "Embedded image" Nothing
+                marshalImageUrl linkMaybe url =
+                    imageMedia (Url.toString url) (Url.toString (Maybe.withDefault url linkMaybe)) "Embedded image" Nothing
             in
             EmbeddedMatter.new (Markdown a.text)
                 |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
-                |> apOrId (marshalImageUrl >> EmbeddedMatter.thumbnail) a.thumbUrl
+                |> apOrId (marshalImageUrl (Maybe.andThen .link a.title) >> EmbeddedMatter.thumbnail) a.thumbUrl
                 |> EmbeddedMatter.attachedFiles
-                    (List.filterMap identity [ Maybe.map (marshalImageUrl >> VisualFile) a.imageUrl ])
+                    (List.filterMap identity [ Maybe.map (marshalImageUrl Nothing >> VisualFile) a.imageUrl ])
+
+        marshalFile f =
+            let
+                base ctor =
+                    case f.thumb360 of
+                        Just ( url, width, height ) ->
+                            ctor (Url.toString url)
+                                |> attachedFileLink (Url.toString f.url_)
+                                |> attachedFileDimension (dimension width height)
+
+                        Nothing ->
+                            ctor (Url.toString f.url_)
+            in
+            if Data.Item.mimeIsImage f.mimetype then
+                attachedFileDescription f.name (base attachedImage)
+
+            else if Data.Item.mimeIsVideo f.mimetype then
+                attachedFileDescription f.name (base attachedVideo)
+
+            else if f.mode == PSlack.Snippet || f.mode == PSlack.Post then
+                attachedOther (ExternalLink (Url.toString f.url_))
+                    |> attachedFileDescription f.name
+                    |> apOrId attachedFilePreview f.preview
+
+            else
+                attachedOther (DownloadUrl (Url.toString f.url_))
+                    |> attachedFileDescription f.name
     in
     ColumnItem.new id author (Markdown m.text)
         |> ColumnItem.timestamp (PSlack.getPosix m)
         |> ColumnItem.embeddedMatters (List.map marshalAttachment m.attachments)
+        |> ColumnItem.attachedFiles (List.map marshalFile m.files)
 
 
 renderConfigPref : Model -> Html Msg
