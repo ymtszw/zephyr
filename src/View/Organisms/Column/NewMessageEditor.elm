@@ -37,7 +37,7 @@ type alias Effects msg =
       onDiscardFileButtonClick : String -> msg
     , -- XXX should diverge for different sources later
       onRequestFileAreaClick : String -> msg
-    , onFileDrop : String -> UserAction -> File -> msg
+    , onFileDrop : String -> File -> msg
     , onSubmit : String -> msg
     }
 
@@ -346,7 +346,10 @@ fileSelectArea : Effects msg -> { c | id : String, userActionOnEditor : UserActi
 fileSelectArea eff c =
     let
         catchDroppedFile =
-            D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id Authoring f) File.decoder)
+            D.oneOf
+                [ D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id f) File.decoder)
+                , D.succeed (eff.onInteracted c.id Authoring)
+                ]
 
         hijackOn event msgDecoder =
             preventDefaultOn event (D.map (\msg -> ( msg, True )) msgDecoder)
