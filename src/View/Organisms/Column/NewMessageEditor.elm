@@ -1,9 +1,10 @@
-module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserAction(..), render, selectId, styles)
+module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, render, selectId, styles)
 
-import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
+import Data.Column
+import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..), getBuffer)
 import File exposing (File)
 import Html exposing (Attribute, Html, button, div, img, span, textarea)
-import Html.Attributes exposing (alt, class, disabled, placeholder, spellcheck, src, title)
+import Html.Attributes exposing (alt, class, disabled, id, placeholder, spellcheck, src, title)
 import Html.Events exposing (on, onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
@@ -54,17 +55,6 @@ type alias Props c =
     }
 
 
-{-| Indicates current user's action against the editor.
-
-HoveringFiles enables dynamic styling upon file hover.
-
--}
-type UserAction
-    = Browsing
-    | Authoring
-    | HoveringFiles
-
-
 render : Effects msg -> Props c -> Html msg
 render eff props =
     let
@@ -73,7 +63,7 @@ render eff props =
 
         isActive =
             case props.column.userActionOnEditor of
-                Browsing ->
+                OutOfFocus ->
                     False
 
                 _ ->
@@ -106,7 +96,7 @@ editorMenu eff props isActive editor =
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, pushRight, Image.hovErr ]
                 { onPress = eff.onResetButtonClick props.column.id, size = prominentSize, shape = Octicons.trashcan }
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, Image.hovText ]
-                { onPress = eff.onInteracted props.column.id Browsing, size = prominentSize, shape = Octicons.x }
+                { onPress = eff.onInteracted props.column.id OutOfFocus, size = prominentSize, shape = Octicons.x }
             ]
 
     else
@@ -172,6 +162,7 @@ editorTextarea eff cId isActive editor =
 
         baseAttrs =
             [ class textareaClass
+            , id (Data.Column.editorId cId) -- For Dom.Blur
             , flexItem
             , widthFill
             , padding5
@@ -364,6 +355,9 @@ fileSelectArea eff c =
             case c.userActionOnEditor of
                 HoveringFiles ->
                     ( Background.colorSucc, Image.fillText, Octicons.check )
+
+                HoveringNonFile ->
+                    ( Background.colorErr, Image.fillText, Octicons.circleSlash )
 
                 _ ->
                     ( Background.transparent, noAttr, Octicons.cloudUpload )

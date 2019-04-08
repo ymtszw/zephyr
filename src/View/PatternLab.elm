@@ -3,7 +3,7 @@ module View.PatternLab exposing (main)
 import Browser
 import Browser.Navigation exposing (Key)
 import Color
-import Data.ColumnEditor exposing (ColumnEditor(..))
+import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..))
 import Data.ColumnItem as ColumnItem exposing (ColumnItem)
 import Data.ColumnItem.Contents exposing (..)
 import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
@@ -83,7 +83,7 @@ type alias Model =
     , numColumns : Int
     , editorSeq : Int
     , editorFile : Maybe ( File, String )
-    , userActionOnEditor : NewMessageEditor.UserAction
+    , userActionOnEditor : UserAction
     }
 
 
@@ -144,7 +144,7 @@ init () url key =
       , numColumns = 4
       , editorSeq = 0
       , editorFile = Nothing
-      , userActionOnEditor = NewMessageEditor.Browsing
+      , userActionOnEditor = OutOfFocus
       }
     , Cmd.none
     )

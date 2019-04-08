@@ -1,6 +1,7 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, decoder, columnItemLimit
     , Msg(..), PostProcess, Position(..), update, postProcess
+    , editorId
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -12,12 +13,14 @@ Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, decoder, columnItemLimit
 @docs Msg, PostProcess, Position, update, postProcess
+@docs editorId
 
 -}
 
 import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
+import Browser.Dom
 import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
@@ -51,8 +54,8 @@ type alias Column =
     , pendingFilters : Array Filter
     , editors : SelectArray ColumnEditor
     , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/mdgriffith/elm-ui/issues/5
-    , editorActive : Bool
-    , deleteGate : String
+    , userActionOnEditor : ColumnEditor.UserAction
+    , deleteGate : String -- TODO Remove
     }
 
 
@@ -152,7 +155,7 @@ decoder clientHeight =
                                                     , pendingFilters = filters
                                                     , editors = ColumnEditor.filtersToEditors filters
                                                     , editorSeq = 0
-                                                    , editorActive = False
+                                                    , userActionOnEditor = ColumnEditor.OutOfFocus
                                                     , deleteGate = ""
                                                     }
                                             in
@@ -230,7 +233,7 @@ welcome clientHeight idGen id =
       , pendingFilters = Array.empty
       , editors = ColumnEditor.defaultEditors
       , editorSeq = 0
-      , editorActive = False
+      , userActionOnEditor = ColumnEditor.OutOfFocus
       , deleteGate = ""
       }
     , newGen
@@ -306,7 +309,7 @@ new clientHeight idGen id =
       , pendingFilters = Array.empty
       , editors = ColumnEditor.defaultEditors
       , editorSeq = 0
-      , editorActive = False
+      , userActionOnEditor = ColumnEditor.OutOfFocus
       , deleteGate = ""
       }
     , newGen
@@ -329,7 +332,7 @@ simple clientHeight fa id =
     , pendingFilters = filters
     , editors = ColumnEditor.filtersToEditors filters
     , editorSeq = 0
-    , editorActive = False
+    , userActionOnEditor = ColumnEditor.OutOfFocus
     , deleteGate = ""
     }
 
@@ -347,7 +350,7 @@ type Msg
     | ConfirmFilter
     | DeleteGateInput String
     | SelectEditor Int
-    | EditorToggle Bool
+    | EditorInteracted ColumnEditor.UserAction
     | EditorInput String
     | EditorReset
     | EditorSubmit
@@ -365,7 +368,7 @@ type alias PostProcess =
     , catchUpId : Maybe String
     , position : Position
     , producerMsg : Maybe ProducerRegistry.Msg
-    , heartstopper : Bool
+    , heartstopper : Bool -- TODO Remove
     }
 
 
@@ -447,8 +450,18 @@ update isVisible msg c =
         SelectEditor index ->
             pure { c | editors = SelectArray.selectAt index c.editors, editorSeq = c.editorSeq + 1 }
 
-        EditorToggle isActive ->
-            ( { c | editorActive = isActive }, { postProcess | heartstopper = False } )
+        EditorInteracted action ->
+            let
+                cmd =
+                    case action of
+                        ColumnEditor.OutOfFocus ->
+                            -- Calm is just a replacement for NoOp
+                            Task.attempt (always Calm) (Browser.Dom.blur (editorId c.id))
+
+                        _ ->
+                            Cmd.none
+            in
+            ( { c | userActionOnEditor = action }, { postProcess | heartstopper = False, cmd = cmd } )
 
         EditorInput input ->
             pure { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors }
@@ -468,7 +481,7 @@ update isVisible msg c =
             ( c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected, heartstopper = True } )
 
         EditorFileSelected file ->
-            ( c
+            ( { c | userActionOnEditor = ColumnEditor.Authoring }
             , { postProcess
                 | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file))
                 , heartstopper = False
@@ -603,7 +616,7 @@ editorSubmit c =
                 ( { c
                     | editors = SelectArray.updateSelected ColumnEditor.reset c.editors
                     , editorSeq = c.editorSeq + 1
-                    , editorActive = False
+                    , userActionOnEditor = ColumnEditor.OutOfFocus
                   }
                 , { postProcess | catchUpId = Just c.id, producerMsg = Just postMsg }
                 )
@@ -641,7 +654,7 @@ saveLocalMessage buffer c =
     ( { c
         | items = newItems
         , editors = SelectArray.updateSelected ColumnEditor.reset c.editors
-        , editorActive = False
+        , userActionOnEditor = ColumnEditor.OutOfFocus
         , editorSeq = c.editorSeq + 1
       }
     , { postProcess | cmd = Cmd.map ScrollMsg sCmd, persist = True }
@@ -692,3 +705,8 @@ localMessagePrefixLen =
 localMessageHexLen : Int
 localMessageHexLen =
     4
+
+
+editorId : String -> String
+editorId id =
+    "newMessageEditor_" ++ id

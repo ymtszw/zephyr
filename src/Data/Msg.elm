@@ -426,8 +426,8 @@ columnMsgToEntry cId cMsg =
         Column.SelectEditor index ->
             Entry "Column.SelectEditor" [ cId, String.fromInt index ]
 
-        Column.EditorToggle isActive ->
-            Entry "Column.EditorToggle" [ cId, boolStr isActive ]
+        Column.EditorInteracted ua ->
+            Entry "Column.EditorInteracted" [ cId, "<UserAction>" ]
 
         Column.EditorInput input ->
             Entry "Column.EditorInput" [ cId, input ]

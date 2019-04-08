@@ -1,11 +1,11 @@
 module Data.ColumnEditor exposing
-    ( ColumnEditor(..), defaultEditors
+    ( ColumnEditor(..), UserAction(..), defaultEditors
     , filtersToEditors, getBuffer, updateBuffer, reset, updateFile
     )
 
 {-| Editor data for Columns.
 
-@docs ColumnEditor, defaultEditors
+@docs ColumnEditor, UserAction, defaultEditors
 @docs filtersToEditors, getBuffer, updateBuffer, reset, updateFile
 
 -}
@@ -26,6 +26,18 @@ type alias DiscordOpts =
     , buffer : String
     , file : Maybe ( File, String )
     }
+
+
+{-| Indicates current user's action against the editor.
+
+HoveringFiles enables dynamic styling upon file hover.
+
+-}
+type UserAction
+    = OutOfFocus
+    | Authoring
+    | HoveringFiles
+    | HoveringNonFile
 
 
 localMessageEditor : ColumnEditor
