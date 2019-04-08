@@ -15,8 +15,8 @@ import Hex
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E exposing (Value)
 import Json.EncodeExtra as E
-import Markdown.Block exposing (Block(..), CodeBlock(..))
-import Markdown.Inline exposing (Inline(..))
+import Markdown.Block exposing (..)
+import Markdown.Inline exposing (..)
 import Parser
 import SelectArray
 import SlackTestData
@@ -425,7 +425,9 @@ Soft line break and [Link](https://example.com "example.com").
             , CodeBlock (Fenced False { fenceChar = "`", fenceLength = 3, indentLength = 0, language = Just "lang" }) "type Fenced = Fenced Code\n"
             , BlankLine ""
             , Paragraph ""
-                [ Text "After blank line.\nSoft line break and "
+                [ Text "After blank line."
+                , HardLineBreak
+                , Text "Soft line break and "
                 , Link "https://example.com" (Just "example.com") [ Text "Link" ]
                 , Text "."
                 ]
