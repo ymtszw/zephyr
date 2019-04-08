@@ -72,6 +72,7 @@ render eff props =
     -- Workaround for https://github.com/elm/html/issues/55
     Html.Keyed.node "div"
         [ flexColumn
+        , flexBasisAuto
         , padding5
         , spacingColumn5
         , Border.colorNote
@@ -333,12 +334,13 @@ filePreview onDiscardFileButtonClick f dataUrl =
     in
     withBadge
         [ clip
+        , flexBasisAuto
         , Border.round5
         , Background.colorSub
         ]
         { topRight = Just discardFileButton
         , bottomRight = Just fileMetadata
-        , content = div [ widthFill, flexColumn, flexCenter ] [ actualPreview ]
+        , content = div [ widthFill, flexColumn, flexBasisAuto, flexCenter ] [ actualPreview ]
         }
 
 
