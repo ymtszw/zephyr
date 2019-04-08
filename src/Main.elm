@@ -24,7 +24,7 @@ import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (ColumnSwap, Env, Model)
-import Data.Msg exposing (Msg(..))
+import Data.Msg exposing (..)
 import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
@@ -36,10 +36,11 @@ import Task exposing (Task)
 import Time exposing (Posix)
 import TimeZone
 import Url
-import View
-import View.Parts exposing (columnAreaParentId, columnWidth)
-import View.Select
-import Worque exposing (Work(..))
+import View.Atoms.Input.Select
+import View.Pages.Main
+import View.Stylesheet
+import View.Templates.Main exposing (columnAreaParentId, columnWidth)
+import Worque exposing (..)
 
 
 
@@ -140,7 +141,7 @@ update msg m_ =
         SelectCtrl sMsg ->
             let
                 ( ss, cmd ) =
-                    View.Select.update SelectCtrl sMsg viewState.selectState
+                    View.Atoms.Input.Select.update SelectCtrl sMsg viewState.selectState
             in
             noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
@@ -540,6 +541,7 @@ sub m =
 
                         Browser.Events.Hidden ->
                             False
+        , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
         ]
 
 
@@ -550,5 +552,5 @@ sub m =
 view : Model -> Browser.Document Msg
 view m =
     { title = "Zephyr"
-    , body = View.body m
+    , body = View.Stylesheet.render :: View.Pages.Main.render m
     }

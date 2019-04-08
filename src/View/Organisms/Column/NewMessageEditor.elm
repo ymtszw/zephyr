@@ -1,9 +1,10 @@
-module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, UserAction(..), render, selectId, styles)
+module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, render, selectId, styles)
 
-import Data.ColumnEditor exposing (ColumnEditor(..), getBuffer)
+import Data.Column
+import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..), getBuffer)
 import File exposing (File)
 import Html exposing (Attribute, Html, button, div, img, span, textarea)
-import Html.Attributes exposing (alt, class, disabled, placeholder, spellcheck, src, title)
+import Html.Attributes exposing (alt, class, disabled, id, placeholder, spellcheck, src, title)
 import Html.Events exposing (on, onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
 import Json.Decode as D
@@ -36,7 +37,7 @@ type alias Effects msg =
       onDiscardFileButtonClick : String -> msg
     , -- XXX should diverge for different sources later
       onRequestFileAreaClick : String -> msg
-    , onFileDrop : String -> UserAction -> File -> msg
+    , onFileDrop : String -> File -> msg
     , onSubmit : String -> msg
     }
 
@@ -54,17 +55,6 @@ type alias Props c =
     }
 
 
-{-| Indicates current user's action against the editor.
-
-HoveringFiles enables dynamic styling upon file hover.
-
--}
-type UserAction
-    = Browsing
-    | Authoring
-    | HoveringFiles
-
-
 render : Effects msg -> Props c -> Html msg
 render eff props =
     let
@@ -73,7 +63,7 @@ render eff props =
 
         isActive =
             case props.column.userActionOnEditor of
-                Browsing ->
+                OutOfFocus ->
                     False
 
                 _ ->
@@ -82,6 +72,7 @@ render eff props =
     -- Workaround for https://github.com/elm/html/issues/55
     Html.Keyed.node "div"
         [ flexColumn
+        , flexBasisAuto
         , padding5
         , spacingColumn5
         , Border.colorNote
@@ -106,7 +97,7 @@ editorMenu eff props isActive editor =
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, pushRight, Image.hovErr ]
                 { onPress = eff.onResetButtonClick props.column.id, size = prominentSize, shape = Octicons.trashcan }
             , Icon.octiconButton [ flexItem, padding2, Background.transparent, Background.hovBd, Image.hovText ]
-                { onPress = eff.onInteracted props.column.id Browsing, size = prominentSize, shape = Octicons.x }
+                { onPress = eff.onInteracted props.column.id OutOfFocus, size = prominentSize, shape = Octicons.x }
             ]
 
     else
@@ -172,6 +163,7 @@ editorTextarea eff cId isActive editor =
 
         baseAttrs =
             [ class textareaClass
+            , id (Data.Column.editorId cId) -- For Dom.Blur
             , flexItem
             , widthFill
             , padding5
@@ -180,11 +172,7 @@ editorTextarea eff cId isActive editor =
             , Border.round5
             , onFocus (eff.onInteracted cId Authoring)
             , onInput (eff.onTextInput cId)
-            , if isNotReadyToSubmit editor then
-                noAttr
-
-              else
-                onCtrlEnterKeyDown (eff.onSubmit cId)
+            , textareaKeyBinds (isNotReadyToSubmit editor) (eff.onInteracted cId OutOfFocus) (eff.onSubmit cId)
             ]
 
         placeholder_ =
@@ -235,12 +223,23 @@ isNotReadyToSubmit editor =
             String.isEmpty buffer
 
 
-onCtrlEnterKeyDown : msg -> Attribute msg
-onCtrlEnterKeyDown onPress =
+textareaKeyBinds : Bool -> msg -> msg -> Attribute msg
+textareaKeyBinds notReady blur submit =
+    -- XXX Not using D.oneOf; https://github.com/elm/html/issues/180
     on "keydown" <|
-        D.when (D.field "ctrlKey" D.bool) identity <|
-            D.when (D.field "key" D.string) ((==) "Enter") <|
-                D.succeed onPress
+        D.do (D.field "key" D.string) <|
+            \key ->
+                if key == "Escape" then
+                    D.succeed blur
+
+                else if notReady then
+                    D.fail "stop here"
+
+                else if key == "Enter" then
+                    D.when (D.field "ctrlKey" D.bool) identity (D.succeed submit)
+
+                else
+                    D.fail "not bound"
 
 
 selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
@@ -342,20 +341,39 @@ filePreview onDiscardFileButtonClick f dataUrl =
     in
     withBadge
         [ clip
+        , flexBasisAuto
         , Border.round5
         , Background.colorSub
         ]
         { topRight = Just discardFileButton
         , bottomRight = Just fileMetadata
-        , content = div [ widthFill, flexColumn, flexCenter ] [ actualPreview ]
+        , content = div [ widthFill, flexColumn, flexBasisAuto, flexCenter ] [ actualPreview ]
         }
 
 
 fileSelectArea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Html msg
 fileSelectArea eff c =
     let
+        checkHoveredObjectHasFiles event =
+            -- XXX event.dataTransfer.files may be empty on hover events, but resolved on drop event
+            -- Also, D.oneOrMore/list APIs do NOT support all Array-like JS data structure.
+            -- In this case, DataTransferItemList object cannot be decoded in Array-like manner.
+            let
+                itemsDecoder =
+                    D.when (D.at [ "0", "kind" ] D.string) ((==) "file") <|
+                        D.succeed ( eff.onInteracted c.id HoveringFiles, True )
+            in
+            preventDefaultOn event <|
+                D.oneOf
+                    [ D.at [ "dataTransfer", "items" ] itemsDecoder
+                    , D.succeed ( eff.onInteracted c.id HoveringNonFile, False )
+                    ]
+
         catchDroppedFile =
-            D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id Authoring f) File.decoder)
+            D.oneOf
+                [ D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id f) File.decoder)
+                , D.succeed (eff.onInteracted c.id Authoring)
+                ]
 
         hijackOn event msgDecoder =
             preventDefaultOn event (D.map (\msg -> ( msg, True )) msgDecoder)
@@ -364,6 +382,9 @@ fileSelectArea eff c =
             case c.userActionOnEditor of
                 HoveringFiles ->
                     ( Background.colorSucc, Image.fillText, Octicons.check )
+
+                HoveringNonFile ->
+                    ( Background.colorErr, Image.fillText, Octicons.circleSlash )
 
                 _ ->
                     ( Background.transparent, noAttr, Octicons.cloudUpload )
@@ -378,8 +399,8 @@ fileSelectArea eff c =
         , Background.hovBd
         , fill
         , Image.hovText
-        , hijackOn "dragenter" (D.succeed (eff.onInteracted c.id HoveringFiles))
-        , hijackOn "dragover" (D.succeed (eff.onInteracted c.id HoveringFiles))
+        , checkHoveredObjectHasFiles "dragenter"
+        , checkHoveredObjectHasFiles "dragover"
         , hijackOn "dragleave" (D.succeed (eff.onInteracted c.id Authoring))
         , hijackOn "drop" catchDroppedFile
         ]

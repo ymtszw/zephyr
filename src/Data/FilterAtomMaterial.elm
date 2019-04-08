@@ -1,6 +1,7 @@
 module Data.FilterAtomMaterial exposing
     ( FilterAtomMaterial, init, encode, decoder
     , UpdateInstruction(..), update
+    , findDiscordChannel, findSlackConversation
     )
 
 {-| Cache of relatively long-living information used for rendering FilterAtom.
@@ -10,6 +11,7 @@ at application load, without waiting for loading ProducerRegistry.
 
 @docs FilterAtomMaterial, init, encode, decoder
 @docs UpdateInstruction, update
+@docs findDiscordChannel, findSlackConversation
 
 -}
 
@@ -19,6 +21,7 @@ import Data.Producer.Slack as Slack
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Json.EncodeExtra as E
+import List.Extra
 
 
 type alias FilterAtomMaterial =
@@ -86,3 +89,17 @@ updateImpl instructions ( fam, persist ) =
 
         (SlackInstruction DestroyFAM) :: xs ->
             updateImpl xs ( { fam | ofSlackConversation = Nothing }, True )
+
+
+
+-- APIs
+
+
+findDiscordChannel : String -> FilterAtomMaterial -> Maybe Discord.ChannelCache
+findDiscordChannel cId fam =
+    Maybe.andThen (\( _, caches ) -> List.Extra.find (\c -> c.id == cId) caches) fam.ofDiscordChannel
+
+
+findSlackConversation : String -> FilterAtomMaterial -> Maybe Slack.ConversationCache
+findSlackConversation cId fam =
+    Maybe.andThen (\{ conversations } -> Slack.getConversationFromCache cId conversations) fam.ofSlackConversation

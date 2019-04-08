@@ -1,4 +1,4 @@
-module View.Organisms.Config.Slack exposing (Effects, Props, TeamState(..), render)
+module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
 
 import Data.Producer.Slack as Slack
 import Html exposing (Html, div, img, p)
@@ -20,19 +20,19 @@ import View.Style exposing (..)
 type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
-    , onRehydrateButtonClick : msg
-    , onConvSelect : String -> msg
-    , onForceFetchButtonClick : String -> msg
+    , onRehydrateButtonClick : String -> msg
+    , onConvSelect : String -> String -> msg
+    , onForceFetchButtonClick : String -> String -> msg
     , onCreateColumnButtonClick : String -> msg
-    , onUnsubscribeButtonClick : String -> msg
+    , onUnsubscribeButtonClick : String -> String -> msg
+    , selectMsgTagger : Select.Msg msg -> msg
     }
 
 
-type alias Props msg =
+type alias Props =
     { token : String
     , tokenSubmittable : Bool
     , teamStates : List ( TeamSnip, TeamState ) -- Should be sorted already
-    , selectMsgTagger : Select.Msg msg -> msg
     , selectState : Select.State
     }
 
@@ -47,11 +47,21 @@ type TeamState
         }
 
 
+hydratedOnce : Bool -> UserSnip -> List SubbableConv -> List SubbedConv -> TeamState
+hydratedOnce rehydrating user subbableConvs subbedConvs =
+    HydratedOnce
+        { rehydrating = rehydrating
+        , user = user
+        , subbableConvs = subbableConvs
+        , subbedConvs = subbedConvs
+        }
+
+
 type alias TeamSnip =
     { id : String
     , name : String
     , domain : String
-    , image48 : Maybe String
+    , image44 : Maybe String
     }
 
 
@@ -78,7 +88,7 @@ type alias SubbedConv =
     }
 
 
-render : Effects msg -> Props msg -> Html msg
+render : Effects msg -> Props -> Html msg
 render eff props =
     let
         teamStates =
@@ -99,30 +109,37 @@ render eff props =
                 }
             )
     in
-    Html.Keyed.node "div" [ flexColumn, spacingColumn5 ] <|
+    Html.Keyed.node "div" [ flexColumn, padding5, spacingColumn5 ] <|
         teamStates
             ++ [ tokenFormKey ]
 
 
-teamState : Effects msg -> Props msg -> ( TeamSnip, TeamState ) -> ( String, Html msg )
+teamState : Effects msg -> Props -> ( TeamSnip, TeamState ) -> ( String, Html msg )
 teamState eff props ( team, ts ) =
     Tuple.pair team.id <|
         div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1, Border.solid ] <|
             case ts of
                 NowHydrating user ->
-                    [ teamAndUser eff.onRehydrateButtonClick True team user ]
+                    [ teamAndUser (eff.onRehydrateButtonClick team.id) True team user ]
 
                 HydratedOnce opts ->
-                    [ teamAndUser eff.onRehydrateButtonClick opts.rehydrating team opts.user
-                    , ProducerConfig.subSelect eff.onConvSelect
+                    [ teamAndUser (eff.onRehydrateButtonClick team.id) opts.rehydrating team opts.user
+                    , ProducerConfig.subSelect (eff.onConvSelect team.id)
                         { id = "slackConvSubscribeInput_" ++ team.id
-                        , selectMsgTagger = props.selectMsgTagger
+                        , selectMsgTagger = eff.selectMsgTagger
                         , selectState = props.selectState
                         , options = opts.subbableConvs
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
                         , optionHtml = div [] << Source.slackInline regularSize
                         }
-                    , ProducerConfig.subbedTable eff
+                    , let
+                        eff_ =
+                            { onCreateColumnButtonClick = eff.onCreateColumnButtonClick
+                            , onForceFetchButtonClick = eff.onForceFetchButtonClick team.id
+                            , onUnsubscribeButtonClick = eff.onUnsubscribeButtonClick team.id
+                            }
+                      in
+                      ProducerConfig.subbedTable eff_
                         { items = opts.subbedConvs
                         , itemHtml = div [] << Source.slackInline regularSize
                         }
@@ -141,7 +158,7 @@ teamAndUser onRehydrateButtonClick rehydrating team user =
 teamNameAndIcon : TeamSnip -> Html msg
 teamNameAndIcon team =
     div [ flexRow, flexGrow, spacingRow5 ]
-        [ Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] team.name team.image48
+        [ Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] team.name team.image44
         , div [ flexGrow ] <|
             let
                 teamUrl =

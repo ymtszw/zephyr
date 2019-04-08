@@ -30,14 +30,12 @@ import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { scrollAttrs : List (Attribute msg) -- From Scroll.scrollAttrs; can be empty
-    , onLoadMoreClick : String -> msg
+    { onLoadMoreClick : msg
     }
 
 
 type alias Props =
     { timezone : Time.Zone
-    , columnId : String
     , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
       itemGroups : List ( ColumnItem, List ColumnItem )
     , hasMore : Bool
@@ -52,23 +50,20 @@ render eff props =
 
         itemGroups ->
             let
-                attrs =
-                    [ flexBasisAuto
-                    , flexShrink
-                    , flexColumn
-                    , padding5
-                    ]
-                        ++ eff.scrollAttrs
-
                 contents =
                     List.map (itemGroupKey props.timezone) itemGroups
             in
-            Html.Keyed.node "div" attrs <|
-                (contents ++ [ loadMoreOrButtonTokenKey (eff.onLoadMoreClick props.columnId) props.hasMore ])
+            Html.Keyed.node "div"
+                [ flexBasisAuto
+                , flexShrink
+                , flexColumn
+                , padding5
+                ]
+                (contents ++ [ loadMoreOrBottomMarkerKey eff.onLoadMoreClick props.hasMore ])
 
 
-loadMoreOrButtonTokenKey : msg -> Bool -> ( String, Html msg )
-loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
+loadMoreOrBottomMarkerKey : msg -> Bool -> ( String, Html msg )
+loadMoreOrBottomMarkerKey onLoadMoreClick hasMore =
     -- This clickable area is rarely visible due to auto adjusting.
     -- But sometimes appears around window resizing, rapid scrolling, or reaching bottom
     let
@@ -81,7 +76,7 @@ loadMoreOrButtonTokenKey onLoadMoreClick hasMore =
             else
                 ( Octicons.thumbsup, [ title "All read!" ] )
     in
-    Tuple.pair "loadMoreOrBottomToken" <|
+    Tuple.pair "loadMoreOrBottomMarker" <|
         div ([ flexColumn, flexCenter, padding15 ] ++ additionalAttrs)
             [ Image.octicon
                 { size = xxProminentSize
@@ -116,7 +111,8 @@ itemAuthorAvatar40 item =
     let
         octiconAvatar40 shape =
             Icon.octiconBlock
-                [ Icon.rounded40
+                [ alignStart
+                , Icon.rounded40
                 , Border.colorNote
                 ]
                 { size = xProminentSize
@@ -140,7 +136,7 @@ itemAuthorAvatar40 item =
                 octiconAvatar40 Octicons.note
 
             Just (ImageOrAbbr opts) ->
-                withBadge [ badgeOutset ]
+                withBadge [ alignStart, badgeOutset ]
                     { topRight = Nothing
                     , bottomRight =
                         if opts.isBot then
@@ -152,7 +148,7 @@ itemAuthorAvatar40 item =
                     }
 
             Nothing ->
-                Icon.imgOrAbbr [ serif, xProminent, Icon.rounded40 ] item.author.primaryName Nothing
+                Icon.imgOrAbbr [ serif, xProminent, alignStart, Icon.rounded40 ] item.author.primaryName Nothing
 
 
 itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
@@ -172,7 +168,7 @@ itemGroupContents tz oldestItem subsequentItems =
 itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
 itemGroupHeaderKey tz item =
     Tuple.pair "itemGroupHeader" <|
-        div [ flexRow ]
+        div [ flexRow, flexCenter, spacingRow2 ]
             [ div [ flexShrink, flexBasisAuto, breakWords, bold, prominent ] [ t item.author.primaryName ]
             , case item.author.secondaryName of
                 Just secondaryName ->
@@ -193,8 +189,8 @@ itemBlockKey : ColumnItem -> ( String, Html msg )
 itemBlockKey item =
     Tuple.pair item.id <|
         div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5 ] <|
-            bodyBlocks item.body
-                ++ List.map embeddedMatterBlock item.embeddedMatters
+            textBlocks item.body
+                ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
                 ++ List.map ktBlock item.kts
                 -- TODO reactions
                 ++ List.map attachedFileBlock item.attachedFiles
@@ -204,12 +200,12 @@ ktBlock : ( String, Text ) -> Html msg
 ktBlock ( key, text ) =
     div []
         [ div [ bold ] [ t key ]
-        , div [ padding2 ] (bodyBlocks text)
+        , div [ padding2 ] (textBlocks text)
         ]
 
 
-bodyBlocks : Text -> List (Html msg)
-bodyBlocks text =
+textBlocks : Text -> List (Html msg)
+textBlocks text =
     case text of
         Plain "" ->
             []
@@ -231,8 +227,8 @@ markdownBlocks raw =
         MarkdownBlocks.render TextParser.defaultOptions raw
 
 
-embeddedMatterBlock : EmbeddedMatter -> Html msg
-embeddedMatterBlock matter =
+embeddedMatterBlockAndPretext : EmbeddedMatter -> List (Html msg)
+embeddedMatterBlockAndPretext matter =
     let
         wrapInLink urlMaybe children =
             case urlMaybe of
@@ -249,36 +245,39 @@ embeddedMatterBlock matter =
             case matter.thumbnail of
                 Just visualMedia ->
                     [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
-                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ bodyBlocks matter.body ++ List.map ktBlock matter.kts
+                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
                         , visualMediaBlock visualMedia
                         ]
                     ]
 
                 Nothing ->
-                    authorBlock ++ titleBlock ++ bodyBlocks matter.body ++ List.map ktBlock matter.kts
+                    authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
 
         authorBlock =
             case matter.author of
                 Just namedEntity ->
                     [ div [] <|
                         wrapInLink namedEntity.url <|
-                            List.intersperse (t " ") <|
-                                [ case namedEntity.avatar of
-                                    Just (ImageOrAbbr opts) ->
-                                        -- Bot badges are not meant to be used here
-                                        Icon.imgOrAbbr [ serif, Icon.rounded20 ] opts.name opts.src
+                            let
+                                avatar =
+                                    case namedEntity.avatar of
+                                        Just (ImageOrAbbr opts) ->
+                                            -- Bot badges are not meant to be used here
+                                            [ Icon.imgOrAbbr [ serif, Icon.rounded20 ] opts.name opts.src, t " " ]
 
-                                    _ ->
-                                        -- EmbeddedMatters are not expected to use Octicons
-                                        Icon.imgOrAbbr [ serif, Icon.rounded20 ] namedEntity.primaryName Nothing
-                                , t namedEntity.primaryName
-                                , case namedEntity.secondaryName of
-                                    Just sn ->
-                                        span [ colorNote ] [ t sn ]
+                                        _ ->
+                                            -- EmbeddedMatters are not expected to use Octicons
+                                            []
 
-                                    Nothing ->
-                                        none
-                                ]
+                                secondaryName =
+                                    case namedEntity.secondaryName of
+                                        Just sn ->
+                                            [ t " ", span [ colorNote ] [ t sn ] ]
+
+                                        Nothing ->
+                                            []
+                            in
+                            avatar ++ [ t namedEntity.primaryName ] ++ secondaryName
                     ]
 
                 Nothing ->
@@ -339,12 +338,20 @@ embeddedMatterBlock matter =
 
                 Nothing ->
                     []
+
+        gutteredBlock =
+            div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
+                textContentsAndThumbnailBlock
+                    ++ List.map attachedFileBlock matter.attachedFiles
+                    ++ permalink
+                    ++ originBlock
     in
-    div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
-        textContentsAndThumbnailBlock
-            ++ List.map attachedFileBlock matter.attachedFiles
-            ++ permalink
-            ++ originBlock
+    case matter.pretext of
+        Just text ->
+            textBlocks text ++ [ gutteredBlock ]
+
+        Nothing ->
+            [ gutteredBlock ]
 
 
 attachedFileBlock : AttachedFile -> Html msg
@@ -379,7 +386,7 @@ attachedFileBlock attachedFile =
                 Just raw ->
                     div [ flexColumn, Border.round5, Border.w1, Border.solid ]
                         [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
-                        , pre [ flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
+                        , pre [ minuscule, flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
                         ]
 
                 Nothing ->
@@ -391,8 +398,8 @@ visualMediaBlock visualMedia =
     let
         dimensionAttrs dim =
             case dim of
-                Just ( w, h ) ->
-                    [ width w, height h ]
+                Just d ->
+                    [ width d.width, height d.height ]
 
                 Nothing ->
                     []
@@ -404,7 +411,7 @@ visualMediaBlock visualMedia =
                 , flexBasisAuto
                 , alignStart
                 ]
-                { url = record.src
+                { url = record.link
                 , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
                 }
 
@@ -419,7 +426,7 @@ visualMediaBlock visualMedia =
                     ++ dimensionAttrs record.dimension
                 )
                 [ t "Embedded video not supported. "
-                , ntLink [] { url = record.src, children = [ t "[Source]" ] }
+                , ntLink [] { url = record.link, children = [ t "[Source]" ] }
                 ]
 
 
@@ -472,4 +479,4 @@ thumbnailParentClass =
 
 maxThumbnailSize : Int
 maxThumbnailSize =
-    80
+    60

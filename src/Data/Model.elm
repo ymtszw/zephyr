@@ -22,7 +22,7 @@ import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Logger
 import Time exposing (Zone)
-import View.Select
+import View.Atoms.Input.Select as Select
 import Worque exposing (Work(..), Worque)
 
 
@@ -44,7 +44,7 @@ type alias Model =
 type alias ViewState =
     { configOpen : Bool
     , columnSwapMaybe : Maybe ColumnSwap
-    , selectState : View.Select.State
+    , selectState : Select.State
     , timezone : Zone
     , visible : Bool
     }
@@ -97,7 +97,7 @@ defaultViewState : ViewState
 defaultViewState =
     { configOpen = False
     , columnSwapMaybe = Nothing
-    , selectState = View.Select.init
+    , selectState = Select.init
     , timezone = Time.utc
     , visible = True
     }

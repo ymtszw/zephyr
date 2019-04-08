@@ -1,12 +1,12 @@
 module Data.ColumnItem.EmbeddedMatter exposing
     ( EmbeddedMatter, new
-    , color, author, title, url, kts, thumbnail, attachedFiles, origin
+    , color, pretext, author, title, url, kts, thumbnail, attachedFiles, origin
     )
 
 {-| EmbeddedMatter in ColumnItem, and its builder functions.
 
 @docs EmbeddedMatter, new
-@docs color, author, title, url, kts, thumbnail, attachedFiles, origin
+@docs color, pretext, author, title, url, kts, thumbnail, attachedFiles, origin
 
 -}
 
@@ -17,6 +17,7 @@ import Data.ColumnItem.NamedEntity exposing (NamedEntity)
 
 type alias EmbeddedMatter =
     { color : Maybe Color
+    , pretext : Maybe Text -- Mainly for Slack, leading text above guttered emebed block
     , author : Maybe NamedEntity
     , title : Maybe Text
     , url : Maybe String
@@ -32,6 +33,7 @@ new : Text -> EmbeddedMatter
 new body =
     { color = Nothing
     , author = Nothing
+    , pretext = Nothing
     , title = Nothing
     , url = Nothing
     , body = body
@@ -45,6 +47,11 @@ new body =
 color : Color -> EmbeddedMatter -> EmbeddedMatter
 color val old =
     { old | color = Just val }
+
+
+pretext : Text -> EmbeddedMatter -> EmbeddedMatter
+pretext val old =
+    { old | pretext = Just val }
 
 
 author : NamedEntity -> EmbeddedMatter -> EmbeddedMatter

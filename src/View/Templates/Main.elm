@@ -1,6 +1,7 @@
 module View.Templates.Main exposing
     ( Props, Effects, Contents, DragStatus(..), render
     , styles
+    , columnAreaParentId, columnWidth
     )
 
 {-| Template of Main view.
@@ -15,6 +16,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 
 @docs Props, Effects, Contents, DragStatus, render
 @docs styles
+@docs columnAreaParentId, columnWidth
 
 -}
 
@@ -25,6 +27,7 @@ import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
 import Json.Decode exposing (succeed)
 import Octicons
+import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Image as Image
@@ -49,6 +52,7 @@ type alias VisibleColumn c =
         { c
             | dragStatus : DragStatus
             , configOpen : Bool
+            , recentlyTouched : Bool
         }
 
 
@@ -59,11 +63,14 @@ type DragStatus
     | Settled
 
 
-type alias Effects msg =
+type alias Effects c msg =
     { sidebarEffects : Sidebar.Effects msg
     , -- DragStart is handled in Organisms.Column.Header
-      columnDragEnd : msg
-    , columnDragHover : Int -> msg
+      onColumnDragEnd : msg
+    , onColumnDragHover : Int -> msg
+    , onColumnBorderFlashEnd : String -> msg
+    , -- From Scroll.scrollAttrs; can be empty
+      columnItemsScrollAttrs : VisibleColumn c -> List (Attribute msg)
     }
 
 
@@ -89,7 +96,7 @@ type alias ColumnContents c msg =
     }
 
 
-render : Effects msg -> Props c -> Contents c msg -> List (Html msg)
+render : Effects c msg -> Props c -> Contents c msg -> List (Html msg)
 render eff props contents =
     -- XXX Order matters! Basically, elements are stacked in written order unless specified otherwise (via z-index)
     [ Wallpaper.zephyr
@@ -178,7 +185,7 @@ statusTitle =
 
 
 columnContainer :
-    Effects msg
+    Effects c msg
     -> List (VisibleColumn c)
     -> ColumnContents c msg
     -> Html msg
@@ -188,7 +195,7 @@ columnContainer eff visibleColumns contents =
         , id columnAreaParentId
         , flexRow
         , oneDark
-        , on "dragend" (succeed eff.columnDragEnd)
+        , on "dragend" (succeed eff.onColumnDragEnd)
         ]
         (List.indexedMap (columnWrapperKey eff contents) visibleColumns)
 
@@ -199,7 +206,7 @@ columnAreaParentId =
 
 
 columnWrapperKey :
-    Effects msg
+    Effects c msg
     -> ColumnContents c msg
     -> Int
     -> VisibleColumn c
@@ -215,19 +222,25 @@ columnWrapperKey eff contents index c =
             , Border.colorBg
             , Background.colorMain
             , Source.headTheme c.sources
+            , if c.recentlyTouched then
+                Animation.borderFlash
+
+              else
+                noAttr
+            , on "animationend" (succeed (eff.onColumnBorderFlashEnd c.id))
             ]
 
         dragHandlers =
             case c.dragStatus of
                 Grabbed ->
                     [ class grabbedClass
-                    , preventDefaultOn "dragover" (succeed ( eff.columnDragHover index, True ))
+                    , preventDefaultOn "dragover" (succeed ( eff.onColumnDragHover index, True ))
                     ]
 
                 Droppable ->
                     [ class droppableClass
-                    , preventDefaultOn "dragenter" (succeed ( eff.columnDragHover index, True ))
-                    , preventDefaultOn "dragover" (succeed ( eff.columnDragHover index, True ))
+                    , preventDefaultOn "dragenter" (succeed ( eff.onColumnDragHover index, True ))
+                    , preventDefaultOn "dragover" (succeed ( eff.onColumnDragHover index, True ))
                     ]
 
                 Undroppable ->
@@ -236,7 +249,7 @@ columnWrapperKey eff contents index c =
                 Settled ->
                     []
     in
-    Tuple.pair ("column_" ++ String.fromInt index) <|
+    Tuple.pair c.id <|
         div (staticAttrs ++ dragHandlers)
             [ contents.header index c
             , if c.configOpen then
@@ -246,10 +259,12 @@ columnWrapperKey eff contents index c =
                 none
             , contents.newMessageEditor c
             , div
-                [ class itemsWrapperClass
-                , flexBasisAuto
-                , flexShrink
-                ]
+                ([ class itemsWrapperClass
+                 , flexBasisAuto
+                 , flexShrink
+                 ]
+                    ++ eff.columnItemsScrollAttrs c
+                )
                 [ contents.items c ]
             ]
 
@@ -257,7 +272,7 @@ columnWrapperKey eff contents index c =
 styles : List Style
 styles =
     [ s (c configDrawerClass)
-        [ ( "position", "fixed" )
+        [ ( "position", "fixed" ) -- Becomes a positioned element
         , ( "left", px (sidebarWidth + sidebarExpansionWidth) )
         , ( "top", "0" )
         , ( "width", px configDrawerWidth )
@@ -269,14 +284,14 @@ styles =
         , ( "padding-bottom", px configDrawerPaddingY )
         , ( "overflow-y", "auto" )
         , ( "transition", "all 0.15s" )
+        , ( "display", "block" )
         , -- Default hidden
           ( "visibility", "hidden" )
         , ( "opacity", "0" )
         , ( "transform", "translateX(-50px)" ) -- The value sufficient for slide-in effect to be recognizable
         ]
     , s (c configDrawerClass ++ c drawerOpenClass)
-        [ ( "display", "block" )
-        , ( "visibility", "visible" )
+        [ ( "visibility", "visible" )
         , ( "opacity", "1" )
         , ( "transform", "translateX(0px)" )
         ]

@@ -348,12 +348,10 @@ calculatePosition orientation a =
                     a.viewport.y + a.viewport.height
             in
             if marginBelowAnchorInViewport >= marginAboveAnchorInViewport then
-                [ style "top" (String.fromFloat anchorBottom ++ "px") ]
+                []
 
             else
-                [ style "top" (String.fromFloat anchorBottom ++ "px")
-                , style "transform" ("translateY(calc(-" ++ String.fromFloat a.element.height ++ "px - 100%))")
-                ]
+                [ style "transform" ("translateY(calc(-" ++ String.fromFloat a.element.height ++ "px - 100%))") ]
 
 
 {-| Creates a node related to your Popout. Use with `generate` or `render`.

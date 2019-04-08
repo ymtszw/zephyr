@@ -37,9 +37,9 @@ type alias ColumnInSidebar c =
 
 
 type alias Effects msg =
-    { configOpener : msg
-    , columnAdder : msg
-    , columnButtonClickerByIndex : Int -> msg
+    { onConfigToggleClick : Bool -> msg
+    , onAddColumnClick : msg
+    , onColumnButtonClickByIndex : Int -> msg
     }
 
 
@@ -58,20 +58,20 @@ render eff p =
           else
             noAttr
         ]
-        [ withTooltip (span [ colorNote ] [ t "Add Column" ]) <| addColumnButton eff.columnAdder
-        , columnButtons eff.columnButtonClickerByIndex p.visibleColumns
-        , otherButtons eff.configOpener p.configOpen
+        [ withTooltip (span [ colorNote ] [ t "Add Column" ]) <| addColumnButton eff.onAddColumnClick
+        , columnButtons eff.onColumnButtonClickByIndex p.visibleColumns
+        , otherButtons eff.onConfigToggleClick p.configOpen
         ]
 
 
 columnButtons : (Int -> msg) -> List (ColumnInSidebar c) -> Html msg
-columnButtons columnButtonClickerByIndex visibleColumns =
+columnButtons onColumnButtonClickByIndex visibleColumns =
     Html.Keyed.node "div" [ class columnButtonsClass, flexColumn, flexGrow, flexBasisAuto, padding5, spacingColumn10 ] <|
-        List.indexedMap (colummButtonKey columnButtonClickerByIndex) visibleColumns
+        List.indexedMap (colummButtonKey onColumnButtonClickByIndex) visibleColumns
 
 
 addColumnButton : msg -> Html msg
-addColumnButton columnAdder =
+addColumnButton onAddColumnClick =
     Icon.octiconButton
         [ flexItem
         , flexBasisAuto
@@ -83,7 +83,7 @@ addColumnButton columnAdder =
         , Background.transparent
         , Background.hovSub
         ]
-        { onPress = columnAdder
+        { onPress = onAddColumnClick
         , size = octiconSize - 2 -- Subtract border width
         , shape = Octicons.plus
         }
@@ -122,8 +122,8 @@ colummButtonKey columnButtonClicker index c =
                 ]
 
 
-otherButtons : msg -> Bool -> Html msg
-otherButtons configOpener configOpen =
+otherButtons : (Bool -> msg) -> Bool -> Html msg
+otherButtons onConfigToggleClick configOpen =
     let
         note x =
             span [ bold, colorNote ] [ t x ]
@@ -148,7 +148,7 @@ otherButtons configOpener configOpen =
                         ]
             in
             Icon.octiconButton (baseAttrs ++ statefulAttrs)
-                { onPress = configOpener
+                { onPress = onConfigToggleClick (not configOpen)
                 , size = octiconSize
                 , shape = Octicons.gear
                 }

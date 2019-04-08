@@ -17,8 +17,8 @@ import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { onDragstart : Bool -> Int -> String -> msg
-    , onHeaderClick : Maybe msg
+    { onColumnDragStart : Bool -> Int -> String -> msg
+    , onHeaderClickWhenScrolled : String -> msg
     , onPinButtonClick : String -> Bool -> msg
     , onConfigToggleButtonClick : String -> Bool -> msg
     , onDismissButtonClick : Int -> msg
@@ -30,21 +30,32 @@ type alias Props c =
         { c
             | id : String
             , configOpen : Bool
+            , scrolled : Bool
         }
 
 
 render : Effects msg -> Int -> Props c -> Html msg
 render eff index props =
-    div
-        [ flexRow
-        , flexCenter
-        , flexBasisAuto
-        , padding5
-        , spacingRow5
-        , Background.colorSub
-        ]
-        [ grabbableIcon (eff.onDragstart props.pinned index props.id) props
-        , headerText eff.onHeaderClick props
+    let
+        staticAttrs =
+            [ flexRow
+            , flexCenter
+            , flexBasisAuto
+            , padding5
+            , spacingRow5
+            , Background.colorSub
+            ]
+
+        headerClickAttrs =
+            if props.scrolled then
+                [ onClick (eff.onHeaderClickWhenScrolled props.id), Cursor.pointer ]
+
+            else
+                []
+    in
+    div (staticAttrs ++ headerClickAttrs)
+        [ grabbableIcon (eff.onColumnDragStart props.pinned index props.id) props
+        , Column.blockTitle [ flexGrow ] props
         , if props.pinned then
             none
 
@@ -103,32 +114,15 @@ headerButton attrs onPress shape =
 
 
 grabbableIcon : msg -> Props c -> Html msg
-grabbableIcon onDragstart props =
+grabbableIcon onColumnDragStart props =
     div
         [ flexBasisAuto
         , draggable "true"
-        , on "dragstart" (succeed onDragstart)
+        , on "dragstart" (succeed onColumnDragStart)
         , Cursor.allScroll
         ]
         [ Column.icon30 props
         ]
-
-
-headerText : Maybe msg -> Props c -> Html msg
-headerText onHeaderClick props =
-    let
-        attrs =
-            case onHeaderClick of
-                Just onPress ->
-                    [ flexGrow
-                    , onClick onPress
-                    , Cursor.pointer
-                    ]
-
-                Nothing ->
-                    [ flexGrow ]
-    in
-    Column.blockTitle attrs props
 
 
 styles : List Style

@@ -31,9 +31,6 @@ renderBlock quoteLevel block =
             let
                 size =
                     if level <= 2 then
-                        xProminent
-
-                    else if level <= 4 then
                         prominent
 
                     else
@@ -48,7 +45,7 @@ renderBlock quoteLevel block =
                 (List.map renderInline inlines)
 
         CodeBlock _ raw ->
-            pre [ breakWords, padding2, Border.round2, Background.colorBg ] [ t raw ]
+            pre [ minuscule, breakWords, padding2, Border.round2, Background.colorBg ] [ t raw ]
 
         Paragraph _ inlines ->
             p [ breakWords ] (List.map renderInline inlines)

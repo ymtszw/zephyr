@@ -1,14 +1,14 @@
 module Data.ColumnItem.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
     , imageMedia, videoMedia
-    , attachedImage, attachedVideo, attachedOther, attachedFileDescription, attachedFilePreview, attachedFileDimension
+    , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
 @docs imageMedia, videoMedia
-@docs attachedImage, attachedVideo, attachedOther, attachedFileDescription, attachedFilePreview, attachedFileDimension
+@docs attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
 
 -}
 
@@ -40,34 +40,48 @@ type VisualMedia
 
 type alias MediaRecord =
     { src : String
+    , link : String
     , description : String
-    , dimension : Maybe ( Int, Int )
+    , dimension : Maybe { width : Int, height : Int }
     }
 
 
-imageMedia : String -> String -> Maybe ( Int, Int ) -> VisualMedia
-imageMedia src description dimension =
-    Image (MediaRecord src description dimension)
+imageMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
+imageMedia src link description dimension =
+    Image (MediaRecord src link description dimension)
 
 
-videoMedia : String -> String -> Maybe ( Int, Int ) -> VisualMedia
-videoMedia src description dimension =
-    Video (MediaRecord src description dimension)
+videoMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
+videoMedia src link description dimension =
+    Video (MediaRecord src link description dimension)
 
 
 attachedImage : String -> AttachedFile
 attachedImage src =
-    VisualFile (imageMedia src "Attached image" Nothing)
+    VisualFile (imageMedia src src "Attached image" Nothing)
 
 
 attachedVideo : String -> AttachedFile
 attachedVideo src =
-    VisualFile (videoMedia src "Attached video" Nothing)
+    VisualFile (videoMedia src src "Attached video" Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
 attachedOther fileUrl =
     OtherFile { fileUrl = fileUrl, description = "Attached file", preview = Nothing }
+
+
+attachedFileLink : String -> AttachedFile -> AttachedFile
+attachedFileLink link f =
+    case f of
+        VisualFile (Image record) ->
+            VisualFile (Image { record | link = link })
+
+        VisualFile (Video record) ->
+            VisualFile (Video { record | link = link })
+
+        OtherFile record ->
+            OtherFile record
 
 
 attachedFileDescription : String -> AttachedFile -> AttachedFile
@@ -93,7 +107,7 @@ attachedFilePreview preview f =
             OtherFile { record | preview = Just preview }
 
 
-attachedFileDimension : ( Int, Int ) -> AttachedFile -> AttachedFile
+attachedFileDimension : { width : Int, height : Int } -> AttachedFile -> AttachedFile
 attachedFileDimension dimension f =
     case f of
         VisualFile (Image record) ->

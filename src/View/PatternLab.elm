@@ -3,7 +3,7 @@ module View.PatternLab exposing (main)
 import Browser
 import Browser.Navigation exposing (Key)
 import Color
-import Data.ColumnEditor exposing (ColumnEditor(..))
+import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..))
 import Data.ColumnItem as ColumnItem exposing (ColumnItem)
 import Data.ColumnItem.Contents exposing (..)
 import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
@@ -83,7 +83,7 @@ type alias Model =
     , numColumns : Int
     , editorSeq : Int
     , editorFile : Maybe ( File, String )
-    , userActionOnEditor : NewMessageEditor.UserAction
+    , userActionOnEditor : UserAction
     }
 
 
@@ -144,7 +144,7 @@ init () url key =
       , numColumns = 4
       , editorSeq = 0
       , editorFile = Nothing
-      , userActionOnEditor = NewMessageEditor.Browsing
+      , userActionOnEditor = OutOfFocus
       }
     , Cmd.none
     )
@@ -189,6 +189,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
         NoOp ->
+            let
+                _ =
+                    Debug.log "NoOp" m
+            in
             ( m, Cmd.none )
 
         GoTo (Browser.Internal url) ->
@@ -321,9 +325,7 @@ introduction =
             ]
         , section []
             [ h2 [ prominent ] [ t "Imports" ]
-            , sourceBlock """import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+            , sourceBlock """(Other elm/* imports are omitted)
 import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
@@ -332,19 +334,27 @@ import View.Atoms.Image as Image
 import View.Atoms.Input as Input
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
+import View.Atoms.Popout as Popout
 import View.Atoms.TextBlock exposing (forceBreak, selectAll)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
+import View.Molecules.MarkdownBlocks as MarkdownBlocks
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Column.Config as ColumnConfig
+import View.Organisms.Column.Header as Header
+import View.Organisms.Column.Items as Items
+import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
 import View.Organisms.Config.Status as Status
 import View.Organisms.Sidebar as Sidebar
-import View.Style exposing (none, px)
+import View.Style exposing (noAttr, none, px)
 import View.Stylesheet
 import View.Templates.Main exposing (DragStatus(..))"""
             ]
@@ -1609,6 +1619,8 @@ animation =
             img [ Animation.rotating, src (Image.ph 50 50), alt "50x50 image" ] []
         , withSource """img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
             img [ Animation.slideDown, src (Image.ph 50 50), alt "50x50 image" ] []
+        , withSource """img [ Border.w1, Border.solid, Animation.borderFlash, src (Image.ph 50 50), alt "50x50 image" ] []""" <|
+            img [ Border.w1, Border.solid, Animation.borderFlash, src (Image.ph 50 50), alt "50x50 image" ] []
         ]
 
 
@@ -2271,9 +2283,9 @@ sidebar m =
         }
 in
 Sidebar.render
-    { configOpener = Toggle (not m.toggle)
-    , columnAdder = AddColumn
-    , columnButtonClickerByIndex = always NoOp
+    { onConfigToggleClick = Toggle
+    , onAddColumnClick = AddColumn
+    , onColumnButtonClickByIndex = always NoOp
     }
     { configOpen = m.toggle
     , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
@@ -2304,9 +2316,9 @@ Sidebar.render
                     }
             in
             Sidebar.render
-                { configOpener = Toggle (not m.toggle)
-                , columnAdder = AddColumn
-                , columnButtonClickerByIndex = always NoOp
+                { onConfigToggleClick = Toggle
+                , onAddColumnClick = AddColumn
+                , onColumnButtonClickByIndex = always NoOp
                 }
                 { configOpen = m.toggle
                 , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
@@ -2516,12 +2528,12 @@ Discord.render
                 , onForceFetchButtonClick = always NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = always NoOp
+                , selectMsgTagger = SelectCtrl
                 }
                 { token = m.textInput
                 , tokenSubmitButtonText = "Submit"
                 , tokenSubmittable = True
                 , currentState = Discord.HydratedOnce dummyOpts
-                , selectMsgTagger = SelectCtrl
                 , selectState = m.select
                 }
         ]
@@ -2550,7 +2562,7 @@ configSlack m =
         { id = "DUMMYTEAMID" ++ String.fromInt index
         , name = String.fromInt index ++ "TEAM"
         , domain = String.fromInt index ++ "team"
-        , image48 =
+        , image44 =
             if modBy 2 index == 0 then
                 Just (Image.ph 48 48)
 
@@ -2619,7 +2631,7 @@ Slack.render
                     { id = "DUMMYTEAMID" ++ String.fromInt index
                     , name = String.fromInt index ++ "TEAM"
                     , domain = String.fromInt index ++ "team"
-                    , image48 =
+                    , image44 =
                         if modBy 2 index == 0 then
                             Just (Image.ph 48 48)
 
@@ -2657,16 +2669,16 @@ Slack.render
             Slack.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
-                , onRehydrateButtonClick = Toggle (not m.toggle)
-                , onConvSelect = always NoOp
-                , onForceFetchButtonClick = always NoOp
+                , onRehydrateButtonClick = always (Toggle (not m.toggle))
+                , onConvSelect = \_ _ -> NoOp
+                , onForceFetchButtonClick = \_ _ -> NoOp
                 , onCreateColumnButtonClick = always NoOp
-                , onUnsubscribeButtonClick = always NoOp
+                , onUnsubscribeButtonClick = \_ _ -> NoOp
+                , selectMsgTagger = SelectCtrl
                 }
                 { token = m.textInput
                 , tokenSubmittable = True
                 , teamStates = List.range 0 2 |> List.map dummyTeamState
-                , selectMsgTagger = SelectCtrl
                 , selectState = m.select
                 }
         ]
@@ -2679,8 +2691,8 @@ columnHeader m =
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2691,10 +2703,11 @@ columnHeader m =
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2705,10 +2718,11 @@ columnHeader m =
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2719,10 +2733,11 @@ columnHeader m =
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2733,13 +2748,14 @@ columnHeader m =
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2753,10 +2769,11 @@ columnHeader m =
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2770,10 +2787,11 @@ columnHeader m =
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             , withSourceInColumn Nothing 60 """Header.render
-    { onDragstart = \\_ _ _ -> NoOp
-    , onHeaderClick = Nothing
+    { onColumnDragStart = \\_ _ _ -> NoOp
+    , onHeaderClickWhenScrolled = always NoOp
     , onPinButtonClick = \\_ to -> Toggle to
     , onConfigToggleButtonClick = \\_ to -> Toggle to
     , onDismissButtonClick = always NoOp
@@ -2792,10 +2810,11 @@ columnHeader m =
     , filters = List.repeat 3 "Shrinks if constrained"
     , pinned = m.toggle
     , configOpen = m.toggle
+    , scrolled = False
     }""" <|
                 Header.render
-                    { onDragstart = \_ _ _ -> NoOp
-                    , onHeaderClick = Nothing
+                    { onColumnDragStart = \_ _ _ -> NoOp
+                    , onHeaderClickWhenScrolled = always NoOp
                     , onPinButtonClick = \_ to -> Toggle to
                     , onConfigToggleButtonClick = \_ to -> Toggle to
                     , onDismissButtonClick = always NoOp
@@ -2814,6 +2833,7 @@ columnHeader m =
                     , filters = List.repeat 3 "Shrinks if constrained"
                     , pinned = m.toggle
                     , configOpen = m.toggle
+                    , scrolled = False
                     }
             ]
         ]
@@ -2849,7 +2869,7 @@ columnConfig m =
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
             , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID1")) 300 """ColumnConfig.render
-    { onCloseButtonClick = Toggle False
+    { onCloseButtonClick = always (Toggle False)
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
@@ -2874,7 +2894,7 @@ columnConfig m =
         }
     }""" <|
                 ColumnConfig.render
-                    { onCloseButtonClick = Toggle False
+                    { onCloseButtonClick = always (Toggle False)
                     , onColumnDeleteButtonClick = always NoOp
                     , onSourceSelect = \_ _ -> NoOp
                     , selectMsgTagger = SelectCtrl
@@ -2902,7 +2922,7 @@ columnConfig m =
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
             , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID2")) 400 """ColumnConfig.render
-    { onCloseButtonClick = Toggle False
+    { onCloseButtonClick = always (Toggle False)
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
@@ -2927,7 +2947,7 @@ columnConfig m =
         }
     }""" <|
                 ColumnConfig.render
-                    { onCloseButtonClick = Toggle False
+                    { onCloseButtonClick = always (Toggle False)
                     , onColumnDeleteButtonClick = always NoOp
                     , onSourceSelect = \_ _ -> NoOp
                     , selectMsgTagger = SelectCtrl
@@ -3082,19 +3102,27 @@ columnItems =
         themed theme_ themeStr =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
-                , withSourceInColumn Nothing 100 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID0", timezone = Time.utc, itemGroups = [], hasMore = False }
-                , withSourceInColumn Nothing 500 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID1"
-                        , timezone = Time.utc
+                , withSourceInColumn Nothing 100 """Items.render { onLoadMoreClick = NoOp }
+    { timezone = Time.utc, itemGroups = [], hasMore = False }""" <|
+                    Items.render { onLoadMoreClick = NoOp }
+                        { timezone = Time.utc, itemGroups = [], hasMore = False }
+                , withSourceInColumn Nothing 500 """Items.render { onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+            , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+            , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+            , ColumnItem.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                |> ColumnItem.kts
+                    [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                    , ( "キー2", Markdown "Marked up **text**" )
+                    ]
+            ]
+    , hasMore = False
+    }""" <|
+                    Items.render { onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
@@ -3108,19 +3136,53 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn Nothing 1000 "" <|
+                , withSourceInColumn Nothing 1000 """Items.render { onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+                |> ColumnItem.attachedFiles [ sampleImage500x500 ]
+            , ColumnItem.new "ci2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+                |> ColumnItem.attachedFiles [ sampleImage100x100 ]
+            , ColumnItem.new "ci3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+                |> ColumnItem.attachedFiles [ sampleImage100x600 ]
+            , ColumnItem.new "ci4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+                |> ColumnItem.attachedFiles [ sampleImage600x100 ]
+            , ColumnItem.new "ci5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+                |> ColumnItem.attachedFiles [ sampleVideo ]
+            , ColumnItem.new "ci6" (NamedEntity.new "Attachement") (Plain "External file")
+                |> ColumnItem.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
+            , ColumnItem.new "ci7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+                |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
+            , ColumnItem.new "ci8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+                |> ColumnItem.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
+            , ColumnItem.new "ci9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+                |> ColumnItem.attachedFiles
+                    [ attachedOther (DownloadUrl "/image.html")
+                        |> attachedFileDescription (String.repeat 10 "longstring")
+                    ]
+            , ColumnItem.new "ci10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+                |> ColumnItem.attachedFiles
+                    [ attachedOther (ExternalLink "/index.html")
+                        |> attachedFilePreview samplePreview
+                    ]
+            , ColumnItem.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
+                |> ColumnItem.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+            ]
+    , hasMore = True
+    }""" <|
                     let
                         sampleImage500x500 =
-                            attachedImage (Image.ph 500 500) |> attachedFileDimension ( 500, 500 )
+                            attachedImage (Image.ph 500 500) |> attachedFileDimension { width = 500, height = 500 }
 
                         sampleImage100x100 =
-                            attachedImage (Image.ph 100 100) |> attachedFileDimension ( 100, 100 )
+                            attachedImage (Image.ph 100 100) |> attachedFileDimension { width = 100, height = 100 }
 
                         sampleImage100x600 =
-                            attachedImage (Image.ph 100 600) |> attachedFileDimension ( 100, 600 )
+                            attachedImage (Image.ph 100 600) |> attachedFileDimension { width = 100, height = 600 }
 
                         sampleImage600x100 =
-                            attachedImage (Image.ph 600 100) |> attachedFileDimension ( 600, 100 )
+                            attachedImage (Image.ph 600 100) |> attachedFileDimension { width = 600, height = 100 }
 
                         sampleVideo =
                             attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
@@ -3138,12 +3200,8 @@ columnItems =
 </html>
 """
                     in
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID2"
-                        , timezone = Time.utc
+                    Items.render { onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
@@ -3177,13 +3235,29 @@ columnItems =
                                 ]
                         , hasMore = True
                         }
-                , withSourceInColumn Nothing 300 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID3"
-                        , timezone = Time.utc
+                , withSourceInColumn Nothing 300 """Items.render { onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+            , ColumnItem.new "ci1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+            , ColumnItem.new "ci2"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
+                (Plain "ImageOrAbbr")
+            , ColumnItem.new "ci3"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
+                (Plain "ImageOrAbbr")
+            , ColumnItem.new "ci4"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
+                (Plain "ImageOrAbbr")
+            , ColumnItem.new "ci5"
+                (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
+                (Plain "ImageOrAbbr")
+            ]
+    , hasMore = False
+    }""" <|
+                    Items.render { onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
@@ -3203,19 +3277,68 @@ columnItems =
                                 ]
                         , hasMore = False
                         }
-                , withSourceInColumn Nothing 300 "" <|
-                    Items.render
-                        { scrollAttrs = []
-                        , onLoadMoreClick = always NoOp
-                        }
-                        { columnId = themeStr ++ "CID4"
-                        , timezone = Time.utc
+                , withSourceInColumn Nothing 1000 """Items.render { onLoadMoreClick = NoOp }
+    { timezone = Time.utc
+    , itemGroups =
+        List.map unit
+            [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
+                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                        |> EmbeddedMatter.pretext (Plain "Leading text")
+                        |> EmbeddedMatter.author
+                            (NamedEntity.new "With Avatar"
+                                |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
+                                |> NamedEntity.url "https://example.com/user"
+                                |> NamedEntity.secondaryName "@with_avatar"
+                            )
+                        |> EmbeddedMatter.title (Plain "This is title")
+                        |> EmbeddedMatter.url "https://example.com/verylongpath/morethan30/index.html"
+                        |> EmbeddedMatter.origin
+                            (NamedEntity.new "Origin Service"
+                                |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 20 20)) "Origin Service" False)
+                                |> NamedEntity.url "https://example.com/origin"
+                            )
+                        |> EmbeddedMatter.kts
+                            [ ( "Key1", Plain ("Plain text. " ++ iroha) )
+                            , ( "キー2", Markdown "Marked up **text**" )
+                            ]
+                    ]
+            , ColumnItem.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
+                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
+                        |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
+                        |> EmbeddedMatter.title (Markdown "**Marked-up title**")
+                        |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
+                    ]
+            , ColumnItem.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
+                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                        |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
+                        |> EmbeddedMatter.attachedFiles
+                            [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
+                            , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                            ]
+                    ]
+            , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
+                |> ColumnItem.embeddedMatters
+                    [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
+                    , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
+                    ]
+            ]
+    , hasMore = False
+    }""" <|
+                    Items.render { onLoadMoreClick = NoOp }
+                        { timezone = Time.utc
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
                                     |> ColumnItem.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                            |> EmbeddedMatter.pretext (Plain "Leading text")
                                             |> EmbeddedMatter.author
                                                 (NamedEntity.new "With Avatar"
                                                     |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
@@ -3246,16 +3369,16 @@ columnItems =
                                     |> ColumnItem.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
-                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) "Thumbnail" (Just ( 100, 100 )))
+                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                                             |> EmbeddedMatter.attachedFiles
-                                                [ attachedImage (Image.ph 200 200) |> attachedFileDimension ( 200, 200 )
+                                                [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                                                 ]
                                         ]
                                 , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
                                     |> ColumnItem.embeddedMatters
-                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
-                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533")
+                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
+                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                                         ]
                                 ]
                         , hasMore = False
@@ -3277,12 +3400,14 @@ mainTemplate m =
     let
         mainEffects =
             { sidebarEffects =
-                { configOpener = Toggle (not m.toggle)
-                , columnAdder = AddColumn
-                , columnButtonClickerByIndex = always NoOp
+                { onConfigToggleClick = Toggle
+                , onAddColumnClick = AddColumn
+                , onColumnButtonClickByIndex = always NoOp
                 }
-            , columnDragEnd = NoOp
-            , columnDragHover = \_ -> NoOp
+            , onColumnDragEnd = NoOp
+            , onColumnDragHover = always NoOp
+            , onColumnBorderFlashEnd = always NoOp
+            , columnItemsScrollAttrs = always [ on "scroll" (succeed NoOp) ]
             }
 
         mainProps =
@@ -3315,6 +3440,13 @@ mainTemplate m =
 
                     _ ->
                         Grabbed
+            , recentlyTouched =
+                case modBy 5 index of
+                    0 ->
+                        True
+
+                    _ ->
+                        False
             , sources =
                 case modBy 3 index of
                     0 ->

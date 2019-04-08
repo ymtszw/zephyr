@@ -93,7 +93,7 @@ parse opts raw =
 
         parseAsMarkdown text =
             if opts.markdown then
-                Block.parse blockParseOptions text
+                Block.parse (Just blockParseOptions) text
 
             else
                 [ Paragraph "" [ Text text ] ]
@@ -105,19 +105,15 @@ parse opts raw =
         |> Parsed
 
 
-blockParseOptions : Maybe Markdown.Config.Options
+blockParseOptions : Markdown.Config.Options
 blockParseOptions =
-    let
-        -- Apply custom HTML sanitization here
-        default =
-            Markdown.Config.defaultOptions
-
-        sanitizeOpions =
+    { softAsHardLineBreak = True -- Slack does this. Discord does not?
+    , rawHtml =
+        Markdown.Config.Sanitize
             { allowedHtmlElements = [ "code" ]
             , allowedHtmlAttributes = []
             }
-    in
-    Just { default | rawHtml = Markdown.Config.Sanitize sanitizeOpions }
+    }
 
 
 

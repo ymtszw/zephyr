@@ -25,7 +25,7 @@ import Scroll
 import String exposing (fromInt)
 import Time exposing (Posix, Zone)
 import Url
-import View.Select as Select
+import View.Atoms.Input.Select as Select
 
 
 type Msg
@@ -91,8 +91,8 @@ logEntry msg =
         LinkClicked (Browser.External str) ->
             Entry "LinkClicked.External" [ str ]
 
-        SelectCtrl sMsg ->
-            selectMsgToEntry sMsg
+        SelectCtrl _ ->
+            Entry "SelectCtrl Select.Msg" [ "<opaque>" ]
 
         AddEmptyColumn ->
             Entry "AddEmptyColumn" []
@@ -218,25 +218,6 @@ loggerMsgToEntry lMsg =
 
         Logger.DelMsgFilter (Logger.MsgFilter isPos ctor) ->
             Entry "Logger.DelMsgFilter" [ filterMode isPos ++ ctor ]
-
-
-selectMsgToEntry : Select.Msg msg -> Entry
-selectMsgToEntry sMsg =
-    case sMsg of
-        Select.Toggle cId bool ->
-            Entry "Select.Toggle" [ cId, boolStr bool ]
-
-        Select.Pick _ ->
-            Entry "Select.Pick" []
-
-        Select.FilterInput filter ->
-            Entry "Select.FilterInput" [ filter ]
-
-        Select.FilterSettle filter ->
-            Entry "Select.FilterSettle" [ filter ]
-
-        Select.DebounceMsg _ ->
-            Entry "Select.DebounceMsg" [ "<Debounce>" ]
 
 
 scrollMsgToEntry : String -> Scroll.Msg -> Entry
@@ -445,8 +426,8 @@ columnMsgToEntry cId cMsg =
         Column.SelectEditor index ->
             Entry "Column.SelectEditor" [ cId, String.fromInt index ]
 
-        Column.EditorToggle isActive ->
-            Entry "Column.EditorToggle" [ cId, boolStr isActive ]
+        Column.EditorInteracted ua ->
+            Entry "Column.EditorInteracted" [ cId, "<UserAction>" ]
 
         Column.EditorInput input ->
             Entry "Column.EditorInput" [ cId, input ]

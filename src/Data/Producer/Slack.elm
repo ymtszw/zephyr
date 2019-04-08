@@ -5,7 +5,7 @@ module Data.Producer.Slack exposing
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
     , encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
     , Msg(..), RpcFailure(..), reload, update
-    , getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
+    , getUser, isChannel, isPrivate, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
     , parseOptions, resolveAngleCmd
     )
@@ -21,7 +21,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
 @docs encodeBot, botDecoder, encodeMessage, messageDecoder, apiMessageDecoder, encodeFam, famDecoder
 @docs Msg, RpcFailure, reload, update
-@docs getUser, isChannel, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
+@docs getUser, isChannel, isPrivate, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
 @docs parseOptions, resolveAngleCmd
 
@@ -1189,8 +1189,10 @@ attachmentAuthorDecoder =
         -- From Slack API; in official app, author and service are both presented but it felt kind of redundant
         , D.map3 AttachmentAuthor
             (D.oneOf [ D.field "author_name" D.string, D.field "service_name" D.string ])
-            (D.oneOf [ D.maybeField "author_link" D.url, D.maybeField "service_url" D.url ])
-            (D.oneOf [ D.maybeField "author_icon" D.url, D.maybeField "service_icon" D.url ])
+            -- Subtle, but an important difference; in oneOf, earlier decoders must "fail" in order to proceed to other decoders.
+            -- D.maybeField always succeeds (with Nothing, at least) so it can shadow remaining decoders when used earlier.
+            (D.oneOf [ D.field "author_link" D.url |> D.map Just, D.maybeField "service_url" D.url ])
+            (D.oneOf [ D.field "author_icon" D.url |> D.map Just, D.maybeField "service_icon" D.url ])
         ]
 
 
@@ -2325,7 +2327,7 @@ getConversationFromCache convIdStr caches =
     List.Extra.find (\c -> c.id == ConversationId convIdStr) caches
 
 
-isChannel : Conversation -> Bool
+isChannel : { x | type_ : ConversationType } -> Bool
 isChannel conv =
     case conv.type_ of
         PublicChannel _ ->
@@ -2339,6 +2341,22 @@ isChannel conv =
 
         MPIM ->
             False
+
+
+isPrivate : { x | type_ : ConversationType } -> Bool
+isPrivate conv =
+    case conv.type_ of
+        PublicChannel _ ->
+            False
+
+        PrivateChannel ->
+            True
+
+        IM ->
+            True
+
+        MPIM ->
+            True
 
 
 compareByMembersipThenName :

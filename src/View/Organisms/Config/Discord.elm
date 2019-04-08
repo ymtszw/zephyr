@@ -1,4 +1,4 @@
-module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, render)
+module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, SubbableChannel, SubbedChannel, hydratedOnce, render)
 
 import Data.Producer.Discord as Discord
 import Dict exposing (Dict)
@@ -21,20 +21,20 @@ type alias Effects msg =
     , onForceFetchButtonClick : String -> msg
     , onCreateColumnButtonClick : String -> msg
     , onUnsubscribeButtonClick : String -> msg
+    , selectMsgTagger : Select.Msg msg -> msg
     }
 
 
-type alias Props msg =
+type alias Props =
     { token : String
     , tokenSubmitButtonText : String
     , tokenSubmittable : Bool
     , currentState : CurrentState
-    , selectMsgTagger : Select.Msg msg -> msg
     , selectState : Select.State
     }
 
 
-render : Effects msg -> Props msg -> Html msg
+render : Effects msg -> Props -> Html msg
 render eff props =
     div
         [ flexColumn
@@ -64,6 +64,23 @@ type CurrentState
         }
 
 
+hydratedOnce :
+    Bool
+    -> Discord.User
+    -> Dict String Discord.Guild
+    -> List SubbableChannel
+    -> List SubbedChannel
+    -> CurrentState
+hydratedOnce rehydrating user guilds_ subbableChannels subbedChannels =
+    HydratedOnce
+        { rehydrating = rehydrating
+        , user = user
+        , guilds = guilds_
+        , subbableChannels = subbableChannels
+        , subbedChannels = subbedChannels
+        }
+
+
 type alias SubbableChannel =
     { id : String
     , name : String
@@ -80,7 +97,7 @@ type alias SubbedChannel =
     }
 
 
-currentState : Effects msg -> Props msg -> Html msg
+currentState : Effects msg -> Props -> Html msg
 currentState eff props =
     case props.currentState of
         NotIdentified ->
@@ -95,7 +112,7 @@ currentState eff props =
                 , guilds opts.guilds
                 , ProducerConfig.subSelect eff.onChannelSelect
                     { id = "discordChannelSubscribeInput"
-                    , selectMsgTagger = props.selectMsgTagger
+                    , selectMsgTagger = eff.selectMsgTagger
                     , selectState = props.selectState
                     , options = opts.subbableChannels
                     , filterMatch = Discord.channelFilter
@@ -136,12 +153,7 @@ guilds guilds_ =
 guildIconKey : Discord.Guild -> ( String, Html msg )
 guildIconKey g =
     Tuple.pair g.id <|
-        case Maybe.map Icon.discordImageUrl40 g.icon of
-            Just src_ ->
-                img [ Icon.rounded40, src src_, alt g.name ] []
-
-            Nothing ->
-                Icon.abbr [ Icon.rounded40, serif, xProminent ] g.name
+        Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] g.name (Maybe.map Icon.discordImageUrl40 g.icon)
 
 
 channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg
