@@ -172,7 +172,7 @@ editorTextarea eff cId isActive editor =
             , Border.round5
             , onFocus (eff.onInteracted cId Authoring)
             , onInput (eff.onTextInput cId)
-            , onKeyDown (isNotReadyToSubmit editor) (eff.onInteracted cId OutOfFocus) (eff.onSubmit cId)
+            , textareaKeyBinds (isNotReadyToSubmit editor) (eff.onInteracted cId OutOfFocus) (eff.onSubmit cId)
             ]
 
         placeholder_ =
@@ -223,23 +223,23 @@ isNotReadyToSubmit editor =
             String.isEmpty buffer
 
 
-onKeyDown : Bool -> msg -> msg -> Attribute msg
-onKeyDown notReady onEsc onCtrlEnter =
-    let
-        onEscKeyDown =
-            D.when (D.field "key" D.string) ((==) "Escape") (D.succeed onEsc)
-    in
+textareaKeyBinds : Bool -> msg -> msg -> Attribute msg
+textareaKeyBinds notReady blur submit =
+    -- XXX Not using D.oneOf; https://github.com/elm/html/issues/180
     on "keydown" <|
-        D.oneOf <|
-            if notReady then
-                [ onEscKeyDown ]
+        D.do (D.field "key" D.string) <|
+            \key ->
+                if key == "Escape" then
+                    D.succeed blur
 
-            else
-                [ onEscKeyDown
-                , D.when (D.field "ctrlKey" D.bool) identity <|
-                    D.when (D.field "key" D.string) ((==) "Enter") <|
-                        D.succeed onCtrlEnter
-                ]
+                else if notReady then
+                    D.fail "stop here"
+
+                else if key == "Enter" then
+                    D.when (D.field "ctrlKey" D.bool) identity (D.succeed submit)
+
+                else
+                    D.fail "not bound"
 
 
 selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
