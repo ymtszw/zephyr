@@ -3285,6 +3285,7 @@ columnItems =
                 |> ColumnItem.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
                         |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                        |> EmbeddedMatter.pretext (Plain "Leading text")
                         |> EmbeddedMatter.author
                             (NamedEntity.new "With Avatar"
                                 |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
@@ -3323,8 +3324,8 @@ columnItems =
                     ]
             , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
                 |> ColumnItem.embeddedMatters
-                    [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
-                    , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533")
+                    [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
+                    , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                     ]
             ]
     , hasMore = False
@@ -3337,6 +3338,7 @@ columnItems =
                                     |> ColumnItem.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                            |> EmbeddedMatter.pretext (Plain "Leading text")
                                             |> EmbeddedMatter.author
                                                 (NamedEntity.new "With Avatar"
                                                     |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 30 30)) "With Avatar" False)
@@ -3375,8 +3377,8 @@ columnItems =
                                         ]
                                 , ColumnItem.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
                                     |> ColumnItem.embeddedMatters
-                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
-                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533")
+                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
+                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                                         ]
                                 ]
                         , hasMore = False

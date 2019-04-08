@@ -189,8 +189,8 @@ itemBlockKey : ColumnItem -> ( String, Html msg )
 itemBlockKey item =
     Tuple.pair item.id <|
         div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5 ] <|
-            bodyBlocks item.body
-                ++ List.map embeddedMatterBlock item.embeddedMatters
+            textBlocks item.body
+                ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
                 ++ List.map ktBlock item.kts
                 -- TODO reactions
                 ++ List.map attachedFileBlock item.attachedFiles
@@ -200,12 +200,12 @@ ktBlock : ( String, Text ) -> Html msg
 ktBlock ( key, text ) =
     div []
         [ div [ bold ] [ t key ]
-        , div [ padding2 ] (bodyBlocks text)
+        , div [ padding2 ] (textBlocks text)
         ]
 
 
-bodyBlocks : Text -> List (Html msg)
-bodyBlocks text =
+textBlocks : Text -> List (Html msg)
+textBlocks text =
     case text of
         Plain "" ->
             []
@@ -227,8 +227,8 @@ markdownBlocks raw =
         MarkdownBlocks.render TextParser.defaultOptions raw
 
 
-embeddedMatterBlock : EmbeddedMatter -> Html msg
-embeddedMatterBlock matter =
+embeddedMatterBlockAndPretext : EmbeddedMatter -> List (Html msg)
+embeddedMatterBlockAndPretext matter =
     let
         wrapInLink urlMaybe children =
             case urlMaybe of
@@ -245,13 +245,13 @@ embeddedMatterBlock matter =
             case matter.thumbnail of
                 Just visualMedia ->
                     [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
-                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ bodyBlocks matter.body ++ List.map ktBlock matter.kts
+                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
                         , visualMediaBlock visualMedia
                         ]
                     ]
 
                 Nothing ->
-                    authorBlock ++ titleBlock ++ bodyBlocks matter.body ++ List.map ktBlock matter.kts
+                    authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
 
         authorBlock =
             case matter.author of
@@ -338,12 +338,20 @@ embeddedMatterBlock matter =
 
                 Nothing ->
                     []
+
+        gutteredBlock =
+            div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
+                textContentsAndThumbnailBlock
+                    ++ List.map attachedFileBlock matter.attachedFiles
+                    ++ permalink
+                    ++ originBlock
     in
-    div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
-        textContentsAndThumbnailBlock
-            ++ List.map attachedFileBlock matter.attachedFiles
-            ++ permalink
-            ++ originBlock
+    case matter.pretext of
+        Just text ->
+            textBlocks text ++ [ gutteredBlock ]
+
+        Nothing ->
+            [ gutteredBlock ]
 
 
 attachedFileBlock : AttachedFile -> Html msg
