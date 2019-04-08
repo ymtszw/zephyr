@@ -354,6 +354,21 @@ filePreview onDiscardFileButtonClick f dataUrl =
 fileSelectArea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Html msg
 fileSelectArea eff c =
     let
+        checkHoveredObjectHasFiles event =
+            -- XXX event.dataTransfer.files may be empty on hover events, but resolved on drop event
+            -- Also, D.oneOrMore/list APIs do NOT support all Array-like JS data structure.
+            -- In this case, DataTransferItemList object cannot be decoded in Array-like manner.
+            let
+                itemsDecoder =
+                    D.when (D.at [ "0", "kind" ] D.string) ((==) "file") <|
+                        D.succeed ( eff.onInteracted c.id HoveringFiles, True )
+            in
+            preventDefaultOn event <|
+                D.oneOf
+                    [ D.at [ "dataTransfer", "items" ] itemsDecoder
+                    , D.succeed ( eff.onInteracted c.id HoveringNonFile, False )
+                    ]
+
         catchDroppedFile =
             D.oneOf
                 [ D.at [ "dataTransfer", "files" ] (D.oneOrMore (\f _ -> eff.onFileDrop c.id f) File.decoder)
@@ -384,8 +399,8 @@ fileSelectArea eff c =
         , Background.hovBd
         , fill
         , Image.hovText
-        , hijackOn "dragenter" (D.succeed (eff.onInteracted c.id HoveringFiles))
-        , hijackOn "dragover" (D.succeed (eff.onInteracted c.id HoveringFiles))
+        , checkHoveredObjectHasFiles "dragenter"
+        , checkHoveredObjectHasFiles "dragover"
         , hijackOn "dragleave" (D.succeed (eff.onInteracted c.id Authoring))
         , hijackOn "drop" catchDroppedFile
         ]
