@@ -39,6 +39,7 @@ type VisualMedia
 
 
 type alias MediaRecord =
+    -- TODO Add link field for canonical permalink?
     { src : String
     , description : String
     , dimension : Maybe { width : Int, height : Int }

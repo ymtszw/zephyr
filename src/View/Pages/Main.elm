@@ -350,7 +350,7 @@ marshalDiscordMessage id m =
                         |> apOrId (marshalIcon >> NamedEntity.avatar) eAuthor.proxyIconUrl
 
                 marshalEmbedImage eImage =
-                    imageMedia (Url.toString eImage.url) "Embedded image" (Maybe.map2 dimenstion eImage.width eImage.height)
+                    imageMedia (Url.toString eImage.url) "Embedded image" (Maybe.map2 dimension eImage.width eImage.height)
 
                 attachedFiles =
                     List.filterMap identity
@@ -358,7 +358,7 @@ marshalDiscordMessage id m =
                         , Maybe.map
                             (\v ->
                                 attachedVideo (Url.toString v.url)
-                                    |> apOrId attachedFileDimension (Maybe.map2 dimenstion v.width v.height)
+                                    |> apOrId attachedFileDimension (Maybe.map2 dimension v.width v.height)
                             )
                             e.video
                         ]
@@ -370,10 +370,25 @@ marshalDiscordMessage id m =
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
                 |> apOrId (marshalEmbedImage >> EmbeddedMatter.thumbnail) e.thumbnail
                 |> EmbeddedMatter.attachedFiles attachedFiles
+
+        marshalAttachment a =
+            if Data.Item.extIsImage a.filename then
+                attachedImage (Url.toString a.proxyUrl)
+                    |> attachedFileDescription a.filename
+                    |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
+
+            else if Data.Item.extIsVideo a.filename then
+                attachedVideo (Url.toString a.proxyUrl)
+                    |> attachedFileDescription a.filename
+                    |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
+
+            else
+                attachedOther (DownloadUrl (Url.toString a.proxyUrl))
+                    |> attachedFileDescription a.filename
     in
     ColumnItem.new id author (Markdown m.content)
         |> ColumnItem.timestamp m.timestamp
-        -- |> ColumnItem.attachedFiles marshalAttachment m.attachements
+        |> ColumnItem.attachedFiles (List.map marshalAttachment m.attachments)
         |> ColumnItem.embeddedMatters (List.map marshalEmbed m.embeds)
 
 
@@ -382,8 +397,8 @@ marshalColor =
     Element.toRgb >> Color.fromRgba
 
 
-dimenstion : Int -> Int -> { width : Int, height : Int }
-dimenstion w h =
+dimension : Int -> Int -> { width : Int, height : Int }
+dimension w h =
     { width = w, height = h }
 
 
