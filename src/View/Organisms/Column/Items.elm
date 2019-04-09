@@ -215,17 +215,17 @@ itemBlockKey tz item =
 
 hoverMenu : Time.Zone -> ColumnItem -> Html msg
 hoverMenu tz item =
-    div [ class flexHoverMenuClass, minuscule, Background.colorMain, Border.colorNote, Border.round5 ] <|
+    div [ class flexHoverMenuClass, minuscule, padding2, Border.colorNote ] <|
         case item.timestamp of
             Just posixTime ->
-                [ div [ nowrap, padding5, Border.leftRound5, Border.solid, Border.w1 ] [ t (TimeExtra.local tz posixTime) ]
-                , button [ flexItem, Background.transparent, Border.rightRound5, Border.solid, Border.w1 ]
+                [ div [ nowrap, padding5, Background.colorMain, Border.leftRound5, Border.solid, Border.w1 ] [ t (TimeExtra.local tz posixTime) ]
+                , button [ flexItem, Image.fillText, Background.colorMain, Border.rightRound5, Border.solid, Border.w1 ]
                     [ Image.octicon { size = minusculeSize, shape = Octicons.code } ]
                 ]
 
             Nothing ->
-                [ div [ padding5, Border.leftRound5, Border.solid, Border.w1 ] [ t "[PH]" ]
-                , button [ flexItem, Background.transparent, Border.rightRound5, Border.solid, Border.w1 ]
+                [ div [ padding5, Background.colorMain, Border.leftRound5, Border.solid, Border.w1 ] [ t "[PH]" ]
+                , button [ flexItem, Image.fillText, Background.colorMain, Border.rightRound5, Border.solid, Border.w1 ]
                     [ Image.octicon { size = minusculeSize, shape = Octicons.code } ]
                 ]
 
