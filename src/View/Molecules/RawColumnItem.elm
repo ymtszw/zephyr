@@ -5,9 +5,10 @@ import Html exposing (Html, pre, text)
 import Json.Encode
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
+import View.Atoms.Layout exposing (padding5)
 
 
 render : ColumnItem -> Html msg
 render ci =
-    pre [ Background.colorBg, Border.round5 ]
+    pre [ padding5, Background.colorBg, Border.round5 ]
         [ text (Json.Encode.encode 2 (Column.encodeColumnItem ci)) ]

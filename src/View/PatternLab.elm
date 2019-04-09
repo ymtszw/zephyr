@@ -1,9 +1,13 @@
 module View.PatternLab exposing (main)
 
+import Broker
 import Browser
 import Browser.Navigation exposing (Key)
 import Color
+import Data.Column exposing (ColumnItem(..))
 import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..))
+import Data.Item
+import Data.Producer.Discord
 import Dict
 import File exposing (File)
 import File.Select
@@ -37,6 +41,7 @@ import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.RawColumnItem as RawColumnItem
 import View.Molecules.Source exposing (Source(..))
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
@@ -2254,9 +2259,85 @@ column =
 
 rawColumnItem : Html Msg
 rawColumnItem =
-    section []
-        [ h1 [ xxProminent ] [ t "RawColumnItem" ]
-        ]
+    let
+        significantlylongstring =
+            String.repeat 50 "significantlylongstring"
+
+        withSampleBrokerOffset content =
+            case Broker.offsetFromString ("00000001" ++ "01" ++ "00001") of
+                Just offset ->
+                    content offset
+
+                Nothing ->
+                    none
+    in
+    withSampleBrokerOffset <|
+        \sampleOffset ->
+            section []
+                [ h1 [ xxProminent ] [ t "RawColumnItem" ]
+                , withSource """RawColumnItem.render <|
+    SystemMessage
+        { id = "sm01"
+        , message = "System Message " ++ lorem ++ iroha ++ significantlylongstring
+        , mediaMaybe = Nothing
+        }""" <|
+                    RawColumnItem.render <|
+                        SystemMessage
+                            { id = "sm01"
+                            , message = "System Message " ++ lorem ++ iroha ++ significantlylongstring
+                            , mediaMaybe = Nothing
+                            }
+                , withSource """RawColumnItem.render <|
+    SystemMessage
+        { id = "sm01"
+        , message = "With media"
+        , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
+        }""" <|
+                    RawColumnItem.render <|
+                        SystemMessage
+                            { id = "sm01"
+                            , message = "With media"
+                            , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
+                            }
+                , withSource """RawColumnItem.render <|
+    LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }""" <|
+                    RawColumnItem.render <|
+                        LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }
+                , withSource """RawColumnItem.render <|
+    Product sampleOffset <|
+        Data.Item.DiscordItem <|
+            { id = "discordMessageId01"
+            , channelId = "discordChannelId01"
+            , author =
+                Data.Producer.Discord.UserAuthor
+                    { id = "discordUserId01"
+                    , username = "User Name"
+                    , discriminator = "4444"
+                    , avatar = Nothing
+                    }
+            , timestamp = Time.millisToPosix 0
+            , content = "Message Body"
+            , embeds = []
+            , attachments = []
+            }""" <|
+                    RawColumnItem.render <|
+                        Product sampleOffset <|
+                            Data.Item.DiscordItem <|
+                                { id = "discordMessageId01"
+                                , channelId = "discordChannelId01"
+                                , author =
+                                    Data.Producer.Discord.UserAuthor
+                                        { id = "discordUserId01"
+                                        , username = "User Name"
+                                        , discriminator = "4444"
+                                        , avatar = Nothing
+                                        }
+                                , timestamp = Time.millisToPosix 0
+                                , content = "Message Body"
+                                , embeds = []
+                                , attachments = []
+                                }
+                ]
 
 
 sidebar : Model -> Html Msg
