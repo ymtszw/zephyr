@@ -1,4 +1,4 @@
-module Data.ColumnItem.EmbeddedMatter exposing
+module View.Organisms.Column.Items.ItemForView.EmbeddedMatter exposing
     ( EmbeddedMatter, new
     , color, pretext, author, title, url, kts, thumbnail, attachedFiles, origin
     )
@@ -11,8 +11,8 @@ module Data.ColumnItem.EmbeddedMatter exposing
 -}
 
 import Color exposing (Color)
-import Data.ColumnItem.Contents exposing (..)
-import Data.ColumnItem.NamedEntity exposing (NamedEntity)
+import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
+import View.Organisms.Column.Items.ItemForView.NamedEntity exposing (NamedEntity)
 
 
 type alias EmbeddedMatter =
