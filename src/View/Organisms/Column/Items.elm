@@ -57,7 +57,6 @@ render eff props =
                 [ flexBasisAuto
                 , flexShrink
                 , flexColumn
-                , padding5
                 ]
                 (contents ++ [ loadMoreOrBottomMarkerKey eff.onLoadMoreClick props.hasMore ])
 
