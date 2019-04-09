@@ -3109,9 +3109,13 @@ columnItems =
     , itemGroups =
         List.map unit
             [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+                |> ColumnItem.timestamp (Time.millisToPosix 1000)
             , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+                |> ColumnItem.timestamp (Time.millisToPosix 100)
             , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                |> ColumnItem.timestamp (Time.millisToPosix 10)
             , ColumnItem.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                |> ColumnItem.timestamp (Time.millisToPosix 1)
                 |> ColumnItem.kts
                     [ ( "Key1", Plain ("Plain text. " ++ iroha) )
                     , ( "キー2", Markdown "Marked up **text**" )
@@ -3124,9 +3128,13 @@ columnItems =
                         , itemGroups =
                             List.map unit
                                 [ ColumnItem.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+                                    |> ColumnItem.timestamp (Time.millisToPosix 1000)
                                 , ColumnItem.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+                                    |> ColumnItem.timestamp (Time.millisToPosix 100)
                                 , ColumnItem.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                                    |> ColumnItem.timestamp (Time.millisToPosix 10)
                                 , ColumnItem.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                                    |> ColumnItem.timestamp (Time.millisToPosix 1)
                                     |> ColumnItem.kts
                                         [ ( "Key1", Plain ("Plain text. " ++ iroha) )
                                         , ( "キー2", Markdown "Marked up **text**" )
