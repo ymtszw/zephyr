@@ -188,7 +188,7 @@ itemGroupHeaderKey tz item =
 itemBlockKey : ColumnItem -> ( String, Html msg )
 itemBlockKey item =
     Tuple.pair item.id <|
-        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5 ] <|
+        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5, Background.hovSub ] <|
             textBlocks item.body
                 ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
                 ++ List.map ktBlock item.kts
