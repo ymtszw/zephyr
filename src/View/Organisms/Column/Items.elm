@@ -161,7 +161,7 @@ itemGroupContents tz oldestItem subsequentItems =
         , flexShrink
         , spacingColumn2
         ]
-        (itemGroupHeaderKey tz oldestItem :: List.map itemBlockKey (oldestItem :: subsequentItems))
+        (itemGroupHeaderKey tz oldestItem :: List.map (itemBlockKey tz) (oldestItem :: subsequentItems))
 
 
 itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
@@ -184,15 +184,50 @@ itemGroupHeaderKey tz item =
             ]
 
 
-itemBlockKey : ColumnItem -> ( String, Html msg )
-itemBlockKey item =
+itemBlockKey : Time.Zone -> ColumnItem -> ( String, Html msg )
+itemBlockKey tz item =
     Tuple.pair item.id <|
-        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5, Background.hovSub ] <|
-            textBlocks item.body
-                ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
-                ++ List.map ktBlock item.kts
-                -- TODO reactions
-                ++ List.map attachedFileBlock item.attachedFiles
+        withBadge
+            [ class itemBlockClass
+            , Background.hovSub
+            ]
+            { topRight = Just (hoverMenu tz item)
+            , bottomRight = Nothing
+            , content =
+                let
+                    children =
+                        textBlocks item.body
+                            ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
+                            ++ List.map ktBlock item.kts
+                            -- TODO reactions
+                            ++ List.map attachedFileBlock item.attachedFiles
+                in
+                div
+                    [ flexColumn
+                    , flexBasisAuto
+                    , flexShrink
+                    , flexGrow
+                    , spacingColumn5
+                    ]
+                    children
+            }
+
+
+hoverMenu : Time.Zone -> ColumnItem -> Html msg
+hoverMenu tz item =
+    div [ class flexHoverMenuClass, minuscule, Background.colorMain, Border.colorNote, Border.round5 ] <|
+        case item.timestamp of
+            Just posixTime ->
+                [ div [ nowrap, padding5, Border.leftRound5, Border.solid, Border.w1 ] [ t (TimeExtra.local tz posixTime) ]
+                , button [ flexItem, Background.transparent, Border.rightRound5, Border.solid, Border.w1 ]
+                    [ Image.octicon { size = minusculeSize, shape = Octicons.code } ]
+                ]
+
+            Nothing ->
+                [ div [ padding5, Border.leftRound5, Border.solid, Border.w1 ] [ t "[PH]" ]
+                , button [ flexItem, Background.transparent, Border.rightRound5, Border.solid, Border.w1 ]
+                    [ Image.octicon { size = minusculeSize, shape = Octicons.code } ]
+                ]
 
 
 ktBlock : ( String, Text ) -> Html msg
@@ -439,6 +474,8 @@ styles =
         [ ( "padding-top", px itemGroupPaddingY )
         , ( "padding-bottom", px itemGroupPaddingY )
         ]
+    , s (descOf (hov (c itemBlockClass)) (c flexHoverMenuClass)) [ ( "display", "flex" ) ]
+    , s (c flexHoverMenuClass) [ ( "display", "none" ) ]
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
@@ -464,6 +501,16 @@ itemGroupPaddingY =
 itemGroupContentsClass : String
 itemGroupContentsClass =
     "cigc"
+
+
+itemBlockClass : String
+itemBlockClass =
+    "cib"
+
+
+flexHoverMenuClass : String
+flexHoverMenuClass =
+    "cihm"
 
 
 maxMediaHeight : Int
