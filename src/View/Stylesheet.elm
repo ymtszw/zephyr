@@ -21,6 +21,7 @@ import View.Organisms.Column.Header as Header
 import View.Organisms.Column.Items as Items
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Pref as Pref
+import View.Organisms.Modeless as Modeless
 import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (..)
 import View.Templates.Main
@@ -56,6 +57,7 @@ rendered =
                 ++ Source.styles
                 ++ ProducerConfig.styles
                 ++ Sidebar.styles
+                ++ Modeless.styles
                 ++ Pref.styles
                 ++ Header.styles
                 ++ NewMessageEditor.styles

@@ -57,6 +57,7 @@ import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref
 import View.Organisms.Config.Slack as Slack
 import View.Organisms.Config.Status as Status
+import View.Organisms.Modeless as Modeless
 import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (noAttr, none, px)
 import View.Stylesheet
@@ -89,6 +90,7 @@ type alias Model =
     , editorSeq : Int
     , editorFile : Maybe ( File, String )
     , userActionOnEditor : UserAction
+    , modeless : Modeless.State
     }
 
 
@@ -126,6 +128,7 @@ routes =
     , R "column" "Molecules" "Column" <| pLab [ column ]
     , R "rawColumnItem" "Molecules" "RawColumnItem" <| pLab [ rawColumnItem ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
+    , R "modeless" "Organisms" "Modeless" <| \m -> pLab [ modeless m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
     , R "config_discord" "Organisms" "Config.Discord" <| \m -> pLab [ configDiscord m ] m
@@ -151,6 +154,7 @@ init () url key =
       , editorSeq = 0
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
+      , modeless = Modeless.init
       }
     , Cmd.none
     )
@@ -189,6 +193,8 @@ type Msg
     | EditorFileSelected File
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
+    | ModelessTouch Modeless.ModelessId
+    | ModelessRemove Modeless.ModelessId
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -253,6 +259,12 @@ update msg m =
 
         EditorFileDiscard ->
             ( { m | editorFile = Nothing }, Cmd.none )
+
+        ModelessTouch mId ->
+            ( { m | modeless = Modeless.push mId m.modeless }, Cmd.none )
+
+        ModelessRemove mId ->
+            ( { m | modeless = Modeless.remove mId m.modeless }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2410,6 +2422,38 @@ Sidebar.render
                 { configOpen = m.toggle
                 , visibleColumns = List.map dummyColumn (List.range 0 (m.numColumns - 1))
                 }
+        ]
+
+
+modeless : Model -> Html Msg
+modeless m =
+    section []
+        [ h1 [ xxProminent ] [ t "Modeless" ]
+        , withSource "" <|
+            let
+                resolver mId =
+                    case mId of
+                        Modeless.RawColumnItemId _ _ ->
+                            Modeless.RawColumnItem mId <|
+                                SystemMessage
+                                    { id = Modeless.idStr mId
+                                    , message = Modeless.idStr mId ++ lorem ++ iroha
+                                    , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
+                                    }
+            in
+            div []
+                [ div [ flexColumn, spacingColumn10 ]
+                    [ button [ flexItem, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
+                        [ t "Click me to show Modeless 0" ]
+                    , button [ flexItem, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 1)) ]
+                        [ t "Click me to show Modeless 1" ]
+                    ]
+                , Modeless.render
+                    { onCloseButtonClick = ModelessRemove
+                    , onAnywhereClick = ModelessTouch
+                    }
+                    (Modeless.map resolver m.modeless)
+                ]
         ]
 
 
