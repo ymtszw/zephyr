@@ -5,10 +5,6 @@ import ArrayExtra
 import Broker
 import Color exposing (Color)
 import Data.Column as Column
-import Data.ColumnItem as ColumnItem
-import Data.ColumnItem.Contents exposing (..)
-import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
-import Data.ColumnItem.NamedEntity as NamedEntity
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConversation)
@@ -31,6 +27,10 @@ import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
 import View.Organisms.Column.Items
+import View.Organisms.Column.Items.ItemForView as ItemForView exposing (ItemForView)
+import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
+import View.Organisms.Column.Items.ItemForView.EmbeddedMatter as EmbeddedMatter
+import View.Organisms.Column.Items.ItemForView.NamedEntity as NamedEntity
 import View.Organisms.Column.NewMessageEditor
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
@@ -279,7 +279,7 @@ marshalSourcesAndFilters fam filters =
     Array.foldl collectSourceAndFilter ( [], [] ) filters
 
 
-marshalColumnItem : Column.ColumnItem -> ColumnItem.ColumnItem
+marshalColumnItem : Column.ColumnItem -> ItemForView
 marshalColumnItem item =
     case item of
         Column.Product offset (Data.Item.DiscordItem message) ->
@@ -293,16 +293,16 @@ marshalColumnItem item =
                 marshalMedia media =
                     case media of
                         Column.Image url ->
-                            ColumnItem.attachedFiles [ attachedImage (Url.toString url) ]
+                            ItemForView.attachedFiles [ attachedImage (Url.toString url) ]
 
                         Column.Video url ->
-                            ColumnItem.attachedFiles [ attachedVideo (Url.toString url) ]
+                            ItemForView.attachedFiles [ attachedVideo (Url.toString url) ]
             in
-            ColumnItem.new sm.id (NamedEntity.new "System Message") (Markdown sm.message)
+            ItemForView.new sm.id (NamedEntity.new "System Message") (Markdown sm.message)
                 |> apOrId marshalMedia sm.mediaMaybe
 
         Column.LocalMessage lm ->
-            ColumnItem.new lm.id (NamedEntity.new "Memo") (Markdown lm.message)
+            ItemForView.new lm.id (NamedEntity.new "Memo") (Markdown lm.message)
 
 
 apOrId : (a -> b -> b) -> Maybe a -> b -> b
@@ -310,7 +310,7 @@ apOrId toFunc =
     Maybe.withDefault identity << Maybe.map toFunc
 
 
-shouldGroupColumnItem : ColumnItem.ColumnItem -> ColumnItem.ColumnItem -> Bool
+shouldGroupColumnItem : ItemForView -> ItemForView -> Bool
 shouldGroupColumnItem older newer =
     let
         sourceIdsMatch =
@@ -334,7 +334,7 @@ shouldGroupColumnItem older newer =
     sourceIdsMatch && authorsMatch && timestampsAreClose
 
 
-marshalDiscordMessage : String -> PDiscord.Message -> ColumnItem.ColumnItem
+marshalDiscordMessage : String -> PDiscord.Message -> ItemForView
 marshalDiscordMessage id m =
     -- XXX Possibly, m.id can be used for interaction handler
     let
@@ -408,10 +408,10 @@ marshalDiscordMessage id m =
                 attachedOther (DownloadUrl (Url.toString a.proxyUrl))
                     |> attachedFileDescription a.filename
     in
-    ColumnItem.new id author (Markdown m.content)
-        |> ColumnItem.timestamp m.timestamp
-        |> ColumnItem.attachedFiles (List.map marshalAttachment m.attachments)
-        |> ColumnItem.embeddedMatters (List.map marshalEmbed m.embeds)
+    ItemForView.new id author (Markdown m.content)
+        |> ItemForView.timestamp m.timestamp
+        |> ItemForView.attachedFiles (List.map marshalAttachment m.attachments)
+        |> ItemForView.embeddedMatters (List.map marshalEmbed m.embeds)
 
 
 marshalColor : Element.Color -> Color
@@ -424,7 +424,7 @@ dimension w h =
     { width = w, height = h }
 
 
-marshalSlackMessage : String -> PSlack.Message -> ColumnItem.ColumnItem
+marshalSlackMessage : String -> PSlack.Message -> ItemForView
 marshalSlackMessage id m =
     let
         author =
@@ -511,10 +511,10 @@ marshalSlackMessage id m =
                 attachedOther (DownloadUrl (Url.toString f.url_))
                     |> attachedFileDescription f.name
     in
-    ColumnItem.new id author (Markdown m.text)
-        |> ColumnItem.timestamp (PSlack.getPosix m)
-        |> ColumnItem.embeddedMatters (List.map marshalAttachment m.attachments)
-        |> ColumnItem.attachedFiles (List.map marshalFile m.files)
+    ItemForView.new id author (Markdown m.text)
+        |> ItemForView.timestamp (PSlack.getPosix m)
+        |> ItemForView.embeddedMatters (List.map marshalAttachment m.attachments)
+        |> ItemForView.attachedFiles (List.map marshalFile m.files)
 
 
 renderConfigPref : Model -> Html Msg

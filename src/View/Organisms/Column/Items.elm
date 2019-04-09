@@ -2,10 +2,6 @@ module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
 import Color
-import Data.ColumnItem exposing (ColumnItem)
-import Data.ColumnItem.Contents exposing (..)
-import Data.ColumnItem.EmbeddedMatter exposing (EmbeddedMatter)
-import Data.ColumnItem.NamedEntity exposing (Avatar(..))
 import Html exposing (Attribute, Html, button, div, img, p, pre, span, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -26,6 +22,10 @@ import View.Atoms.TextBlock exposing (breakWords, clip, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
+import View.Organisms.Column.Items.ItemForView exposing (ItemForView)
+import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
+import View.Organisms.Column.Items.ItemForView.EmbeddedMatter exposing (EmbeddedMatter)
+import View.Organisms.Column.Items.ItemForView.NamedEntity exposing (Avatar(..))
 import View.Style exposing (..)
 
 
@@ -37,7 +37,7 @@ type alias Effects msg =
 type alias Props =
     { timezone : Time.Zone
     , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
-      itemGroups : List ( ColumnItem, List ColumnItem )
+      itemGroups : List ( ItemForView, List ItemForView )
     , hasMore : Bool
     }
 
@@ -88,7 +88,7 @@ loadMoreOrBottomMarkerKey onLoadMoreClick hasMore =
 -- ITEM
 
 
-itemGroupKey : Time.Zone -> ( ColumnItem, List ColumnItem ) -> ( String, Html msg )
+itemGroupKey : Time.Zone -> ( ItemForView, List ItemForView ) -> ( String, Html msg )
 itemGroupKey tz ( oldestItem, subsequentItems ) =
     Tuple.pair ("itemGroup_" ++ oldestItem.id) <|
         div
@@ -105,7 +105,7 @@ itemGroupKey tz ( oldestItem, subsequentItems ) =
             ]
 
 
-itemAuthorAvatar40 : ColumnItem -> Html msg
+itemAuthorAvatar40 : ItemForView -> Html msg
 itemAuthorAvatar40 item =
     let
         octiconAvatar40 shape =
@@ -150,7 +150,7 @@ itemAuthorAvatar40 item =
                 Icon.imgOrAbbr [ serif, xProminent, alignStart, Icon.rounded40 ] item.author.primaryName Nothing
 
 
-itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
+itemGroupContents : Time.Zone -> ItemForView -> List ItemForView -> Html msg
 itemGroupContents tz oldestItem subsequentItems =
     Html.Keyed.node "div"
         [ class itemGroupContentsClass
@@ -164,7 +164,7 @@ itemGroupContents tz oldestItem subsequentItems =
         (itemGroupHeaderKey tz oldestItem :: List.map (itemBlockKey tz) (oldestItem :: subsequentItems))
 
 
-itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
+itemGroupHeaderKey : Time.Zone -> ItemForView -> ( String, Html msg )
 itemGroupHeaderKey tz item =
     Tuple.pair "itemGroupHeader" <|
         div [ flexRow, flexCenter, spacingRow2 ]
@@ -184,7 +184,7 @@ itemGroupHeaderKey tz item =
             ]
 
 
-itemBlockKey : Time.Zone -> ColumnItem -> ( String, Html msg )
+itemBlockKey : Time.Zone -> ItemForView -> ( String, Html msg )
 itemBlockKey tz item =
     Tuple.pair item.id <|
         withBadge
@@ -213,7 +213,7 @@ itemBlockKey tz item =
             }
 
 
-hoverMenu : Time.Zone -> ColumnItem -> Html msg
+hoverMenu : Time.Zone -> ItemForView -> Html msg
 hoverMenu tz item =
     div [ class flexHoverMenuClass, minuscule, padding2, Border.colorNote ] <|
         case item.timestamp of
