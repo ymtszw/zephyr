@@ -177,10 +177,10 @@ type Msg
     | SelectCtrl (Select.Msg Msg)
     | Selected String
     | AddColumn
-    | EditorInteracted NewMessageEditor.UserAction
+    | EditorInteracted UserAction
     | EditorReset
     | EditorFileRequest (List String)
-    | EditorFileSelected NewMessageEditor.UserAction File
+    | EditorFileSelected File
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
 
@@ -237,12 +237,10 @@ update msg m =
             ( { m | textInput = "", editorSeq = m.editorSeq + 1, editorFile = Nothing }, Cmd.none )
 
         EditorFileRequest mimeTypes ->
-            ( m, File.Select.file mimeTypes (EditorFileSelected NewMessageEditor.Authoring) )
+            ( { m | userActionOnEditor = Authoring }, File.Select.file mimeTypes EditorFileSelected )
 
-        EditorFileSelected action file ->
-            ( { m | userActionOnEditor = action }
-            , Task.perform (\dataUrl -> EditorFileLoaded ( file, dataUrl )) (File.toUrl file)
-            )
+        EditorFileSelected file ->
+            ( m, Task.perform (\dataUrl -> EditorFileLoaded ( file, dataUrl )) (File.toUrl file) )
 
         EditorFileLoaded fileWithDataUrl ->
             ( { m | editorFile = Just fileWithDataUrl }, Cmd.none )
@@ -2989,7 +2987,7 @@ columnNewMessageEditor m =
     , onResetButtonClick = always EditorReset
     , onDiscardFileButtonClick = always EditorFileDiscard
     , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-    , onFileDrop = \\_ action f -> EditorFileSelected action f
+    , onFileDrop = \\_ -> EditorFileSelected
     , onSubmit = always EditorReset
     }
     { selectState = m.select
@@ -3021,7 +3019,7 @@ columnNewMessageEditor m =
                     , onResetButtonClick = always EditorReset
                     , onDiscardFileButtonClick = always EditorFileDiscard
                     , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-                    , onFileDrop = \_ action f -> EditorFileSelected action f
+                    , onFileDrop = \_ -> EditorFileSelected
                     , onSubmit = always EditorReset
                     }
                     { selectState = m.select
@@ -3056,7 +3054,7 @@ columnNewMessageEditor m =
     , onResetButtonClick = always EditorReset
     , onDiscardFileButtonClick = always EditorFileDiscard
     , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-    , onFileDrop = \\_ action f -> EditorFileSelected action f
+    , onFileDrop = \\_ -> EditorFileSelected
     , onSubmit = always EditorReset
     }
     { selectState = m.select
@@ -3078,7 +3076,7 @@ columnNewMessageEditor m =
                     , onResetButtonClick = always EditorReset
                     , onDiscardFileButtonClick = always EditorFileDiscard
                     , onRequestFileAreaClick = always (EditorFileRequest [ "*/*" ])
-                    , onFileDrop = \_ action f -> EditorFileSelected action f
+                    , onFileDrop = \_ -> EditorFileSelected
                     , onSubmit = always EditorReset
                     }
                     { selectState = m.select
