@@ -118,7 +118,8 @@ routes =
     , R "table" "Molecules" "Table" <| pLab [ table_ ]
     , R "markdown_blocks" "Molecules" "MarkdownBlocks" <| pLab [ markdownBlocks ]
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
-    , R "source" "Molecules" "Column" <| pLab [ column ]
+    , R "column" "Molecules" "Column" <| pLab [ column ]
+    , R "rawColumnItem" "Molecules" "RawColumnItem" <| pLab [ rawColumnItem ]
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
     , R "config_status" "Organisms" "Config.Status" <| \m -> pLab [ configStatus m ] m
@@ -2248,6 +2249,13 @@ column =
                     , filters = []
                     }
             ]
+        ]
+
+
+rawColumnItem : Html Msg
+rawColumnItem =
+    section []
+        [ h1 [ xxProminent ] [ t "RawColumnItem" ]
         ]
 
 
