@@ -1,5 +1,5 @@
 module View.Organisms.Modeless exposing
-    ( State, ModelessId(..), idStr, init, push, remove, map
+    ( State, ModelessId(..), idStr, init, sub, touch, move, remove, map
     , ResolvedPayload(..), render, styles
     )
 
@@ -10,23 +10,27 @@ Also it can be repositioned by drag and drop.
 
 ModelessWindows are identified by unique String IDs.
 
-@docs State, ModelessId, idStr, init, push, remove, map
+@docs State, ModelessId, idStr, init, sub, touch, move, remove, map
 @docs ResolvedPayload, render, styles
 
 -}
 
+import Browser.Events
 import Data.Column exposing (ColumnItem)
 import Html exposing (Html, button, div)
-import Html.Attributes exposing (class, style)
-import Html.Events exposing (onClick, stopPropagationOn)
+import Html.Attributes exposing (class, draggable, style)
+import Html.Events exposing (on, onClick, preventDefaultOn, stopPropagationOn)
 import Html.Keyed
-import Json.Decode exposing (succeed)
+import Json.Decode exposing (..)
+import Json.DecodeExtra exposing (do)
 import List.Extra
 import Octicons
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
+import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
+import View.Atoms.TextBlock exposing (nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.RawColumnItem as RawColumnItem
@@ -56,6 +60,7 @@ idStr mId =
 type alias Translate =
     { x : Int
     , y : Int
+    , prevDragCoord : Maybe ( Int, Int )
     }
 
 
@@ -64,30 +69,94 @@ init =
     State []
 
 
-push : ModelessId -> State -> State
-push id (State list) =
+sub : (ModelessId -> Int -> Int -> msg) -> State -> Sub msg
+sub toMsg (State list) =
+    let
+        dragged ( _, { prevDragCoord } ) =
+            prevDragCoord /= Nothing
+    in
+    case List.Extra.find dragged list of
+        Just ( id, _ ) ->
+            Browser.Events.onMouseMove (cursorCoordDecoder (toMsg id))
+
+        Nothing ->
+            Sub.none
+
+
+cursorCoordDecoder : (Int -> Int -> msg) -> Decoder msg
+cursorCoordDecoder toMsg =
+    do (field "clientX" int) <|
+        \cx ->
+            do (field "clientY" int) <|
+                \cy ->
+                    if cx == 0 && cy == 0 then
+                        -- Outlier case happens just before dragend
+                        fail "0,0"
+
+                    else
+                        succeed (toMsg cx cy)
+
+
+touch : ModelessId -> State -> State
+touch id (State list) =
     case list of
         [] ->
-            State [ ( id, Translate 0 0 ) ]
+            State [ ( id, Translate 0 0 Nothing ) ]
 
         ( _, { x, y } ) :: _ ->
             case List.Extra.find (\( id_, _ ) -> id_ == id) list of
-                Just ( _, translate ) ->
-                    let
-                        dedup ( id_, _ ) =
-                            case id_ of
-                                RawColumnItemId columnId itemIndex ->
-                                    ( columnId, itemIndex )
-                    in
-                    State <| List.Extra.uniqueBy dedup <| ( id, translate ) :: list
+                Just ( _, trans ) ->
+                    -- Quit drag, can be used on DragEnd
+                    State (consDedup ( id, { trans | prevDragCoord = Nothing } ) list)
 
                 Nothing ->
-                    State (( id, Translate (x + staggerAmountOnPush) (y + staggerAmountOnPush) ) :: list)
+                    -- Since the subject is not found, no need to dedup
+                    if x == 0 && y == 0 then
+                        State (( id, Translate staggerAmountOnPush staggerAmountOnPush Nothing ) :: list)
+
+                    else
+                        State (( id, Translate 0 0 Nothing ) :: list)
+
+
+consDedup : ( ModelessId, Translate ) -> List ( ModelessId, Translate ) -> List ( ModelessId, Translate )
+consDedup a list =
+    let
+        dedup ( id, _ ) =
+            case id of
+                RawColumnItemId columnId itemIndex ->
+                    ( columnId, itemIndex )
+    in
+    List.Extra.uniqueBy dedup (a :: list)
 
 
 staggerAmountOnPush : Int
 staggerAmountOnPush =
     20
+
+
+move : ( ModelessId, Int, Int ) -> State -> State
+move ( id, newX, newY ) (State list) =
+    case List.Extra.find (\( id_, _ ) -> id_ == id) list of
+        Just ( _, trans ) ->
+            case trans.prevDragCoord of
+                Just ( prevX, prevY ) ->
+                    -- Already moving
+                    let
+                        newTrans =
+                            { x = trans.x + newX - prevX
+                            , y = trans.y + newY - prevY
+                            , prevDragCoord = Just ( newX, newY )
+                            }
+                    in
+                    State (consDedup ( id, newTrans ) list)
+
+                Nothing ->
+                    -- Start moving
+                    State (consDedup ( id, { trans | prevDragCoord = Just ( newX, newY ) } ) list)
+
+        Nothing ->
+            -- Not found but dragged? Curious...
+            State (( id, Translate 0 0 (Just ( newX, newY )) ) :: list)
 
 
 remove : ModelessId -> State -> State
@@ -104,9 +173,15 @@ map mapper (State list) =
     List.map (Tuple.mapFirst mapper) list
 
 
+
+-- VIEW
+
+
 type alias Effects msg =
     { onCloseButtonClick : ModelessId -> msg
     , onAnywhereClick : ModelessId -> msg
+    , onDrag : ModelessId -> Int -> Int -> msg
+    , onDragEnd : ModelessId -> msg
     }
 
 
@@ -123,36 +198,52 @@ type ResolvedPayload
 render : Effects msg -> Props -> Html msg
 render eff props =
     let
-        renderImpl ( resolved, translate_ ) =
+        renderImpl ( resolved, trans ) =
             case resolved of
                 RawColumnItem id columnItem ->
-                    Tuple.pair (idStr id) <|
-                        div
-                            [ class modelessWindowClass
+                    withHeader trans id "Source of Column Item" (RawColumnItem.render columnItem)
+
+        withHeader trans id title content =
+            let
+                header =
+                    let
+                        dragHandlers =
+                            case trans.prevDragCoord of
+                                Just _ ->
+                                    [ on "mouseup" (succeed (eff.onDragEnd id)) ]
+
+                                Nothing ->
+                                    [ on "mousedown" (cursorCoordDecoder (eff.onDrag id)) ]
+                    in
+                    div [ class headerClass, flexRow ]
+                        [ div [ nowrap, padding5, Background.colorBg, Border.topRound5 ] [ t title ]
+                        , div ([ flexGrow, Cursor.allScroll ] ++ dragHandlers) []
+                        , button
+                            [ flexItem
                             , padding5
-                            , Background.colorMain
-                            , Border.w1
-                            , Border.solid
-                            , translate translate_
-                            , onClick (eff.onAnywhereClick id)
+                            , Image.fillText
+                            , Background.transparent
+                            , Background.hovSub
+                            , Border.elliptic
+                            , stopPropagationOn "click" (succeed ( eff.onCloseButtonClick id, True ))
                             ]
-                            [ div [ flexRow ]
-                                [ t "[PH] Modeless Header"
-                                , button
-                                    [ flexItem
-                                    , pushRight
-                                    , padding5
-                                    , Image.hovText
-                                    , Background.transparent
-                                    , Background.hovSub
-                                    , Border.elliptic
-                                    , stopPropagationOn "click" (succeed ( eff.onCloseButtonClick id, True ))
-                                    ]
-                                    [ Image.octicon { size = regularSize, shape = Octicons.x }
-                                    ]
-                                ]
-                            , RawColumnItem.render columnItem
+                            [ Image.octicon { size = prominentSize, shape = Octicons.x }
                             ]
+                        ]
+            in
+            Tuple.pair (idStr id) <|
+                div
+                    [ class modelessWindowClass
+                    , flexColumn
+                    , padding2
+                    , Background.colorNote
+                    , Border.round5
+                    , translate trans
+                    , onClick (eff.onAnywhereClick id)
+                    ]
+                    [ header
+                    , content
+                    ]
 
         translate { x, y } =
             case ( x, y ) of
@@ -177,18 +268,21 @@ styles : List Style
 styles =
     [ s (c modelessWindowClass)
         [ ( "position", "fixed" )
-        , ( "margin-left", "auto" )
-        , ( "margin-right", "auto" )
-        , ( "margin-top", "auto" )
-        , ( "margin-bottom", "auto" )
         , ( "max-width", "90vw" )
         , ( "max-height", "90vh" )
         , ( "top", "50px" )
         , ( "left", "50px" )
         ]
+    , s (c headerClass)
+        [ ( "padding-left", "10px" ) ]
     ]
 
 
 modelessWindowClass : String
 modelessWindowClass =
     "mw"
+
+
+headerClass : String
+headerClass =
+    "mwhd"

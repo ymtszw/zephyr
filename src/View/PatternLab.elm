@@ -72,7 +72,11 @@ main =
         , update = update
         , subscriptions =
             \m ->
-                Sub.batch [ Select.sub SelectCtrl m.select, Sub.map PopoutCtrl (Popout.sub m.popout) ]
+                Sub.batch
+                    [ Select.sub SelectCtrl m.select
+                    , Sub.map PopoutCtrl (Popout.sub m.popout)
+                    , Modeless.sub ModelessMove m.modeless
+                    ]
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
         }
@@ -194,6 +198,7 @@ type Msg
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
     | ModelessTouch Modeless.ModelessId
+    | ModelessMove Modeless.ModelessId Int Int
     | ModelessRemove Modeless.ModelessId
 
 
@@ -261,7 +266,10 @@ update msg m =
             ( { m | editorFile = Nothing }, Cmd.none )
 
         ModelessTouch mId ->
-            ( { m | modeless = Modeless.push mId m.modeless }, Cmd.none )
+            ( { m | modeless = Modeless.touch mId m.modeless }, Cmd.none )
+
+        ModelessMove mId x y ->
+            ( { m | modeless = Modeless.move ( mId, x, y ) m.modeless }, Cmd.none )
 
         ModelessRemove mId ->
             ( { m | modeless = Modeless.remove mId m.modeless }, Cmd.none )
@@ -2429,7 +2437,32 @@ modeless : Model -> Html Msg
 modeless m =
     section []
         [ h1 [ xxProminent ] [ t "Modeless" ]
-        , withSource "" <|
+        , withSource """let
+    resolver mId =
+        case mId of
+            Modeless.RawColumnItemId _ _ ->
+                Modeless.RawColumnItem mId <|
+                    SystemMessage
+                        { id = Modeless.idStr mId
+                        , message = Modeless.idStr mId ++ lorem ++ iroha
+                        , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
+                        }
+in
+div []
+    [ div [ flexColumn, spacingColumn10 ]
+        [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
+            [ t "Click me to show Modeless 0 (RawColumnItem)" ]
+        , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 1)) ]
+            [ t "Click me to show Modeless 1 (RawColumnItem)" ]
+        ]
+    , Modeless.render
+        { onCloseButtonClick = ModelessRemove
+        , onAnywhereClick = ModelessTouch
+        , onDrag = ModelessMove
+        , onDragEnd = ModelessTouch
+        }
+        (Modeless.map resolver m.modeless)
+    ]""" <|
             let
                 resolver mId =
                     case mId of
@@ -2443,14 +2476,16 @@ modeless m =
             in
             div []
                 [ div [ flexColumn, spacingColumn10 ]
-                    [ button [ flexItem, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
-                        [ t "Click me to show Modeless 0" ]
-                    , button [ flexItem, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 1)) ]
-                        [ t "Click me to show Modeless 1" ]
+                    [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
+                        [ t "Click me to show Modeless 0 (RawColumnItem)" ]
+                    , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 1)) ]
+                        [ t "Click me to show Modeless 1 (RawColumnItem)" ]
                     ]
                 , Modeless.render
                     { onCloseButtonClick = ModelessRemove
                     , onAnywhereClick = ModelessTouch
+                    , onDrag = ModelessMove
+                    , onDragEnd = ModelessTouch
                     }
                     (Modeless.map resolver m.modeless)
                 ]
