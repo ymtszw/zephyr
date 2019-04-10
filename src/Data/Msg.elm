@@ -9,20 +9,11 @@ import Data.ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref as Pref exposing (Pref)
-import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
-import File
-import HttpClient
-import Iso8601
 import Json.Decode as D
-import Json.Encode as E
-import Scroll
-import String exposing (fromInt)
-import Time exposing (Posix, Zone)
-import Url
+import Time
 import View.Atoms.Input.Select as Select
 
 
@@ -30,7 +21,7 @@ type Msg
     = NoOp
     | Resize Int Int
     | GetViewport Browser.Dom.Viewport
-    | GetTimeZone ( String, Zone )
+    | GetTimeZone ( String, Time.Zone )
     | VisibilityChanged Bool
     | LinkClicked Browser.UrlRequest
     | SelectCtrl (Select.Msg Msg)
@@ -54,4 +45,4 @@ type Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
     | PrefCtrl Pref.Msg
-    | Tick Posix
+    | Tick Time.Posix
