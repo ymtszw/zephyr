@@ -471,6 +471,13 @@ marshalSlackMessage id scrollIndex m =
 
         marshalAttachment a =
             let
+                textOrFallback =
+                    if String.isEmpty a.text then
+                        Markdown a.fallback
+
+                    else
+                        Markdown a.text
+
                 marshalTitle aTitle =
                     Markdown <|
                         case aTitle.link of
@@ -492,7 +499,7 @@ marshalSlackMessage id scrollIndex m =
                 marshalImageUrl linkMaybe url =
                     imageMedia (Url.toString url) (Url.toString (Maybe.withDefault url linkMaybe)) "Embedded image" Nothing
             in
-            EmbeddedMatter.new (Markdown a.text)
+            EmbeddedMatter.new textOrFallback
                 |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
