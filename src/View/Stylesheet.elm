@@ -14,6 +14,7 @@ import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography as Typography
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.RawColumnItem as RawColumnItem
 import View.Molecules.Source as Source
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
@@ -56,6 +57,7 @@ rendered =
                 ++ Table.styles
                 ++ Source.styles
                 ++ ProducerConfig.styles
+                ++ RawColumnItem.styles
                 ++ Sidebar.styles
                 ++ Modeless.styles
                 ++ Pref.styles
