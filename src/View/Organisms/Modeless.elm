@@ -199,12 +199,12 @@ type ResolvedPayload
 render : Effects msg -> Props -> Html msg
 render eff props =
     let
-        renderImpl ( resolved, trans ) =
+        renderImpl index ( resolved, trans ) =
             case resolved of
                 RawColumnItem id columnItem ->
-                    withHeader trans id "Source of Column Item" (RawColumnItem.render columnItem)
+                    withHeader index trans id "Source of Column Item" (RawColumnItem.render columnItem)
 
-        withHeader trans id title content =
+        withHeader index trans id title content =
             let
                 header =
                     let
@@ -238,7 +238,11 @@ render eff props =
                     [ class modelessWindowClass
                     , flexColumn
                     , padding2
-                    , Background.colorNote
+                    , if index == 0 then
+                        Background.colorNote
+
+                      else
+                        Background.colorSub
                     , Border.round5
                     , translate trans
                     , onClick (eff.onAnywhereClick id)
@@ -263,7 +267,7 @@ render eff props =
     in
     Html.Keyed.node "div" [ oneDark ] <|
         -- Reverse, since items at head must be shown at the end (stacked on the top)
-        List.Extra.reverseMap renderImpl props
+        List.reverse (List.indexedMap renderImpl props)
 
 
 styles : List Style
@@ -272,8 +276,8 @@ styles =
         [ ( "position", "fixed" )
         , ( "max-width", "90vw" )
         , ( "max-height", "90vh" )
-        , ( "top", "50px" )
-        , ( "left", "50px" )
+        , ( "top", "10vh" )
+        , ( "left", "10vw" )
         ]
     , s (c headerClass)
         [ ( "padding-left", "10px" ) ]

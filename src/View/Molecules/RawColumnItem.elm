@@ -33,4 +33,4 @@ rawColumnItemClass =
 
 maxWidth : Int
 maxWidth =
-    600
+    800
