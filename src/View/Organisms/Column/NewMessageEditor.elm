@@ -354,6 +354,30 @@ filePreview onDiscardFileButtonClick f dataUrl =
 fileSelectArea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Html msg
 fileSelectArea eff c =
     let
+        staticAttrs =
+            [ flexItem
+            , padding5
+            , Border.w1
+            , Border.round5
+            , Border.dashed
+            , bg
+            , Background.hovBd
+            , fill
+            , Image.hovText
+            ]
+
+        fileDropper =
+            case c.userActionOnEditor of
+                OutOfFocus ->
+                    []
+
+                _ ->
+                    [ checkHoveredObjectHasFiles "dragenter"
+                    , checkHoveredObjectHasFiles "dragover"
+                    , hijackOn "dragleave" (D.succeed (eff.onInteracted c.id Authoring))
+                    , hijackOn "drop" catchDroppedFile
+                    ]
+
         checkHoveredObjectHasFiles event =
             -- XXX event.dataTransfer.files may be empty on hover events, but resolved on drop event
             -- Also, D.oneOrMore/list APIs do NOT support all Array-like JS data structure.
@@ -389,21 +413,7 @@ fileSelectArea eff c =
                 _ ->
                     ( Background.transparent, noAttr, Octicons.cloudUpload )
     in
-    Icon.octiconButton
-        [ flexItem
-        , padding5
-        , Border.w1
-        , Border.round5
-        , Border.dashed
-        , bg
-        , Background.hovBd
-        , fill
-        , Image.hovText
-        , checkHoveredObjectHasFiles "dragenter"
-        , checkHoveredObjectHasFiles "dragover"
-        , hijackOn "dragleave" (D.succeed (eff.onInteracted c.id Authoring))
-        , hijackOn "drop" catchDroppedFile
-        ]
+    Icon.octiconButton (staticAttrs ++ fileDropper)
         { onPress = eff.onRequestFileAreaClick c.id
         , size = xProminentSize
         , shape = shape
