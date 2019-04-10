@@ -31,6 +31,7 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onLoadMoreClick : msg
+    , onItemSourceButtonClick : String -> Int -> msg
     }
 
 
@@ -52,7 +53,7 @@ render eff props =
         itemGroups ->
             let
                 contents =
-                    List.map (itemGroupKey props.timezone) itemGroups
+                    List.map (itemGroupKey eff props) itemGroups
             in
             Html.Keyed.node "div"
                 [ flexBasisAuto
@@ -89,8 +90,8 @@ loadMoreOrBottomMarkerKey onLoadMoreClick hasMore =
 -- ITEM
 
 
-itemGroupKey : Time.Zone -> ( ItemForView, List ItemForView ) -> ( String, Html msg )
-itemGroupKey tz ( oldestItem, subsequentItems ) =
+itemGroupKey : Effects msg -> Props -> ( ItemForView, List ItemForView ) -> ( String, Html msg )
+itemGroupKey eff props ( oldestItem, subsequentItems ) =
     Tuple.pair ("itemGroup_" ++ oldestItem.id) <|
         div
             [ class itemGroupClass
@@ -102,7 +103,7 @@ itemGroupKey tz ( oldestItem, subsequentItems ) =
             , Border.colorBd
             ]
             [ itemAuthorAvatar40 oldestItem
-            , itemGroupContents tz oldestItem subsequentItems
+            , itemGroupContents eff props oldestItem subsequentItems
             ]
 
 
@@ -151,8 +152,12 @@ itemAuthorAvatar40 item =
                 Icon.imgOrAbbr [ serif, xProminent, alignStart, Icon.rounded40 ] item.author.primaryName Nothing
 
 
-itemGroupContents : Time.Zone -> ItemForView -> List ItemForView -> Html msg
-itemGroupContents tz oldestItem subsequentItems =
+itemGroupContents : Effects msg -> Props -> ItemForView -> List ItemForView -> Html msg
+itemGroupContents eff props oldestItem subsequentItems =
+    let
+        bodyBlocks =
+            List.map (itemBlockKey eff props) (oldestItem :: subsequentItems)
+    in
     Html.Keyed.node "div"
         [ class itemGroupContentsClass
         , clip
@@ -162,7 +167,7 @@ itemGroupContents tz oldestItem subsequentItems =
         , flexShrink
         , spacingColumn2
         ]
-        (itemGroupHeaderKey tz oldestItem :: List.map (itemBlockKey tz) (oldestItem :: subsequentItems))
+        (itemGroupHeaderKey props.timezone oldestItem :: bodyBlocks)
 
 
 itemGroupHeaderKey : Time.Zone -> ItemForView -> ( String, Html msg )
@@ -185,14 +190,15 @@ itemGroupHeaderKey tz item =
             ]
 
 
-itemBlockKey : Time.Zone -> ItemForView -> ( String, Html msg )
-itemBlockKey tz item =
+itemBlockKey : Effects msg -> Props -> ItemForView -> ( String, Html msg )
+itemBlockKey eff props item =
     Tuple.pair item.id <|
         withBadge
             [ class itemBlockClass
+            , flexGrow
             , Background.hovSub
             ]
-            { topRight = Just (hoverMenu tz item)
+            { topRight = Just (hoverMenu eff props item)
             , bottomRight = Nothing
             , content =
                 let
@@ -214,20 +220,25 @@ itemBlockKey tz item =
             }
 
 
-hoverMenu : Time.Zone -> ItemForView -> Html msg
-hoverMenu tz item =
-    div [ class flexHoverMenuClass, minuscule, padding2, Border.colorNote ] <|
+hoverMenu : Effects msg -> Props -> ItemForView -> Html msg
+hoverMenu eff props item =
+    div [ class flexHoverMenuClass, colorNote, minuscule, padding2, spacingRow2, Background.colorMain ] <|
         case item.timestamp of
             Just posixTime ->
-                [ div [ nowrap, padding5, Background.colorMain, Border.leftRound5, Border.solid, Border.w1 ] [ t (TimeExtra.local tz posixTime) ]
-                , button [ flexItem, Image.fillText, Background.colorMain, Border.rightRound5, Border.solid, Border.w1 ]
-                    [ Image.octicon { size = minusculeSize, shape = Octicons.code } ]
+                [ div [ nowrap, padding5 ] [ t (TimeExtra.local props.timezone posixTime) ]
+                , Icon.octiconButton [ flexItem, padding5, Image.hovText, Background.transparent, Border.round5 ]
+                    { onPress = eff.onItemSourceButtonClick props.columnId item.scrollIndex
+                    , size = minusculeSize
+                    , shape = Octicons.code
+                    }
                 ]
 
             Nothing ->
-                [ div [ padding5, Background.colorMain, Border.leftRound5, Border.solid, Border.w1 ] [ t "[PH]" ]
-                , button [ flexItem, Image.fillText, Background.colorMain, Border.rightRound5, Border.solid, Border.w1 ]
-                    [ Image.octicon { size = minusculeSize, shape = Octicons.code } ]
+                [ Icon.octiconButton [ flexItem, padding5, Image.hovText, Background.transparent, Border.round5 ]
+                    { onPress = eff.onItemSourceButtonClick props.columnId item.scrollIndex
+                    , size = minusculeSize
+                    , shape = Octicons.code
+                    }
                 ]
 
 
@@ -476,7 +487,11 @@ styles =
         , ( "padding-bottom", px itemGroupPaddingY )
         ]
     , s (descOf (hov (c itemBlockClass)) (c flexHoverMenuClass)) [ ( "display", "flex" ) ]
-    , s (c flexHoverMenuClass) [ ( "display", "none" ) ]
+    , s (c flexHoverMenuClass)
+        [ ( "display", "none" )
+        , ( "border-bottom-left-radius", "5px" )
+        ]
+    , s (c itemGroupContentsClass) [ ( "min-height", px minGroupContentsHeight ) ]
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
@@ -502,6 +517,11 @@ itemGroupPaddingY =
 itemGroupContentsClass : String
 itemGroupContentsClass =
     "cigc"
+
+
+minGroupContentsHeight : Int
+minGroupContentsHeight =
+    40
 
 
 itemBlockClass : String
