@@ -1,6 +1,6 @@
 module View.Organisms.Modeless exposing
     ( State, ModelessId(..), idStr, init, sub, touch, move, remove, map
-    , ResolvedPayload(..), render, styles
+    , Effects, Props, ResolvedPayload(..), render, styles
     )
 
 {-| Modeless Window for dialog and other stuff.
@@ -11,7 +11,7 @@ Also it can be repositioned by drag and drop.
 ModelessWindows are identified by unique String IDs.
 
 @docs State, ModelessId, idStr, init, sub, touch, move, remove, map
-@docs ResolvedPayload, render, styles
+@docs Effects, Props, ResolvedPayload, render, styles
 
 -}
 
@@ -31,6 +31,7 @@ import View.Atoms.Cursor as Cursor
 import View.Atoms.Image as Image
 import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (nowrap)
+import View.Atoms.Theme exposing (oneDark)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.RawColumnItem as RawColumnItem
@@ -260,7 +261,7 @@ render eff props =
                 ( _, _ ) ->
                     style "transform" ("translate(" ++ px x ++ "," ++ px y ++ ")")
     in
-    Html.Keyed.node "div" [] <|
+    Html.Keyed.node "div" [ oneDark ] <|
         -- Reverse, since items at head must be shown at the end (stacked on the top)
         List.Extra.reverseMap renderImpl props
 
