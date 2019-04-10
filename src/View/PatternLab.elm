@@ -3259,11 +3259,13 @@ columnItems =
             section [ theme_ ]
                 [ h2 [ xProminent ] [ t themeStr ]
                 , withSourceInColumn Nothing 100 """Items.render { onLoadMoreClick = NoOp }
-    { timezone = Time.utc, itemGroups = [], hasMore = False }""" <|
+    { timezone = Time.utc, itemGroups = [], columnId = themeStr ++ "01", hasMore = False }""" <|
                     Items.render { onLoadMoreClick = NoOp }
-                        { timezone = Time.utc, itemGroups = [], hasMore = False }
+                        { timezone = Time.utc, itemGroups = [], columnId = themeStr ++ "01", hasMore = False }
                 , withSourceInColumn Nothing 500 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
+    , columnId = themeStr ++ "02"
+    , hasMore = False
     , itemGroups =
         List.map unit
             [ ItemForView.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
@@ -3279,10 +3281,11 @@ columnItems =
                     , ( "キー2", Markdown "Marked up **text**" )
                     ]
             ]
-    , hasMore = False
     }""" <|
                     Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
+                        , columnId = themeStr ++ "02"
+                        , hasMore = False
                         , itemGroups =
                             List.map unit
                                 [ ItemForView.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
@@ -3298,10 +3301,11 @@ columnItems =
                                         , ( "キー2", Markdown "Marked up **text**" )
                                         ]
                                 ]
-                        , hasMore = False
                         }
                 , withSourceInColumn Nothing 1000 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
+    , columnId = themeStr ++ "03"
+    , hasMore = True
     , itemGroups =
         List.map unit
             [ ItemForView.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
@@ -3333,7 +3337,6 @@ columnItems =
             , ItemForView.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
                 |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
             ]
-    , hasMore = True
     }""" <|
                     let
                         sampleImage500x500 =
@@ -3366,6 +3369,8 @@ columnItems =
                     in
                     Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
+                        , columnId = themeStr ++ "03"
+                        , hasMore = True
                         , itemGroups =
                             List.map unit
                                 [ ItemForView.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
@@ -3397,10 +3402,11 @@ columnItems =
                                 , ItemForView.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
                                     |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
                                 ]
-                        , hasMore = True
                         }
                 , withSourceInColumn Nothing 300 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
+    , columnId = themeStr ++ "04"
+    , hasMore = False
     , itemGroups =
         List.map unit
             [ ItemForView.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
@@ -3418,10 +3424,11 @@ columnItems =
                 (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
                 (Plain "ImageOrAbbr")
             ]
-    , hasMore = False
     }""" <|
                     Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
+                        , columnId = themeStr ++ "04"
+                        , hasMore = False
                         , itemGroups =
                             List.map unit
                                 [ ItemForView.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
@@ -3439,10 +3446,11 @@ columnItems =
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
                                     (Plain "ImageOrAbbr")
                                 ]
-                        , hasMore = False
                         }
                 , withSourceInColumn Nothing 1000 """Items.render { onLoadMoreClick = NoOp }
     { timezone = Time.utc
+    , columnId = themeStr ++ "05"
+    , hasMore = False
     , itemGroups =
         List.map unit
             [ ItemForView.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
@@ -3492,10 +3500,11 @@ columnItems =
                     , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                     ]
             ]
-    , hasMore = False
     }""" <|
                     Items.render { onLoadMoreClick = NoOp }
                         { timezone = Time.utc
+                        , columnId = themeStr ++ "05"
+                        , hasMore = False
                         , itemGroups =
                             List.map unit
                                 [ ItemForView.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
@@ -3545,7 +3554,6 @@ columnItems =
                                         , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                                         ]
                                 ]
-                        , hasMore = False
                         }
                 ]
 

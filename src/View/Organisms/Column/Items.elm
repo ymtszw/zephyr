@@ -36,9 +36,10 @@ type alias Effects msg =
 
 type alias Props =
     { timezone : Time.Zone
+    , columnId : String
+    , hasMore : Bool
     , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
       itemGroups : List ( ItemForView, List ItemForView )
-    , hasMore : Bool
     }
 
 
