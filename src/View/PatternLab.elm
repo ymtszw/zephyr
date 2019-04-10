@@ -158,7 +158,7 @@ init () url key =
       , editorSeq = 0
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
-      , modeless = Modeless.init
+      , modeless = Modeless.touch (Modeless.RawColumnItemId "dummy" 0) Modeless.init
       }
     , Cmd.none
     )
@@ -2437,18 +2437,7 @@ modeless : Model -> Html Msg
 modeless m =
     section []
         [ h1 [ xxProminent ] [ t "Modeless" ]
-        , withSource """let
-    resolver mId =
-        case mId of
-            Modeless.RawColumnItemId _ _ ->
-                Modeless.RawColumnItem mId <|
-                    SystemMessage
-                        { id = Modeless.idStr mId
-                        , message = Modeless.idStr mId ++ lorem ++ iroha
-                        , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
-                        }
-in
-div []
+        , withSource """div []
     [ div [ flexColumn, spacingColumn10 ]
         [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
             [ t "Click me to show Modeless 0 (RawColumnItem)" ]
@@ -2461,19 +2450,8 @@ div []
         , onDrag = ModelessMove
         , onDragEnd = ModelessTouch
         }
-        (Modeless.map resolver m.modeless)
+        (Modeless.map dummyModelessResolver m.modeless)
     ]""" <|
-            let
-                resolver mId =
-                    case mId of
-                        Modeless.RawColumnItemId _ _ ->
-                            Modeless.RawColumnItem mId <|
-                                SystemMessage
-                                    { id = Modeless.idStr mId
-                                    , message = Modeless.idStr mId ++ lorem ++ iroha
-                                    , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
-                                    }
-            in
             div []
                 [ div [ flexColumn, spacingColumn10 ]
                     [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
@@ -2487,9 +2465,21 @@ div []
                     , onDrag = ModelessMove
                     , onDragEnd = ModelessTouch
                     }
-                    (Modeless.map resolver m.modeless)
+                    (Modeless.map dummyModelessResolver m.modeless)
                 ]
         ]
+
+
+dummyModelessResolver : Modeless.ModelessId -> Modeless.ResolvedPayload
+dummyModelessResolver mId =
+    case mId of
+        Modeless.RawColumnItemId _ _ ->
+            Modeless.RawColumnItem mId <|
+                SystemMessage
+                    { id = Modeless.idStr mId
+                    , message = Modeless.idStr mId ++ lorem ++ iroha
+                    , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
+                    }
 
 
 configPref : Model -> Html Msg
@@ -3578,6 +3568,12 @@ mainTemplate m =
                 , onAddColumnClick = AddColumn
                 , onColumnButtonClickByIndex = always NoOp
                 }
+            , modelessEffects =
+                { onCloseButtonClick = ModelessRemove
+                , onAnywhereClick = ModelessTouch
+                , onDrag = ModelessMove
+                , onDragEnd = ModelessTouch
+                }
             , onColumnDragEnd = NoOp
             , onColumnDragHover = always NoOp
             , onColumnBorderFlashEnd = always NoOp
@@ -3587,6 +3583,7 @@ mainTemplate m =
         mainProps =
             { configOpen = m.toggle
             , visibleColumns = dummyColumns
+            , modeless = Modeless.map dummyModelessResolver m.modeless
             }
 
         dummyColumns =
