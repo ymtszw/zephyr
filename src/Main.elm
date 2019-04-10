@@ -31,7 +31,6 @@ import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen
 import IndexedDb exposing (..)
-import Logger
 import Task exposing (Task)
 import Time exposing (Posix)
 import TimeZone
@@ -96,16 +95,7 @@ getTimeZone =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
-update msg m_ =
-    let
-        ({ viewState, env, pref } as m) =
-            if m_.env.isLocalDevelopment && m_.pref.logging then
-                Logger.push m_.idGen (Data.Msg.logEntry msg) m_.log
-                    |> (\( newLog, idGen ) -> { m_ | log = newLog, idGen = idGen })
-
-            else
-                m_
-    in
+update msg ({ env, pref, viewState } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -128,9 +118,6 @@ update msg m_ =
 
         VisibilityChanged False ->
             pure { m | viewState = { viewState | columnSwapMaybe = Nothing, visible = False } }
-
-        LoggerCtrl lMsg ->
-            Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
 
         LinkClicked (Browser.Internal url) ->
             noPersist ( m, Nav.pushUrl m.navKey (Url.toString url) )
