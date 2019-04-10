@@ -167,23 +167,17 @@ itemGroupContents eff props oldestItem subsequentItems =
         , flexShrink
         , spacingColumn2
         ]
-        (itemGroupHeaderKey props.timezone oldestItem :: bodyBlocks)
+        (itemGroupHeaderKey oldestItem :: bodyBlocks)
 
 
-itemGroupHeaderKey : Time.Zone -> ItemForView -> ( String, Html msg )
-itemGroupHeaderKey tz item =
+itemGroupHeaderKey : ItemForView -> ( String, Html msg )
+itemGroupHeaderKey item =
     Tuple.pair "itemGroupHeader" <|
         div [ flexRow, flexCenter, spacingRow2 ]
             [ div [ flexShrink, flexBasisAuto, breakWords, bold, prominent ] [ t item.author.primaryName ]
             , case item.author.secondaryName of
                 Just secondaryName ->
                     div [ colorNote, flexShrink, flexBasisAuto, breakWords ] [ t secondaryName ]
-
-                Nothing ->
-                    none
-            , case item.timestamp of
-                Just posixTime ->
-                    div [ colorNote, pushRight, flexBasisAuto ] [ t (TimeExtra.local tz posixTime) ]
 
                 Nothing ->
                     none
