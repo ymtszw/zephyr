@@ -36,6 +36,7 @@ import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
 import View.Organisms.Config.Status
+import View.Organisms.Modeless as Modeless
 import View.Style exposing (none)
 import View.Templates.Main exposing (DragStatus(..))
 
@@ -62,13 +63,17 @@ render m =
             , columnItemsScrollAttrs =
                 \c ->
                     Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
-            , sidebarEffects = sidebarEffects
-            }
-
-        sidebarEffects =
-            { onConfigToggleClick = ToggleConfig
-            , onAddColumnClick = AddEmptyColumn
-            , onColumnButtonClickByIndex = RevealColumn
+            , sidebarEffects =
+                { onConfigToggleClick = ToggleConfig
+                , onAddColumnClick = AddEmptyColumn
+                , onColumnButtonClickByIndex = RevealColumn
+                }
+            , modelessEffects =
+                { onCloseButtonClick = ModelessRemove
+                , onAnywhereClick = ModelessTouch
+                , onDrag = ModelessMove
+                , onDragEnd = ModelessTouch
+                }
             }
 
         props =
@@ -107,9 +112,18 @@ render m =
                     , editorSeq = c.editorSeq
                     , userActionOnEditor = c.userActionOnEditor
                     }
+
+                resolveModelessId mId =
+                    case mId of
+                        Modeless.RawColumnItemId cId itemIndex ->
+                            Dict.get cId m.columnStore.dict
+                                |> Maybe.andThen (\c -> Scroll.getAt itemIndex c.items)
+                                |> Maybe.withDefault Column.itemNotFound
+                                |> Modeless.RawColumnItem mId
             in
             { configOpen = m.viewState.configOpen
             , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
+            , modeless = Modeless.map resolveModelessId m.viewState.modeless
             }
 
         contents =

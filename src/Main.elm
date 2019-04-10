@@ -36,6 +36,7 @@ import Time exposing (Posix)
 import TimeZone
 import Url
 import View.Atoms.Input.Select
+import View.Organisms.Modeless as Modeless
 import View.Pages.Main
 import View.Stylesheet
 import View.Templates.Main exposing (columnAreaParentId, columnWidth)
@@ -248,6 +249,15 @@ update msg ({ env, pref, viewState } as m) =
 
                 ( newPref, False ) ->
                     pure { m | pref = newPref }
+
+        ModelessTouch mId ->
+            pure { m | viewState = { viewState | modeless = Modeless.touch mId viewState.modeless } }
+
+        ModelessMove mId x y ->
+            pure { m | viewState = { viewState | modeless = Modeless.move ( mId, x, y ) viewState.modeless } }
+
+        ModelessRemove mId ->
+            pure { m | viewState = { viewState | modeless = Modeless.remove mId viewState.modeless } }
 
         NoOp ->
             pure m

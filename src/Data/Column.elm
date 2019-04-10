@@ -1,7 +1,7 @@
 module Data.Column exposing
     ( Column, ColumnItem(..), Media(..), welcome, new, simple, encode, encodeColumnItem, decoder, columnItemLimit
     , Msg(..), PostProcess, Position(..), update, postProcess
-    , editorId
+    , editorId, itemNotFound
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -13,7 +13,7 @@ Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, ColumnItem, Media, welcome, new, simple, encode, encodeColumnItem, decoder, columnItemLimit
 @docs Msg, PostProcess, Position, update, postProcess
-@docs editorId
+@docs editorId, itemNotFound
 
 -}
 
@@ -81,6 +81,11 @@ type alias LocalMessageRecord =
 type Media
     = Image Url.Url
     | Video Url.Url
+
+
+itemNotFound : ColumnItem
+itemNotFound =
+    LocalMessage { id = "(Not Found)", message = "Target item cannot be found in the column!" }
 
 
 encode : Column -> E.Value

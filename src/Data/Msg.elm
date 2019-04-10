@@ -15,6 +15,7 @@ import Data.UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D
 import Time
 import View.Atoms.Input.Select as Select
+import View.Organisms.Modeless as Modeless
 
 
 type Msg
@@ -45,4 +46,7 @@ type Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
     | PrefCtrl Pref.Msg
+    | ModelessTouch Modeless.ModelessId
+    | ModelessMove Modeless.ModelessId Int Int
+    | ModelessRemove Modeless.ModelessId
     | Tick Time.Posix
