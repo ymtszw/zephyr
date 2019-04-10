@@ -220,7 +220,8 @@ render eff props =
                         , div ([ flexGrow, Cursor.allScroll ] ++ dragHandlers) []
                         , button
                             [ flexItem
-                            , padding5
+                            , alignStart
+                            , padding2
                             , Image.fillText
                             , Background.transparent
                             , Background.hovSub
