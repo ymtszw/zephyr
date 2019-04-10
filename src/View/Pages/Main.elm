@@ -193,13 +193,15 @@ render m =
                             { onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
                             }
                             { timezone = m.viewState.timezone
+                            , columnId = c.id
+                            , hasMore = List.length itemsVisible < Scroll.size c.items
                             , itemGroups =
-                                -- Do note that items are sorted from "newest to oldest" at the moment it came out from Scrolls.
-                                -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
-                                List.Extra.reverseMap marshalColumnItem itemsVisible
+                                -- Do note that items are sorted from "newest to oldest" at the moment it came out from Scrolls (itemsVisible).
+                                -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest" (reverse again)
+                                List.indexedMap marshalColumnItem itemsVisible
+                                    |> List.reverse
                                     |> List.Extra.groupWhile shouldGroupColumnItem
                                     |> List.reverse
-                            , hasMore = List.length itemsVisible < Scroll.size c.items
                             }
                 }
             }
@@ -293,14 +295,14 @@ marshalSourcesAndFilters fam filters =
     Array.foldl collectSourceAndFilter ( [], [] ) filters
 
 
-marshalColumnItem : Column.ColumnItem -> ItemForView
-marshalColumnItem item =
+marshalColumnItem : Int -> Column.ColumnItem -> ItemForView
+marshalColumnItem scrollIndex item =
     case item of
         Column.Product offset (Data.Item.DiscordItem message) ->
-            marshalDiscordMessage (Broker.offsetToString offset) message
+            marshalDiscordMessage (Broker.offsetToString offset) scrollIndex message
 
         Column.Product offset (Data.Item.SlackItem message) ->
-            marshalSlackMessage (Broker.offsetToString offset) message
+            marshalSlackMessage (Broker.offsetToString offset) scrollIndex message
 
         Column.SystemMessage sm ->
             let
@@ -312,11 +314,11 @@ marshalColumnItem item =
                         Column.Video url ->
                             ItemForView.attachedFiles [ attachedVideo (Url.toString url) ]
             in
-            ItemForView.new sm.id (NamedEntity.new "System Message") (Markdown sm.message)
+            ItemForView.new sm.id scrollIndex (NamedEntity.new "System Message") (Markdown sm.message)
                 |> apOrId marshalMedia sm.mediaMaybe
 
         Column.LocalMessage lm ->
-            ItemForView.new lm.id (NamedEntity.new "Memo") (Markdown lm.message)
+            ItemForView.new lm.id scrollIndex (NamedEntity.new "Memo") (Markdown lm.message)
 
 
 apOrId : (a -> b -> b) -> Maybe a -> b -> b
@@ -348,8 +350,8 @@ shouldGroupColumnItem older newer =
     sourceIdsMatch && authorsMatch && timestampsAreClose
 
 
-marshalDiscordMessage : String -> PDiscord.Message -> ItemForView
-marshalDiscordMessage id m =
+marshalDiscordMessage : String -> Int -> PDiscord.Message -> ItemForView
+marshalDiscordMessage id scrollIndex m =
     -- XXX Possibly, m.id can be used for interaction handler
     let
         author =
@@ -422,7 +424,7 @@ marshalDiscordMessage id m =
                 attachedOther (DownloadUrl (Url.toString a.proxyUrl))
                     |> attachedFileDescription a.filename
     in
-    ItemForView.new id author (Markdown m.content)
+    ItemForView.new id scrollIndex author (Markdown m.content)
         |> ItemForView.timestamp m.timestamp
         |> ItemForView.attachedFiles (List.map marshalAttachment m.attachments)
         |> ItemForView.embeddedMatters (List.map marshalEmbed m.embeds)
@@ -438,8 +440,8 @@ dimension w h =
     { width = w, height = h }
 
 
-marshalSlackMessage : String -> PSlack.Message -> ItemForView
-marshalSlackMessage id m =
+marshalSlackMessage : String -> Int -> PSlack.Message -> ItemForView
+marshalSlackMessage id scrollIndex m =
     let
         author =
             case m.author of
@@ -525,7 +527,7 @@ marshalSlackMessage id m =
                 attachedOther (DownloadUrl (Url.toString f.url_))
                     |> attachedFileDescription f.name
     in
-    ItemForView.new id author (Markdown m.text)
+    ItemForView.new id scrollIndex author (Markdown m.text)
         |> ItemForView.timestamp (PSlack.getPosix m)
         |> ItemForView.embeddedMatters (List.map marshalAttachment m.attachments)
         |> ItemForView.attachedFiles (List.map marshalFile m.files)

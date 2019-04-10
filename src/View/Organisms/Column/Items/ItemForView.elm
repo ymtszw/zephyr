@@ -23,6 +23,7 @@ import View.Organisms.Column.Items.ItemForView.NamedEntity exposing (NamedEntity
 type alias ItemForView =
     -- TODO Add sourceType property in order to apply per-item style change, such as different markdown options
     { id : String
+    , scrollIndex : Int
     , author : NamedEntity
     , timestamp : Maybe Time.Posix
     , body : Text
@@ -33,9 +34,10 @@ type alias ItemForView =
     }
 
 
-new : String -> NamedEntity -> Text -> ItemForView
-new id author body =
+new : String -> Int -> NamedEntity -> Text -> ItemForView
+new id scrollIndex author body =
     { id = id
+    , scrollIndex = scrollIndex
     , author = author
     , timestamp = Nothing
     , body = body

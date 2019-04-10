@@ -3268,13 +3268,13 @@ columnItems =
     , hasMore = False
     , itemGroups =
         List.map unit
-            [ ItemForView.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+            [ ItemForView.new "ci0" 0 (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
                 |> ItemForView.timestamp (Time.millisToPosix 1000)
-            , ItemForView.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+            , ItemForView.new "ci1" 1 (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
                 |> ItemForView.timestamp (Time.millisToPosix 100)
-            , ItemForView.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+            , ItemForView.new "ci2" 2 (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
                 |> ItemForView.timestamp (Time.millisToPosix 10)
-            , ItemForView.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+            , ItemForView.new "ci3" 3 (NamedEntity.new "KTS") (Plain "KTS follows")
                 |> ItemForView.timestamp (Time.millisToPosix 1)
                 |> ItemForView.kts
                     [ ( "Key1", Plain ("Plain text. " ++ iroha) )
@@ -3288,13 +3288,13 @@ columnItems =
                         , hasMore = False
                         , itemGroups =
                             List.map unit
-                                [ ItemForView.new "ci0" (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
+                                [ ItemForView.new "ci0" 0 (NamedEntity.new "Text") (Plain (lorem ++ " " ++ iroha))
                                     |> ItemForView.timestamp (Time.millisToPosix 1000)
-                                , ItemForView.new "ci1" (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
+                                , ItemForView.new "ci1" 1 (NamedEntity.new "Longstring") (Plain (String.repeat 50 "significantlylongstring"))
                                     |> ItemForView.timestamp (Time.millisToPosix 100)
-                                , ItemForView.new "ci2" (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
+                                , ItemForView.new "ci2" 2 (NamedEntity.new "Markdown") (Markdown MarkdownBlocks.sampleSource)
                                     |> ItemForView.timestamp (Time.millisToPosix 10)
-                                , ItemForView.new "ci3" (NamedEntity.new "KTS") (Plain "KTS follows")
+                                , ItemForView.new "ci3" 3 (NamedEntity.new "KTS") (Plain "KTS follows")
                                     |> ItemForView.timestamp (Time.millisToPosix 1)
                                     |> ItemForView.kts
                                         [ ( "Key1", Plain ("Plain text. " ++ iroha) )
@@ -3308,33 +3308,33 @@ columnItems =
     , hasMore = True
     , itemGroups =
         List.map unit
-            [ ItemForView.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+            [ ItemForView.new "ci1" 1 (NamedEntity.new "Attachement") (Plain "With image (contained)")
                 |> ItemForView.attachedFiles [ sampleImage500x500 ]
-            , ItemForView.new "ci2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+            , ItemForView.new "ci2" 2 (NamedEntity.new "Attachement") (Plain "With image (smaller)")
                 |> ItemForView.attachedFiles [ sampleImage100x100 ]
-            , ItemForView.new "ci3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+            , ItemForView.new "ci3" 3 (NamedEntity.new "Attachement") (Plain "With image (tall)")
                 |> ItemForView.attachedFiles [ sampleImage100x600 ]
-            , ItemForView.new "ci4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+            , ItemForView.new "ci4" 4 (NamedEntity.new "Attachement") (Plain "With image (landscape)")
                 |> ItemForView.attachedFiles [ sampleImage600x100 ]
-            , ItemForView.new "ci5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+            , ItemForView.new "ci5" 5 (NamedEntity.new "Attachement") (Plain "With video (contained)")
                 |> ItemForView.attachedFiles [ sampleVideo ]
-            , ItemForView.new "ci6" (NamedEntity.new "Attachement") (Plain "External file")
+            , ItemForView.new "ci6" 6 (NamedEntity.new "Attachement") (Plain "External file")
                 |> ItemForView.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
-            , ItemForView.new "ci7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+            , ItemForView.new "ci7" 7 (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
                 |> ItemForView.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
-            , ItemForView.new "ci8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+            , ItemForView.new "ci8" 8 (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
                 |> ItemForView.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
-            , ItemForView.new "ci9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+            , ItemForView.new "ci9" 9 (NamedEntity.new "Attachement") (Plain "File with significantly long description")
                 |> ItemForView.attachedFiles
                     [ attachedOther (DownloadUrl "/image.html")
                         |> attachedFileDescription (String.repeat 10 "longstring")
                     ]
-            , ItemForView.new "ci10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+            , ItemForView.new "ci10" 10 (NamedEntity.new "Attachement") (Plain "External file (with preview)")
                 |> ItemForView.attachedFiles
                     [ attachedOther (ExternalLink "/index.html")
                         |> attachedFilePreview samplePreview
                     ]
-            , ItemForView.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
+            , ItemForView.new "ci11" 11 (NamedEntity.new "Attachement") (Plain "Multiple images")
                 |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
             ]
     }""" <|
@@ -3373,33 +3373,33 @@ columnItems =
                         , hasMore = True
                         , itemGroups =
                             List.map unit
-                                [ ItemForView.new "ci1" (NamedEntity.new "Attachement") (Plain "With image (contained)")
+                                [ ItemForView.new "ci1" 1 (NamedEntity.new "Attachement") (Plain "With image (contained)")
                                     |> ItemForView.attachedFiles [ sampleImage500x500 ]
-                                , ItemForView.new "ci2" (NamedEntity.new "Attachement") (Plain "With image (smaller)")
+                                , ItemForView.new "ci2" 2 (NamedEntity.new "Attachement") (Plain "With image (smaller)")
                                     |> ItemForView.attachedFiles [ sampleImage100x100 ]
-                                , ItemForView.new "ci3" (NamedEntity.new "Attachement") (Plain "With image (tall)")
+                                , ItemForView.new "ci3" 3 (NamedEntity.new "Attachement") (Plain "With image (tall)")
                                     |> ItemForView.attachedFiles [ sampleImage100x600 ]
-                                , ItemForView.new "ci4" (NamedEntity.new "Attachement") (Plain "With image (landscape)")
+                                , ItemForView.new "ci4" 4 (NamedEntity.new "Attachement") (Plain "With image (landscape)")
                                     |> ItemForView.attachedFiles [ sampleImage600x100 ]
-                                , ItemForView.new "ci5" (NamedEntity.new "Attachement") (Plain "With video (contained)")
+                                , ItemForView.new "ci5" 5 (NamedEntity.new "Attachement") (Plain "With video (contained)")
                                     |> ItemForView.attachedFiles [ sampleVideo ]
-                                , ItemForView.new "ci6" (NamedEntity.new "Attachement") (Plain "External file")
+                                , ItemForView.new "ci6" 6 (NamedEntity.new "Attachement") (Plain "External file")
                                     |> ItemForView.attachedFiles [ attachedOther (ExternalLink (Image.ph 100 100)) ]
-                                , ItemForView.new "ci7" (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
+                                , ItemForView.new "ci7" 7 (NamedEntity.new "Attachement") (Plain "Downloadable file (same origin)")
                                     |> ItemForView.attachedFiles [ attachedOther (DownloadUrl "/index.html") ]
-                                , ItemForView.new "ci8" (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
+                                , ItemForView.new "ci8" 8 (NamedEntity.new "Attachement") (Plain "Downloadable file (cross origin)")
                                     |> ItemForView.attachedFiles [ attachedOther (DownloadUrl (Image.ph 100 100)) ]
-                                , ItemForView.new "ci9" (NamedEntity.new "Attachement") (Plain "File with significantly long description")
+                                , ItemForView.new "ci9" 9 (NamedEntity.new "Attachement") (Plain "File with significantly long description")
                                     |> ItemForView.attachedFiles
                                         [ attachedOther (DownloadUrl "/image.html")
                                             |> attachedFileDescription (String.repeat 10 "longstring")
                                         ]
-                                , ItemForView.new "ci10" (NamedEntity.new "Attachement") (Plain "External file (with preview)")
+                                , ItemForView.new "ci10" 10 (NamedEntity.new "Attachement") (Plain "External file (with preview)")
                                     |> ItemForView.attachedFiles
                                         [ attachedOther (ExternalLink "/index.html")
                                             |> attachedFilePreview samplePreview
                                         ]
-                                , ItemForView.new "ci11" (NamedEntity.new "Attachement") (Plain "Multiple images")
+                                , ItemForView.new "ci11" 11 (NamedEntity.new "Attachement") (Plain "Multiple images")
                                     |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
                                 ]
                         }
@@ -3409,18 +3409,22 @@ columnItems =
     , hasMore = False
     , itemGroups =
         List.map unit
-            [ ItemForView.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
-            , ItemForView.new "ci1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+            [ ItemForView.new "ci0" 0 (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+            , ItemForView.new "ci1" 1 (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
             , ItemForView.new "ci2"
+                2
                 (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
                 (Plain "ImageOrAbbr")
             , ItemForView.new "ci3"
+                3
                 (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
                 (Plain "ImageOrAbbr")
             , ItemForView.new "ci4"
+                4
                 (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
                 (Plain "ImageOrAbbr")
             , ItemForView.new "ci5"
+                5
                 (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
                 (Plain "ImageOrAbbr")
             ]
@@ -3431,18 +3435,22 @@ columnItems =
                         , hasMore = False
                         , itemGroups =
                             List.map unit
-                                [ ItemForView.new "ci0" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
-                                , ItemForView.new "ci1" (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
+                                [ ItemForView.new "ci0" 0 (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonInfo) (Plain "OcticonInfo")
+                                , ItemForView.new "ci1" 1 (NamedEntity.new "With Avatar" |> NamedEntity.avatar NamedEntity.OcticonNote) (Plain "OcticonNote")
                                 , ItemForView.new "ci2"
+                                    2
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" False))
                                     (Plain "ImageOrAbbr")
                                 , ItemForView.new "ci3"
+                                    3
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Image.ph 60 60)) "With Avatar" True))
                                     (Plain "ImageOrAbbr")
                                 , ItemForView.new "ci4"
+                                    4
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" False))
                                     (Plain "ImageOrAbbr")
                                 , ItemForView.new "ci5"
+                                    5
                                     (NamedEntity.new "With Avatar" |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing "With Avatar" True))
                                     (Plain "ImageOrAbbr")
                                 ]
@@ -3453,7 +3461,7 @@ columnItems =
     , hasMore = False
     , itemGroups =
         List.map unit
-            [ ItemForView.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
+            [ ItemForView.new "ci0" 0 (NamedEntity.new "Embed") (Plain "With embeds")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
                         |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
@@ -3476,7 +3484,7 @@ columnItems =
                             , ( "キー2", Markdown "Marked up **text**" )
                             ]
                     ]
-            , ItemForView.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
+            , ItemForView.new "ci1" 1 (NamedEntity.new "Embed") (Plain "With markdowns")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
                         |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
@@ -3484,7 +3492,7 @@ columnItems =
                         |> EmbeddedMatter.title (Markdown "**Marked-up title**")
                         |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
                     ]
-            , ItemForView.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
+            , ItemForView.new "ci2" 2 (NamedEntity.new "Embed") (Plain "With attachement")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                         |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
@@ -3494,7 +3502,7 @@ columnItems =
                             , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                             ]
                     ]
-            , ItemForView.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
+            , ItemForView.new "ci3" 3 (NamedEntity.new "Embed") (Plain "Multiple embeds")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
                     , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
@@ -3507,7 +3515,7 @@ columnItems =
                         , hasMore = False
                         , itemGroups =
                             List.map unit
-                                [ ItemForView.new "ci0" (NamedEntity.new "Embed") (Plain "With embeds")
+                                [ ItemForView.new "ci0" 0 (NamedEntity.new "Embed") (Plain "With embeds")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
@@ -3530,7 +3538,7 @@ columnItems =
                                                 , ( "キー2", Markdown "Marked up **text**" )
                                                 ]
                                         ]
-                                , ItemForView.new "ci1" (NamedEntity.new "Embed") (Plain "With markdowns")
+                                , ItemForView.new "ci1" 1 (NamedEntity.new "Embed") (Plain "With markdowns")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
@@ -3538,7 +3546,7 @@ columnItems =
                                             |> EmbeddedMatter.title (Markdown "**Marked-up title**")
                                             |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
                                         ]
-                                , ItemForView.new "ci2" (NamedEntity.new "Embed") (Plain "With attachement")
+                                , ItemForView.new "ci2" 2 (NamedEntity.new "Embed") (Plain "With attachement")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
@@ -3548,7 +3556,7 @@ columnItems =
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                                                 ]
                                         ]
-                                , ItemForView.new "ci3" (NamedEntity.new "Embed") (Plain "Multiple embeds")
+                                , ItemForView.new "ci3" 3 (NamedEntity.new "Embed") (Plain "Multiple embeds")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
                                         , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
