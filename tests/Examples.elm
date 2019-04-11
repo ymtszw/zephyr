@@ -833,6 +833,25 @@ slackSuite =
             , testAngleCmd
                 "<@USLACKBOT> Hi!\n<!here> <!channel> Yo!\n<#CDUMMYID> You go here. A.k.a <#CDUMMYID|hell>."
                 "@USLACKBOT Hi!\n@here @channel Yo!\n#CDUMMYID You go here. A.k.a #hell."
+            , testAngleCmd
+                (String.join "\n"
+                    [ "*<https://github.com/ymtszw/zephyr/compare/bb19a8040ed5...8941a3d4460d|68 new commits> pushed to <https://github.com/ymtszw/zephyr/tree/master|`master`>*"
+                    , "<https://github.com/ymtszw/zephyr/commit/294b6dc729be05674d26acb0407195fc5d0c7461|`294b6dc7`> - [#59] Rename Sidebar.Effects members"
+                    , "<https://github.com/ymtszw/zephyr/commit/0c9c42eb2db867afd773bef07d4eb112457842a5|`0c9c42eb`> - [#59] Use Atoms.Input.Select component APIs"
+
+                    -- Many lines snipped from original data
+                    , "<https://github.com/ymtszw/zephyr/commit/7dedb66c47472adf873560db7116acdd8c9b0045|`7dedb66c`> - [#59] Add/test pretext in EmbeddedMatter"
+                    , "<https://github.com/ymtszw/zephyr/commit/0619141ff7604578a5979e06ceb8e47aaf2fdc2b|`…" -- Angle is not closed!
+                    ]
+                )
+                (String.join "\n"
+                    [ "*[68 new commits](https://github.com/ymtszw/zephyr/compare/bb19a8040ed5...8941a3d4460d) pushed to [`master`](https://github.com/ymtszw/zephyr/tree/master)*"
+                    , "[`294b6dc7`](https://github.com/ymtszw/zephyr/commit/294b6dc729be05674d26acb0407195fc5d0c7461) - [#59] Rename Sidebar.Effects members"
+                    , "[`0c9c42eb`](https://github.com/ymtszw/zephyr/commit/0c9c42eb2db867afd773bef07d4eb112457842a5) - [#59] Use Atoms.Input.Select component APIs"
+                    , "[`7dedb66c`](https://github.com/ymtszw/zephyr/commit/7dedb66c47472adf873560db7116acdd8c9b0045) - [#59] Add/test pretext in EmbeddedMatter"
+                    , "<https://github.com/ymtszw/zephyr/commit/0619141ff7604578a5979e06ceb8e47aaf2fdc2b|`…"
+                    ]
+                )
             ]
         ]
 

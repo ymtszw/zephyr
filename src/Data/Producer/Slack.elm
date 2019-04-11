@@ -2546,13 +2546,21 @@ but instead, it should be used on message fetches.
 -}
 resolveAngleCmd : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
 resolveAngleCmd convs users raw =
-    case Parser.run (angleSyntaxParser convs users) raw of
-        Ok replaced ->
-            replaced
+    let
+        resolveByLine line =
+            case Parser.run (angleSyntaxParser convs users) line of
+                Ok replaced ->
+                    replaced
 
-        Err _ ->
-            -- Debug here
-            raw
+                Err _ ->
+                    -- Debug here
+                    line
+    in
+    -- Slack text may be truncated. In such cases angles may NOT be closed, causing parse failure.
+    -- We can introduce many `backtrackable`, but instead we go easy by just localizing failures within lines.
+    String.split "\n" raw
+        |> List.map resolveByLine
+        |> String.join "\n"
 
 
 angleSyntaxParser : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Parser String
@@ -2598,20 +2606,23 @@ angleCmdParser =
                 |. Parser.symbol "@"
                 |= rawKeywordParser
                 |= remainderParser
-            , Parser.succeed AtEveryone
-                |. Parser.keyword "!everyone"
-                |. remainderParser
-            , Parser.succeed AtHere
-                |. Parser.keyword "!here"
-                |. remainderParser
-            , Parser.succeed AtChannel
-                |. Parser.keyword "!channel"
-                |. remainderParser
-            , -- XXX e.g. Date syntax
-              Parser.succeed OtherSpecial
+            , Parser.succeed identity
                 |. Parser.symbol "!"
-                |= rawKeywordParser
-                |= remainderParser
+                |= Parser.oneOf
+                    [ Parser.succeed AtEveryone
+                        |. Parser.keyword "everyone"
+                        |. remainderParser
+                    , Parser.succeed AtHere
+                        |. Parser.keyword "here"
+                        |. remainderParser
+                    , Parser.succeed AtChannel
+                        |. Parser.keyword "channel"
+                        |. remainderParser
+                    , -- XXX e.g. Date syntax
+                      Parser.succeed OtherSpecial
+                        |= rawKeywordParser
+                        |= remainderParser
+                    ]
             , Parser.succeed ToChannel
                 |. Parser.symbol "#"
                 |= rawKeywordParser
@@ -2633,7 +2644,7 @@ remainderParser : Parser (Maybe String)
 remainderParser =
     Parser.oneOf
         [ Parser.succeed Just
-            |. Parser.chompIf ((==) '|')
+            |. Parser.symbol "|"
             |= Parser.getChompedString (Parser.chompWhile ((/=) '>'))
         , Parser.succeed Nothing
         ]
