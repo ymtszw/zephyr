@@ -2,13 +2,13 @@ module Examples exposing (suite)
 
 import Array exposing (fromList)
 import ArrayExtra as Array
+import Color
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.Producer.Slack as Slack exposing (ConversationType(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import Dict
-import Element exposing (rgb255)
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
@@ -694,19 +694,11 @@ testColorIntCodec : String -> String -> Test
 testColorIntCodec colorNumStr expectedHex =
     test ("should decode/encode color integer " ++ colorNumStr) <|
         \_ ->
-            let
-                expectedColor =
-                    Result.map3 rgb255
-                        (expectedHex |> String.slice 0 2 |> Hex.fromString)
-                        (expectedHex |> String.slice 2 4 |> Hex.fromString)
-                        (expectedHex |> String.slice 4 6 |> Hex.fromString)
-                        |> Result.withDefault (rgb255 0 0 0)
-            in
             colorNumStr
                 |> D.decodeString Data.Producer.Discord.colorDecoder
-                |> Result.map (E.color >> E.encode 0)
+                |> Result.map (Color.encode >> E.encode 0)
                 |> Result.andThen (D.decodeString Data.Producer.Discord.colorDecoder)
-                |> Expect.equal (Ok expectedColor)
+                |> Expect.equal (Ok (Color.fromHexUnsafe expectedHex))
 
 
 

@@ -29,11 +29,11 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 -}
 
+import Color exposing (Color)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), Msg(..))
 import Dict exposing (Dict)
-import Element
 import File exposing (File)
 import Hex
 import Http
@@ -231,7 +231,7 @@ type alias Embed =
     { title : Maybe String
     , description : Maybe String
     , url : Maybe Url
-    , color : Maybe Element.Color
+    , color : Maybe Color
     , image : Maybe EmbedImage
     , thumbnail : Maybe EmbedImage -- Embed thumbnail and image are identical in structure
     , video : Maybe EmbedVideo
@@ -430,7 +430,7 @@ encodeEmbed embed =
         [ ( "title", E.maybe E.string embed.title )
         , ( "description", E.maybe E.string embed.description )
         , ( "url", E.maybe E.url embed.url )
-        , ( "color", E.maybe E.color embed.color )
+        , ( "color", E.maybe Color.encode embed.color )
         , ( "image", E.maybe encodeEmbedImage embed.image )
         , ( "thumbnail", E.maybe encodeEmbedImage embed.thumbnail )
         , ( "video", E.maybe encodeEmbedVideo embed.video )
@@ -663,13 +663,19 @@ embedDecoder =
         (D.maybeField "author" embedAuthorDecoder)
 
 
-colorDecoder : Decoder Element.Color
+colorDecoder : Decoder Color
 colorDecoder =
     D.oneOf
-        [ D.color
+        [ Color.decoder
+        , -- From Discord API
+          D.do D.int <|
+            \int ->
+                case int |> Hex.toString |> String.padLeft 6 '0' |> Color.fromHex of
+                    Ok c ->
+                        D.succeed c
 
-        -- From Discord API
-        , D.int |> D.andThen (Hex.toString >> String.padLeft 6 '0' >> D.hexColor)
+                    Err _ ->
+                        D.fail ("Invalid color code: " ++ String.fromInt int)
         ]
 
 

@@ -17,7 +17,6 @@ import Data.Producer.FetchStatus as FetchStatus
 import Data.Producer.Slack as PSlack
 import Data.ProducerRegistry as ProducerRegistry
 import Dict
-import Element
 import Html exposing (Html)
 import List.Extra
 import Scroll
@@ -403,7 +402,7 @@ marshalDiscordMessage id scrollIndex m =
             EmbeddedMatter.new (Markdown (Maybe.withDefault "" e.description))
                 |> apOrId (Plain >> EmbeddedMatter.title) e.title
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
-                |> apOrId (marshalColor >> EmbeddedMatter.color) e.color
+                |> apOrId EmbeddedMatter.color e.color
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
                 |> apOrId (marshalEmbedImage e.url >> EmbeddedMatter.thumbnail) e.thumbnail
                 |> EmbeddedMatter.attachedFiles attachedFiles
@@ -429,11 +428,6 @@ marshalDiscordMessage id scrollIndex m =
         |> ItemForView.timestamp m.timestamp
         |> ItemForView.attachedFiles (List.map marshalAttachment m.attachments)
         |> ItemForView.embeddedMatters (List.map marshalEmbed m.embeds)
-
-
-marshalColor : Element.Color -> Color
-marshalColor =
-    Element.toRgb >> Color.fromRgba
 
 
 dimension : Int -> Int -> { width : Int, height : Int }
@@ -500,7 +494,7 @@ marshalSlackMessage id scrollIndex m =
                     imageMedia (Url.toString url) (Url.toString (Maybe.withDefault url linkMaybe)) "Embedded image" Nothing
             in
             EmbeddedMatter.new textOrFallback
-                |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
+                |> apOrId EmbeddedMatter.color a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
