@@ -2546,13 +2546,21 @@ but instead, it should be used on message fetches.
 -}
 resolveAngleCmd : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> String -> String
 resolveAngleCmd convs users raw =
-    case Parser.run (angleSyntaxParser convs users) raw of
-        Ok replaced ->
-            replaced
+    let
+        resolveByLine line =
+            case Parser.run (angleSyntaxParser convs users) line of
+                Ok replaced ->
+                    replaced
 
-        Err _ ->
-            -- Debug here
-            raw
+                Err _ ->
+                    -- Debug here
+                    line
+    in
+    -- Slack text may be truncated. In such cases angles may NOT be closed, causing parse failure.
+    -- We can introduce many `backtrackable`, but instead we go easy by just localizing failures within lines.
+    String.split "\n" raw
+        |> List.map resolveByLine
+        |> String.join "\n"
 
 
 angleSyntaxParser : Dict ConversationIdStr Conversation -> Dict UserIdStr User -> Parser String
