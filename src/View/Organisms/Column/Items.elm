@@ -1,4 +1,4 @@
-module View.Organisms.Column.Items exposing (render, styles)
+module View.Organisms.Column.Items exposing (minimumItemHeight, render, styles)
 
 import Broker
 import Color
@@ -97,7 +97,6 @@ itemGroupKey eff props ( oldestItem, subsequentItems ) =
             [ class itemGroupClass
             , flexRow
             , flexBasisAuto
-            , spacingRow5
             , Border.bot1
             , Border.solid
             , Border.colorBd
@@ -482,6 +481,7 @@ styles =
         [ ( "padding-top", px itemGroupPaddingY )
         , ( "padding-bottom", px itemGroupPaddingY )
         ]
+    , s (c itemGroupClass ++ ">*") [ ( "margin-left", "5px" ) ] -- Unusual margin pattern; not to be confused with spacingRow5
     , s (descOf (hov (c itemBlockClass)) (c flexHoverMenuClass)) [ ( "display", "flex" ) ]
     , s (c flexHoverMenuClass)
         [ ( "display", "none" )
@@ -517,7 +517,14 @@ itemGroupContentsClass =
 
 minGroupContentsHeight : Int
 minGroupContentsHeight =
+    -- Equals to avatar size;
     40
+
+
+minimumItemHeight : Int
+minimumItemHeight =
+    -- For Scroll's auto-adjust
+    itemGroupPaddingY * 2 + minGroupContentsHeight
 
 
 itemBlockClass : String

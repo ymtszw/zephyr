@@ -27,12 +27,11 @@ Slack API uses HTTP RPC style. See here for available methods:
 
 -}
 
-import Data.ColorTheme exposing (aubergine)
+import Color exposing (Color)
 import Data.Filter as Filter exposing (FilterAtom(..))
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Dict exposing (Dict)
-import Element
 import Extra exposing (doT)
 import Http
 import HttpClient exposing (noAuth)
@@ -48,6 +47,7 @@ import Task exposing (Task)
 import TextParser
 import Time exposing (Posix)
 import Url exposing (Url)
+import View.Atoms.Theme exposing (aubergineTheme)
 import Worque
 
 
@@ -363,7 +363,7 @@ Better use `leakyList` on decoding.
 -}
 type alias Attachment =
     { pretext : Maybe String -- Optional leading text before attachment block
-    , color : Maybe Element.Color -- Gutter color of attachment block
+    , color : Maybe Color -- Gutter color of attachment block
     , author : Maybe AttachmentAuthor
     , title : Maybe AttachmentTitle
     , text : String -- Can be empty, and can be marked-up
@@ -681,7 +681,7 @@ encodeAttachment : Attachment -> E.Value
 encodeAttachment a =
     E.object
         [ ( "pretext", E.maybe E.string a.pretext )
-        , ( "color", E.maybe E.color a.color )
+        , ( "color", E.maybe Color.encode a.color )
         , ( "author", E.maybe encodeAttachmentAuthor a.author )
         , ( "title", E.maybe encodeAttachmentTitle a.title )
         , ( "text", E.string a.text )
@@ -1150,30 +1150,25 @@ attachmentDecoder =
         (D.field "fallback" D.string)
 
 
-colorDecoder : Decoder Element.Color
+colorDecoder : Decoder Color
 colorDecoder =
     D.oneOf
-        [ D.color
-
-        -- From Slack API
-        , D.do D.string <|
+        [ Color.decoder
+        , -- From Slack API
+          D.do D.string <|
             \str ->
                 case str of
                     "good" ->
-                        D.succeed aubergine.succ
+                        D.succeed aubergineTheme.succ
 
                     "warning" ->
-                        D.succeed aubergine.warn
+                        D.succeed aubergineTheme.warn
 
                     "danger" ->
-                        D.succeed aubergine.err
+                        D.succeed aubergineTheme.err
 
                     _ ->
-                        if String.startsWith "#" str then
-                            D.hexColor (String.dropLeft 1 str)
-
-                        else
-                            D.hexColor str
+                        D.fail ("Unknown color string: " ++ str)
         ]
 
 

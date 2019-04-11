@@ -86,16 +86,7 @@ sub toMsg (State list) =
 
 cursorCoordDecoder : (Int -> Int -> msg) -> Decoder msg
 cursorCoordDecoder toMsg =
-    do (field "clientX" int) <|
-        \cx ->
-            do (field "clientY" int) <|
-                \cy ->
-                    if cx == 0 && cy == 0 then
-                        -- Outlier case happens just before dragend
-                        fail "0,0"
-
-                    else
-                        succeed (toMsg cx cy)
+    map2 toMsg (field "clientX" int) (field "clientY" int)
 
 
 touch : ModelessId -> State -> State

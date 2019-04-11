@@ -20,7 +20,6 @@ import Data.ItemBroker as ItemBroker
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
-import Logger
 import Time exposing (Zone)
 import View.Atoms.Input.Select as Select
 import View.Organisms.Modeless as Modeless
@@ -34,7 +33,6 @@ type alias Model =
     , idGen : UniqueIdGen
     , pref : Pref
     , worque : Worque
-    , log : Logger.History
     , heartrate : Maybe Float
     , navKey : Key
     , viewState : ViewState
@@ -78,7 +76,6 @@ init env navKey =
         , idGen = UniqueIdGen.init
         , pref = Pref.init env.clientWidth
         , worque = Worque.init
-        , log = Logger.init
         , heartrate = defaultHeartrateMillis
         , navKey = navKey
         , viewState = defaultViewState

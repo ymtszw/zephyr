@@ -1,12 +1,12 @@
 module Color exposing
-    ( Color, encode, decoder, hexDecoder
+    ( Color, encode, decoder
     , setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
     , black, gray, white
     )
 
 {-| Color type and functions. Mimicks Element.Color in elm-ui.
 
-@docs Color, encode, decoder, hexDecoder
+@docs Color, encode, decoder
 @docs setAlpha, brightness, cssRgba, fromRgba, toRgba, fromHex, fromHexUnsafe, toHex
 @docs black, gray, white
 
@@ -14,6 +14,7 @@ module Color exposing
 
 import Hex
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 
 
@@ -49,24 +50,24 @@ encode c =
 
 decoder : Decoder Color
 decoder =
-    D.map Color <|
-        D.map4 ColorRecord
-            (D.field "red" (D.map cap D.float))
-            (D.field "green" (D.map cap D.float))
-            (D.field "blue" (D.map cap D.float))
-            (D.field "alpha" (D.map cap D.float))
+    D.oneOf
+        [ -- Well-structured; for internal storage
+          D.map Color <|
+            D.map4 ColorRecord
+                (D.field "red" (D.map cap D.float))
+                (D.field "green" (D.map cap D.float))
+                (D.field "blue" (D.map cap D.float))
+                (D.field "alpha" (D.map cap D.float))
+        , -- From Hexadecimal color string
+          D.do D.string <|
+            \hexStr ->
+                case fromHex hexStr of
+                    Ok c ->
+                        D.succeed c
 
-
-{-| Decode a 6-digit Hexadecimal Color string into Element.Color.
--}
-hexDecoder : String -> Decoder Color
-hexDecoder hexStr =
-    case fromHex hexStr of
-        Ok c ->
-            D.succeed c
-
-        Err e ->
-            D.fail <| "Invalid Color: '" ++ hexStr ++ "'. " ++ e
+                    Err e ->
+                        D.fail <| "Invalid Color: '" ++ hexStr ++ "'. " ++ e
+        ]
 
 
 cap : Float -> CFloat
