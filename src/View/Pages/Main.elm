@@ -577,6 +577,17 @@ teamIcon44 t =
 renderConfigSlack : Model -> Html Msg
 renderConfigSlack m =
     let
+        effects =
+            { onTokenInput = msgTagger << PSlack.UTokenInput
+            , onTokenSubmit = msgTagger PSlack.UTokenCommit
+            , onRehydrateButtonClick = msgTagger << PSlack.IRehydrate
+            , onConvSelect = \teamId convId -> msgTagger (PSlack.ISubscribe teamId convId)
+            , onForceFetchButtonClick = \_ _ -> NoOp -- TODO
+            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation
+            , onUnsubscribeButtonClick = \teamId convId -> msgTagger (PSlack.IUnsubscribe teamId convId)
+            , selectMsgTagger = SelectCtrl
+            }
+
         msgTagger =
             ProducerCtrl << ProducerRegistry.SlackMsg
 
@@ -642,17 +653,7 @@ renderConfigSlack m =
             in
             Dict.foldr marshal [] m.producerRegistry.slack.dict
     in
-    VSlack.render
-        { onTokenInput = msgTagger << PSlack.UTokenInput
-        , onTokenSubmit = msgTagger PSlack.UTokenCommit
-        , onRehydrateButtonClick = msgTagger << PSlack.IRehydrate
-        , onConvSelect = \teamId convId -> msgTagger (PSlack.ISubscribe teamId convId)
-        , onForceFetchButtonClick = \_ _ -> NoOp -- TODO
-        , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation
-        , onUnsubscribeButtonClick = \teamId convId -> msgTagger (PSlack.IUnsubscribe teamId convId)
-        , selectMsgTagger = SelectCtrl
-        }
-    <|
+    VSlack.render effects <|
         case m.producerRegistry.slack.unidentified of
             PSlack.TokenWritable token ->
                 VSlack.Props token True teamStates m.viewState.selectState
@@ -664,6 +665,17 @@ renderConfigSlack m =
 renderConfigDiscord : Model -> Html Msg
 renderConfigDiscord m =
     let
+        effects =
+            { onTokenInput = msgTagger << PDiscord.TokenInput
+            , onTokenSubmit = msgTagger PDiscord.TokenCommit
+            , onRehydrateButtonClick = msgTagger PDiscord.Rehydrate
+            , onChannelSelect = msgTagger << PDiscord.Subscribe
+            , onForceFetchButtonClick = always NoOp -- TODO
+            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfDiscordChannel
+            , onUnsubscribeButtonClick = msgTagger << PDiscord.Unsubscribe
+            , selectMsgTagger = SelectCtrl
+            }
+
         msgTagger =
             ProducerCtrl << ProducerRegistry.DiscordMsg
 
@@ -691,17 +703,7 @@ renderConfigDiscord m =
             in
             VDiscord.hydratedOnce rehydrating pov.user pov.guilds subbable subbed
     in
-    VDiscord.render
-        { onTokenInput = msgTagger << PDiscord.TokenInput
-        , onTokenSubmit = msgTagger PDiscord.TokenCommit
-        , onRehydrateButtonClick = msgTagger PDiscord.Rehydrate
-        , onChannelSelect = msgTagger << PDiscord.Subscribe
-        , onForceFetchButtonClick = always NoOp -- TODO
-        , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfDiscordChannel
-        , onUnsubscribeButtonClick = msgTagger << PDiscord.Unsubscribe
-        , selectMsgTagger = SelectCtrl
-        }
-    <|
+    VDiscord.render effects <|
         case m.producerRegistry.discord of
             PDiscord.TokenWritable token ->
                 VDiscord.Props token "Register" (not (String.isEmpty token)) VDiscord.NotIdentified m.viewState.selectState
