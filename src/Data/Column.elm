@@ -53,9 +53,8 @@ type alias Column =
     , configOpen : Bool
     , pendingFilters : Array Filter
     , editors : SelectArray ColumnEditor
-    , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/mdgriffith/elm-ui/issues/5
+    , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/elm/html/issues/55
     , userActionOnEditor : ColumnEditor.UserAction
-    , deleteGate : String -- TODO Remove
     }
 
 
@@ -161,7 +160,6 @@ decoder clientHeight =
                                                     , editors = ColumnEditor.filtersToEditors filters
                                                     , editorSeq = 0
                                                     , userActionOnEditor = ColumnEditor.OutOfFocus
-                                                    , deleteGate = ""
                                                     }
                                             in
                                             D.succeed ( c, Cmd.map ScrollMsg sCmd )
@@ -239,7 +237,6 @@ welcome clientHeight idGen id =
       , editors = ColumnEditor.defaultEditors
       , editorSeq = 0
       , userActionOnEditor = ColumnEditor.OutOfFocus
-      , deleteGate = ""
       }
     , newGen
     )
@@ -321,7 +318,6 @@ new clientHeight idGen id =
       , editors = ColumnEditor.defaultEditors
       , editorSeq = 0
       , userActionOnEditor = ColumnEditor.OutOfFocus
-      , deleteGate = ""
       }
     , newGen
     )
@@ -344,7 +340,6 @@ simple clientHeight fa id =
     , editors = ColumnEditor.filtersToEditors filters
     , editorSeq = 0
     , userActionOnEditor = ColumnEditor.OutOfFocus
-    , deleteGate = ""
     }
 
 
@@ -359,7 +354,6 @@ type Msg
     | SetFilterAtom { filterIndex : Int, atomIndex : Int, atom : FilterAtom }
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
-    | DeleteGateInput String
     | SelectEditor Int
     | EditorInteracted ColumnEditor.UserAction
     | EditorInput String
@@ -404,7 +398,7 @@ update : Bool -> Msg -> Column -> ( Column, PostProcess )
 update isVisible msg c =
     case msg of
         ToggleConfig open ->
-            pure { c | configOpen = open, pendingFilters = c.filters, deleteGate = "" }
+            pure { c | configOpen = open, pendingFilters = c.filters }
 
         Pin pinned ->
             ( { c | pinned = pinned, recentlyTouched = True }, { postProcess | persist = True, position = Auto } )
@@ -454,9 +448,6 @@ update isVisible msg c =
             ( { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
             , { postProcess | persist = True, catchUpId = Just c.id }
             )
-
-        DeleteGateInput input ->
-            pure { c | deleteGate = input }
 
         SelectEditor index ->
             pure { c | editors = SelectArray.selectAt index c.editors, editorSeq = c.editorSeq + 1 }
