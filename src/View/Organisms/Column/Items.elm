@@ -450,6 +450,7 @@ visualMediaBlock visualMedia =
                 [ flexItem
                 , flexBasisAuto
                 , alignStart
+                , padding2
                 ]
                 { url = record.link
                 , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
@@ -460,6 +461,7 @@ visualMediaBlock visualMedia =
                 ([ flexItem
                  , flexBasisAuto
                  , alignStart
+                 , padding2
                  , controls True
                  , src record.src
                  ]
