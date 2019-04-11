@@ -2598,20 +2598,23 @@ angleCmdParser =
                 |. Parser.symbol "@"
                 |= rawKeywordParser
                 |= remainderParser
-            , Parser.succeed AtEveryone
-                |. Parser.keyword "!everyone"
-                |. remainderParser
-            , Parser.succeed AtHere
-                |. Parser.keyword "!here"
-                |. remainderParser
-            , Parser.succeed AtChannel
-                |. Parser.keyword "!channel"
-                |. remainderParser
-            , -- XXX e.g. Date syntax
-              Parser.succeed OtherSpecial
+            , Parser.succeed identity
                 |. Parser.symbol "!"
-                |= rawKeywordParser
-                |= remainderParser
+                |= Parser.oneOf
+                    [ Parser.succeed AtEveryone
+                        |. Parser.keyword "everyone"
+                        |. remainderParser
+                    , Parser.succeed AtHere
+                        |. Parser.keyword "here"
+                        |. remainderParser
+                    , Parser.succeed AtChannel
+                        |. Parser.keyword "channel"
+                        |. remainderParser
+                    , -- XXX e.g. Date syntax
+                      Parser.succeed OtherSpecial
+                        |= rawKeywordParser
+                        |= remainderParser
+                    ]
             , Parser.succeed ToChannel
                 |. Parser.symbol "#"
                 |= rawKeywordParser
@@ -2633,7 +2636,7 @@ remainderParser : Parser (Maybe String)
 remainderParser =
     Parser.oneOf
         [ Parser.succeed Just
-            |. Parser.chompIf ((==) '|')
+            |. Parser.symbol "|"
             |= Parser.getChompedString (Parser.chompWhile ((/=) '>'))
         , Parser.succeed Nothing
         ]
