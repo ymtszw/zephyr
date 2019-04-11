@@ -40,7 +40,7 @@ import SelectArray exposing (SelectArray)
 import StringExtra
 import Task
 import Url
-import View.Parts exposing (columnHeaderHeight, columnItemMinimumHeight)
+import View.Organisms.Column.Items exposing (minimumItemHeight)
 
 
 type alias Column =
@@ -252,7 +252,7 @@ scrollInitOptions id clientHeight =
             Scroll.defaultOptions
                 { id = "scroll-" ++ id
                 , boundingHeight = boundingHeight clientHeight
-                , minimumItemHeight = columnItemMinimumHeight
+                , minimumItemHeight = minimumItemHeight
                 }
     in
     { opts | limit = columnItemLimit, baseRatio = baseRatio, tierRatio = tierRatio }
@@ -261,6 +261,12 @@ scrollInitOptions id clientHeight =
 boundingHeight : Int -> Int
 boundingHeight clientHeight =
     clientHeight - columnHeaderHeight
+
+
+columnHeaderHeight : Int
+columnHeaderHeight =
+    -- Depends on View. Basically, paddingY (5px) x 2 + header icons' height (30px)
+    40
 
 
 columnItemLimit : Int
