@@ -21,7 +21,6 @@ type alias Effects msg =
     { onZephyrModeChange : Bool -> msg
     , onShowColumnButtonClick : String -> msg
     , onDeleteColumnButtonClick : String -> msg
-    , onLoggingChange : Bool -> msg
     }
 
 
@@ -30,7 +29,6 @@ type alias Props =
     , evictThreshold : Int
     , columnSlotsAvailable : Bool
     , shadowColumns : List ShadowColumn
-    , logging : Bool
     }
 
 
@@ -52,8 +50,6 @@ render eff props =
                 ]
         , prefRow "Shadow Columns" [ "Columns currently aren't displayed. Automatically reappear when new messages arrived." ] <|
             shadowColumnsTable eff props.columnSlotsAvailable props.shadowColumns
-        , prefRow "Logging" [ "Enables Elm events inspector at the bottom of this pane. This will SIGNIFICANTLY degrade application performance!" ] <|
-            div [] [ Input.toggle [] { onChange = eff.onLoggingChange, checked = props.logging } ]
         ]
 
 

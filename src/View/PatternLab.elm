@@ -2513,13 +2513,11 @@ Pref.render
     { onZephyrModeChange = Toggle
     , onShowColumnButtonClick = always NoOp
     , onDeleteColumnButtonClick = always NoOp
-    , onLoggingChange = Toggle
     }
     { zephyrMode = m.toggle
     , evictThreshold = 5
     , columnSlotsAvailable = m.toggle
     , shadowColumns = List.range 0 6 |> List.map dummyShadowColumn
-    , logging = m.toggle
     }""" <|
             let
                 dummyShadowColumn index =
@@ -2548,13 +2546,11 @@ Pref.render
                 { onZephyrModeChange = Toggle
                 , onShowColumnButtonClick = always NoOp
                 , onDeleteColumnButtonClick = always NoOp
-                , onLoggingChange = Toggle
                 }
                 { zephyrMode = m.toggle
                 , evictThreshold = 5
                 , columnSlotsAvailable = m.toggle
                 , shadowColumns = List.range 0 6 |> List.map dummyShadowColumn
-                , logging = m.toggle
                 }
         ]
 

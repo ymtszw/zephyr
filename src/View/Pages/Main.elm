@@ -555,13 +555,11 @@ renderConfigPref m =
         { onZephyrModeChange = PrefCtrl << Pref.ZephyrMode
         , onShowColumnButtonClick = ShowColumn
         , onDeleteColumnButtonClick = DelColumn
-        , onLoggingChange = PrefCtrl << Pref.Logging
         }
         { zephyrMode = m.pref.zephyrMode
         , evictThreshold = m.pref.evictThreshold
         , columnSlotsAvailable = not m.pref.zephyrMode || ColumnStore.sizePinned m.columnStore < m.pref.evictThreshold
         , shadowColumns = List.map marshalShadowColumn (ColumnStore.listShadow m.columnStore)
-        , logging = m.pref.logging
         }
 
 
