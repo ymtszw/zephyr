@@ -26,9 +26,10 @@ import View.Molecules.Icon as Icon
 import View.Style exposing (..)
 
 
-type alias Props c =
-    { configOpen : Bool
-    , visibleColumns : List (ColumnInSidebar c)
+type alias Props x c =
+    { x
+        | configOpen : Bool
+        , visibleColumns : List (ColumnInSidebar c)
     }
 
 
@@ -43,7 +44,7 @@ type alias Effects msg =
     }
 
 
-render : Effects msg -> Props c -> Html msg
+render : Effects msg -> Props x c -> Html msg
 render eff p =
     nav
         [ class sidebarClass

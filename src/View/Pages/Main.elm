@@ -5,10 +5,6 @@ import ArrayExtra
 import Broker
 import Color exposing (Color)
 import Data.Column as Column
-import Data.ColumnItem as ColumnItem
-import Data.ColumnItem.Contents exposing (..)
-import Data.ColumnItem.EmbeddedMatter as EmbeddedMatter
-import Data.ColumnItem.NamedEntity as NamedEntity
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConversation)
@@ -31,11 +27,16 @@ import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
 import View.Organisms.Column.Items
+import View.Organisms.Column.Items.ItemForView as ItemForView exposing (ItemForView)
+import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
+import View.Organisms.Column.Items.ItemForView.EmbeddedMatter as EmbeddedMatter
+import View.Organisms.Column.Items.ItemForView.NamedEntity as NamedEntity
 import View.Organisms.Column.NewMessageEditor
 import View.Organisms.Config.Discord as VDiscord
 import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
 import View.Organisms.Config.Status
+import View.Organisms.Modeless as Modeless
 import View.Style exposing (none)
 import View.Templates.Main exposing (DragStatus(..))
 
@@ -62,13 +63,17 @@ render m =
             , columnItemsScrollAttrs =
                 \c ->
                     Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
-            , sidebarEffects = sidebarEffects
-            }
-
-        sidebarEffects =
-            { onConfigToggleClick = ToggleConfig
-            , onAddColumnClick = AddEmptyColumn
-            , onColumnButtonClickByIndex = RevealColumn
+            , sidebarEffects =
+                { onConfigToggleClick = ToggleConfig
+                , onAddColumnClick = AddEmptyColumn
+                , onColumnButtonClickByIndex = RevealColumn
+                }
+            , modelessEffects =
+                { onCloseButtonClick = ModelessRemove
+                , onAnywhereClick = ModelessTouch
+                , onDrag = ModelessMove
+                , onDragEnd = ModelessTouch
+                }
             }
 
         props =
@@ -107,9 +112,18 @@ render m =
                     , editorSeq = c.editorSeq
                     , userActionOnEditor = c.userActionOnEditor
                     }
+
+                resolveModelessId mId =
+                    case mId of
+                        Modeless.RawColumnItemId cId itemIndex ->
+                            Dict.get cId m.columnStore.dict
+                                |> Maybe.andThen (\c -> Scroll.getAt itemIndex c.items)
+                                |> Maybe.withDefault Column.itemNotFound
+                                |> Modeless.RawColumnItem mId
             in
             { configOpen = m.viewState.configOpen
             , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
+            , modeless = Modeless.map resolveModelessId m.viewState.modeless
             }
 
         contents =
@@ -177,15 +191,18 @@ render m =
                         in
                         View.Organisms.Column.Items.render
                             { onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
+                            , onItemSourceButtonClick = \cId index -> ModelessTouch (Modeless.RawColumnItemId cId index)
                             }
                             { timezone = m.viewState.timezone
+                            , columnId = c.id
+                            , hasMore = List.length itemsVisible < Scroll.size c.items
                             , itemGroups =
-                                -- Do note that items are sorted from "newest to oldest" at the moment it came out from Scrolls.
-                                -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest"
-                                List.Extra.reverseMap marshalColumnItem itemsVisible
+                                -- Do note that items are sorted from "newest to oldest" at the moment it came out from Scrolls (itemsVisible).
+                                -- Then we reverse, since we want to group items in "older to newer" order, while gloabally showing "newest to oldest" (reverse again)
+                                List.indexedMap marshalColumnItem itemsVisible
+                                    |> List.reverse
                                     |> List.Extra.groupWhile shouldGroupColumnItem
                                     |> List.reverse
-                            , hasMore = List.length itemsVisible < Scroll.size c.items
                             }
                 }
             }
@@ -279,30 +296,30 @@ marshalSourcesAndFilters fam filters =
     Array.foldl collectSourceAndFilter ( [], [] ) filters
 
 
-marshalColumnItem : Column.ColumnItem -> ColumnItem.ColumnItem
-marshalColumnItem item =
+marshalColumnItem : Int -> Column.ColumnItem -> ItemForView
+marshalColumnItem scrollIndex item =
     case item of
         Column.Product offset (Data.Item.DiscordItem message) ->
-            marshalDiscordMessage (Broker.offsetToString offset) message
+            marshalDiscordMessage (Broker.offsetToString offset) scrollIndex message
 
         Column.Product offset (Data.Item.SlackItem message) ->
-            marshalSlackMessage (Broker.offsetToString offset) message
+            marshalSlackMessage (Broker.offsetToString offset) scrollIndex message
 
         Column.SystemMessage sm ->
             let
                 marshalMedia media =
                     case media of
                         Column.Image url ->
-                            ColumnItem.attachedFiles [ attachedImage (Url.toString url) ]
+                            ItemForView.attachedFiles [ attachedImage (Url.toString url) ]
 
                         Column.Video url ->
-                            ColumnItem.attachedFiles [ attachedVideo (Url.toString url) ]
+                            ItemForView.attachedFiles [ attachedVideo (Url.toString url) ]
             in
-            ColumnItem.new sm.id (NamedEntity.new "System Message") (Markdown sm.message)
+            ItemForView.new sm.id scrollIndex (NamedEntity.new "System Message") (Markdown sm.message)
                 |> apOrId marshalMedia sm.mediaMaybe
 
         Column.LocalMessage lm ->
-            ColumnItem.new lm.id (NamedEntity.new "Memo") (Markdown lm.message)
+            ItemForView.new lm.id scrollIndex (NamedEntity.new "Memo") (Markdown lm.message)
 
 
 apOrId : (a -> b -> b) -> Maybe a -> b -> b
@@ -310,7 +327,7 @@ apOrId toFunc =
     Maybe.withDefault identity << Maybe.map toFunc
 
 
-shouldGroupColumnItem : ColumnItem.ColumnItem -> ColumnItem.ColumnItem -> Bool
+shouldGroupColumnItem : ItemForView -> ItemForView -> Bool
 shouldGroupColumnItem older newer =
     let
         sourceIdsMatch =
@@ -334,8 +351,8 @@ shouldGroupColumnItem older newer =
     sourceIdsMatch && authorsMatch && timestampsAreClose
 
 
-marshalDiscordMessage : String -> PDiscord.Message -> ColumnItem.ColumnItem
-marshalDiscordMessage id m =
+marshalDiscordMessage : String -> Int -> PDiscord.Message -> ItemForView
+marshalDiscordMessage id scrollIndex m =
     -- XXX Possibly, m.id can be used for interaction handler
     let
         author =
@@ -408,10 +425,10 @@ marshalDiscordMessage id m =
                 attachedOther (DownloadUrl (Url.toString a.proxyUrl))
                     |> attachedFileDescription a.filename
     in
-    ColumnItem.new id author (Markdown m.content)
-        |> ColumnItem.timestamp m.timestamp
-        |> ColumnItem.attachedFiles (List.map marshalAttachment m.attachments)
-        |> ColumnItem.embeddedMatters (List.map marshalEmbed m.embeds)
+    ItemForView.new id scrollIndex author (Markdown m.content)
+        |> ItemForView.timestamp m.timestamp
+        |> ItemForView.attachedFiles (List.map marshalAttachment m.attachments)
+        |> ItemForView.embeddedMatters (List.map marshalEmbed m.embeds)
 
 
 marshalColor : Element.Color -> Color
@@ -424,8 +441,8 @@ dimension w h =
     { width = w, height = h }
 
 
-marshalSlackMessage : String -> PSlack.Message -> ColumnItem.ColumnItem
-marshalSlackMessage id m =
+marshalSlackMessage : String -> Int -> PSlack.Message -> ItemForView
+marshalSlackMessage id scrollIndex m =
     let
         author =
             case m.author of
@@ -454,6 +471,13 @@ marshalSlackMessage id m =
 
         marshalAttachment a =
             let
+                textOrFallback =
+                    if String.isEmpty a.text then
+                        Markdown a.fallback
+
+                    else
+                        Markdown a.text
+
                 marshalTitle aTitle =
                     Markdown <|
                         case aTitle.link of
@@ -475,7 +499,7 @@ marshalSlackMessage id m =
                 marshalImageUrl linkMaybe url =
                     imageMedia (Url.toString url) (Url.toString (Maybe.withDefault url linkMaybe)) "Embedded image" Nothing
             in
-            EmbeddedMatter.new (Markdown a.text)
+            EmbeddedMatter.new textOrFallback
                 |> apOrId (marshalColor >> EmbeddedMatter.color) a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
@@ -511,10 +535,10 @@ marshalSlackMessage id m =
                 attachedOther (DownloadUrl (Url.toString f.url_))
                     |> attachedFileDescription f.name
     in
-    ColumnItem.new id author (Markdown m.text)
-        |> ColumnItem.timestamp (PSlack.getPosix m)
-        |> ColumnItem.embeddedMatters (List.map marshalAttachment m.attachments)
-        |> ColumnItem.attachedFiles (List.map marshalFile m.files)
+    ItemForView.new id scrollIndex author (Markdown m.text)
+        |> ItemForView.timestamp (PSlack.getPosix m)
+        |> ItemForView.embeddedMatters (List.map marshalAttachment m.attachments)
+        |> ItemForView.attachedFiles (List.map marshalFile m.files)
 
 
 renderConfigPref : Model -> Html Msg

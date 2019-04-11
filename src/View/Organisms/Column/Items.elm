@@ -2,10 +2,6 @@ module View.Organisms.Column.Items exposing (render, styles)
 
 import Broker
 import Color
-import Data.ColumnItem exposing (ColumnItem)
-import Data.ColumnItem.Contents exposing (..)
-import Data.ColumnItem.EmbeddedMatter exposing (EmbeddedMatter)
-import Data.ColumnItem.NamedEntity exposing (Avatar(..))
 import Html exposing (Attribute, Html, button, div, img, p, pre, span, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -26,19 +22,25 @@ import View.Atoms.TextBlock exposing (breakWords, clip, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
+import View.Organisms.Column.Items.ItemForView exposing (ItemForView)
+import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
+import View.Organisms.Column.Items.ItemForView.EmbeddedMatter exposing (EmbeddedMatter)
+import View.Organisms.Column.Items.ItemForView.NamedEntity exposing (Avatar(..))
 import View.Style exposing (..)
 
 
 type alias Effects msg =
     { onLoadMoreClick : msg
+    , onItemSourceButtonClick : String -> Int -> msg
     }
 
 
 type alias Props =
     { timezone : Time.Zone
-    , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
-      itemGroups : List ( ColumnItem, List ColumnItem )
+    , columnId : String
     , hasMore : Bool
+    , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
+      itemGroups : List ( ItemForView, List ItemForView )
     }
 
 
@@ -51,13 +53,12 @@ render eff props =
         itemGroups ->
             let
                 contents =
-                    List.map (itemGroupKey props.timezone) itemGroups
+                    List.map (itemGroupKey eff props) itemGroups
             in
             Html.Keyed.node "div"
                 [ flexBasisAuto
                 , flexShrink
                 , flexColumn
-                , padding5
                 ]
                 (contents ++ [ loadMoreOrBottomMarkerKey eff.onLoadMoreClick props.hasMore ])
 
@@ -89,8 +90,8 @@ loadMoreOrBottomMarkerKey onLoadMoreClick hasMore =
 -- ITEM
 
 
-itemGroupKey : Time.Zone -> ( ColumnItem, List ColumnItem ) -> ( String, Html msg )
-itemGroupKey tz ( oldestItem, subsequentItems ) =
+itemGroupKey : Effects msg -> Props -> ( ItemForView, List ItemForView ) -> ( String, Html msg )
+itemGroupKey eff props ( oldestItem, subsequentItems ) =
     Tuple.pair ("itemGroup_" ++ oldestItem.id) <|
         div
             [ class itemGroupClass
@@ -102,11 +103,11 @@ itemGroupKey tz ( oldestItem, subsequentItems ) =
             , Border.colorBd
             ]
             [ itemAuthorAvatar40 oldestItem
-            , itemGroupContents tz oldestItem subsequentItems
+            , itemGroupContents eff props oldestItem subsequentItems
             ]
 
 
-itemAuthorAvatar40 : ColumnItem -> Html msg
+itemAuthorAvatar40 : ItemForView -> Html msg
 itemAuthorAvatar40 item =
     let
         octiconAvatar40 shape =
@@ -151,8 +152,12 @@ itemAuthorAvatar40 item =
                 Icon.imgOrAbbr [ serif, xProminent, alignStart, Icon.rounded40 ] item.author.primaryName Nothing
 
 
-itemGroupContents : Time.Zone -> ColumnItem -> List ColumnItem -> Html msg
-itemGroupContents tz oldestItem subsequentItems =
+itemGroupContents : Effects msg -> Props -> ItemForView -> List ItemForView -> Html msg
+itemGroupContents eff props oldestItem subsequentItems =
+    let
+        bodyBlocks =
+            List.map (itemBlockKey eff props) (oldestItem :: subsequentItems)
+    in
     Html.Keyed.node "div"
         [ class itemGroupContentsClass
         , clip
@@ -162,11 +167,11 @@ itemGroupContents tz oldestItem subsequentItems =
         , flexShrink
         , spacingColumn2
         ]
-        (itemGroupHeaderKey tz oldestItem :: List.map itemBlockKey (oldestItem :: subsequentItems))
+        (itemGroupHeaderKey oldestItem :: bodyBlocks)
 
 
-itemGroupHeaderKey : Time.Zone -> ColumnItem -> ( String, Html msg )
-itemGroupHeaderKey tz item =
+itemGroupHeaderKey : ItemForView -> ( String, Html msg )
+itemGroupHeaderKey item =
     Tuple.pair "itemGroupHeader" <|
         div [ flexRow, flexCenter, spacingRow2 ]
             [ div [ flexShrink, flexBasisAuto, breakWords, bold, prominent ] [ t item.author.primaryName ]
@@ -176,24 +181,59 @@ itemGroupHeaderKey tz item =
 
                 Nothing ->
                     none
-            , case item.timestamp of
-                Just posixTime ->
-                    div [ colorNote, pushRight, flexBasisAuto ] [ t (TimeExtra.local tz posixTime) ]
-
-                Nothing ->
-                    none
             ]
 
 
-itemBlockKey : ColumnItem -> ( String, Html msg )
-itemBlockKey item =
+itemBlockKey : Effects msg -> Props -> ItemForView -> ( String, Html msg )
+itemBlockKey eff props item =
     Tuple.pair item.id <|
-        div [ flexColumn, flexBasisAuto, flexShrink, flexGrow, padding2, spacingColumn5 ] <|
-            textBlocks item.body
-                ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
-                ++ List.map ktBlock item.kts
-                -- TODO reactions
-                ++ List.map attachedFileBlock item.attachedFiles
+        withBadge
+            [ class itemBlockClass
+            , flexGrow
+            , Background.hovSub
+            ]
+            { topRight = Just (hoverMenu eff props item)
+            , bottomRight = Nothing
+            , content =
+                let
+                    children =
+                        textBlocks item.body
+                            ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
+                            ++ List.map ktBlock item.kts
+                            -- TODO reactions
+                            ++ List.map attachedFileBlock item.attachedFiles
+                in
+                div
+                    [ flexColumn
+                    , flexBasisAuto
+                    , flexShrink
+                    , flexGrow
+                    , spacingColumn5
+                    ]
+                    children
+            }
+
+
+hoverMenu : Effects msg -> Props -> ItemForView -> Html msg
+hoverMenu eff props item =
+    div [ class flexHoverMenuClass, colorNote, minuscule, padding2, spacingRow2, Background.colorMain ] <|
+        case item.timestamp of
+            Just posixTime ->
+                [ div [ nowrap, padding5 ] [ t (TimeExtra.local props.timezone posixTime) ]
+                , Icon.octiconButton [ flexItem, padding5, Image.hovText, Background.transparent, Border.round5 ]
+                    { onPress = eff.onItemSourceButtonClick props.columnId item.scrollIndex
+                    , size = minusculeSize
+                    , shape = Octicons.code
+                    }
+                ]
+
+            Nothing ->
+                [ Icon.octiconButton [ flexItem, padding5, Image.hovText, Background.transparent, Border.round5 ]
+                    { onPress = eff.onItemSourceButtonClick props.columnId item.scrollIndex
+                    , size = minusculeSize
+                    , shape = Octicons.code
+                    }
+                ]
 
 
 ktBlock : ( String, Text ) -> Html msg
@@ -410,6 +450,7 @@ visualMediaBlock visualMedia =
                 [ flexItem
                 , flexBasisAuto
                 , alignStart
+                , padding2
                 ]
                 { url = record.link
                 , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
@@ -420,6 +461,7 @@ visualMediaBlock visualMedia =
                 ([ flexItem
                  , flexBasisAuto
                  , alignStart
+                 , padding2
                  , controls True
                  , src record.src
                  ]
@@ -440,6 +482,12 @@ styles =
         [ ( "padding-top", px itemGroupPaddingY )
         , ( "padding-bottom", px itemGroupPaddingY )
         ]
+    , s (descOf (hov (c itemBlockClass)) (c flexHoverMenuClass)) [ ( "display", "flex" ) ]
+    , s (c flexHoverMenuClass)
+        [ ( "display", "none" )
+        , ( "border-bottom-left-radius", "5px" )
+        ]
+    , s (c itemGroupContentsClass) [ ( "min-height", px minGroupContentsHeight ) ]
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
@@ -465,6 +513,21 @@ itemGroupPaddingY =
 itemGroupContentsClass : String
 itemGroupContentsClass =
     "cigc"
+
+
+minGroupContentsHeight : Int
+minGroupContentsHeight =
+    40
+
+
+itemBlockClass : String
+itemBlockClass =
+    "cib"
+
+
+flexHoverMenuClass : String
+flexHoverMenuClass =
+    "cihm"
 
 
 maxMediaHeight : Int

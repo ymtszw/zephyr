@@ -23,6 +23,7 @@ import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Logger
 import Time exposing (Zone)
 import View.Atoms.Input.Select as Select
+import View.Organisms.Modeless as Modeless
 import Worque exposing (Work(..), Worque)
 
 
@@ -47,6 +48,7 @@ type alias ViewState =
     , selectState : Select.State
     , timezone : Zone
     , visible : Bool
+    , modeless : Modeless.State
     }
 
 
@@ -100,6 +102,7 @@ defaultViewState =
     , selectState = Select.init
     , timezone = Time.utc
     , visible = True
+    , modeless = Modeless.init
     }
 
 

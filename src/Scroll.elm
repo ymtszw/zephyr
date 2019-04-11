@@ -1,7 +1,7 @@
 module Scroll exposing
     ( Scroll, InitOptions, encode, decoder, init, initWith, defaultOptions, clear
     , setLimit
-    , push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
+    , push, prependList, pop, getAt, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
     , Msg(..), update, scrollAttrs
     )
 
@@ -23,7 +23,7 @@ Its internal data structure may be persisted.
 
 @docs Scroll, InitOptions, AutoAdjustOptions, encode, decoder, init, initWith, defaultOptions, clear
 @docs setLimit
-@docs push, prependList, pop, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
+@docs push, prependList, pop, getAt, toList, toListWithFilter, size, pendingSize, isEmpty, scrolled
 @docs Msg, update, scrollAttrs
 
 -}
@@ -37,6 +37,7 @@ import Html.Events
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import List.Extra
 import Task
 
 
@@ -318,6 +319,15 @@ popFromPending (Scroll s) =
 
         x :: xs ->
             ( Just x, Scroll { s | pending = xs, pendingSize = s.pendingSize - 1 } )
+
+
+getAt : Int -> Scroll a -> Maybe a
+getAt index (Scroll s) =
+    if 0 <= index && index < BoundedDeque.length s.buffer then
+        List.Extra.getAt index (BoundedDeque.toList s.buffer)
+
+    else
+        Nothing
 
 
 {-| Take certain amount of elements from `buffer`.

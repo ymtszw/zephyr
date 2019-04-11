@@ -14,6 +14,7 @@ import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography as Typography
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
+import View.Molecules.RawColumnItem as RawColumnItem
 import View.Molecules.Source as Source
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
@@ -21,6 +22,7 @@ import View.Organisms.Column.Header as Header
 import View.Organisms.Column.Items as Items
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Pref as Pref
+import View.Organisms.Modeless as Modeless
 import View.Organisms.Sidebar as Sidebar
 import View.Style exposing (..)
 import View.Templates.Main
@@ -55,7 +57,9 @@ rendered =
                 ++ Table.styles
                 ++ Source.styles
                 ++ ProducerConfig.styles
+                ++ RawColumnItem.styles
                 ++ Sidebar.styles
+                ++ Modeless.styles
                 ++ Pref.styles
                 ++ Header.styles
                 ++ NewMessageEditor.styles

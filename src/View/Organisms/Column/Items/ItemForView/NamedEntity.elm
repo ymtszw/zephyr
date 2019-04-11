@@ -1,4 +1,4 @@
-module Data.ColumnItem.NamedEntity exposing
+module View.Organisms.Column.Items.ItemForView.NamedEntity exposing
     ( NamedEntity, Avatar(..), desiredIconSize, new
     , secondaryName, avatar, url, imageOrAbbr
     )

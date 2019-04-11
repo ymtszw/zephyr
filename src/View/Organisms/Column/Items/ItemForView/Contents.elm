@@ -1,4 +1,4 @@
-module Data.ColumnItem.Contents exposing
+module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
     , imageMedia, videoMedia
     , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension

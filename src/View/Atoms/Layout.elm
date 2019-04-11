@@ -434,12 +434,14 @@ flexGrowStyle : Style
 flexGrowStyle =
     let
         growingChildren =
-            String.join ","
-                [ c flexRowClass ++ ">" ++ c flexGrowClass
-                , c flexColumnClass ++ ">" ++ c flexGrowClass
-                , c growRowClass ++ ">" ++ c flexGrowClass
-                , c growColumnClass ++ ">" ++ c flexGrowClass
-                ]
+            String.join "," <|
+                List.map (\parent -> parent ++ ">" ++ c flexGrowClass) <|
+                    [ c flexRowClass
+                    , c flexColumnClass
+                    , c growRowClass
+                    , c growColumnClass
+                    , c badgeOuterClass
+                    ]
     in
     s growingChildren [ ( "flex-grow", "10000" ) ]
 
@@ -453,12 +455,14 @@ flexShrinkStyle : Style
 flexShrinkStyle =
     let
         shrinkingChildren =
-            String.join ","
-                [ c flexRowClass ++ ">" ++ c flexShrinkClass
-                , c flexColumnClass ++ ">" ++ c flexShrinkClass
-                , c growRowClass ++ ">" ++ c flexShrinkClass
-                , c growColumnClass ++ ">" ++ c flexShrinkClass
-                ]
+            String.join "," <|
+                List.map (\parent -> parent ++ ">" ++ c flexShrinkClass) <|
+                    [ c flexRowClass
+                    , c flexColumnClass
+                    , c growRowClass
+                    , c growColumnClass
+                    , c badgeOuterClass
+                    ]
     in
     s shrinkingChildren [ ( "flex-shrink", "1" ) ]
 

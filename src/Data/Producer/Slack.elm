@@ -1271,7 +1271,7 @@ apiAttachmentDecoder convs users =
         (D.optionField "text" (D.map (resolveAngleCmd convs users) D.string) "")
         (D.maybeField "image_url" D.url)
         (D.maybeField "thumb_url" D.url)
-        (D.field "fallback" D.string)
+        (D.field "fallback" (D.map (resolveAngleCmd convs users) D.string))
 
 
 famDecoder : Decoder FAM

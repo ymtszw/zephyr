@@ -31,12 +31,12 @@ import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen
 import IndexedDb exposing (..)
-import Logger
 import Task exposing (Task)
 import Time exposing (Posix)
 import TimeZone
 import Url
 import View.Atoms.Input.Select
+import View.Organisms.Modeless as Modeless
 import View.Pages.Main
 import View.Stylesheet
 import View.Templates.Main exposing (columnAreaParentId, columnWidth)
@@ -96,16 +96,7 @@ getTimeZone =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
-update msg m_ =
-    let
-        ({ viewState, env, pref } as m) =
-            if m_.env.isLocalDevelopment && m_.pref.logging then
-                Logger.push m_.idGen (Data.Msg.logEntry msg) m_.log
-                    |> (\( newLog, idGen ) -> { m_ | log = newLog, idGen = idGen })
-
-            else
-                m_
-    in
+update msg ({ env, pref, viewState } as m) =
     case msg of
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
@@ -128,9 +119,6 @@ update msg m_ =
 
         VisibilityChanged False ->
             pure { m | viewState = { viewState | columnSwapMaybe = Nothing, visible = False } }
-
-        LoggerCtrl lMsg ->
-            Logger.update lMsg m.log |> Tuple.mapBoth (\l -> { m | log = l }) (Cmd.map LoggerCtrl) |> IndexedDb.noPersist
 
         LinkClicked (Browser.Internal url) ->
             noPersist ( m, Nav.pushUrl m.navKey (Url.toString url) )
@@ -261,6 +249,15 @@ update msg m_ =
 
                 ( newPref, False ) ->
                     pure { m | pref = newPref }
+
+        ModelessTouch mId ->
+            pure { m | viewState = { viewState | modeless = Modeless.touch mId viewState.modeless } }
+
+        ModelessMove mId x y ->
+            pure { m | viewState = { viewState | modeless = Modeless.move ( mId, x, y ) viewState.modeless } }
+
+        ModelessRemove mId ->
+            pure { m | viewState = { viewState | modeless = Modeless.remove mId viewState.modeless } }
 
         NoOp ->
             pure m
@@ -542,6 +539,7 @@ sub m =
                         Browser.Events.Hidden ->
                             False
         , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
+        , Modeless.sub ModelessMove m.viewState.modeless
         ]
 
 

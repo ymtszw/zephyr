@@ -37,12 +37,14 @@ import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.Source as Source
 import View.Molecules.Wallpaper as Wallpaper
+import View.Organisms.Modeless as Modeless
 import View.Organisms.Sidebar as Sidebar exposing (ColumnInSidebar, sidebarExpansionWidth, sidebarWidth)
 import View.Style exposing (..)
 
 
 type alias Props c =
     { configOpen : Bool
+    , modeless : Modeless.Props
     , visibleColumns : List (VisibleColumn c)
     }
 
@@ -65,6 +67,7 @@ type DragStatus
 
 type alias Effects c msg =
     { sidebarEffects : Sidebar.Effects msg
+    , modelessEffects : Modeless.Effects msg
     , -- DragStart is handled in Organisms.Column.Header
       onColumnDragEnd : msg
     , onColumnDragHover : Int -> msg
@@ -103,6 +106,7 @@ render eff props contents =
     , columnContainer eff props.visibleColumns contents.columnContents
     , configDrawer props.configOpen contents.configContents
     , Sidebar.render eff.sidebarEffects props
+    , Modeless.render eff.modelessEffects props.modeless
     ]
 
 
