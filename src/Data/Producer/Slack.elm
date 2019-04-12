@@ -27,11 +27,11 @@ Slack API uses HTTP RPC style. See here for available methods:
 
 -}
 
+import AssocList as Dict exposing (Dict)
 import Color exposing (Color)
 import Data.Filter as Filter exposing (FilterAtom(..))
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
-import Dict exposing (Dict)
 import Extra exposing (doT)
 import Http
 import HttpClient exposing (noAuth)
@@ -433,7 +433,7 @@ type alias FAM =
 encodeRegistry : SlackRegistry -> E.Value
 encodeRegistry sr =
     E.object
-        [ ( "dict", E.dict identity encodeSlack sr.dict )
+        [ ( "dict", E.assocList identity encodeSlack sr.dict )
         , ( "unidentified", encodeUnidentified sr.unidentified )
         ]
 
@@ -482,9 +482,9 @@ encodePov pov =
         [ ( "token", E.string pov.token )
         , ( "user", encodeUser pov.user )
         , ( "team", encodeTeam pov.team )
-        , ( "conversations", E.dict identity encodeConversation pov.conversations )
-        , ( "users", E.dict identity encodeUser pov.users )
-        , ( "bots", E.dict identity encodeBot pov.bots )
+        , ( "conversations", E.assocList identity encodeConversation pov.conversations )
+        , ( "users", E.assocList identity encodeUser pov.users )
+        , ( "bots", E.assocList identity encodeBot pov.bots )
         ]
 
 
@@ -714,7 +714,7 @@ encodeFam fam =
     E.object
         [ ( "default", Filter.encodeFilterAtom fam.default )
         , ( "conversations", E.list identity encodedConvs )
-        , ( "teams", E.dict identity encodeTeam teams )
+        , ( "teams", E.assocList identity encodeTeam teams )
         ]
 
 
@@ -740,7 +740,7 @@ registryDecoder : Decoder SlackRegistry
 registryDecoder =
     D.oneOf
         [ D.map2 SlackRegistry
-            (D.field "dict" (D.dict slackDecoder))
+            (D.field "dict" (D.assocList identity slackDecoder))
             (D.field "unidentified" unidentifiedDecoder)
         , D.succeed initRegistry -- fallback
         ]
@@ -775,15 +775,15 @@ sessionDecoder =
 
 povDecoder : Decoder POV
 povDecoder =
-    D.do (D.field "users" (D.dict userDecoder)) <|
+    D.do (D.field "users" (D.assocList identity userDecoder)) <|
         \users ->
             D.map6 POV
                 (D.field "token" D.string)
                 (D.field "user" userDecoder)
                 (D.field "team" teamDecoder)
-                (D.field "conversations" (D.dict (conversationDecoder users)))
+                (D.field "conversations" (D.assocList identity (conversationDecoder users)))
                 (D.succeed users)
-                (D.optionField "bots" (D.dict botDecoder) Dict.empty)
+                (D.optionField "bots" (D.assocList identity botDecoder) Dict.empty)
 
 
 userDecoder : Decoder User
@@ -1271,7 +1271,7 @@ apiAttachmentDecoder convs users =
 
 famDecoder : Decoder FAM
 famDecoder =
-    D.do (D.field "teams" (D.dict teamDecoder)) <|
+    D.do (D.field "teams" (D.assocList identity teamDecoder)) <|
         \teams ->
             D.map2 FAM
                 (D.field "default" Filter.filterAtomDecoder)
@@ -2140,7 +2140,7 @@ conversationListTask token users =
     rpcPostFormTask (endpoint "/conversations.list" Nothing)
         token
         [ ( "types", "public_channel,private_channel,im,mpim" ) ]
-        (D.field "channels" (D.dictFromList getConversationIdStr (apiConversationDecoder users)))
+        (D.field "channels" (D.assocListFromList getConversationIdStr (apiConversationDecoder users)))
 
 
 userListTask : String -> Task RpcFailure (Dict UserIdStr User)
