@@ -132,7 +132,7 @@ selectId columnId =
 
 
 editorSelectOption : List Source -> ( Int, ColumnEditor ) -> Html msg
-editorSelectOption sources ( index, editor ) =
+editorSelectOption sources ( _, editor ) =
     case editor of
         DiscordMessageEditor { channelId } ->
             let

@@ -23,7 +23,7 @@ module View.Atoms.Typography exposing
 
 -}
 
-import Color exposing (Color, cssRgba, setAlpha)
+import Color exposing (cssRgba, setAlpha)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
 import View.Atoms.Layout as Layout

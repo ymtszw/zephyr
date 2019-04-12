@@ -18,11 +18,10 @@ ModelessWindows are identified by unique String IDs.
 import Browser.Events
 import Data.Column exposing (ColumnItem)
 import Html exposing (Html, button, div)
-import Html.Attributes exposing (class, draggable, style)
-import Html.Events exposing (on, onClick, preventDefaultOn, stopPropagationOn)
+import Html.Attributes exposing (class, style)
+import Html.Events exposing (on, onClick, stopPropagationOn)
 import Html.Keyed
 import Json.Decode exposing (..)
-import Json.DecodeExtra exposing (do)
 import List.Extra
 import Octicons
 import View.Atoms.Background as Background
@@ -33,7 +32,6 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (nowrap)
 import View.Atoms.Theme exposing (oneDark)
 import View.Atoms.Typography exposing (..)
-import View.Molecules.Icon as Icon
 import View.Molecules.RawColumnItem as RawColumnItem
 import View.Style exposing (..)
 

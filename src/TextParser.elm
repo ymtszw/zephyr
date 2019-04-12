@@ -19,7 +19,7 @@ import Markdown.Config
 import Markdown.Inline exposing (Inline(..))
 import Parser exposing ((|.), (|=), Parser, Step(..))
 import StringExtra
-import Url exposing (Url)
+import Url
 
 
 {-| Intermediate representation of parsed texts.

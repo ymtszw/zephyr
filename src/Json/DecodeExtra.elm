@@ -13,7 +13,6 @@ module Json.DecodeExtra exposing
 -}
 
 import Dict exposing (Dict)
-import Hex
 import Json.Decode exposing (..)
 import Url
 

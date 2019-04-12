@@ -1,18 +1,15 @@
 module View.Organisms.Column.Items exposing (minimumItemHeight, render, styles)
 
-import Broker
 import Color
-import Html exposing (Attribute, Html, button, div, img, p, pre, span, video)
+import Html exposing (Html, div, img, p, pre, span, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Html.Keyed
-import List.Extra
 import Octicons
 import StringExtra
 import TextParser
 import Time
-import TimeExtra exposing (ms)
-import Url
+import TimeExtra
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor
