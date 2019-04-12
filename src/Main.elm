@@ -408,7 +408,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
                     { m | columnStore = columnStore }
 
         finalize ( n, cmd, changeSet_ ) =
-            ( pacemaker pp.heartstopper n
+            ( n
             , Cmd.batch [ Cmd.map (ColumnCtrl cId) pp.cmd, cmd ]
             , if pp.persist then
                 saveColumnStore changeSet_
@@ -424,22 +424,6 @@ applyColumnUpdate m cId ( columnStore, pp ) =
 
             Nothing ->
                 ( m_, Cmd.none, changeSet )
-
-
-pacemaker : Bool -> Model -> Model
-pacemaker heartstopper m =
-    case ( heartstopper, m.heartrate ) of
-        ( True, Just _ ) ->
-            { m | heartrate = Nothing }
-
-        ( True, Nothing ) ->
-            m
-
-        ( False, Just _ ) ->
-            m
-
-        ( False, Nothing ) ->
-            { m | heartrate = Model.defaultHeartrateMillis }
 
 
 {-| Restart producers on application state reload.
@@ -523,12 +507,7 @@ sub m =
 
           else
             Sub.none
-        , case m.heartrate of
-            Just interval ->
-                Time.every interval Tick
-
-            Nothing ->
-                Sub.none
+        , Time.every tickIntervalMillis Tick
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 VisibilityChanged <|
@@ -541,6 +520,12 @@ sub m =
         , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
         , Modeless.sub ModelessMove m.viewState.modeless
         ]
+
+
+tickIntervalMillis : Float
+tickIntervalMillis =
+    -- 10 Hz
+    100.0
 
 
 
