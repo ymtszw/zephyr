@@ -17,7 +17,6 @@ it uses Popout module under the hood. Thus its slightly odd API described below.
 
 -}
 
-import Browser.Events
 import Color exposing (cssRgba)
 import Debounce exposing (Debounce)
 import Extra exposing (emit)
@@ -25,7 +24,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick, onInput)
 import Html.Keyed
-import Json.Decode exposing (at, field, string, succeed)
+import Json.Decode exposing (field, string, succeed)
 import Json.DecodeExtra exposing (when)
 import Octicons
 import View.Atoms.Background as Background

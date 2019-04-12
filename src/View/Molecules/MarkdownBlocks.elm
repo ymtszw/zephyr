@@ -1,14 +1,14 @@
 module View.Molecules.MarkdownBlocks exposing (render, sampleSource)
 
-import Html exposing (Html, blockquote, br, code, em, hr, img, li, ol, p, pre, span, strong, ul)
-import Html.Attributes exposing (alt, src, start, style, title)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Markdown.Block exposing (Block(..))
 import Markdown.Inline exposing (Inline(..))
 import TextParser
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Layout exposing (..)
-import View.Atoms.TextBlock exposing (breakWords, nowrap)
+import View.Atoms.TextBlock exposing (breakWords)
 import View.Atoms.Typography exposing (..)
 import View.Style exposing (noAttr, none)
 

@@ -82,8 +82,8 @@ import Browser.Events
 import Html exposing (Attribute, Html, text)
 import Html.Attributes exposing (id, style)
 import Id exposing (Id)
-import Json.Decode exposing (Decoder, fail, field, lazy, list, oneOf, string, succeed)
-import Json.DecodeExtra exposing (do, optionField, when)
+import Json.Decode exposing (Decoder, fail, field, lazy, string, succeed)
+import Json.DecodeExtra exposing (do, when)
 import Task
 
 

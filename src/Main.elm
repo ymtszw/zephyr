@@ -65,16 +65,7 @@ main =
 
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
-    ( if env.indexedDBAvailable then
-        Model.init env navKey
-
-      else
-        Model.welcome env navKey
-    , Cmd.batch
-        [ adjustMaxHeight
-        , getTimeZone
-        ]
-    )
+    ( Model.init env navKey, Cmd.batch [ adjustMaxHeight, getTimeZone ] )
 
 
 adjustMaxHeight : Cmd Msg
@@ -211,15 +202,14 @@ update msg ({ env, pref, viewState } as m) =
                 }
 
         LoadErr _ ->
-            if ColumnStore.size m.columnStore == 0 then
-                -- Presumed first visit
-                Model.welcome m.env m.navKey
-                    |> (\welcomeM -> { welcomeM | worque = Worque.push (initScan m.columnStore) m.worque })
-                    |> pure
+            pure <|
+                if ColumnStore.size m.columnStore == 0 then
+                    -- Presumed first visit
+                    Model.addWelcomeColumn { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
-            else
-                -- Hard failure of initial state load; start app normally as the last resport
-                pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
+                else
+                    -- Hard failure of initial state load; start app normally as the last resport
+                    { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
@@ -408,7 +398,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
                     { m | columnStore = columnStore }
 
         finalize ( n, cmd, changeSet_ ) =
-            ( pacemaker pp.heartstopper n
+            ( n
             , Cmd.batch [ Cmd.map (ColumnCtrl cId) pp.cmd, cmd ]
             , if pp.persist then
                 saveColumnStore changeSet_
@@ -424,22 +414,6 @@ applyColumnUpdate m cId ( columnStore, pp ) =
 
             Nothing ->
                 ( m_, Cmd.none, changeSet )
-
-
-pacemaker : Bool -> Model -> Model
-pacemaker heartstopper m =
-    case ( heartstopper, m.heartrate ) of
-        ( True, Just _ ) ->
-            { m | heartrate = Nothing }
-
-        ( True, Nothing ) ->
-            m
-
-        ( False, Just _ ) ->
-            m
-
-        ( False, Nothing ) ->
-            { m | heartrate = Model.defaultHeartrateMillis }
 
 
 {-| Restart producers on application state reload.
@@ -523,12 +497,7 @@ sub m =
 
           else
             Sub.none
-        , case m.heartrate of
-            Just interval ->
-                Time.every interval Tick
-
-            Nothing ->
-                Sub.none
+        , Time.every tickIntervalMillis Tick
         , Browser.Events.onVisibilityChange <|
             \visibility ->
                 VisibilityChanged <|
@@ -541,6 +510,12 @@ sub m =
         , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
         , Modeless.sub ModelessMove m.viewState.modeless
         ]
+
+
+tickIntervalMillis : Float
+tickIntervalMillis =
+    -- 10 Hz
+    100.0
 
 
 

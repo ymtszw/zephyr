@@ -3,7 +3,6 @@ module View.Pages.Main exposing (render)
 import Array exposing (Array)
 import ArrayExtra
 import Broker
-import Color exposing (Color)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
@@ -36,7 +35,6 @@ import View.Organisms.Config.Pref
 import View.Organisms.Config.Slack as VSlack
 import View.Organisms.Config.Status
 import View.Organisms.Modeless as Modeless
-import View.Style exposing (none)
 import View.Templates.Main exposing (DragStatus(..))
 
 
@@ -80,7 +78,7 @@ render m =
                 marshalVisibleColumn fam index c =
                     let
                         ( sources, filters ) =
-                            marshalSourcesAndFilters m.columnStore.fam c.pendingFilters
+                            marshalSourcesAndFilters fam c.pendingFilters
 
                         dragStatus =
                             case m.viewState.columnSwapMaybe of

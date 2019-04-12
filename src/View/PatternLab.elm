@@ -48,10 +48,10 @@ import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Config as ColumnConfig
 import View.Organisms.Column.Header as Header
 import View.Organisms.Column.Items as Items
-import View.Organisms.Column.Items.ItemForView as ItemForView exposing (ItemForView)
+import View.Organisms.Column.Items.ItemForView as ItemForView
 import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
 import View.Organisms.Column.Items.ItemForView.EmbeddedMatter as EmbeddedMatter
-import View.Organisms.Column.Items.ItemForView.NamedEntity as NamedEntity exposing (NamedEntity)
+import View.Organisms.Column.Items.ItemForView.NamedEntity as NamedEntity
 import View.Organisms.Column.NewMessageEditor as NewMessageEditor
 import View.Organisms.Config.Discord as Discord
 import View.Organisms.Config.Pref as Pref

@@ -13,7 +13,6 @@ This module provides various builder functions for that purpose.
 
 -}
 
-import Color exposing (Color)
 import Time
 import View.Organisms.Column.Items.ItemForView.Contents exposing (..)
 import View.Organisms.Column.Items.ItemForView.EmbeddedMatter exposing (EmbeddedMatter)
