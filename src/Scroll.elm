@@ -348,7 +348,19 @@ amountToTake (Scroll s) =
         (Tier t) =
             s.tier
     in
-    max 5 (s.baseAmount + s.tierAmount * t)
+    max minAmountToTake (s.baseAmount + s.tierAmount * t)
+
+
+{-| If there are large disparity in column items' heights,
+amountToTake may get too small compared to boundingHeight.
+Therefore this lowerbound.
+
+The problematic situation can happen more frequently when boundingHeight is relatively low.
+
+-}
+minAmountToTake : Int
+minAmountToTake =
+    10
 
 
 {-| `toList` with filtering.
