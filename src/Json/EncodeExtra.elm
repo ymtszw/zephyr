@@ -1,5 +1,6 @@
-module Json.EncodeExtra exposing (maybe, tag, tagged, tagged2, tagged3, url)
+module Json.EncodeExtra exposing (assocList, maybe, tag, tagged, tagged2, tagged3, url)
 
+import AssocList
 import Json.Encode as E exposing (Value)
 import Url
 
@@ -61,3 +62,13 @@ tagged3 constructorName value1 value2 value3 =
 url : Url.Url -> Value
 url u =
     E.string (Url.toString u)
+
+
+{-| Encode AssocList.Dict into JSON Objects (NOT Arrays, since AssocList.Dict is unique key!)
+
+It also compatible with structures of already serialized Dict.Dict.
+
+-}
+assocList : (key -> String) -> (value -> Value) -> AssocList.Dict key value -> Value
+assocList keyToString encodeValue dict =
+    E.object (AssocList.foldr (\k v acc -> ( keyToString k, encodeValue v ) :: acc) [] dict)

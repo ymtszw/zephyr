@@ -1,17 +1,18 @@
 module Json.DecodeExtra exposing
     ( when, conditional, succeedIf, do
     , tag, tagged, tagged2, tagged3
-    , url, leakyList, dictFromList, maybeField, optionField, fromResult
+    , assocList, assocListFromList, url, leakyList, dictFromList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
 @docs when, conditional, succeedIf, do
 @docs tag, tagged, tagged2, tagged3
-@docs url, leakyList, dictFromList, maybeField, optionField, fromResult
+@docs assocList, assocListFromList, url, leakyList, dictFromList, maybeField, optionField, fromResult
 
 -}
 
+import AssocList
 import Dict exposing (Dict)
 import Json.Decode exposing (..)
 import Url
@@ -212,3 +213,23 @@ dictFromList toKey valueDec =
             List.map (\a -> ( toKey a, a )) >> Dict.fromList
     in
     map listToDict (list valueDec)
+
+
+{-| Construct AssocList.Dict from Json Object (NOT Array, since AssocList.Dict is unique key!).
+-}
+assocList : (String -> key) -> Decoder value -> Decoder (AssocList.Dict key value)
+assocList stringToKey valueDec =
+    let
+        pairsToAssocList =
+            List.foldr (\( str, v ) acc -> AssocList.insert (stringToKey str) v acc) AssocList.empty
+    in
+    map pairsToAssocList (keyValuePairs valueDec)
+
+
+assocListFromList : (value -> key) -> Decoder value -> Decoder (AssocList.Dict key value)
+assocListFromList toKey valueDec =
+    let
+        listToAssocList =
+            List.foldr (\v acc -> AssocList.insert (toKey v) v acc) AssocList.empty
+    in
+    map listToAssocList (list valueDec)
