@@ -2,6 +2,7 @@ module Examples exposing (suite)
 
 import Array exposing (fromList)
 import ArrayExtra as Array
+import AssocList
 import Color
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
@@ -720,12 +721,12 @@ slackSuite =
             Slack.teamDecoder
         , testCodec "should decode/encode Conversation list"
             SlackTestData.convListJson
-            (D.field "channels" (D.list (Slack.apiConversationDecoder Dict.empty)))
+            (D.field "channels" (D.list (Slack.apiConversationDecoder AssocList.empty)))
             (E.list Slack.encodeConversation)
-            (D.list (Slack.conversationDecoder Dict.empty))
+            (D.list (Slack.conversationDecoder AssocList.empty))
         , testCodec "should decode/encode Message list"
             SlackTestData.conversationHistoryJson
-            (D.field "messages" (D.list (Slack.apiMessageDecoder Dict.empty Dict.empty Dict.empty "CDUMMYID")))
+            (D.field "messages" (D.list (Slack.apiMessageDecoder AssocList.empty AssocList.empty AssocList.empty "CDUMMYID")))
             (E.list Slack.encodeMessage)
             (D.list Slack.messageDecoder)
         , testCodec "should decode/encode Bot"
@@ -876,5 +877,5 @@ testAngleCmd : String -> String -> Test
 testAngleCmd initial expected =
     test ("should resolve angle cmds in: " ++ initial) <|
         \_ ->
-            Slack.resolveAngleCmd Dict.empty Dict.empty initial
+            Slack.resolveAngleCmd AssocList.empty AssocList.empty initial
                 |> Expect.equal expected
