@@ -65,16 +65,7 @@ main =
 
 init : Env -> url -> Key -> ( Model, Cmd Msg )
 init env _ navKey =
-    ( if env.indexedDBAvailable then
-        Model.init env navKey
-
-      else
-        Model.welcome env navKey
-    , Cmd.batch
-        [ adjustMaxHeight
-        , getTimeZone
-        ]
-    )
+    ( Model.init env navKey, Cmd.batch [ adjustMaxHeight, getTimeZone ] )
 
 
 adjustMaxHeight : Cmd Msg
@@ -211,15 +202,14 @@ update msg ({ env, pref, viewState } as m) =
                 }
 
         LoadErr _ ->
-            if ColumnStore.size m.columnStore == 0 then
-                -- Presumed first visit
-                Model.welcome m.env m.navKey
-                    |> (\welcomeM -> { welcomeM | worque = Worque.push (initScan m.columnStore) m.worque })
-                    |> pure
+            pure <|
+                if ColumnStore.size m.columnStore == 0 then
+                    -- Presumed first visit
+                    Model.addWelcomeColumn { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
-            else
-                -- Hard failure of initial state load; start app normally as the last resport
-                pure { m | worque = Worque.push (initScan m.columnStore) m.worque }
+                else
+                    -- Hard failure of initial state load; start app normally as the last resport
+                    { m | worque = Worque.push (initScan m.columnStore) m.worque }
 
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }

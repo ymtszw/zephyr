@@ -1,12 +1,12 @@
 module Data.Model exposing
     ( Model, ViewState, Env, ColumnSwap
-    , init, welcome, defaultHeartrateMillis
+    , init, addWelcomeColumn
     )
 
 {-| Model of the app.
 
 @docs Model, ViewState, Env, ColumnSwap
-@docs init, welcome, defaultHeartrateMillis
+@docs init, addWelcomeColumn
 
 -}
 
@@ -33,7 +33,6 @@ type alias Model =
     , idGen : UniqueIdGen
     , pref : Pref
     , worque : Worque
-    , heartrate : Maybe Float
     , navKey : Key
     , viewState : ViewState
     , env : Env
@@ -62,34 +61,31 @@ type alias Env =
     { serviceWorkerAvailable : Bool
     , indexedDBAvailable : Bool
     , isLocalDevelopment : Bool
-    , clientHeight : Int
     , clientWidth : Int
+    , clientHeight : Int
     }
 
 
 init : Env -> Key -> Model
 init env navKey =
+    let
+        base =
+            { columnStore = ColumnStore.init
+            , itemBroker = ItemBroker.init
+            , producerRegistry = ProducerRegistry.init
+            , idGen = UniqueIdGen.init
+            , pref = Pref.init env.clientWidth
+            , worque = Worque.init
+            , navKey = navKey
+            , viewState = defaultViewState
+            , env = env
+            }
+    in
     if env.indexedDBAvailable then
-        { columnStore = ColumnStore.init
-        , itemBroker = ItemBroker.init
-        , producerRegistry = ProducerRegistry.init
-        , idGen = UniqueIdGen.init
-        , pref = Pref.init env.clientWidth
-        , worque = Worque.init
-        , heartrate = defaultHeartrateMillis
-        , navKey = navKey
-        , viewState = defaultViewState
-        , env = env
-        }
+        base
 
     else
-        welcome env navKey
-
-
-defaultHeartrateMillis : Maybe Float
-defaultHeartrateMillis =
-    -- 10 Hz
-    Just 100.0
+        addWelcomeColumn base
 
 
 defaultViewState : ViewState
@@ -103,18 +99,12 @@ defaultViewState =
     }
 
 
-welcome : Env -> Key -> Model
-welcome env navKey =
+addWelcomeColumn : Model -> Model
+addWelcomeColumn m =
     let
-        m =
-            init env navKey
-
         ( welcomeColumn, finalGen ) =
             m.idGen
                 |> UniqueIdGen.gen UniqueIdGen.columnPrefix
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome env.clientHeight idGen cId)
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome m.env.clientHeight idGen cId)
     in
-    { m
-        | columnStore = ColumnStore.add Nothing welcomeColumn m.columnStore
-        , idGen = finalGen
-    }
+    { m | columnStore = ColumnStore.add Nothing welcomeColumn m.columnStore, idGen = finalGen }
