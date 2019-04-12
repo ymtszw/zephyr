@@ -3222,16 +3222,19 @@ columnItems =
                 , withSourceInColumn Nothing 100 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
+    , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc, itemGroups = [], columnId = themeStr ++ "01", hasMore = False }""" <|
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
+                        , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc, itemGroups = [], columnId = themeStr ++ "01", hasMore = False }
                 , withSourceInColumn Nothing 500 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
+    , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = themeStr ++ "02"
@@ -3255,6 +3258,7 @@ columnItems =
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
+                        , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = themeStr ++ "02"
@@ -3278,6 +3282,7 @@ columnItems =
                 , withSourceInColumn Nothing 1000 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
+    , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = themeStr ++ "03"
@@ -3346,6 +3351,7 @@ columnItems =
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
+                        , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = themeStr ++ "03"
@@ -3385,6 +3391,7 @@ columnItems =
                 , withSourceInColumn Nothing 300 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
+    , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = themeStr ++ "04"
@@ -3414,6 +3421,7 @@ columnItems =
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
+                        , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = themeStr ++ "04"
@@ -3443,6 +3451,7 @@ columnItems =
                 , withSourceInColumn Nothing 1000 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
+    , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = themeStr ++ "05"
@@ -3500,6 +3509,7 @@ columnItems =
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
+                        , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = themeStr ++ "05"
