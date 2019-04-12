@@ -189,6 +189,7 @@ render m =
                         View.Organisms.Column.Items.render
                             { onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
                             , onItemSourceButtonClick = \cId index -> ModelessTouch (Modeless.RawColumnItemId cId index)
+                            , onItemRefreshButtonClick = \cId index -> NoOp -- TODO
                             }
                             { timezone = m.viewState.timezone
                             , columnId = c.id
