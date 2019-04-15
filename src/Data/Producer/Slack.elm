@@ -1,5 +1,5 @@
 module Data.Producer.Slack exposing
-    ( Slack(..), SlackUnidentified(..), SlackRegistry, User, UserId(..), Bot, BotId(..), Team, TeamIcon
+    ( Slack(..), SlackUnidentified(..), SlackRegistry, Token, User, UserId(..), Bot, BotId(..), Team, TeamIcon
     , Conversation, ConversationType(..), ConversationCache, Message, Author(..), Attachment, SFile, Mode(..), FAM
     , initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
     , encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
@@ -7,7 +7,7 @@ module Data.Producer.Slack exposing
     , Msg(..), RpcFailure(..), reload, update
     , getUser, isChannel, isPrivate, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
     , defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-    , parseOptions, resolveAngleCmd
+    , parseOptions, resolveAngleCmd, fromToken
     )
 
 {-| Producer for Slack workspaces.
@@ -15,7 +15,7 @@ module Data.Producer.Slack exposing
 Slack API uses HTTP RPC style. See here for available methods:
 <https://api.slack.com/methods>
 
-@docs Slack, SlackUnidentified, SlackRegistry, User, UserId, Bot, BotId, Team, TeamIcon
+@docs Slack, SlackUnidentified, SlackRegistry, Token, User, UserId, Bot, BotId, Team, TeamIcon
 @docs Conversation, ConversationType, ConversationCache, Message, Author, Attachment, SFile, Mode, FAM
 @docs initRegistry, encodeRegistry, registryDecoder, encodeUser, userDecoder, encodeTeam, teamDecoder
 @docs encodeConversation, conversationDecoder, apiConversationDecoder, encodeConversationCache, conversationCacheDecoder
@@ -23,7 +23,7 @@ Slack API uses HTTP RPC style. See here for available methods:
 @docs Msg, RpcFailure, reload, update
 @docs getUser, isChannel, isPrivate, compareByMembersipThenName, getConversationIdStr, getPosix, getTs, getAuthorName
 @docs defaultIconUrl, teamUrl, dummyConversationId, getConversationFromCache
-@docs parseOptions, resolveAngleCmd
+@docs parseOptions, resolveAngleCmd, fromToken
 
 -}
 
@@ -35,6 +35,7 @@ import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
 import Extra exposing (doT)
 import Http
 import HttpClient exposing (noAuth)
+import Id exposing (Id)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -70,21 +71,44 @@ Thankfully, Bots aren't many compared to Users, so it SHOULD be OK.
 -}
 type Slack
     = Identified NewSession
-    | Hydrated String POV
-    | Rehydrating String POV
+    | Hydrated Token POV
+    | Rehydrating Token POV
     | Revisit POV
-    | Expired String POV
+    | Expired Token POV
+
+
+type alias Token =
+    Id String TokenTag
+
+
+type TokenTag
+    = TokenTag
+
+
+emptyToken : Token
+emptyToken =
+    toToken ""
+
+
+toToken : String -> Token
+toToken =
+    Id.from
+
+
+fromToken : Token -> String
+fromToken =
+    Id.to
 
 
 type alias NewSession =
-    { token : String
+    { token : Token
     , user : User
     , team : Team
     }
 
 
 type alias POV =
-    { token : String
+    { token : Token
     , user : User
     , team : Team
     , conversations : Dict ConversationIdStr Conversation
@@ -404,8 +428,8 @@ type alias SlackRegistry =
 {-| Not yet identified token states.
 -}
 type SlackUnidentified
-    = TokenWritable String
-    | TokenIdentifying String
+    = TokenWritable Token
+    | TokenIdentifying Token
 
 
 initRegistry : SlackRegistry
@@ -415,7 +439,7 @@ initRegistry =
 
 initUnidentified : SlackUnidentified
 initUnidentified =
-    TokenWritable ""
+    TokenWritable emptyToken
 
 
 type alias FAM =
@@ -442,10 +466,10 @@ encodeUnidentified : SlackUnidentified -> E.Value
 encodeUnidentified su =
     case su of
         TokenWritable t ->
-            E.tagged "TokenWritable" (E.string t)
+            E.tagged "TokenWritable" (Id.encode E.string t)
 
         TokenIdentifying t ->
-            E.tagged "TokenIdentifying" (E.string t)
+            E.tagged "TokenIdentifying" (Id.encode E.string t)
 
 
 encodeSlack : Slack -> E.Value
@@ -470,7 +494,7 @@ encodeSlack slack =
 encodeSession : NewSession -> E.Value
 encodeSession session =
     E.object
-        [ ( "token", E.string session.token )
+        [ ( "token", Id.encode E.string session.token )
         , ( "user", encodeUser session.user )
         , ( "team", encodeTeam session.team )
         ]
@@ -479,7 +503,7 @@ encodeSession session =
 encodePov : POV -> E.Value
 encodePov pov =
     E.object
-        [ ( "token", E.string pov.token )
+        [ ( "token", Id.encode E.string pov.token )
         , ( "user", encodeUser pov.user )
         , ( "team", encodeTeam pov.team )
         , ( "conversations", E.assocList identity encodeConversation pov.conversations )
@@ -749,8 +773,8 @@ registryDecoder =
 unidentifiedDecoder : Decoder SlackUnidentified
 unidentifiedDecoder =
     D.oneOf
-        [ D.tagged "TokenWritable" TokenWritable D.string
-        , D.tagged "TokenIdentifying" TokenIdentifying D.string
+        [ D.tagged "TokenWritable" TokenWritable (Id.decoder D.string)
+        , D.tagged "TokenIdentifying" TokenIdentifying (Id.decoder D.string)
         ]
 
 
@@ -768,7 +792,7 @@ slackDecoder =
 sessionDecoder : Decoder NewSession
 sessionDecoder =
     D.map3 NewSession
-        (D.field "token" D.string)
+        (D.field "token" (Id.decoder D.string))
         (D.field "user" userDecoder)
         (D.field "team" teamDecoder)
 
@@ -778,7 +802,7 @@ povDecoder =
     D.do (D.field "users" (D.assocList identity userDecoder)) <|
         \users ->
             D.map6 POV
-                (D.field "token" D.string)
+                (D.field "token" (Id.decoder D.string))
                 (D.field "user" userDecoder)
                 (D.field "team" teamDecoder)
                 (D.field "conversations" (D.assocList identity (conversationDecoder users)))
@@ -1505,7 +1529,7 @@ uTokenInput : String -> SlackUnidentified -> SlackUnidentified
 uTokenInput t su =
     case su of
         TokenWritable _ ->
-            TokenWritable t
+            TokenWritable (toToken t)
 
         TokenIdentifying _ ->
             -- Cannot overwrite
@@ -1515,13 +1539,14 @@ uTokenInput t su =
 handleUTokenCommit : SlackRegistry -> ( SlackRegistry, Yield )
 handleUTokenCommit sr =
     case sr.unidentified of
-        TokenWritable "" ->
-            pure sr
-
         TokenWritable token ->
-            ( { sr | unidentified = TokenIdentifying token }
-            , { yield | cmd = identify token }
-            )
+            if token == emptyToken then
+                pure sr
+
+            else
+                ( { sr | unidentified = TokenIdentifying token }
+                , { yield | cmd = identify token }
+                )
 
         TokenIdentifying _ ->
             pure sr
@@ -1549,7 +1574,7 @@ handleIdentify user team (TeamId teamIdStr) sr =
             let
                 initTeam t =
                     ( { dict = Dict.insert teamIdStr (Identified (NewSession t user team)) sr.dict
-                      , unidentified = TokenWritable ""
+                      , unidentified = TokenWritable emptyToken
                       }
                     , { yield | cmd = hydrate token (TeamId teamIdStr) }
                     )
@@ -1605,7 +1630,7 @@ handleIHydrate users convs slack =
             ( slack, sYield )
 
 
-initPov : String -> User -> Team -> Dict ConversationIdStr Conversation -> Dict UserIdStr User -> POV
+initPov : Token -> User -> Team -> Dict ConversationIdStr Conversation -> Dict UserIdStr User -> POV
 initPov token user team convs users =
     { token = token
     , user = user
@@ -1873,10 +1898,10 @@ handleITokenInput : String -> Slack -> ( Slack, SubYield )
 handleITokenInput token slack =
     case slack of
         Hydrated _ pov ->
-            ( Hydrated token pov, sYield )
+            ( Hydrated (toToken token) pov, sYield )
 
         Expired _ pov ->
-            ( Expired token pov, sYield )
+            ( Expired (toToken token) pov, sYield )
 
         _ ->
             -- Otherwise not allowed
@@ -2025,11 +2050,11 @@ type RpcFailure
 Some APIs allow `application/json`; use `rpcPostJsonTask`.
 
 -}
-rpcPostFormTask : Url -> String -> List ( String, String ) -> Decoder a -> Task RpcFailure a
+rpcPostFormTask : Url -> Token -> List ( String, String ) -> Decoder a -> Task RpcFailure a
 rpcPostFormTask url token kvPairs dec =
     let
         parts =
-            List.map (\( k, v ) -> Http.stringPart k v) (( "token", token ) :: kvPairs)
+            List.map (\( k, v ) -> Http.stringPart k v) (( "token", fromToken token ) :: kvPairs)
     in
     HttpClient.postFormWithAuth url parts noAuth (rpcDecoder dec)
         |> Task.mapError HttpFailure
@@ -2071,7 +2096,7 @@ rpcTry succ fail task =
     Task.attempt toMsg task
 
 
-identify : String -> Cmd Msg
+identify : Token -> Cmd Msg
 identify token =
     rpcTry identity UAPIFailure <|
         doT (authTestTask token) <|
@@ -2085,7 +2110,7 @@ Hydrate is somewhat cheap in Slack compared to Discord, so do it on every reload
 Existing Bot dictionary is kept intact.
 
 -}
-revisit : String -> POV -> Cmd Msg
+revisit : Token -> POV -> Cmd Msg
 revisit token pov =
     let
         ( UserId userIdStr, TeamId teamIdStr ) =
@@ -2109,25 +2134,25 @@ revisit token pov =
                         Task.fail (RpcError ("Cannot retrieve User: " ++ userIdStr))
 
 
-authTestTask : String -> Task RpcFailure UserId
+authTestTask : Token -> Task RpcFailure UserId
 authTestTask token =
     rpcPostFormTask (endpoint "/auth.test" Nothing) token [] <|
         D.field "user_id" userIdDecoder
 
 
-userInfoTask : String -> UserId -> Task RpcFailure ( UserIdStr, User )
+userInfoTask : Token -> UserId -> Task RpcFailure ( UserIdStr, User )
 userInfoTask token (UserId userIdStr) =
     rpcPostFormTask (endpoint "/users.info" Nothing) token [ ( "user", userIdStr ) ] <|
         D.map (Tuple.pair userIdStr) (D.field "user" userDecoder)
 
 
-teamInfoTask : String -> Task RpcFailure Team
+teamInfoTask : Token -> Task RpcFailure Team
 teamInfoTask token =
     rpcPostFormTask (endpoint "/team.info" Nothing) token [] <|
         D.field "team" teamDecoder
 
 
-hydrate : String -> TeamId -> Cmd Msg
+hydrate : Token -> TeamId -> Cmd Msg
 hydrate token (TeamId teamIdStr) =
     rpcTry identity (IAPIFailure teamIdStr Nothing) <|
         doT (userListTask token) <|
@@ -2135,7 +2160,7 @@ hydrate token (TeamId teamIdStr) =
                 Task.map (IHydrate teamIdStr users) (conversationListTask token users)
 
 
-conversationListTask : String -> Dict UserIdStr User -> Task RpcFailure (Dict ConversationIdStr Conversation)
+conversationListTask : Token -> Dict UserIdStr User -> Task RpcFailure (Dict ConversationIdStr Conversation)
 conversationListTask token users =
     rpcPostFormTask (endpoint "/conversations.list" Nothing)
         token
@@ -2143,7 +2168,7 @@ conversationListTask token users =
         (D.field "channels" (D.assocListFromList getConversationIdStr (apiConversationDecoder users)))
 
 
-userListTask : String -> Task RpcFailure (Dict UserIdStr User)
+userListTask : Token -> Task RpcFailure (Dict UserIdStr User)
 userListTask token =
     let
         listDecoder =
@@ -2203,7 +2228,7 @@ type CursorOut a
     | Done (List a)
 
 
-forwardScrollingPostFormTask : Url -> String -> List ( String, String ) -> Decoder (List a) -> CursorIn a -> Task RpcFailure (List a)
+forwardScrollingPostFormTask : Url -> Token -> List ( String, String ) -> Decoder (List a) -> CursorIn a -> Task RpcFailure (List a)
 forwardScrollingPostFormTask url token params dec cursorIn =
     let
         scrollOrDone acc cursorOut =
@@ -2261,13 +2286,13 @@ conversationHistoryTask pov convIdStr lrMaybe =
             rpcPostFormTask url pov.token baseParams baseDecoder
 
 
-botInfoTask : String -> BotId -> Task RpcFailure ( BotIdStr, Bot )
+botInfoTask : Token -> BotId -> Task RpcFailure ( BotIdStr, Bot )
 botInfoTask token (BotId botIdStr) =
     rpcPostFormTask (endpoint "/bots.info" Nothing) token [ ( "bot", botIdStr ) ] <|
         D.map (Tuple.pair botIdStr) (D.field "bot" botDecoder)
 
 
-collectMissingInfoTask : String -> List Message -> Task RpcFailure ( Dict UserIdStr User, Dict BotIdStr Bot )
+collectMissingInfoTask : Token -> List Message -> Task RpcFailure ( Dict UserIdStr User, Dict BotIdStr Bot )
 collectMissingInfoTask token messages =
     let
         ( userIds, botIds ) =

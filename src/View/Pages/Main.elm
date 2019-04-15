@@ -647,10 +647,10 @@ renderConfigSlack m =
     VSlack.render effects <|
         case m.producerRegistry.slack.unidentified of
             PSlack.TokenWritable token ->
-                VSlack.Props token True teamStates m.viewState.selectState
+                VSlack.Props (PSlack.fromToken token) True teamStates m.viewState.selectState
 
             PSlack.TokenIdentifying token ->
-                VSlack.Props token False teamStates m.viewState.selectState
+                VSlack.Props (PSlack.fromToken token) False teamStates m.viewState.selectState
 
 
 renderConfigDiscord : Model -> Html Msg
