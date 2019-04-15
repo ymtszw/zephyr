@@ -1,5 +1,6 @@
 module View.PatternLab exposing (main)
 
+import AssocList as Dict
 import Broker
 import Browser
 import Browser.Navigation exposing (Key)
@@ -8,7 +9,6 @@ import Data.Column exposing (ColumnItem(..))
 import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..))
 import Data.Item
 import Data.Producer.Discord
-import Dict
 import File exposing (File)
 import File.Select
 import Html exposing (..)
