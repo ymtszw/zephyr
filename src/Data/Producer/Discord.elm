@@ -29,11 +29,11 @@ full-privilege personal token for a Discord user. Discuss in private.
 
 -}
 
+import AssocList as Dict exposing (Dict)
 import Color exposing (Color)
 import Data.Filter exposing (FilterAtom(..))
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..), Msg(..))
-import Dict exposing (Dict)
 import File exposing (File)
 import Hex
 import Http
@@ -316,8 +316,8 @@ encodePov pov =
     E.object
         [ ( "token", E.string pov.token )
         , ( "user", encodeUser pov.user )
-        , ( "guilds", E.dict identity encodeGuild pov.guilds )
-        , ( "channels", E.dict identity encodeChannel pov.channels )
+        , ( "guilds", E.assocList identity encodeGuild pov.guilds )
+        , ( "channels", E.assocList identity encodeChannel pov.channels )
         ]
 
 
@@ -486,7 +486,7 @@ encodeFam ( defaultAtom, channelsCache ) =
     in
     E.object
         [ ( "default", Data.Filter.encodeFilterAtom defaultAtom )
-        , ( "guilds", E.dict identity encodeGuild guilds )
+        , ( "guilds", E.assocList identity encodeGuild guilds )
         , ( "channels", E.list identity encodedChannels )
         ]
 
@@ -532,13 +532,13 @@ decoder =
 
 povDecoder : Decoder POV
 povDecoder =
-    D.do (D.field "guilds" (D.dict guildDecoder)) <|
+    D.do (D.field "guilds" (D.assocList identity guildDecoder)) <|
         \guilds ->
             D.map4 POV
                 (D.field "token" D.string)
                 (D.field "user" userDecoder)
                 (D.succeed guilds)
-                (D.field "channels" (D.dict (channelDecoder guilds)))
+                (D.field "channels" (D.assocList identity (channelDecoder guilds)))
 
 
 userDecoder : Decoder User
@@ -719,7 +719,7 @@ famDecoder : Decoder FAM
 famDecoder =
     D.do (D.field "default" Data.Filter.filterAtomDecoder) <|
         \fa ->
-            D.do (D.field "guilds" (D.dict guildDecoder)) <|
+            D.do (D.field "guilds" (D.assocList identity guildDecoder)) <|
                 \guilds ->
                     D.do (D.field "channels" (D.list (channelCacheDecoder guilds))) <|
                         \channelCaches ->
@@ -1455,7 +1455,7 @@ identify token =
 
 hydrate : String -> Cmd Msg
 hydrate token =
-    HttpClient.getWithAuth (endpoint "/users/@me/guilds" Nothing) (HttpClient.auth token) (D.dictFromList .id guildDecoder)
+    HttpClient.getWithAuth (endpoint "/users/@me/guilds" Nothing) (HttpClient.auth token) (D.assocListFromList .id guildDecoder)
         |> Task.andThen (hydrateChannels token)
         |> HttpClient.try identity GenericAPIError
 

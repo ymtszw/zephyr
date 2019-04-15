@@ -674,7 +674,7 @@ renderConfigDiscord m =
         hydratedOnce rehydrating pov =
             let
                 ( subbable, subbed ) =
-                    Dict.values pov.channels
+                    AssocList.values pov.channels
                         |> List.sortWith PDiscord.compareByNames
                         |> List.foldr partitionThenMarshal ( [], [] )
 
