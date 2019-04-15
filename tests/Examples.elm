@@ -7,11 +7,17 @@ import Color
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
-import Data.Producer.Slack as Slack exposing (ConversationType(..))
+import Data.Producer.Slack.Bot as SlackBot
+import Data.Producer.Slack.Convo as SlackConvo exposing (Type(..))
+import Data.Producer.Slack.Message as SlackMessage
+import Data.Producer.Slack.Message.AngleCmd as AngleCmd
+import Data.Producer.Slack.Team as SlackTeam
+import Data.Producer.Slack.User as SlackUser
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
+import Id
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E exposing (Value)
 import Json.EncodeExtra as E
@@ -459,7 +465,7 @@ testSlackParse : String -> List (Block () ()) -> Test
 testSlackParse initial expected =
     test ("should parse: " ++ initial ++ "") <|
         \_ ->
-            TextParser.parse Slack.parseOptions initial
+            TextParser.parse SlackMessage.parseOptions initial
                 |> equalParsed expected
 
 
@@ -710,38 +716,38 @@ slackSuite =
     describe "Data.Producer.Slack"
         [ testCodec "should decode/encode User"
             SlackTestData.userInfoJson
-            (D.field "user" Slack.userDecoder)
-            Slack.encodeUser
-            Slack.userDecoder
+            (D.field "user" SlackUser.decoder)
+            SlackUser.encode
+            SlackUser.decoder
         , testCodec "should decode/encode Team"
             SlackTestData.teamInfoJson
-            (D.field "team" Slack.teamDecoder)
-            Slack.encodeTeam
-            Slack.teamDecoder
+            (D.field "team" SlackTeam.decoder)
+            SlackTeam.encode
+            SlackTeam.decoder
         , testCodec "should decode/encode Conversation list"
             SlackTestData.convListJson
-            (D.field "channels" (D.list (Slack.apiConversationDecoder Dict.empty)))
-            (E.list Slack.encodeConversation)
-            (D.list (Slack.conversationDecoder Dict.empty))
+            (D.field "channels" (D.list (SlackConvo.decoderForApiResponse Dict.empty)))
+            (E.list SlackConvo.encode)
+            (D.list SlackConvo.decoder)
         , testCodec "should decode/encode Message list"
             SlackTestData.conversationHistoryJson
-            (D.field "messages" (D.list (Slack.apiMessageDecoder Dict.empty Dict.empty Dict.empty "CDUMMYID")))
-            (E.list Slack.encodeMessage)
-            (D.list Slack.messageDecoder)
+            (D.field "messages" (D.list (SlackMessage.decoderForApiResponse Dict.empty Dict.empty Dict.empty (Id.from "CDUMMYID"))))
+            (E.list SlackMessage.encode)
+            (D.list SlackMessage.decoder)
         , testCodec "should decode/encode Bot"
             SlackTestData.botInfoJson
-            (D.field "bot" Slack.botDecoder)
-            Slack.encodeBot
-            Slack.botDecoder
+            (D.field "bot" SlackBot.decoder)
+            SlackBot.encode
+            SlackBot.decoder
         , let
             c name type_ =
-                { id = Slack.dummyConversationId
-                , name = name
-                , isArchived = False
-                , lastRead = Nothing
-                , type_ = type_
-                , fetchStatus = Available
-                }
+                SlackConvo.convo
+                    (Id.from "CDUMMYID")
+                    name
+                    False
+                    Nothing
+                    type_
+                    Available
           in
           describe "compareByMembersipThenName"
             [ testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel True)) GT
@@ -865,16 +871,16 @@ testCodec desc initialData entryDecoder encodeForPersist savedStateDecoder =
                     Expect.fail <| "Failed to decode on entry: " ++ D.errorToString e
 
 
-testCompareConversation : Slack.Conversation -> Slack.Conversation -> Order -> Test
+testCompareConversation : SlackConvo.Convo -> SlackConvo.Convo -> Order -> Test
 testCompareConversation a b order =
     test ("'" ++ Debug.toString a ++ "' " ++ Debug.toString order ++ " '" ++ Debug.toString b ++ "'") <|
         \_ ->
-            Slack.compareByMembersipThenName a b |> Expect.equal order
+            SlackConvo.compareByMembersipThenName a b |> Expect.equal order
 
 
 testAngleCmd : String -> String -> Test
 testAngleCmd initial expected =
     test ("should resolve angle cmds in: " ++ initial) <|
         \_ ->
-            Slack.resolveAngleCmd Dict.empty Dict.empty initial
+            AngleCmd.resolve Dict.empty Dict.empty initial
                 |> Expect.equal expected
