@@ -2,7 +2,7 @@ module View.Pages.Main exposing (render)
 
 import Array exposing (Array)
 import ArrayExtra
-import AssocList
+import AssocList as Dict
 import Broker
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore
@@ -16,7 +16,6 @@ import Data.Producer.Discord as PDiscord
 import Data.Producer.FetchStatus as FetchStatus
 import Data.Producer.Slack as PSlack
 import Data.ProducerRegistry as ProducerRegistry
-import Dict
 import Html exposing (Html)
 import List.Extra
 import Scroll
@@ -614,7 +613,7 @@ renderConfigSlack m =
                             let
                                 ( subbable, subbed ) =
                                     -- TODO support IM/MPIM
-                                    AssocList.values pov.conversations
+                                    Dict.values pov.conversations
                                         |> List.filter (\c -> not c.isArchived && PSlack.isChannel c)
                                         |> List.sortWith PSlack.compareByMembersipThenName
                                         |> List.foldr partitionThenMarshal ( [], [] )
@@ -643,7 +642,7 @@ renderConfigSlack m =
                     in
                     pair :: acc
             in
-            AssocList.foldr marshal [] m.producerRegistry.slack.dict
+            Dict.foldr marshal [] m.producerRegistry.slack.dict
     in
     VSlack.render effects <|
         case m.producerRegistry.slack.unidentified of
@@ -674,7 +673,7 @@ renderConfigDiscord m =
         hydratedOnce rehydrating pov =
             let
                 ( subbable, subbed ) =
-                    AssocList.values pov.channels
+                    Dict.values pov.channels
                         |> List.sortWith PDiscord.compareByNames
                         |> List.foldr partitionThenMarshal ( [], [] )
 
