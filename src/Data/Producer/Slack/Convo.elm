@@ -1,16 +1,16 @@
 module Data.Producer.Slack.Convo exposing
-    ( Convo, Id, Type
+    ( Convo, Id, Type(..), convo
     , encode, encodeType
     , decoder, idDecoder, typeDecoder, decoderForApiResponse
-    , resolveConvoName
+    , resolveConvoName, compareByMembersipThenName
     )
 
 {-| Channel-like objects.
 
-@docs Convo, Id, Type
+@docs Convo, Id, Type, convo
 @docs encode, encodeType
 @docs decoder, idDecoder, typeDecoder, decoderForApiResponse
-@docs resolveConvoName
+@docs resolveConvoName, compareByMembersipThenName
 
 -}
 
@@ -66,6 +66,13 @@ type alias ConvoRecord =
     }
 
 
+{-| Smart constructor for tests.
+-}
+convo : Id -> String -> Bool -> Maybe LastRead -> Type -> FetchStatus -> Convo
+convo id name isArchived lastRead type_ fetchStatus =
+    Convo { id = id, name = name, isArchived = isArchived, lastRead = lastRead, type_ = type_, fetchStatus = fetchStatus }
+
+
 type alias Id =
     Id.Id String Convo
 
@@ -90,14 +97,14 @@ type alias IsMember =
 
 
 encode : Convo -> E.Value
-encode (Convo convo) =
+encode (Convo c) =
     E.object
-        [ ( "id", Id.encode E.string convo.id )
-        , ( "name", E.string convo.name )
-        , ( "is_archived", E.bool convo.isArchived )
-        , ( "last_read", E.maybe encodeLastRead convo.lastRead )
-        , ( "type_", encodeType convo.type_ )
-        , ( "fetchStatus", FetchStatus.encode convo.fetchStatus )
+        [ ( "id", Id.encode E.string c.id )
+        , ( "name", E.string c.name )
+        , ( "is_archived", E.bool c.isArchived )
+        , ( "last_read", E.maybe encodeLastRead c.lastRead )
+        , ( "type_", encodeType c.type_ )
+        , ( "fetchStatus", FetchStatus.encode c.fetchStatus )
         ]
 
 
@@ -224,3 +231,66 @@ resolveConvoName convos id =
     AssocList.get id convos
         |> Maybe.map (\(Convo c) -> c.name)
         |> Maybe.withDefault (Id.to id)
+
+
+compareByMembersipThenName : Convo -> Convo -> Order
+compareByMembersipThenName (Convo c1) (Convo c2) =
+    if c1 == c2 then
+        EQ
+
+    else
+        let
+            compareToPub isMember =
+                if isMember then
+                    GT
+
+                else
+                    LT
+        in
+        case ( c1.type_, c2.type_ ) of
+            ( PublicChannel isMemberA, PublicChannel isMemberB ) ->
+                case ( isMemberA, isMemberB ) of
+                    ( True, False ) ->
+                        LT
+
+                    ( False, True ) ->
+                        GT
+
+                    _ ->
+                        compare c1.name c2.name
+
+            ( PublicChannel True, _ ) ->
+                LT
+
+            ( PublicChannel False, _ ) ->
+                GT
+
+            ( PrivateChannel, PublicChannel isMember ) ->
+                compareToPub isMember
+
+            ( PrivateChannel, PrivateChannel ) ->
+                compare c1.name c2.name
+
+            ( PrivateChannel, _ ) ->
+                LT
+
+            ( IM, PublicChannel isMember ) ->
+                compareToPub isMember
+
+            ( IM, IM ) ->
+                compare c1.name c2.name
+
+            ( IM, MPIM ) ->
+                LT
+
+            ( IM, _ ) ->
+                GT
+
+            ( MPIM, PublicChannel isMember ) ->
+                compareToPub isMember
+
+            ( MPIM, MPIM ) ->
+                compare c1.name c2.name
+
+            ( MPIM, _ ) ->
+                GT
