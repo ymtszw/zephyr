@@ -2,14 +2,13 @@ module Examples exposing (suite)
 
 import Array exposing (fromList)
 import ArrayExtra as Array
-import AssocList
+import AssocList as Dict
 import Color
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.Producer.Slack as Slack exposing (ConversationType(..))
 import Data.UniqueIdGen exposing (UniqueIdGen)
-import Dict
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
@@ -721,12 +720,12 @@ slackSuite =
             Slack.teamDecoder
         , testCodec "should decode/encode Conversation list"
             SlackTestData.convListJson
-            (D.field "channels" (D.list (Slack.apiConversationDecoder AssocList.empty)))
+            (D.field "channels" (D.list (Slack.apiConversationDecoder Dict.empty)))
             (E.list Slack.encodeConversation)
-            (D.list (Slack.conversationDecoder AssocList.empty))
+            (D.list (Slack.conversationDecoder Dict.empty))
         , testCodec "should decode/encode Message list"
             SlackTestData.conversationHistoryJson
-            (D.field "messages" (D.list (Slack.apiMessageDecoder AssocList.empty AssocList.empty AssocList.empty "CDUMMYID")))
+            (D.field "messages" (D.list (Slack.apiMessageDecoder Dict.empty Dict.empty Dict.empty "CDUMMYID")))
             (E.list Slack.encodeMessage)
             (D.list Slack.messageDecoder)
         , testCodec "should decode/encode Bot"
@@ -877,5 +876,5 @@ testAngleCmd : String -> String -> Test
 testAngleCmd initial expected =
     test ("should resolve angle cmds in: " ++ initial) <|
         \_ ->
-            Slack.resolveAngleCmd AssocList.empty AssocList.empty initial
+            Slack.resolveAngleCmd Dict.empty Dict.empty initial
                 |> Expect.equal expected
