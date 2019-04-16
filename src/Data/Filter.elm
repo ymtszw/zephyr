@@ -23,6 +23,8 @@ For that, this module reluctantly exposes `append` API.
 
 -}
 
+import Data.Producer.Slack.Convo as Convo
+import Id
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -36,7 +38,7 @@ type Filter
 
 type FilterAtom
     = OfDiscordChannel String
-    | OfSlackConversation String
+    | OfSlackConversation Convo.Id
     | ByMessage String
     | ByMedia MediaFilter
     | RemoveMe -- This is only for deletion from UI, not actually used as filter
@@ -64,8 +66,8 @@ encodeFilterAtom filterAtom =
         OfDiscordChannel channelId ->
             E.tagged "OfDiscordChannel" (E.string channelId)
 
-        OfSlackConversation convIdStr ->
-            E.tagged "OfSlackConversation" (E.string convIdStr)
+        OfSlackConversation convoId ->
+            E.tagged "OfSlackConversation" (Id.encode E.string convoId)
 
         ByMessage query ->
             E.tagged "ByMessage" (E.string query)
@@ -103,7 +105,7 @@ filterAtomDecoder : Decoder FilterAtom
 filterAtomDecoder =
     D.oneOf
         [ D.tagged "OfDiscordChannel" OfDiscordChannel D.string
-        , D.tagged "OfSlackConversation" OfSlackConversation D.string
+        , D.tagged "OfSlackConversation" OfSlackConversation Convo.idDecoder
         , D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
 
@@ -314,7 +316,7 @@ atomToString fa =
             "Discord Ch: " ++ cId
 
         OfSlackConversation cId ->
-            "Slack Ch: " ++ cId
+            "Slack Ch: " ++ Id.to cId
 
         ByMessage query ->
             "Contains: " ++ query
@@ -345,7 +347,7 @@ compareFilterAtom fa1 fa2 =
             GT
 
         ( OfSlackConversation cId1, OfSlackConversation cId2 ) ->
-            compare cId1 cId2
+            compare (Id.to cId1) (Id.to cId2)
 
         ( OfSlackConversation _, _ ) ->
             LT

@@ -2,7 +2,7 @@ module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, ma
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord as Discord
-import Data.Producer.Slack as Slack
+import Data.Producer.Slack.Message as SlackMessage
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -12,7 +12,7 @@ import StringExtra
 
 type Item
     = DiscordItem Discord.Message
-    | SlackItem Slack.Message
+    | SlackItem SlackMessage.Message
 
 
 encode : Item -> E.Value
@@ -22,14 +22,14 @@ encode item =
             E.tagged "DiscordItem" (Discord.encodeMessage discordMessage)
 
         SlackItem slackMessage ->
-            E.tagged "SlackItem" (Slack.encodeMessage slackMessage)
+            E.tagged "SlackItem" (SlackMessage.encode slackMessage)
 
 
 decoder : Decoder Item
 decoder =
     D.oneOf
         [ D.tagged "DiscordItem" DiscordItem Discord.messageDecoder
-        , D.tagged "SlackItem" SlackItem Slack.messageDecoder
+        , D.tagged "SlackItem" SlackItem SlackMessage.decoder
         ]
 
 
@@ -47,8 +47,8 @@ matchAtom item filterAtom =
         ( OfDiscordChannel _, _ ) ->
             False
 
-        ( OfSlackConversation cId, SlackItem { conversation } ) ->
-            cId == conversation
+        ( OfSlackConversation cId, SlackItem sMessage ) ->
+            cId == SlackMessage.getConvoId sMessage
 
         ( OfSlackConversation _, _ ) ->
             False
@@ -63,9 +63,9 @@ matchAtom item filterAtom =
                 || List.any (discordEmbedHasText text) embeds
 
         ( ByMessage text, SlackItem m ) ->
-            StringExtra.containsCaseIgnored text m.text
-                || List.any (slackAttachmentHasText text) m.attachments
-                || List.any (slackFileHasText text) m.files
+            StringExtra.containsCaseIgnored text (SlackMessage.getText m)
+                || List.any (slackAttachmentHasText text) (SlackMessage.getAttachments m)
+                || List.any (slackFileHasText text) (SlackMessage.getFiles m)
 
         ( ByMedia filter, DiscordItem discordMessage ) ->
             discordMessageHasMedia filter discordMessage
@@ -166,7 +166,7 @@ discordEmbedHasVideo embed =
             False
 
 
-slackAttachmentHasText : String -> Slack.Attachment -> Bool
+slackAttachmentHasText : String -> SlackMessage.Attachment -> Bool
 slackAttachmentHasText text a =
     checkMaybeField text a.pretext
         || checkMaybeField text (Maybe.map .name a.author)
@@ -175,7 +175,7 @@ slackAttachmentHasText text a =
         || StringExtra.containsCaseIgnored text a.fallback
 
 
-slackFileHasText : String -> Slack.SFile -> Bool
+slackFileHasText : String -> SlackMessage.SFile -> Bool
 slackFileHasText text sf =
     case sf.preview of
         Just preview ->
@@ -185,20 +185,21 @@ slackFileHasText text sf =
             False
 
 
-slackMessageHasMedia : MediaFilter -> Slack.Message -> Bool
+slackMessageHasMedia : MediaFilter -> SlackMessage.Message -> Bool
 slackMessageHasMedia mediaFilter m =
     case mediaFilter of
         HasImage ->
-            List.any (.mimetype >> mimeIsImage) m.files || List.any slackAttachmentHasImage m.attachments
+            List.any (.mimetype >> mimeIsImage) (SlackMessage.getFiles m)
+                || List.any slackAttachmentHasImage (SlackMessage.getAttachments m)
 
         HasVideo ->
             -- TODO Slack also has video_* fields but not yet supported
-            List.any (.mimetype >> mimeIsVideo) m.files
+            List.any (.mimetype >> mimeIsVideo) (SlackMessage.getFiles m)
 
         HasNone ->
             not <|
-                List.any (\f -> mimeIsImage f.mimetype || mimeIsVideo f.mimetype) m.files
-                    || List.any slackAttachmentHasImage m.attachments
+                List.any (\f -> mimeIsImage f.mimetype || mimeIsVideo f.mimetype) (SlackMessage.getFiles m)
+                    || List.any slackAttachmentHasImage (SlackMessage.getAttachments m)
 
 
 mimeIsImage : String -> Bool
@@ -211,7 +212,7 @@ mimeIsVideo mime =
     String.startsWith "video/" mime
 
 
-slackAttachmentHasImage : Slack.Attachment -> Bool
+slackAttachmentHasImage : SlackMessage.Attachment -> Bool
 slackAttachmentHasImage a =
     case a.imageUrl of
         Just _ ->
