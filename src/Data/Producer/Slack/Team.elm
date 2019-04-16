@@ -1,4 +1,14 @@
-module Data.Producer.Slack.Team exposing (Id, Team, decoder, encode, getId, idDecoder)
+module Data.Producer.Slack.Team exposing
+    ( Team, Id, encode, decoder, idDecoder
+    , getId, getName, getDomain, getIcon, domainUrl
+    )
+
+{-| A team object.
+
+@docs Team, Id, TeamIcon, encode, decoder, idDecoder
+@docs getId, getName, getDomain, getIcon, domainUrl
+
+-}
 
 import Id
 import Json.Decode as D exposing (Decoder)
@@ -88,3 +98,29 @@ idDecoder =
 getId : Team -> Id
 getId (Team team) =
     team.id
+
+
+getName : Team -> String
+getName (Team team) =
+    team.name
+
+
+getDomain : Team -> String
+getDomain (Team team) =
+    team.domain
+
+
+getIcon : Team -> TeamIcon
+getIcon (Team team) =
+    team.icon
+
+
+domainUrl : String -> Url
+domainUrl domain =
+    { protocol = Url.Https
+    , host = domain ++ ".slack.com"
+    , port_ = Nothing
+    , path = ""
+    , query = Nothing
+    , fragment = Nothing
+    }

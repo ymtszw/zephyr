@@ -1,4 +1,16 @@
-module Data.Producer.Slack.Message exposing (Message, decoder, decoderForApiResponse, encode, parseOptions)
+module Data.Producer.Slack.Message exposing
+    ( Message, Author(..), SFile, Mode(..), Attachment, encode, decoder, decoderForApiResponse
+    , fillAuthor, getAuthorName, collectMissingAuthorIds, parseOptions
+    , getTs, getText, getAuthor, getUsername, getFiles, getAttachments, getConvoId
+    )
+
+{-| A Message Object.
+
+@docs Message, Author, SFile, Mode, Attachment, encode, decoder, decoderForApiResponse
+@docs fillAuthor, getAuthorName, collectMissingAuthorIds, parseOptions
+@docs getTs, getText, getAuthor, getUsername, getFiles, getAttachments, getConvoId
+
+-}
 
 import AssocList exposing (Dict)
 import Color exposing (Color)
@@ -48,7 +60,7 @@ type alias MessageRecord =
     , username : Maybe String -- Manually selected username for a particular Message. Should supercede names in User or Bot
     , files : List SFile
     , attachments : List Attachment
-    , conversation : Convo.Id -- Zephyr local; for Filter matching
+    , convoId : Convo.Id -- Zephyr local; for Filter matching
     }
 
 
@@ -161,7 +173,7 @@ encode (Message m) =
         , ( "username", E.maybe E.string m.username )
         , ( "files", E.list encodeSFile m.files )
         , ( "attachments", E.list encodeAttachment m.attachments )
-        , ( "conversation", Id.encode E.string m.conversation )
+        , ( "convoId", Id.encode E.string m.convoId )
         ]
 
 
@@ -263,7 +275,12 @@ decoder =
             (D.maybeField "username" D.string)
             (D.optionField "files" (D.list sFileDecoder) [])
             (D.optionField "attachments" (D.list attachmentDecoder) [])
-            (D.field "conversation" Convo.idDecoder)
+            (D.oneOf
+                [ D.field "convoId" Convo.idDecoder
+                , --Old format
+                  D.field "conversation" Convo.idDecoder
+                ]
+            )
 
 
 authorDecoder : Decoder Author
@@ -506,3 +523,115 @@ alterEmphasis inline =
 
         _ ->
             inline
+
+
+
+-- Runtime APIs
+
+
+fillAuthor : Dict User.Id User -> Dict Bot.Id Bot -> Message -> Message
+fillAuthor users bots (Message m) =
+    Message <|
+        case m.author of
+            BotAuthorId botId ->
+                case AssocList.get botId bots of
+                    Just bot ->
+                        { m | author = BotAuthor bot }
+
+                    Nothing ->
+                        m
+
+            UserAuthorId userId ->
+                case AssocList.get userId users of
+                    Just user ->
+                        { m | author = UserAuthor user }
+
+                    Nothing ->
+                        m
+
+            _ ->
+                m
+
+
+getAuthorName : Message -> String
+getAuthorName (Message { author, username }) =
+    case author of
+        UserAuthor user ->
+            let
+                profile =
+                    User.getProfile user
+            in
+            Maybe.withDefault profile.realName profile.displayName
+
+        BotAuthor bot ->
+            Maybe.withDefault (Bot.getName bot) username
+
+        UserAuthorId userId ->
+            Id.to userId
+
+        BotAuthorId botId ->
+            Id.to botId
+
+
+collectMissingAuthorIds : List Message -> ( List User.Id, List Bot.Id )
+collectMissingAuthorIds messages =
+    let
+        reducer (Message m) ( accUserIds, accBotIds ) =
+            let
+                uniqCons x acc =
+                    if List.member x acc then
+                        acc
+
+                    else
+                        x :: acc
+            in
+            case m.author of
+                UserAuthorId userId ->
+                    ( uniqCons userId accUserIds, accBotIds )
+
+                BotAuthorId botId ->
+                    ( accUserIds, uniqCons botId accBotIds )
+
+                _ ->
+                    ( accUserIds, accBotIds )
+    in
+    List.foldl reducer ( [], [] ) messages
+
+
+
+-- Accessors
+
+
+getTs : Message -> Ts
+getTs (Message m) =
+    m.ts
+
+
+getText : Message -> String
+getText (Message m) =
+    m.text
+
+
+getAuthor : Message -> Author
+getAuthor (Message m) =
+    m.author
+
+
+getUsername : Message -> Maybe String
+getUsername (Message m) =
+    m.username
+
+
+getFiles : Message -> List SFile
+getFiles (Message m) =
+    m.files
+
+
+getAttachments : Message -> List Attachment
+getAttachments (Message m) =
+    m.attachments
+
+
+getConvoId : Message -> Convo.Id
+getConvoId (Message m) =
+    m.convoId

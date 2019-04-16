@@ -1,4 +1,14 @@
-module Data.Producer.Slack.Bot exposing (Bot, Id, decoder, encode, idDecoder)
+module Data.Producer.Slack.Bot exposing
+    ( Bot, Id, encode, decoder, idDecoder
+    , getId, getName, getIcons
+    )
+
+{-| Bot object.
+
+@docs Bot, Id, BotIcons, encode, decoder, idDecoder
+@docs getId, getName, getIcons
+
+-}
 
 import Id
 import Json.Decode as D exposing (Decoder)
@@ -76,3 +86,18 @@ idDecoder =
         , --Old format
           D.tagged "BotId" Id.from D.string
         ]
+
+
+getId : Bot -> Id
+getId (Bot bot) =
+    bot.id
+
+
+getName : Bot -> String
+getName (Bot bot) =
+    bot.name
+
+
+getIcons : Bot -> BotIcons
+getIcons (Bot bot) =
+    bot.icons

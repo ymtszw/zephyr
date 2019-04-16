@@ -1,4 +1,4 @@
-module Data.Producer.Slack.Ts exposing (Ts, decoder, encode)
+module Data.Producer.Slack.Ts exposing (Ts, decoder, encode, toPosix, toString)
 
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -38,3 +38,13 @@ decoder =
                     Nothing ->
                         D.fail "Invalid `ts` value"
         ]
+
+
+toString : Ts -> String
+toString (Ts str _) =
+    str
+
+
+toPosix : Ts -> Posix
+toPosix (Ts _ posix) =
+    posix

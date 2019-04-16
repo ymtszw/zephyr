@@ -1,9 +1,17 @@
-module Data.Producer.Slack.User exposing (Id, User, decoder, encode, idDecoder, resolveUserName)
+module Data.Producer.Slack.User exposing
+    ( User, Id, UserProfile, encode, decoder, idDecoder
+    , getId, getTeamId, getProfile
+    , resolveUserName
+    )
 
 {-| A user object.
 
 <https://api.slack.com/types/user>
 <https://api.slack.com/methods/users.info>
+
+@docs User, Id, UserProfile, encode, decoder, idDecoder
+@docs getId, getTeamId, getProfile
+@docs resolveUserName
 
 -}
 
@@ -17,6 +25,12 @@ import Json.EncodeExtra as E
 import Url exposing (Url)
 
 
+{-| A user object.
+
+<https://api.slack.com/types/user>
+<https://api.slack.com/methods/users.info>
+
+-}
 type User
     = User UserRecord
 
@@ -98,6 +112,21 @@ idDecoder =
 
 
 -- Runtime APIs
+
+
+getId : User -> Id
+getId (User user) =
+    user.id
+
+
+getTeamId : User -> Team.Id
+getTeamId (User user) =
+    user.teamId
+
+
+getProfile : User -> UserProfile
+getProfile (User user) =
+    user.profile
 
 
 resolveUserName : Dict Id User -> Id -> String

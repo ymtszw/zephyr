@@ -2,7 +2,10 @@ module Data.Producer.Slack.Convo exposing
     ( Convo, Id, Type(..), convo
     , encode, encodeType
     , decoder, idDecoder, typeDecoder, decoderForApiResponse
-    , resolveConvoName, compareByMembersipThenName
+    , getId, getName, getIsArchived, getLastRead, getType_, getFetchStatus
+    , setId, setName, setIsArchived, setLastRead, setType_, setFetchStatus
+    , resolveConvoName, compare, compareByMembersipThenName
+    , isChannel, isPrivate
     )
 
 {-| Channel-like objects.
@@ -10,7 +13,10 @@ module Data.Producer.Slack.Convo exposing
 @docs Convo, Id, Type, convo
 @docs encode, encodeType
 @docs decoder, idDecoder, typeDecoder, decoderForApiResponse
-@docs resolveConvoName, compareByMembersipThenName
+@docs getId, getName, getIsArchived, getLastRead, getType_, getFetchStatus
+@docs setId, setName, setIsArchived, setLastRead, setType_, setFetchStatus
+@docs resolveConvoName, compare, compareByMembersipThenName
+@docs isChannel, isPrivate
 
 -}
 
@@ -58,7 +64,7 @@ type alias ConvoRecord =
     { id : Id
     , name : String -- May start with values from API response, but should cannonicalize on Hydrate/Rehydrate
     , isArchived : Bool
-    , lastRead : Maybe LastRead -- For IM, `last_read` is not supplied from conversation object. Though we do not directly use them anyway.
+    , lastRead : Maybe Ts -- For IM, `last_read` is not supplied from conversation object. Though we do not directly use them anyway.
 
     -- Zephyr local
     , type_ : Type
@@ -68,17 +74,13 @@ type alias ConvoRecord =
 
 {-| Smart constructor for tests.
 -}
-convo : Id -> String -> Bool -> Maybe LastRead -> Type -> FetchStatus -> Convo
+convo : Id -> String -> Bool -> Maybe Ts -> Type -> FetchStatus -> Convo
 convo id name isArchived lastRead type_ fetchStatus =
     Convo { id = id, name = name, isArchived = isArchived, lastRead = lastRead, type_ = type_, fetchStatus = fetchStatus }
 
 
 type alias Id =
     Id.Id String Convo
-
-
-type LastRead
-    = LastRead Ts
 
 
 type Type
@@ -102,15 +104,10 @@ encode (Convo c) =
         [ ( "id", Id.encode E.string c.id )
         , ( "name", E.string c.name )
         , ( "is_archived", E.bool c.isArchived )
-        , ( "last_read", E.maybe encodeLastRead c.lastRead )
+        , ( "last_read", E.maybe Ts.encode c.lastRead )
         , ( "type_", encodeType c.type_ )
         , ( "fetchStatus", FetchStatus.encode c.fetchStatus )
         ]
-
-
-encodeLastRead : LastRead -> E.Value
-encodeLastRead (LastRead lastRead) =
-    E.tagged "LastRead" (Ts.encode lastRead)
 
 
 encodeType : Type -> E.Value
@@ -150,10 +147,15 @@ idDecoder =
         ]
 
 
-lastReadDecoder : Decoder LastRead
+lastReadDecoder : Decoder Ts
 lastReadDecoder =
     -- As in Discord's lastMessageId, we deliberately ignore "last_read" from Slack API.
-    D.tagged "LastRead" LastRead Ts.decoder
+    -- So this decoder MUST NOT succeed against bare values in API responses.
+    D.oneOf
+        [ Ts.decoder
+        , -- Old format
+          D.tagged "LastRead" identity Ts.decoder
+        ]
 
 
 typeDecoder : Decoder Type
@@ -233,8 +235,15 @@ resolveConvoName convos id =
         |> Maybe.withDefault (Id.to id)
 
 
-compareByMembersipThenName : Convo -> Convo -> Order
-compareByMembersipThenName (Convo c1) (Convo c2) =
+compare : Convo -> Convo -> Order
+compare (Convo c1) (Convo c2) =
+    compareByMembersipThenName c1 c2
+
+
+{-| Can also work against ConvoCaches.
+-}
+compareByMembersipThenName : { x | name : String, type_ : Type } -> { x | name : String, type_ : Type } -> Order
+compareByMembersipThenName c1 c2 =
     if c1 == c2 then
         EQ
 
@@ -257,7 +266,7 @@ compareByMembersipThenName (Convo c1) (Convo c2) =
                         GT
 
                     _ ->
-                        compare c1.name c2.name
+                        Basics.compare c1.name c2.name
 
             ( PublicChannel True, _ ) ->
                 LT
@@ -269,7 +278,7 @@ compareByMembersipThenName (Convo c1) (Convo c2) =
                 compareToPub isMember
 
             ( PrivateChannel, PrivateChannel ) ->
-                compare c1.name c2.name
+                Basics.compare c1.name c2.name
 
             ( PrivateChannel, _ ) ->
                 LT
@@ -278,7 +287,7 @@ compareByMembersipThenName (Convo c1) (Convo c2) =
                 compareToPub isMember
 
             ( IM, IM ) ->
-                compare c1.name c2.name
+                Basics.compare c1.name c2.name
 
             ( IM, MPIM ) ->
                 LT
@@ -290,7 +299,103 @@ compareByMembersipThenName (Convo c1) (Convo c2) =
                 compareToPub isMember
 
             ( MPIM, MPIM ) ->
-                compare c1.name c2.name
+                Basics.compare c1.name c2.name
 
             ( MPIM, _ ) ->
                 GT
+
+
+isChannel : Type -> Bool
+isChannel type_ =
+    case type_ of
+        PublicChannel _ ->
+            True
+
+        PrivateChannel ->
+            True
+
+        IM ->
+            False
+
+        MPIM ->
+            False
+
+
+isPrivate : Type -> Bool
+isPrivate type_ =
+    case type_ of
+        PublicChannel _ ->
+            False
+
+        PrivateChannel ->
+            True
+
+        IM ->
+            True
+
+        MPIM ->
+            True
+
+
+
+-- Accessors
+
+
+getId : Convo -> Id
+getId (Convo c) =
+    c.id
+
+
+getName : Convo -> String
+getName (Convo c) =
+    c.name
+
+
+getIsArchived : Convo -> Bool
+getIsArchived (Convo c) =
+    c.isArchived
+
+
+getLastRead : Convo -> Maybe Ts
+getLastRead (Convo c) =
+    c.lastRead
+
+
+getType_ : Convo -> Type
+getType_ (Convo c) =
+    c.type_
+
+
+getFetchStatus : Convo -> FetchStatus
+getFetchStatus (Convo c) =
+    c.fetchStatus
+
+
+setId : Id -> Convo -> Convo
+setId val (Convo c) =
+    Convo { c | id = val }
+
+
+setName : String -> Convo -> Convo
+setName val (Convo c) =
+    Convo { c | name = val }
+
+
+setIsArchived : Bool -> Convo -> Convo
+setIsArchived val (Convo c) =
+    Convo { c | isArchived = val }
+
+
+setLastRead : Maybe Ts -> Convo -> Convo
+setLastRead val (Convo c) =
+    Convo { c | lastRead = val }
+
+
+setType_ : Type -> Convo -> Convo
+setType_ val (Convo c) =
+    Convo { c | type_ = val }
+
+
+setFetchStatus : FetchStatus -> Convo -> Convo
+setFetchStatus val (Convo c) =
+    Convo { c | fetchStatus = val }
