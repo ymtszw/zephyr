@@ -72,27 +72,18 @@ type Slack
     | Expired Token POV
 
 
-type alias Token =
-    Id.Id String TokenTag
-
-
-type TokenTag
-    = TokenTag
+type Token
+    = Token String
 
 
 emptyToken : Token
 emptyToken =
-    toToken ""
-
-
-toToken : String -> Token
-toToken =
-    Id.from
+    Token ""
 
 
 fromToken : Token -> String
-fromToken =
-    Id.to
+fromToken (Token t) =
+    t
 
 
 type alias NewSession =
@@ -161,10 +152,10 @@ encodeUnidentified : SlackUnidentified -> E.Value
 encodeUnidentified su =
     case su of
         TokenWritable t ->
-            E.tagged "TokenWritable" (Id.encode E.string t)
+            E.tagged "TokenWritable" (E.string (fromToken t))
 
         TokenIdentifying t ->
-            E.tagged "TokenIdentifying" (Id.encode E.string t)
+            E.tagged "TokenIdentifying" (E.string (fromToken t))
 
 
 encodeSlack : Slack -> E.Value
@@ -189,7 +180,7 @@ encodeSlack slack =
 encodeSession : NewSession -> E.Value
 encodeSession session =
     E.object
-        [ ( "token", Id.encode E.string session.token )
+        [ ( "token", E.string (fromToken session.token) )
         , ( "user", User.encode session.user )
         , ( "team", Team.encode session.team )
         ]
@@ -198,7 +189,7 @@ encodeSession session =
 encodePov : POV -> E.Value
 encodePov pov =
     E.object
-        [ ( "token", Id.encode E.string pov.token )
+        [ ( "token", E.string (fromToken pov.token) )
         , ( "user", User.encode pov.user )
         , ( "team", Team.encode pov.team )
         , ( "convos", E.assocList Id.to Convo.encode pov.convos )
@@ -247,8 +238,8 @@ registryDecoder =
 unidentifiedDecoder : Decoder SlackUnidentified
 unidentifiedDecoder =
     D.oneOf
-        [ D.tagged "TokenWritable" TokenWritable (Id.decoder D.string)
-        , D.tagged "TokenIdentifying" TokenIdentifying (Id.decoder D.string)
+        [ D.tagged "TokenWritable" TokenWritable (D.map Token D.string)
+        , D.tagged "TokenIdentifying" TokenIdentifying (D.map Token D.string)
         ]
 
 
@@ -266,7 +257,7 @@ slackDecoder =
 sessionDecoder : Decoder NewSession
 sessionDecoder =
     D.map3 NewSession
-        (D.field "token" (Id.decoder D.string))
+        (D.field "token" (D.map Token D.string))
         (D.field "user" User.decoder)
         (D.field "team" Team.decoder)
 
@@ -284,7 +275,7 @@ povDecoder =
                         ]
             in
             D.map6 POV
-                (D.field "token" (Id.decoder D.string))
+                (D.field "token" (D.map Token D.string))
                 (D.field "user" User.decoder)
                 (D.field "team" Team.decoder)
                 convosDecoder
@@ -513,7 +504,7 @@ uTokenInput : String -> SlackUnidentified -> SlackUnidentified
 uTokenInput t su =
     case su of
         TokenWritable _ ->
-            TokenWritable (toToken t)
+            TokenWritable (Token t)
 
         TokenIdentifying _ ->
             -- Cannot overwrite
@@ -888,10 +879,10 @@ handleITokenInput : String -> Slack -> ( Slack, SubYield )
 handleITokenInput token slack =
     case slack of
         Hydrated _ pov ->
-            ( Hydrated (toToken token) pov, sYield )
+            ( Hydrated (Token token) pov, sYield )
 
         Expired _ pov ->
-            ( Expired (toToken token) pov, sYield )
+            ( Expired (Token token) pov, sYield )
 
         _ ->
             -- Otherwise not allowed
