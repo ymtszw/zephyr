@@ -7,7 +7,7 @@ import Broker
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConversation)
+import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConvoCache)
 import Data.Item
 import Data.Model exposing (Model)
 import Data.Msg exposing (..)
@@ -15,8 +15,15 @@ import Data.Pref as Pref
 import Data.Producer.Discord as PDiscord
 import Data.Producer.FetchStatus as FetchStatus
 import Data.Producer.Slack as PSlack
+import Data.Producer.Slack.Bot as SlackBot
+import Data.Producer.Slack.Convo as SlackConvo
+import Data.Producer.Slack.Message as SlackMessage
+import Data.Producer.Slack.Team as SlackTeam
+import Data.Producer.Slack.Ts as SlackTs
+import Data.Producer.Slack.User as SlackUser
 import Data.ProducerRegistry as ProducerRegistry
 import Html exposing (Html)
+import Id
 import List.Extra
 import Scroll
 import TimeExtra exposing (ms)
@@ -225,12 +232,12 @@ render m =
                     Nothing ->
                         []
                 , case m.columnStore.fam.ofSlackConversation of
-                    Just { conversations } ->
+                    Just { convos } ->
                         let
                             marshal c =
-                                Source.slack (PSlack.getConversationIdStr c) c.name c.team.name (teamIcon44 c.team) (PSlack.isPrivate c)
+                                Source.slack (Id.to c.id) c.name (SlackTeam.getName c.team) (teamIcon44 c.team) (SlackConvo.isPrivate c.type_)
                         in
-                        List.map marshal conversations
+                        List.map marshal convos
 
                     Nothing ->
                         []
@@ -266,11 +273,15 @@ marshalSourcesAndFilters fam filters =
                         Nothing ->
                             ( accSources, accFilters )
 
-                Filter.OfSlackConversation convId ->
+                Filter.OfSlackConversation convoId ->
                     -- TODO support IM/MPIMs
-                    case findSlackConversation convId fam of
+                    case findSlackConvoCache convoId fam of
                         Just c ->
-                            ( Source.slack convId c.name c.team.name (teamIcon44 c.team) (PSlack.isPrivate c) :: accSources, accFilters )
+                            let
+                                slackSource =
+                                    Source.slack (Id.to convoId) c.name (SlackTeam.getName c.team) (teamIcon44 c.team) (SlackConvo.isPrivate c.type_)
+                            in
+                            ( slackSource :: accSources, accFilters )
 
                         Nothing ->
                             ( accSources, accFilters )
@@ -434,33 +445,37 @@ dimension w h =
     { width = w, height = h }
 
 
-marshalSlackMessage : String -> Int -> PSlack.Message -> ItemForView
+marshalSlackMessage : String -> Int -> SlackMessage.Message -> ItemForView
 marshalSlackMessage id scrollIndex m =
     let
         author =
-            case m.author of
-                PSlack.UserAuthor u ->
-                    let
-                        username =
-                            Maybe.withDefault u.profile.realName u.profile.displayName
-                    in
+            let
+                username =
+                    SlackMessage.getAuthorName m
+
+                new =
                     NamedEntity.new username
-                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Url.toString u.profile.image48)) username False)
-
-                PSlack.UserAuthorId (PSlack.UserId str) ->
-                    NamedEntity.new str
-
-                PSlack.BotAuthor b ->
+            in
+            case SlackMessage.getAuthor m of
+                SlackMessage.UserAuthor u ->
                     let
-                        username =
-                            Maybe.withDefault b.name m.username
+                        profile =
+                            SlackUser.getProfile u
                     in
-                    NamedEntity.new username
-                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Url.toString b.icons.image48)) username True)
+                    NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Url.toString profile.image48)) username False) new
 
-                PSlack.BotAuthorId (PSlack.BotId str) ->
-                    NamedEntity.new str
-                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing str True)
+                SlackMessage.UserAuthorId _ ->
+                    new
+
+                SlackMessage.BotAuthor b ->
+                    let
+                        icons =
+                            SlackBot.getIcons b
+                    in
+                    NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (Url.toString icons.image48)) username True) new
+
+                SlackMessage.BotAuthorId _ ->
+                    NamedEntity.avatar (NamedEntity.imageOrAbbr Nothing username True) new
 
         marshalAttachment a =
             let
@@ -519,7 +534,7 @@ marshalSlackMessage id scrollIndex m =
             else if Data.Item.mimeIsVideo f.mimetype then
                 attachedFileDescription f.name (base attachedVideo)
 
-            else if f.mode == PSlack.Snippet || f.mode == PSlack.Post then
+            else if f.mode == SlackMessage.Snippet || f.mode == SlackMessage.Post then
                 attachedOther (ExternalLink (Url.toString f.url_))
                     |> attachedFileDescription f.name
                     |> apOrId attachedFilePreview f.preview
@@ -528,10 +543,10 @@ marshalSlackMessage id scrollIndex m =
                 attachedOther (DownloadUrl (Url.toString f.url_))
                     |> attachedFileDescription f.name
     in
-    ItemForView.new id scrollIndex author (Markdown m.text)
-        |> ItemForView.timestamp (PSlack.getPosix m)
-        |> ItemForView.embeddedMatters (List.map marshalAttachment m.attachments)
-        |> ItemForView.attachedFiles (List.map marshalFile m.files)
+    ItemForView.new id scrollIndex author (Markdown (SlackMessage.getText m))
+        |> ItemForView.timestamp (SlackTs.toPosix (SlackMessage.getTs m))
+        |> ItemForView.embeddedMatters (List.map marshalAttachment (SlackMessage.getAttachments m))
+        |> ItemForView.attachedFiles (List.map marshalFile (SlackMessage.getFiles m))
 
 
 renderConfigPref : Model -> Html Msg
@@ -556,13 +571,17 @@ renderConfigPref m =
         }
 
 
-teamIcon44 : PSlack.Team -> Maybe String
+teamIcon44 : SlackTeam.Team -> Maybe String
 teamIcon44 t =
-    if t.icon.imageDefault then
+    let
+        teamIcon =
+            SlackTeam.getIcon t
+    in
+    if teamIcon.imageDefault then
         Nothing
 
     else
-        Just (Url.toString t.icon.image44)
+        Just (Url.toString teamIcon.image44)
 
 
 renderConfigSlack : Model -> Html Msg
@@ -572,10 +591,10 @@ renderConfigSlack m =
             { onTokenInput = msgTagger << PSlack.UTokenInput
             , onTokenSubmit = msgTagger PSlack.UTokenCommit
             , onRehydrateButtonClick = msgTagger << PSlack.IRehydrate
-            , onConvSelect = \teamId convId -> msgTagger (PSlack.ISubscribe teamId convId)
+            , onConvSelect = \teamId convoId -> msgTagger (PSlack.ISubscribe teamId convoId)
             , onForceFetchButtonClick = \_ _ -> NoOp -- TODO
-            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation
-            , onUnsubscribeButtonClick = \teamId convId -> msgTagger (PSlack.IUnsubscribe teamId convId)
+            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation << Id.from
+            , onUnsubscribeButtonClick = \teamId convoId -> msgTagger (PSlack.IUnsubscribe teamId convoId)
             , selectMsgTagger = SelectCtrl
             }
 
@@ -604,25 +623,29 @@ renderConfigSlack m =
                                     ( marshalTeam pov.team, hydratedOnce False pov )
 
                         marshalTeam t =
-                            VSlack.TeamSnip teamId t.name t.domain (teamIcon44 t)
+                            VSlack.TeamSnip teamId (SlackTeam.getName t) (SlackTeam.getDomain t) (teamIcon44 t)
 
                         marshalUser u =
-                            VSlack.UserSnip u.profile.realName u.profile.displayName (Url.toString u.profile.image48)
+                            let
+                                profile =
+                                    SlackUser.getProfile u
+                            in
+                            VSlack.UserSnip profile.realName profile.displayName (Url.toString profile.image48)
 
                         hydratedOnce rehydrating pov =
                             let
                                 ( subbable, subbed ) =
                                     -- TODO support IM/MPIM
-                                    Dict.values pov.conversations
-                                        |> List.filter (\c -> not c.isArchived && PSlack.isChannel c)
-                                        |> List.sortWith PSlack.compareByMembersipThenName
+                                    Dict.values pov.convos
+                                        |> List.filter (\c -> not (SlackConvo.getIsArchived c) && SlackConvo.isChannel (SlackConvo.getType_ c))
+                                        |> List.sortWith SlackConvo.compare
                                         |> List.foldr partitionThenMarshal ( [], [] )
 
                                 partitionThenMarshal c ( accNotSubbed, accSubbed ) =
-                                    if FetchStatus.dormant c.fetchStatus then
-                                        ( VSlack.SubbableConv (PSlack.getConversationIdStr c)
-                                            c.name
-                                            (PSlack.isPrivate c)
+                                    if FetchStatus.dormant (SlackConvo.getFetchStatus c) then
+                                        ( VSlack.SubbableConv (Id.to (SlackConvo.getId c))
+                                            (SlackConvo.getName c)
+                                            (SlackConvo.isPrivate (SlackConvo.getType_ c))
                                             :: accNotSubbed
                                         , accSubbed
                                         )
@@ -630,11 +653,11 @@ renderConfigSlack m =
                                     else
                                         let
                                             marshalled =
-                                                VSlack.SubbedConv (PSlack.getConversationIdStr c)
-                                                    c.name
-                                                    (PSlack.isPrivate c)
-                                                    (FetchStatus.fetching c.fetchStatus)
-                                                    (FetchStatus.subscribed c.fetchStatus)
+                                                VSlack.SubbedConv (Id.to (SlackConvo.getId c))
+                                                    (SlackConvo.getName c)
+                                                    (SlackConvo.isPrivate (SlackConvo.getType_ c))
+                                                    (FetchStatus.fetching (SlackConvo.getFetchStatus c))
+                                                    (FetchStatus.subscribed (SlackConvo.getFetchStatus c))
                                         in
                                         ( accNotSubbed, marshalled :: accSubbed )
                             in

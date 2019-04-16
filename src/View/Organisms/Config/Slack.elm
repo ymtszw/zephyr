@@ -1,9 +1,11 @@
 module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
 
-import Data.Producer.Slack as Slack
+import Data.Producer.Slack.Convo as Convo
+import Data.Producer.Slack.Team as Team
 import Html exposing (Html, div, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
+import Id
 import StringExtra
 import Url
 import View.Atoms.Border as Border
@@ -17,14 +19,16 @@ import View.Molecules.Source as Source
 import View.Style exposing (..)
 
 
+{-| TODO Make it Convo.Id-compatible
+-}
 type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
-    , onRehydrateButtonClick : String -> msg
-    , onConvSelect : String -> String -> msg
-    , onForceFetchButtonClick : String -> String -> msg
+    , onRehydrateButtonClick : Team.Id -> msg
+    , onConvSelect : Team.Id -> String -> msg
+    , onForceFetchButtonClick : Team.Id -> String -> msg
     , onCreateColumnButtonClick : String -> msg
-    , onUnsubscribeButtonClick : String -> String -> msg
+    , onUnsubscribeButtonClick : Team.Id -> String -> msg
     , selectMsgTagger : Select.Msg msg -> msg
     }
 
@@ -58,7 +62,7 @@ hydratedOnce rehydrating user subbableConvs subbedConvs =
 
 
 type alias TeamSnip =
-    { id : String
+    { id : Team.Id
     , name : String
     , domain : String
     , image44 : Maybe String
@@ -116,7 +120,7 @@ render eff props =
 
 teamState : Effects msg -> Props -> ( TeamSnip, TeamState ) -> ( String, Html msg )
 teamState eff props ( team, ts ) =
-    Tuple.pair team.id <|
+    Tuple.pair (Id.to team.id) <|
         div [ flexColumn, padding5, spacingColumn5, Border.round5, Border.w1, Border.solid ] <|
             case ts of
                 NowHydrating user ->
@@ -125,7 +129,7 @@ teamState eff props ( team, ts ) =
                 HydratedOnce opts ->
                     [ teamAndUser (eff.onRehydrateButtonClick team.id) opts.rehydrating team opts.user
                     , ProducerConfig.subSelect (eff.onConvSelect team.id)
-                        { id = "slackConvSubscribeInput_" ++ team.id
+                        { id = "slackConvSubscribeInput_" ++ Id.to team.id
                         , selectMsgTagger = eff.selectMsgTagger
                         , selectState = props.selectState
                         , options = opts.subbableConvs
@@ -162,7 +166,7 @@ teamNameAndIcon team =
         , div [ flexGrow ] <|
             let
                 teamUrl =
-                    Slack.teamUrl team
+                    Team.domainUrl team.domain
             in
             [ div [ prominent, bold ] [ t team.name ]
             , ntLink [] { url = Url.toString teamUrl, children = [ t teamUrl.host ] }
