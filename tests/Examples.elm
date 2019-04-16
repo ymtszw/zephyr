@@ -561,31 +561,35 @@ testUnescapeTags initial expected =
 
 filterSuite : Test
 filterSuite =
+    let
+        ofSlackConversation convoId =
+            OfSlackConversation (Id.from convoId)
+    in
     describe "Data.Filter"
         [ describe "compareFilterAtom"
             [ testcompareFilterAtom (OfDiscordChannel "b") (OfDiscordChannel "a") GT
             , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
             , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "b") LT
-            , testcompareFilterAtom (OfDiscordChannel "a") (OfSlackConversation "a") LT
+            , testcompareFilterAtom (OfDiscordChannel "a") (ofSlackConversation "a") LT
             , testcompareFilterAtom (OfDiscordChannel "a") (ByMessage "a") LT
             , testcompareFilterAtom (OfDiscordChannel "a") (ByMedia HasImage) LT
             , testcompareFilterAtom (OfDiscordChannel "a") RemoveMe LT
-            , testcompareFilterAtom (OfSlackConversation "a") (OfDiscordChannel "a") GT
-            , testcompareFilterAtom (OfSlackConversation "b") (OfSlackConversation "a") GT
-            , testcompareFilterAtom (OfSlackConversation "a") (OfSlackConversation "a") EQ
-            , testcompareFilterAtom (OfSlackConversation "a") (OfSlackConversation "b") LT
-            , testcompareFilterAtom (OfSlackConversation "a") (ByMessage "a") LT
-            , testcompareFilterAtom (OfSlackConversation "a") (ByMedia HasImage) LT
-            , testcompareFilterAtom (OfSlackConversation "a") RemoveMe LT
+            , testcompareFilterAtom (ofSlackConversation "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ofSlackConversation "b") (ofSlackConversation "a") GT
+            , testcompareFilterAtom (ofSlackConversation "a") (ofSlackConversation "a") EQ
+            , testcompareFilterAtom (ofSlackConversation "a") (ofSlackConversation "b") LT
+            , testcompareFilterAtom (ofSlackConversation "a") (ByMessage "a") LT
+            , testcompareFilterAtom (ofSlackConversation "a") (ByMedia HasImage) LT
+            , testcompareFilterAtom (ofSlackConversation "a") RemoveMe LT
             , testcompareFilterAtom (ByMessage "a") (OfDiscordChannel "a") GT
-            , testcompareFilterAtom (ByMessage "a") (OfSlackConversation "a") GT
+            , testcompareFilterAtom (ByMessage "a") (ofSlackConversation "a") GT
             , testcompareFilterAtom (ByMessage "b") (ByMessage "a") GT
             , testcompareFilterAtom (ByMessage "a") (ByMessage "a") EQ
             , testcompareFilterAtom (ByMessage "a") (ByMessage "b") LT
             , testcompareFilterAtom (ByMessage "a") (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMessage "a") RemoveMe LT
             , testcompareFilterAtom (ByMedia HasImage) (OfDiscordChannel "a") GT
-            , testcompareFilterAtom (ByMedia HasImage) (OfSlackConversation "a") GT
+            , testcompareFilterAtom (ByMedia HasImage) (ofSlackConversation "a") GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMessage "a") GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasImage) GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasVideo) GT
@@ -598,7 +602,7 @@ filterSuite =
             , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasImage) RemoveMe LT
             , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") GT
-            , testcompareFilterAtom RemoveMe (OfSlackConversation "a") GT
+            , testcompareFilterAtom RemoveMe (ofSlackConversation "a") GT
             , testcompareFilterAtom RemoveMe (ByMessage "a") GT
             , testcompareFilterAtom RemoveMe (ByMedia HasImage) GT
             , testcompareFilterAtom RemoveMe RemoveMe EQ
@@ -749,46 +753,46 @@ slackSuite =
                     type_
                     Available
           in
-          describe "compareByMembersipThenName"
-            [ testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel True)) GT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" (PublicChannel True)) EQ
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel True)) LT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" PrivateChannel) LT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "USER" IM) LT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Users" MPIM) LT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel False)) LT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Name" (PublicChannel False)) LT
-            , testCompareConversation (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel False)) LT
-            , testCompareConversation (c "Name" PrivateChannel) (c "Name" (PublicChannel True)) GT
-            , testCompareConversation (c "Name" PrivateChannel) (c "Aaaa" PrivateChannel) GT
-            , testCompareConversation (c "Name" PrivateChannel) (c "Name" PrivateChannel) EQ
-            , testCompareConversation (c "Name" PrivateChannel) (c "Zzzz" PrivateChannel) LT
-            , testCompareConversation (c "Name" PrivateChannel) (c "USER" IM) LT
-            , testCompareConversation (c "Name" PrivateChannel) (c "Users" MPIM) LT
-            , testCompareConversation (c "Name" PrivateChannel) (c "Name" (PublicChannel False)) LT
-            , testCompareConversation (c "USER" IM) (c "Name" (PublicChannel True)) GT
-            , testCompareConversation (c "USER" IM) (c "Name" PrivateChannel) GT
-            , testCompareConversation (c "USER" IM) (c "AAAA" IM) GT
-            , testCompareConversation (c "USER" IM) (c "USER" IM) EQ
-            , testCompareConversation (c "USER" IM) (c "ZZZZ" IM) LT
-            , testCompareConversation (c "USER" IM) (c "Users" MPIM) LT
-            , testCompareConversation (c "USER" IM) (c "Name" (PublicChannel False)) LT
-            , testCompareConversation (c "Users" MPIM) (c "Name" (PublicChannel True)) GT
-            , testCompareConversation (c "Users" MPIM) (c "Name" PrivateChannel) GT
-            , testCompareConversation (c "Users" MPIM) (c "USER" IM) GT
-            , testCompareConversation (c "Users" MPIM) (c "Aaaaa" MPIM) GT
-            , testCompareConversation (c "Users" MPIM) (c "Users" MPIM) EQ
-            , testCompareConversation (c "Users" MPIM) (c "Zzzzz" MPIM) LT
-            , testCompareConversation (c "Users" MPIM) (c "Name" (PublicChannel False)) LT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel True)) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel True)) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel True)) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" PrivateChannel) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "USER" IM) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Users" MPIM) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel False)) GT
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Name" (PublicChannel False)) EQ
-            , testCompareConversation (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel False)) LT
+          describe "compare"
+            [ testCompareConvo (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel True)) GT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Name" (PublicChannel True)) EQ
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel True)) LT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Name" PrivateChannel) LT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "USER" IM) LT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Users" MPIM) LT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Aaaa" (PublicChannel False)) LT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Name" (PublicChannel False)) LT
+            , testCompareConvo (c "Name" (PublicChannel True)) (c "Zzzz" (PublicChannel False)) LT
+            , testCompareConvo (c "Name" PrivateChannel) (c "Name" (PublicChannel True)) GT
+            , testCompareConvo (c "Name" PrivateChannel) (c "Aaaa" PrivateChannel) GT
+            , testCompareConvo (c "Name" PrivateChannel) (c "Name" PrivateChannel) EQ
+            , testCompareConvo (c "Name" PrivateChannel) (c "Zzzz" PrivateChannel) LT
+            , testCompareConvo (c "Name" PrivateChannel) (c "USER" IM) LT
+            , testCompareConvo (c "Name" PrivateChannel) (c "Users" MPIM) LT
+            , testCompareConvo (c "Name" PrivateChannel) (c "Name" (PublicChannel False)) LT
+            , testCompareConvo (c "USER" IM) (c "Name" (PublicChannel True)) GT
+            , testCompareConvo (c "USER" IM) (c "Name" PrivateChannel) GT
+            , testCompareConvo (c "USER" IM) (c "AAAA" IM) GT
+            , testCompareConvo (c "USER" IM) (c "USER" IM) EQ
+            , testCompareConvo (c "USER" IM) (c "ZZZZ" IM) LT
+            , testCompareConvo (c "USER" IM) (c "Users" MPIM) LT
+            , testCompareConvo (c "USER" IM) (c "Name" (PublicChannel False)) LT
+            , testCompareConvo (c "Users" MPIM) (c "Name" (PublicChannel True)) GT
+            , testCompareConvo (c "Users" MPIM) (c "Name" PrivateChannel) GT
+            , testCompareConvo (c "Users" MPIM) (c "USER" IM) GT
+            , testCompareConvo (c "Users" MPIM) (c "Aaaaa" MPIM) GT
+            , testCompareConvo (c "Users" MPIM) (c "Users" MPIM) EQ
+            , testCompareConvo (c "Users" MPIM) (c "Zzzzz" MPIM) LT
+            , testCompareConvo (c "Users" MPIM) (c "Name" (PublicChannel False)) LT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel True)) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Name" (PublicChannel True)) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel True)) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Name" PrivateChannel) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "USER" IM) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Users" MPIM) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Aaaa" (PublicChannel False)) GT
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Name" (PublicChannel False)) EQ
+            , testCompareConvo (c "Name" (PublicChannel False)) (c "Zzzz" (PublicChannel False)) LT
             ]
         , describe "resolveAngleCmd"
             [ testAngleCmd
@@ -871,11 +875,11 @@ testCodec desc initialData entryDecoder encodeForPersist savedStateDecoder =
                     Expect.fail <| "Failed to decode on entry: " ++ D.errorToString e
 
 
-testCompareConversation : SlackConvo.Convo -> SlackConvo.Convo -> Order -> Test
-testCompareConversation a b order =
+testCompareConvo : SlackConvo.Convo -> SlackConvo.Convo -> Order -> Test
+testCompareConvo a b order =
     test ("'" ++ Debug.toString a ++ "' " ++ Debug.toString order ++ " '" ++ Debug.toString b ++ "'") <|
         \_ ->
-            SlackConvo.compareByMembersipThenName a b |> Expect.equal order
+            SlackConvo.compare a b |> Expect.equal order
 
 
 testAngleCmd : String -> String -> Test
