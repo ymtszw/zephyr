@@ -232,6 +232,8 @@ listShadow columnStore =
                 c :: acc
     in
     Dict.foldr reducer [] columnStore.dict
+        -- Sort is necessary, since AssocList is internally shuffled (due to remove then cons) on insert
+        |> List.sortBy .id
 
 
 
