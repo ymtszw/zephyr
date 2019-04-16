@@ -21,7 +21,6 @@ Slack API uses HTTP RPC style. See here for available methods:
 -}
 
 import AssocList as Dict exposing (Dict)
-import Color exposing (Color)
 import Data.Filter as Filter exposing (FilterAtom(..))
 import Data.Producer as Producer exposing (..)
 import Data.Producer.FetchStatus as FetchStatus exposing (FetchStatus(..))
@@ -42,13 +41,9 @@ import Json.Encode as E
 import Json.EncodeExtra as E
 import List.Extra
 import Markdown.Inline exposing (Inline(..))
-import Parser exposing ((|.), (|=), Parser)
-import StringExtra as StringExtra
 import Task exposing (Task)
-import TextParser
 import Time exposing (Posix)
 import Url exposing (Url)
-import View.Atoms.Theme exposing (aubergineTheme)
 import Worque
 
 
@@ -1291,16 +1286,6 @@ collectMissingInfoTask token messages =
 
 
 -- Runtime APIs
-
-
-getUser : Dict User.Id User -> User.Id -> Result User.Id User
-getUser users userId =
-    case Dict.get userId users of
-        Just u ->
-            Ok u
-
-        Nothing ->
-            Err userId
 
 
 getConvoFromCache : Convo.Id -> List ConvoCache -> Maybe ConvoCache

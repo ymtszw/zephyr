@@ -82,7 +82,7 @@ render m =
 
         props =
             let
-                marshalVisibleColumn fam index c =
+                marshalVisibleColumn fam _ c =
                     let
                         ( sources, filters ) =
                             marshalSourcesAndFilters fam c.pendingFilters

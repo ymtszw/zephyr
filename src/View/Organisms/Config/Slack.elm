@@ -1,6 +1,5 @@
 module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
 
-import Data.Producer.Slack.Convo as Convo
 import Data.Producer.Slack.Team as Team
 import Html exposing (Html, div, img, p)
 import Html.Attributes exposing (..)
