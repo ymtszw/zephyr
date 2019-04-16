@@ -1,7 +1,7 @@
 module Data.FilterAtomMaterial exposing
     ( FilterAtomMaterial, init, encode, decoder
     , UpdateInstruction(..), update
-    , findDiscordChannel, findSlackConversation
+    , findDiscordChannel, findSlackConvoCache
     )
 
 {-| Cache of relatively long-living information used for rendering FilterAtom.
@@ -11,19 +11,23 @@ at application load, without waiting for loading ProducerRegistry.
 
 @docs FilterAtomMaterial, init, encode, decoder
 @docs UpdateInstruction, update
-@docs findDiscordChannel, findSlackConversation
+@docs findDiscordChannel, findSlackConvoCache
 
 -}
 
 import Data.Producer exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
+import Data.Producer.Slack.Convo as Convo
+import Data.Producer.Slack.ConvoCache exposing (ConvoCache)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
 import Json.EncodeExtra as E
 import List.Extra
 
 
+{-| TODO Refactor data structure with Source and Filter in mind; <https://github.com/ymtszw/zephyr/issues/64>
+-}
 type alias FilterAtomMaterial =
     { ofDiscordChannel : Maybe Discord.FAM
     , ofSlackConversation : Maybe Slack.FAM
@@ -100,6 +104,6 @@ findDiscordChannel cId fam =
     Maybe.andThen (\( _, caches ) -> List.Extra.find (\c -> c.id == cId) caches) fam.ofDiscordChannel
 
 
-findSlackConversation : String -> FilterAtomMaterial -> Maybe Slack.ConversationCache
-findSlackConversation cId fam =
-    Maybe.andThen (\{ conversations } -> Slack.getConversationFromCache cId conversations) fam.ofSlackConversation
+findSlackConvoCache : Convo.Id -> FilterAtomMaterial -> Maybe ConvoCache
+findSlackConvoCache cId fam =
+    Maybe.andThen (\sFam -> Slack.getConvoFromCache cId sFam.convos) fam.ofSlackConversation

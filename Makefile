@@ -29,3 +29,7 @@ dist/zephyr.js:
 .PHONY: lab
 lab:
 	elm-live src/View/PatternLab.elm --pushstate --port=8001 --start-page=index.html -- --output=index.html
+
+.PHONY: analyse
+analyse:
+	elm-analyse --serve --port=3000 --open

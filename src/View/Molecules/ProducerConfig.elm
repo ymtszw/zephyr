@@ -61,6 +61,8 @@ tokenForm eff props =
         ]
 
 
+{-| TODO Make it Id-compatible
+-}
 subSelect :
     (String -> msg)
     ->
@@ -89,6 +91,8 @@ subSelect onSelect props =
         ]
 
 
+{-| TODO Make it Id-compatible
+-}
 subbedTable :
     { a
         | onCreateColumnButtonClick : String -> msg

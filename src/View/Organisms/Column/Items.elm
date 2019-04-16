@@ -29,6 +29,7 @@ import View.Style exposing (..)
 type alias Effects msg =
     { onLoadMoreClick : msg
     , onItemSourceButtonClick : String -> Int -> msg
+    , onItemRefreshButtonClick : String -> Int -> msg
     }
 
 
@@ -212,23 +213,25 @@ itemBlockKey eff props item =
 
 hoverMenu : Effects msg -> Props -> ItemForView -> Html msg
 hoverMenu eff props item =
+    let
+        menuOcticonButton onPress shape =
+            Icon.octiconButton [ flexItem, padding2, Image.hovText, Background.transparent, Border.round5 ]
+                { onPress = onPress props.columnId item.scrollIndex
+                , size = regularSize
+                , shape = shape
+                }
+    in
     div [ class flexHoverMenuClass, colorNote, minuscule, padding2, spacingRow2, Background.colorMain ] <|
         case item.timestamp of
             Just posixTime ->
                 [ div [ nowrap, padding5 ] [ t (TimeExtra.local props.timezone posixTime) ]
-                , Icon.octiconButton [ flexItem, padding5, Image.hovText, Background.transparent, Border.round5 ]
-                    { onPress = eff.onItemSourceButtonClick props.columnId item.scrollIndex
-                    , size = minusculeSize
-                    , shape = Octicons.code
-                    }
+                , menuOcticonButton eff.onItemRefreshButtonClick Octicons.sync
+                , menuOcticonButton eff.onItemSourceButtonClick Octicons.code
                 ]
 
             Nothing ->
-                [ Icon.octiconButton [ flexItem, padding5, Image.hovText, Background.transparent, Border.round5 ]
-                    { onPress = eff.onItemSourceButtonClick props.columnId item.scrollIndex
-                    , size = minusculeSize
-                    , shape = Octicons.code
-                    }
+                [ menuOcticonButton eff.onItemRefreshButtonClick Octicons.sync
+                , menuOcticonButton eff.onItemSourceButtonClick Octicons.code
                 ]
 
 

@@ -1,7 +1,7 @@
 module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, SubbableChannel, SubbedChannel, hydratedOnce, render)
 
+import AssocList as Dict exposing (Dict)
 import Data.Producer.Discord as Discord
-import Dict exposing (Dict)
 import Html exposing (Html, div, h3, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed

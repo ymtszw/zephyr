@@ -6,7 +6,7 @@ module Data.ColumnStore exposing
 
 {-| Order-aware Column storage.
 
-Internally, Columns themselves are stored in ID-based Dict,
+Internally, Columns themselves are stored in ID-based Dict (AssocList),
 whereas their order is stored in Array of IDs.
 
 If a Column exists in the `dict` but its ID is not found in the `order` Array,
@@ -25,6 +25,7 @@ This can be toggled at users' preferences. See Data.Model.
 
 import Array exposing (Array)
 import ArrayExtra as Array
+import AssocList as Dict exposing (Dict)
 import Broker exposing (Broker)
 import Data.Column as Column exposing (Column, Position(..))
 import Data.Filter exposing (FilterAtom(..))
@@ -32,10 +33,10 @@ import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstru
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
 import Deque exposing (Deque)
-import Dict exposing (Dict)
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import Json.EncodeExtra as E
 
 
 type alias ColumnStore =
@@ -64,7 +65,7 @@ decoder clientHeight =
 
 dictAndInitCmdDecoder : Int -> Array String -> Decoder ( Dict String Column, List ( String, Cmd Column.Msg ) )
 dictAndInitCmdDecoder clientHeight order =
-    D.do (D.dict (Column.decoder clientHeight)) <|
+    D.do (D.assocList identity (Column.decoder clientHeight)) <|
         \dictWithCmds ->
             let
                 reducer cId ( c, initCmd ) ( accDict, accCmds ) =
@@ -81,7 +82,7 @@ dictAndInitCmdDecoder clientHeight order =
 encode : ColumnStore -> Storable
 encode columnStore =
     Data.Storable.encode storeId
-        [ ( "dict", E.dict identity Column.encode columnStore.dict )
+        [ ( "dict", E.assocList identity Column.encode columnStore.dict )
         , ( "order", E.array E.string columnStore.order )
         , ( "fam", FAM.encode columnStore.fam )
         ]
@@ -231,6 +232,8 @@ listShadow columnStore =
                 c :: acc
     in
     Dict.foldr reducer [] columnStore.dict
+        -- Sort is necessary, since AssocList is internally shuffled (due to remove then cons) on insert
+        |> List.sortBy .id
 
 
 
