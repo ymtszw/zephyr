@@ -12,6 +12,8 @@ Persisted data of Sources should be identifiers for said Sources,
 and they must be "resolved" on marshalling to ViewModel.
 (e.g. Resolve guild and channel information for DiscordSource,
 from channel ID and required entity dictionaries)
+
+TODO Refactor control flow of the app, and make Source a persistant data structure.
 <https://github.com/ymtszw/zephyr/issues/64>
 
 @docs Source, discord, slack, desiredIconSize, id, theme, headTheme

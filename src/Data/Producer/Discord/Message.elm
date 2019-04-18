@@ -1,13 +1,13 @@
 module Data.Producer.Discord.Message exposing
     ( Message, Id, Author(..), Attachment, Embed, encode, decoder, colorDecoder
-    , getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments
+    , getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments, getAuthorName
     , parseOptions
     )
 
 {-| Message object.
 
 @docs Message, Id, Author, Attachment, Embed, encode, decoder, colorDecoder
-@docs getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments
+@docs getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments, getAuthorName
 @docs parseOptions
 
 -}
@@ -333,6 +333,16 @@ getEmbeds (Message message) =
 getAttachments : Message -> List Attachment
 getAttachments (Message message) =
     message.attachments
+
+
+getAuthorName : Message -> String
+getAuthorName (Message message) =
+    case message.author of
+        UserAuthor u ->
+            User.getUsername u
+
+        WebhookAuthor u ->
+            User.getUsername u
 
 
 parseOptions : TextParser.ParseOptions
