@@ -196,7 +196,7 @@ encodeAttachment attachment =
 
 decoder : Decoder Message
 decoder =
-    -- Only care about DEFAULT message type
+    -- Only care about DEFAULT message type; otherwise fail, thus you must use this with DecodeExtra.leakyList
     D.when (D.field "type" D.int) ((==) 0) <|
         D.map Message <|
             D.map7 MessageRecord

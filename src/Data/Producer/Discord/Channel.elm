@@ -1,14 +1,16 @@
 module Data.Producer.Discord.Channel exposing
     ( Channel, Id, Type, LastMessageId, encode, encodeShared, decoder, decoderShared
     , getId, getName, getType_, getGuildMaybe, getLastMessageId, getFetchStatus
-    , compare, filterByString, filterByStringShared
+    , setLastMessageId, setFetchStatus
+    , compare, compareShared, filterByString, filterByStringShared
     )
 
 {-| Channel object.
 
 @docs Channel, Id, Type, LastMessageId, encode, encodeShared, decoder, decoderShared
 @docs getId, getName, getType_, getGuildMaybe, getLastMessageId, getFetchStatus
-@docs compare, filterByString, filterByStringShared
+@docs setLastMessageId, setFetchStatus
+@docs compare, compareShared, filterByString, filterByStringShared
 
 -}
 
@@ -206,6 +208,23 @@ getFetchStatus (Channel c) =
     c.fetchStatus
 
 
+setLastMessageId : Maybe (Id.Id String x) -> Channel -> Channel
+setLastMessageId val (Channel c) =
+    case val of
+        Just mId ->
+            -- Transparent marshalling of Message.Id => LastMessageId
+            -- Slightly type-unsafe, since any String-based phantom ID can flow in.
+            Channel { c | lastMessageId = Just (Id.from (Id.to mId)) }
+
+        Nothing ->
+            Channel { c | lastMessageId = Nothing }
+
+
+setFetchStatus : FetchStatus -> Channel -> Channel
+setFetchStatus val (Channel c) =
+    Channel { c | fetchStatus = val }
+
+
 {-| Order Channels by their Guild names and then their own names.
 
 XXX May introduce client position.
@@ -213,6 +232,11 @@ XXX May introduce client position.
 -}
 compare : Channel -> Channel -> Order
 compare (Channel a) (Channel b) =
+    compareShared a b
+
+
+compareShared : { a | name : String, guildMaybe : Maybe Guild } -> { a | name : String, guildMaybe : Maybe Guild } -> Order
+compareShared a b =
     let
         gName =
             -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
