@@ -1,5 +1,5 @@
 module Data.Producer.Discord.Message exposing
-    ( Message, Id, Author, Attachment, Embed, encode, decoder, colorDecoder
+    ( Message, Id, Author(..), Attachment, Embed, encode, decoder, colorDecoder
     , getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments
     , parseOptions
     )

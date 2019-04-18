@@ -17,6 +17,8 @@ at application load, without waiting for loading ProducerRegistry.
 
 import Data.Producer exposing (UpdateFAM(..))
 import Data.Producer.Discord as Discord
+import Data.Producer.Discord.Channel as Channel
+import Data.Producer.Discord.ChannelCache exposing (ChannelCache)
 import Data.Producer.Slack as Slack
 import Data.Producer.Slack.Convo as Convo
 import Data.Producer.Slack.ConvoCache exposing (ConvoCache)
@@ -99,7 +101,7 @@ updateImpl instructions ( fam, persist ) =
 -- APIs
 
 
-findDiscordChannel : String -> FilterAtomMaterial -> Maybe Discord.ChannelCache
+findDiscordChannel : Channel.Id -> FilterAtomMaterial -> Maybe ChannelCache
 findDiscordChannel cId fam =
     Maybe.andThen (\( _, caches ) -> List.Extra.find (\c -> c.id == cId) caches) fam.ofDiscordChannel
 

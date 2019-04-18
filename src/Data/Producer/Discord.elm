@@ -1,5 +1,5 @@
 module Data.Producer.Discord exposing
-    ( Discord(..), POV, FAM, init, decoder, encode
+    ( Discord(..), POV, FAM, init, encode, encodeFam, decoder, famDecoder
     , Msg(..), reload, update
     , defaultIconUrl, getPov
     )
@@ -13,7 +13,7 @@ Using Discord's RESTful APIs to retrieve Items.
 Note that it involves a little "shady" work on retrieving
 full-privilege personal token for a Discord user. Discuss in private.
 
-@docs Discord, POV, FAM, init, decoder, encode
+@docs Discord, POV, FAM, init, encode, encodeFam, decoder, famDecoder
 @docs Msg, reload, update
 @docs defaultIconUrl, getPov
 
