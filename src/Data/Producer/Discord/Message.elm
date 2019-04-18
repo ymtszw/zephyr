@@ -1,12 +1,12 @@
 module Data.Producer.Discord.Message exposing
-    ( Message, Id, Author, Attachment, Embed, encode, decoder
+    ( Message, Id, Author, Attachment, Embed, encode, decoder, colorDecoder
     , getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments
     , parseOptions
     )
 
 {-| Message object.
 
-@docs Message, Id, Author, Attachment, Embed, encode, decoder
+@docs Message, Id, Author, Attachment, Embed, encode, decoder, colorDecoder
 @docs getId, getChannelId, getAuthor, getTimestamp, getContent, getEmbeds, getAttachments
 @docs parseOptions
 
@@ -242,6 +242,8 @@ embedDecoder =
         (D.maybeField "author" embedAuthorDecoder)
 
 
+{-| Exposed for testing.
+-}
 colorDecoder : Decoder Color
 colorDecoder =
     D.oneOf
