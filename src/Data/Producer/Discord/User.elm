@@ -12,7 +12,7 @@ module Data.Producer.Discord.User exposing
 
 -}
 
-import Data.Producer.Discord.Cdn exposing (makeUrl)
+import Data.Producer.Discord.Cdn exposing (makeDefaultIconUrl, makeUrl)
 import Id
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
@@ -75,18 +75,12 @@ decoder =
 
 avatarUrl : Maybe Int -> User -> String
 avatarUrl sizeMaybe (User u) =
-    makeUrl sizeMaybe <|
-        case u.avatar of
-            Just (AvatarHash hash) ->
-                "/avatars/" ++ Id.to u.id ++ "/" ++ hash ++ ".png"
+    case u.avatar of
+        Just (AvatarHash hash) ->
+            makeUrl sizeMaybe ("/avatars/" ++ Id.to u.id ++ "/" ++ hash ++ ".png")
 
-            Nothing ->
-                case String.toInt u.discriminator of
-                    Just int ->
-                        "/embed/avatars/" ++ String.fromInt (modBy 5 int) ++ ".png"
-
-                    Nothing ->
-                        "/embed/avatars/0.png"
+        Nothing ->
+            makeDefaultIconUrl sizeMaybe u.discriminator
 
 
 

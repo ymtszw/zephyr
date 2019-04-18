@@ -1,4 +1,4 @@
-module Data.Producer.Discord.Cdn exposing (makeUrl)
+module Data.Producer.Discord.Cdn exposing (makeDefaultIconUrl, makeUrl)
 
 
 makeUrl : Maybe Int -> String -> String
@@ -37,3 +37,14 @@ imageQuerySize size =
 
     else
         16
+
+
+makeDefaultIconUrl : Maybe Int -> String -> String
+makeDefaultIconUrl sizeMaybe discriminator =
+    makeUrl sizeMaybe <|
+        case String.toInt discriminator of
+            Just int ->
+                "/embed/avatars/" ++ String.fromInt (modBy 5 int) ++ ".png"
+
+            Nothing ->
+                "/embed/avatars/0.png"
