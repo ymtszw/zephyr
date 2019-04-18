@@ -1,10 +1,13 @@
 module View.Organisms.Config.Discord exposing (CurrentState(..), Effects, Props, SubbableChannel, SubbedChannel, hydratedOnce, render)
 
 import AssocList as Dict exposing (Dict)
-import Data.Producer.Discord as Discord
+import Data.Producer.Discord.Channel as Channel
+import Data.Producer.Discord.Guild as Guild exposing (Guild)
+import Data.Producer.Discord.User as User exposing (User)
 import Html exposing (Html, div, h3, img, p)
 import Html.Attributes exposing (..)
 import Html.Keyed
+import Id
 import View.Atoms.Input.Select as Select
 import View.Atoms.Layout exposing (..)
 import View.Atoms.Typography exposing (..)
@@ -54,11 +57,11 @@ render eff props =
 
 type CurrentState
     = NotIdentified
-    | NowHydrating Discord.User
+    | NowHydrating User
     | HydratedOnce
         { rehydrating : Bool
-        , user : Discord.User
-        , guilds : Dict String Discord.Guild
+        , user : User
+        , guilds : Dict String Guild
         , subbableChannels : List SubbableChannel
         , subbedChannels : List SubbedChannel -- Must be sorted already
         }
@@ -66,8 +69,8 @@ type CurrentState
 
 hydratedOnce :
     Bool
-    -> Discord.User
-    -> Dict String Discord.Guild
+    -> User
+    -> Dict String Guild
     -> List SubbableChannel
     -> List SubbedChannel
     -> CurrentState
@@ -84,14 +87,14 @@ hydratedOnce rehydrating user guilds_ subbableChannels subbedChannels =
 type alias SubbableChannel =
     { id : String
     , name : String
-    , guildMaybe : Maybe Discord.Guild
+    , guildMaybe : Maybe Guild
     }
 
 
 type alias SubbedChannel =
     { id : String
     , name : String
-    , guildMaybe : Maybe Discord.Guild
+    , guildMaybe : Maybe Guild
     , fetching : Bool -- May include InitialFetching
     , producing : Bool -- Meaning, the channel is successfully fetched at least once
     }
@@ -115,32 +118,32 @@ currentState eff props =
                     , selectMsgTagger = eff.selectMsgTagger
                     , selectState = props.selectState
                     , options = opts.subbableChannels
-                    , filterMatch = Discord.channelFilter
+                    , filterMatch = Channel.filterByStringShared
                     , optionHtml = channelSummary
                     }
                 , ProducerConfig.subbedTable eff { items = opts.subbedChannels, itemHtml = channelSummary }
                 ]
 
 
-userNameAndAvatar : msg -> Bool -> Discord.User -> Html msg
+userNameAndAvatar : msg -> Bool -> User -> Html msg
 userNameAndAvatar onRehydrateButtonClick rehydrating user =
     div [ flexRow, spacingRow5 ]
         [ img
             [ flexItem
             , Icon.rounded40
-            , src (Icon.discordImageUrlWithFallback40 user.discriminator user.avatar)
-            , alt user.username
+            , src (Icon.discordUserAvatarUrl40 user)
+            , alt (User.getUsername user)
             ]
             []
         , div [ flexGrow ]
-            [ h3 [ prominent, bold ] [ t user.username ]
-            , p [ colorNote ] [ t ("#" ++ user.discriminator) ]
+            [ h3 [ prominent, bold ] [ t (User.getUsername user) ]
+            , p [ colorNote ] [ t ("#" ++ User.getDiscriminator user) ]
             ]
         , Icon.rehydrateButton onRehydrateButtonClick rehydrating
         ]
 
 
-guilds : Dict String Discord.Guild -> Html msg
+guilds : Dict String Guild -> Html msg
 guilds guilds_ =
     Html.Keyed.node "div" [ flexRow, flexWrap, spacingWrapped5 ] <|
         if Dict.isEmpty guilds_ then
@@ -150,20 +153,21 @@ guilds guilds_ =
             Dict.foldr (\_ g a -> guildIconKey g :: a) [] guilds_
 
 
-guildIconKey : Discord.Guild -> ( String, Html msg )
+guildIconKey : Guild -> ( String, Html msg )
 guildIconKey g =
-    Tuple.pair g.id <|
-        Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] g.name (Maybe.map Icon.discordImageUrl40 g.icon)
+    Tuple.pair (Id.to (Guild.getId g)) <|
+        Icon.imgOrAbbr [ flexItem, serif, xProminent, Icon.rounded40 ] (Guild.getName g) <|
+            Icon.discordGuildIconUrl40 g
 
 
-channelSummary : { c | name : String, guildMaybe : Maybe Discord.Guild } -> Html msg
+channelSummary : { c | name : String, guildMaybe : Maybe Guild } -> Html msg
 channelSummary c =
     let
         guildIcon =
             case c.guildMaybe of
                 Just g ->
-                    Icon.imgOrAbbr [ flexItem, Icon.rounded20 ] g.name <|
-                        Maybe.map Icon.discordImageUrl20 g.icon
+                    Icon.imgOrAbbr [ flexItem, Icon.rounded20 ] (Guild.getName g) <|
+                        Icon.discordGuildIconUrl20 g
 
                 Nothing ->
                     -- TODO DM/GroupDMs should have appropriate icons
