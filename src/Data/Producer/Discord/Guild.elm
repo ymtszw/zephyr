@@ -60,7 +60,7 @@ decoder =
 
 iconUrl : Maybe Int -> Guild -> Maybe String
 iconUrl sizeMaybe (Guild g) =
-    -- If icon is not set, we use Icon.abbr rather than fallback icon.
+    -- If icon is not set, we use Icon.abbr rather than fallback icon (Discord logo).
     case g.icon of
         Just (IconHash hash) ->
             Just (makeUrl sizeMaybe ("/icons/" ++ Id.to g.id ++ "/" ++ hash ++ ".png"))
