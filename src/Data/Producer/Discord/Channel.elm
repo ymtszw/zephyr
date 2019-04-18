@@ -1,12 +1,14 @@
 module Data.Producer.Discord.Channel exposing
     ( Channel, Id, Type, LastMessageId, encode, encodeShared, decoder, decoderShared
     , getId, getName, getType_, getGuildMaybe, getLastMessageId, getFetchStatus
+    , compare, filterByString, filterByStringShared
     )
 
 {-| Channel object.
 
 @docs Channel, Id, Type, LastMessageId, encode, encodeShared, decoder, decoderShared
 @docs getId, getName, getType_, getGuildMaybe, getLastMessageId, getFetchStatus
+@docs compare, filterByString, filterByStringShared
 
 -}
 
@@ -18,6 +20,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import StringExtra
 
 
 {-| Channel object.
@@ -201,3 +204,40 @@ getLastMessageId (Channel c) =
 getFetchStatus : Channel -> FetchStatus
 getFetchStatus (Channel c) =
     c.fetchStatus
+
+
+{-| Order Channels by their Guild names and then their own names.
+
+XXX May introduce client position.
+
+-}
+compare : Channel -> Channel -> Order
+compare (Channel a) (Channel b) =
+    let
+        gName =
+            -- Tilde is sorted AFTER "z" in ordinary sort algorithms, suitable for fallback
+            .guildMaybe >> Maybe.map Guild.getName >> Maybe.withDefault "~~~"
+    in
+    case Basics.compare (gName a) (gName b) of
+        EQ ->
+            Basics.compare a.name b.name
+
+        diff ->
+            diff
+
+
+filterByString : String -> Channel -> Bool
+filterByString filter (Channel c) =
+    filterByStringShared filter c
+
+
+filterByStringShared : String -> { x | name : String, guildMaybe : Maybe Guild } -> Bool
+filterByStringShared filter c =
+    StringExtra.containsCaseIgnored filter c.name
+        || (case c.guildMaybe of
+                Just guild ->
+                    StringExtra.containsCaseIgnored filter (Guild.getName guild)
+
+                Nothing ->
+                    False
+           )
