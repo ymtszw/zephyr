@@ -1,7 +1,7 @@
-module Data.Producer.Discord.ChannelCache exposing (ChannelCache, decoder, encode)
+module Data.Producer.Discord.ChannelCache exposing (ChannelCache, decoder, encode, from)
 
 import AssocList exposing (Dict)
-import Data.Producer.Discord.Channel exposing (Id, Type, decoderShared, encodeShared)
+import Data.Producer.Discord.Channel as Channel exposing (..)
 import Data.Producer.Discord.Guild as Guild exposing (Guild)
 import Json.Decode as D exposing (Decoder)
 import Json.Encode exposing (Value)
@@ -31,3 +31,12 @@ encode c =
 decoder : Dict Guild.Id Guild -> Decoder ChannelCache
 decoder guilds =
     decoderShared ChannelCache guilds
+
+
+from : Channel -> ChannelCache
+from c =
+    { id = getId c
+    , name = getName c
+    , type_ = getType_ c
+    , guildMaybe = getGuildMaybe c
+    }
