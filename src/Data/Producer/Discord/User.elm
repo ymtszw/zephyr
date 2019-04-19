@@ -1,12 +1,12 @@
 module Data.Producer.Discord.User exposing
-    ( User, Id, encode, decoder
+    ( User, Id, encode, decoder, new
     , getId, getUsername, getDiscriminator
     , avatarUrl
     )
 
 {-| User object.
 
-@docs User, Id, encode, decoder
+@docs User, Id, encode, decoder, new
 @docs getId, getUsername, getDiscriminator
 @docs avatarUrl
 
@@ -15,6 +15,7 @@ module Data.Producer.Discord.User exposing
 import Data.Producer.Discord.Cdn exposing (makeDefaultIconUrl, makeUrl)
 import Id
 import Json.Decode as D exposing (Decoder)
+import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
 
@@ -53,6 +54,16 @@ fromAvatarHash (AvatarHash hash) =
     hash
 
 
+new : User
+new =
+    User
+        { id = Id.from "id"
+        , username = "username"
+        , discriminator = "discriminator"
+        , avatar = Nothing
+        }
+
+
 encode : User -> E.Value
 encode (User user) =
     E.object
@@ -65,12 +76,11 @@ encode (User user) =
 
 decoder : Decoder User
 decoder =
-    D.map User <|
-        D.map4 UserRecord
-            (D.field "id" (Id.decoder D.string))
-            (D.field "username" D.string)
-            (D.field "discriminator" D.string)
-            (D.field "avatar" (D.maybe (D.map AvatarHash D.string)))
+    D.succeed new
+        |> D.map2 setId (D.field "id" (Id.decoder D.string))
+        |> D.map2 setUsername (D.field "username" D.string)
+        |> D.map2 setDiscriminator (D.field "discriminator" D.string)
+        |> D.map2 setAvatar (D.field "avatar" (D.maybe (D.map AvatarHash D.string)))
 
 
 avatarUrl : Maybe Int -> User -> String
@@ -100,3 +110,23 @@ getUsername (User u) =
 getDiscriminator : User -> String
 getDiscriminator (User u) =
     u.discriminator
+
+
+setId : Id -> User -> User
+setId val (User u) =
+    User { u | id = val }
+
+
+setUsername : String -> User -> User
+setUsername val (User u) =
+    User { u | username = val }
+
+
+setDiscriminator : String -> User -> User
+setDiscriminator val (User u) =
+    User { u | discriminator = val }
+
+
+setAvatar : Maybe AvatarHash -> User -> User
+setAvatar val (User u) =
+    User { u | avatar = val }

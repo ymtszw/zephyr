@@ -1,4 +1,4 @@
-module Data.Producer.Discord.Guild exposing (Guild, Id, decoder, encode, getId, getName, iconUrl)
+module Data.Producer.Discord.Guild exposing (Guild, Id, decoder, encode, getId, getName, iconUrl, new, setId, setName)
 
 import Data.Producer.Discord.Cdn exposing (makeUrl)
 import Id
@@ -36,6 +36,15 @@ fromIconHash (IconHash hash) =
     hash
 
 
+new : Guild
+new =
+    Guild
+        { id = Id.from "id"
+        , name = "name"
+        , icon = Nothing
+        }
+
+
 encode : Guild -> E.Value
 encode (Guild guild) =
     E.object
@@ -47,11 +56,10 @@ encode (Guild guild) =
 
 decoder : Decoder Guild
 decoder =
-    D.map Guild <|
-        D.map3 GuildRecord
-            (D.field "id" (Id.decoder D.string))
-            (D.field "name" D.string)
-            (D.field "icon" (D.maybe (D.map IconHash D.string)))
+    D.succeed new
+        |> D.map2 setId (D.field "id" (Id.decoder D.string))
+        |> D.map2 setName (D.field "name" D.string)
+        |> D.map2 setIcon (D.field "icon" (D.maybe (D.map IconHash D.string)))
 
 
 
@@ -77,3 +85,18 @@ getId (Guild g) =
 getName : Guild -> String
 getName (Guild g) =
     g.name
+
+
+setId : Id -> Guild -> Guild
+setId val (Guild g) =
+    Guild { g | id = val }
+
+
+setName : String -> Guild -> Guild
+setName val (Guild g) =
+    Guild { g | name = val }
+
+
+setIcon : Maybe IconHash -> Guild -> Guild
+setIcon val (Guild g) =
+    Guild { g | icon = val }
