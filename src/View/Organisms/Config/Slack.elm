@@ -1,5 +1,6 @@
-module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
+module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConvo, SubbedConvo, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
 
+import Data.Producer.Slack.Convo as Convo
 import Data.Producer.Slack.Team as Team
 import Html exposing (Html, div, img, p)
 import Html.Attributes exposing (..)
@@ -18,16 +19,14 @@ import View.Molecules.Source as Source
 import View.Style exposing (..)
 
 
-{-| TODO Make it Convo.Id-compatible
--}
 type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : Team.Id -> msg
-    , onConvSelect : Team.Id -> String -> msg
-    , onForceFetchButtonClick : Team.Id -> String -> msg
-    , onCreateColumnButtonClick : String -> msg
-    , onUnsubscribeButtonClick : Team.Id -> String -> msg
+    , onConvoSelect : Team.Id -> Convo.Id -> msg
+    , onForceFetchButtonClick : Team.Id -> Convo.Id -> msg
+    , onCreateColumnButtonClick : Convo.Id -> msg
+    , onUnsubscribeButtonClick : Team.Id -> Convo.Id -> msg
     , selectMsgTagger : Select.Msg msg -> msg
     }
 
@@ -45,18 +44,18 @@ type TeamState
     | HydratedOnce
         { rehydrating : Bool
         , user : UserSnip
-        , subbableConvs : List SubbableConv
-        , subbedConvs : List SubbedConv
+        , subbableConvos : List SubbableConvo
+        , subbedConvos : List SubbedConvo
         }
 
 
-hydratedOnce : Bool -> UserSnip -> List SubbableConv -> List SubbedConv -> TeamState
-hydratedOnce rehydrating user subbableConvs subbedConvs =
+hydratedOnce : Bool -> UserSnip -> List SubbableConvo -> List SubbedConvo -> TeamState
+hydratedOnce rehydrating user subbableConvos subbedConvos =
     HydratedOnce
         { rehydrating = rehydrating
         , user = user
-        , subbableConvs = subbableConvs
-        , subbedConvs = subbedConvs
+        , subbableConvos = subbableConvos
+        , subbedConvos = subbedConvos
         }
 
 
@@ -75,15 +74,15 @@ type alias UserSnip =
     }
 
 
-type alias SubbableConv =
-    { id : String
+type alias SubbableConvo =
+    { id : Convo.Id
     , name : String
     , isPrivate : Bool
     }
 
 
-type alias SubbedConv =
-    { id : String
+type alias SubbedConvo =
+    { id : Convo.Id
     , name : String
     , isPrivate : Bool
     , fetching : Bool -- May include InitialFetching
@@ -127,11 +126,13 @@ teamState eff props ( team, ts ) =
 
                 HydratedOnce opts ->
                     [ teamAndUser (eff.onRehydrateButtonClick team.id) opts.rehydrating team opts.user
-                    , ProducerConfig.subSelect (eff.onConvSelect team.id)
-                        { id = "slackConvSubscribeInput_" ++ Id.to team.id
+                    , ProducerConfig.subSelect
+                        { onSelect = eff.onConvoSelect team.id
                         , selectMsgTagger = eff.selectMsgTagger
+                        }
+                        { id = "slackConvSubscribeInput_" ++ Id.to team.id
                         , selectState = props.selectState
-                        , options = opts.subbableConvs
+                        , options = opts.subbableConvos
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
                         , optionHtml = div [] << Source.slackInline regularSize
                         }
@@ -143,7 +144,7 @@ teamState eff props ( team, ts ) =
                             }
                       in
                       ProducerConfig.subbedTable eff_
-                        { items = opts.subbedConvs
+                        { items = opts.subbedConvos
                         , itemHtml = div [] << Source.slackInline regularSize
                         }
                     ]

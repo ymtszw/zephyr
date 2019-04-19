@@ -1,19 +1,19 @@
 module View.PatternLab exposing (main)
 
 import AssocList as Dict
-import Broker
 import Browser
 import Browser.Navigation exposing (Key)
 import Color
 import Data.Column exposing (ColumnItem(..))
 import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..))
-import Data.Item
-import Data.Producer.Discord
+import Data.Producer.Discord.Guild as DiscordGuild
+import Data.Producer.Discord.User as DiscordUser
 import File exposing (File)
 import File.Select
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Id
 import Json.Decode exposing (succeed)
 import List.Extra
 import Octicons
@@ -1877,24 +1877,28 @@ producerConfig m =
                 , submitButtonText = "Register"
                 , apiDomain = "api.example.com"
                 }
-        , withSource """ProducerConfig.subSelect (always NoOp)
-    { id = "subSelectId"
+        , withSource """ProducerConfig.subSelect
+    { onSelect = always NoOp
     , selectMsgTagger = SelectCtrl
+    }
+    { id = "subSelectId"
     , selectState = m.select
     , options =
-        [ { id = "Subbable1", name = "Name1" }
-        , { id = "Subbable2", name = String.repeat 3 "Name2" }
+        [ { id = Id.from "Subbable1", name = "Name1" }
+        , { id = Id.from "Subbable2", name = String.repeat 3 "Name2" }
         ]
     , filterMatch = \\query e -> String.contains query e.name
     , optionHtml = \\e -> t e.name
     }""" <|
-            ProducerConfig.subSelect (always NoOp)
-                { id = "subSelectId"
+            ProducerConfig.subSelect
+                { onSelect = always NoOp
                 , selectMsgTagger = SelectCtrl
+                }
+                { id = "subSelectId"
                 , selectState = m.select
                 , options =
-                    [ { id = "Subbable1", name = "Name1" }
-                    , { id = "Subbable2", name = String.repeat 3 "Name2" }
+                    [ { id = Id.from "Subbable1", name = "Name1" }
+                    , { id = Id.from "Subbable2", name = String.repeat 3 "Name2" }
                     ]
                 , filterMatch = \query e -> String.contains query e.name
                 , optionHtml = \e -> t e.name
@@ -1905,8 +1909,8 @@ producerConfig m =
     , onUnsubscribeButtonClick = always NoOp
     }
     { items =
-        [ { id = "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
-        , { id = "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
+        [ { id = Id.from "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
+        , { id = Id.from "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
         ]
     , itemHtml = \\i -> t i.name
     }""" <|
@@ -1916,8 +1920,8 @@ producerConfig m =
                 , onUnsubscribeButtonClick = always NoOp
                 }
                 { items =
-                    [ { id = "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
-                    , { id = "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
+                    [ { id = Id.from "ID1", name = "Name1", fetching = m.toggle, producing = m.toggle }
+                    , { id = Id.from "ID2", name = String.repeat 3 "Name3", fetching = m.toggle, producing = m.toggle }
                     ]
                 , itemHtml = \i -> t i.name
                 }
@@ -2247,82 +2251,38 @@ rawColumnItem =
     let
         significantlylongstring =
             String.repeat 50 "significantlylongstring"
-
-        withSampleBrokerOffset content =
-            case Broker.offsetFromString ("00000001" ++ "01" ++ "00001") of
-                Just offset ->
-                    content offset
-
-                Nothing ->
-                    none
     in
-    withSampleBrokerOffset <|
-        \sampleOffset ->
-            section []
-                [ h1 [ xxProminent ] [ t "RawColumnItem" ]
-                , withSource """RawColumnItem.render <|
+    section []
+        [ h1 [ xxProminent ] [ t "RawColumnItem" ]
+        , withSource """RawColumnItem.render <|
     SystemMessage
         { id = "sm01"
         , message = "System Message " ++ lorem ++ iroha ++ significantlylongstring
         , mediaMaybe = Nothing
         }""" <|
-                    RawColumnItem.render <|
-                        SystemMessage
-                            { id = "sm01"
-                            , message = "System Message " ++ lorem ++ iroha ++ significantlylongstring
-                            , mediaMaybe = Nothing
-                            }
-                , withSource """RawColumnItem.render <|
+            RawColumnItem.render <|
+                SystemMessage
+                    { id = "sm01"
+                    , message = "System Message " ++ lorem ++ iroha ++ significantlylongstring
+                    , mediaMaybe = Nothing
+                    }
+        , withSource """RawColumnItem.render <|
     SystemMessage
         { id = "sm01"
         , message = "With media"
         , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
         }""" <|
-                    RawColumnItem.render <|
-                        SystemMessage
-                            { id = "sm01"
-                            , message = "With media"
-                            , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
-                            }
-                , withSource """RawColumnItem.render <|
-    LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }""" <|
-                    RawColumnItem.render <|
-                        LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }
-                , withSource """RawColumnItem.render <|
-    Product sampleOffset <|
-        Data.Item.DiscordItem <|
-            { id = "discordMessageId01"
-            , channelId = "discordChannelId01"
-            , author =
-                Data.Producer.Discord.UserAuthor
-                    { id = "discordUserId01"
-                    , username = iroha ++ significantlylongstring
-                    , discriminator = "4444"
-                    , avatar = Nothing
+            RawColumnItem.render <|
+                SystemMessage
+                    { id = "sm01"
+                    , message = "With media"
+                    , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
                     }
-            , timestamp = Time.millisToPosix 0
-            , content = lorem ++ significantlylongstring
-            , embeds = []
-            , attachments = []
-            }""" <|
-                    RawColumnItem.render <|
-                        Product sampleOffset <|
-                            Data.Item.DiscordItem <|
-                                { id = "discordMessageId01"
-                                , channelId = "discordChannelId01"
-                                , author =
-                                    Data.Producer.Discord.UserAuthor
-                                        { id = "discordUserId01"
-                                        , username = iroha ++ significantlylongstring
-                                        , discriminator = "4444"
-                                        , avatar = Nothing
-                                        }
-                                , timestamp = Time.millisToPosix 0
-                                , content = lorem ++ significantlylongstring
-                                , embeds = []
-                                , attachments = []
-                                }
-                ]
+        , withSource """RawColumnItem.render <|
+    LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }""" <|
+            RawColumnItem.render <|
+                LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }
+        ]
 
 
 sidebar : Model -> Html Msg
@@ -2556,27 +2516,19 @@ configDiscord m =
         , withSource """let
     dummyOpts =
         { rehydrating = m.toggle
-        , user = dummyUser
-        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( g.id, g )) |> Dict.fromList
+        , user = DiscordUser.new
+        , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\\g -> ( DiscordGuild.getId g, g )) |> Dict.fromList
         , subbableChannels = List.range 0 20 |> List.map subbableChannel
         , subbedChannels = List.range 0 15 |> List.map dummyChannel
         }
 
-    dummyUser =
-        { id = "DUMMYUSERID"
-        , username = "Discord User"
-        , discriminator = "1111"
-        , avatar = Nothing
-        }
-
     dummyGuild index =
-        { id = "DUMMYGUILDID" ++ String.fromInt index
-        , name = String.fromInt index ++ "GUILD"
-        , icon = Nothing
-        }
+        DiscordGuild.new
+            |> DiscordGuild.setId (Id.from ("DUMMYGUILDID" ++ String.fromInt index))
+            |> DiscordGuild.setName (String.fromInt index ++ "GUILD")
 
     dummyChannel index =
-        { id = "DUMMYCHANNELID" ++ String.fromInt index
+        { id = Id.from ("DUMMYCHANNELID" ++ String.fromInt index)
         , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
         , guildMaybe = Just (dummyGuild (modBy 3 index))
         , fetching = modBy 2 index == 0
@@ -2606,27 +2558,19 @@ Discord.render
             let
                 dummyOpts =
                     { rehydrating = m.toggle
-                    , user = dummyUser
-                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( g.id, g )) |> Dict.fromList
+                    , user = DiscordUser.new
+                    , guilds = List.range 0 10 |> List.map dummyGuild |> List.map (\g -> ( DiscordGuild.getId g, g )) |> Dict.fromList
                     , subbableChannels = List.range 0 20 |> List.map subbableChannel
                     , subbedChannels = List.range 0 15 |> List.map dummyChannel
                     }
 
-                dummyUser =
-                    { id = "DUMMYUSERID"
-                    , username = "Discord User"
-                    , discriminator = "1111"
-                    , avatar = Nothing
-                    }
-
                 dummyGuild index =
-                    { id = "DUMMYGUILDID" ++ String.fromInt index
-                    , name = String.fromInt index ++ "GUILD"
-                    , icon = Nothing
-                    }
+                    DiscordGuild.new
+                        |> DiscordGuild.setId (Id.from ("DUMMYGUILDID" ++ String.fromInt index))
+                        |> DiscordGuild.setName (String.fromInt index ++ "GUILD")
 
                 dummyChannel index =
-                    { id = "DUMMYCHANNELID" ++ String.fromInt index
+                    { id = Id.from ("DUMMYCHANNELID" ++ String.fromInt index)
                     , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
                     , guildMaybe = Just (dummyGuild (modBy 3 index))
                     , fetching = modBy 2 index == 0
@@ -2670,13 +2614,13 @@ configSlack m =
             , Slack.HydratedOnce
                 { rehydrating = m.toggle
                 , user = dummyUser index
-                , subbableConvs = List.range 0 (index * 3) |> List.map subbableConv
-                , subbedConvs = List.range 0 (index * 3) |> List.map dummyConv
+                , subbableConvos = List.range 0 (index * 3) |> List.map subbableConvo
+                , subbedConvos = List.range 0 (index * 3) |> List.map dummyConvo
                 }
             )
 
     dummyTeam index =
-        { id = "DUMMYTEAMID" ++ String.fromInt index
+        { id = Id.from ("DUMMYTEAMID" ++ String.fromInt index)
         , name = String.fromInt index ++ "TEAM"
         , domain = String.fromInt index ++ "team"
         , image44 =
@@ -2702,16 +2646,16 @@ configSlack m =
         , image48 = Image.ph 48 48
         }
 
-    dummyConv index =
-        { id = "DUMMYCONVID" ++ String.fromInt index
+    dummyConvo index =
+        { id = Id.from ("DUMMYCONVID" ++ String.fromInt index)
         , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
         , isPrivate = modBy 4 index == 0
         , fetching = modBy 2 index == 0
         , producing = index /= 0
         }
 
-    subbableConv index =
-        dummyConv index
+    subbableConvo index =
+        dummyConvo index
             |> (\\{ id, name, isPrivate } -> { id = id, name = name, isPrivate = isPrivate })
 in
 Slack.render
@@ -2739,13 +2683,13 @@ Slack.render
                         , Slack.HydratedOnce
                             { rehydrating = m.toggle
                             , user = dummyUser index
-                            , subbableConvs = List.range 0 (index * 3) |> List.map subbableConv
-                            , subbedConvs = List.range 0 (index * 3) |> List.map dummyConv
+                            , subbableConvos = List.range 0 (index * 3) |> List.map subbableConvo
+                            , subbedConvos = List.range 0 (index * 3) |> List.map dummyConvo
                             }
                         )
 
                 dummyTeam index =
-                    { id = "DUMMYTEAMID" ++ String.fromInt index
+                    { id = Id.from ("DUMMYTEAMID" ++ String.fromInt index)
                     , name = String.fromInt index ++ "TEAM"
                     , domain = String.fromInt index ++ "team"
                     , image44 =
@@ -2771,23 +2715,23 @@ Slack.render
                     , image48 = Image.ph 48 48
                     }
 
-                dummyConv index =
-                    { id = "DUMMYCONVID" ++ String.fromInt index
+                dummyConvo index =
+                    { id = Id.from ("DUMMYCONVID" ++ String.fromInt index)
                     , name = String.join " " (List.repeat (modBy 4 index + 1) ("Channel" ++ String.fromInt index))
                     , isPrivate = modBy 4 index == 0
                     , fetching = modBy 2 index == 0
                     , producing = index /= 0
                     }
 
-                subbableConv index =
-                    dummyConv index
+                subbableConvo index =
+                    dummyConvo index
                         |> (\{ id, name, isPrivate } -> { id = id, name = name, isPrivate = isPrivate })
             in
             Slack.render
                 { onTokenInput = TextInput
                 , onTokenSubmit = Toggle False
                 , onRehydrateButtonClick = always (Toggle (not m.toggle))
-                , onConvSelect = \_ _ -> NoOp
+                , onConvoSelect = \_ _ -> NoOp
                 , onForceFetchButtonClick = \_ _ -> NoOp
                 , onCreateColumnButtonClick = always NoOp
                 , onUnsubscribeButtonClick = \_ _ -> NoOp
@@ -3126,7 +3070,7 @@ columnNewMessageEditor m =
         , editorSeq = m.editorSeq
         , editors =
             SelectArray.fromLists []
-                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
+                (DiscordMessageEditor { channelId = Id.from "DID1", buffer = m.textInput, file = m.editorFile })
                 [ LocalMessageEditor m.textInput ]
         }
     }""" <|
@@ -3158,7 +3102,7 @@ columnNewMessageEditor m =
                         , editorSeq = m.editorSeq
                         , editors =
                             SelectArray.fromLists []
-                                (DiscordMessageEditor { channelId = "DID1", buffer = m.textInput, file = m.editorFile })
+                                (DiscordMessageEditor { channelId = Id.from "DID1", buffer = m.textInput, file = m.editorFile })
                                 [ LocalMessageEditor m.textInput ]
                         }
                     }

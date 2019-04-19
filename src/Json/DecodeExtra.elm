@@ -1,12 +1,12 @@
 module Json.DecodeExtra exposing
-    ( when, conditional, succeedIf, do
+    ( when, conditional, succeedIf, do, andMap
     , tag, tagged, tagged2, tagged3
     , assocList, assocListFromList, url, leakyList, dictFromList, maybeField, optionField, fromResult
     )
 
 {-| Json.Decode extensions.
 
-@docs when, conditional, succeedIf, do
+@docs when, conditional, succeedIf, do, andMap
 @docs tag, tagged, tagged2, tagged3
 @docs assocList, assocListFromList, url, leakyList, dictFromList, maybeField, optionField, fromResult
 
@@ -233,3 +233,8 @@ assocListFromList toKey valueDec =
             List.foldr (\v acc -> AssocList.insert (toKey v) v acc) AssocList.empty
     in
     map listToAssocList (list valueDec)
+
+
+andMap : Decoder a -> Decoder (a -> b) -> Decoder b
+andMap =
+    map2 (|>)

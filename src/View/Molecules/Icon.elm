@@ -3,7 +3,7 @@ module View.Molecules.Icon exposing
     , button, link, abbr, imgOrAbbr
     , octiconBlock, octiconButton, octiconLink
     , rehydrateButton, pinBadge14, botBadge14, discord10, slack10, discord14, slack14, discord20, slack20
-    , discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
+    , discordGuildIconUrl20, discordGuildIconUrl40, discordUserAvatarUrl40
     , styles
     )
 
@@ -13,12 +13,14 @@ module View.Molecules.Icon exposing
 @docs button, link, abbr, imgOrAbbr
 @docs octiconBlock, octiconButton, octiconLink
 @docs rehydrateButton, pinBadge14, botBadge14, discord10, slack10, discord14, slack14, discord20, slack20
-@docs discordImageUrl20, discordImageUrl40, discordImageUrlWithFallback40
+@docs discordGuildIconUrl20, discordGuildIconUrl40, discordUserAvatarUrl40
 @docs styles
 
 -}
 
 import Data.Producer.Discord as Discord
+import Data.Producer.Discord.Guild as DiscordGuild
+import Data.Producer.Discord.User as DiscordUser
 import Data.Producer.Slack as Slack
 import Html exposing (Attribute, Html, div, img)
 import Html.Attributes exposing (alt, class, disabled, src, title)
@@ -209,19 +211,19 @@ logo attrs sizeClass alt_ src_ =
     img ([ class sizeClass, src src_, alt alt_ ] ++ attrs) []
 
 
-discordImageUrl20 : Discord.Image -> String
-discordImageUrl20 =
-    Discord.imageUrlNoFallback (Just rounded20Size)
+discordGuildIconUrl20 : DiscordGuild.Guild -> Maybe String
+discordGuildIconUrl20 =
+    DiscordGuild.iconUrl (Just rounded20Size)
 
 
-discordImageUrl40 : Discord.Image -> String
-discordImageUrl40 =
-    Discord.imageUrlNoFallback (Just rounded40Size)
+discordGuildIconUrl40 : DiscordGuild.Guild -> Maybe String
+discordGuildIconUrl40 =
+    DiscordGuild.iconUrl (Just rounded40Size)
 
 
-discordImageUrlWithFallback40 : String -> Maybe Discord.Image -> String
-discordImageUrlWithFallback40 =
-    Discord.imageUrlWithFallback (Just rounded40Size)
+discordUserAvatarUrl40 : DiscordUser.User -> String
+discordUserAvatarUrl40 =
+    DiscordUser.avatarUrl (Just rounded40Size)
 
 
 

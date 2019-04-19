@@ -1,7 +1,7 @@
 module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, matchFilter, mimeIsImage, mimeIsVideo)
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
-import Data.Producer.Discord as Discord
+import Data.Producer.Discord.Message as DiscordMessage
 import Data.Producer.Slack.Message as SlackMessage
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
@@ -11,7 +11,7 @@ import StringExtra
 
 
 type Item
-    = DiscordItem Discord.Message
+    = DiscordItem DiscordMessage.Message
     | SlackItem SlackMessage.Message
 
 
@@ -19,7 +19,7 @@ encode : Item -> E.Value
 encode item =
     case item of
         DiscordItem discordMessage ->
-            E.tagged "DiscordItem" (Discord.encodeMessage discordMessage)
+            E.tagged "DiscordItem" (DiscordMessage.encode discordMessage)
 
         SlackItem slackMessage ->
             E.tagged "SlackItem" (SlackMessage.encode slackMessage)
@@ -28,7 +28,7 @@ encode item =
 decoder : Decoder Item
 decoder =
     D.oneOf
-        [ D.tagged "DiscordItem" DiscordItem Discord.messageDecoder
+        [ D.tagged "DiscordItem" DiscordItem DiscordMessage.decoder
         , D.tagged "SlackItem" SlackItem SlackMessage.decoder
         ]
 
@@ -41,8 +41,8 @@ matchFilter item filter =
 matchAtom : Item -> FilterAtom -> Bool
 matchAtom item filterAtom =
     case ( filterAtom, item ) of
-        ( OfDiscordChannel cId, DiscordItem { channelId } ) ->
-            cId == channelId
+        ( OfDiscordChannel cId, DiscordItem dMessage ) ->
+            cId == DiscordMessage.getChannelId dMessage
 
         ( OfDiscordChannel _, _ ) ->
             False
@@ -57,13 +57,14 @@ matchAtom item filterAtom =
             -- Short-circuit for empty query; this CAN be invalidated on input, but we are slacking
             True
 
-        ( ByMessage text, DiscordItem { content, author, embeds } ) ->
-            StringExtra.containsCaseIgnored text content
-                || discordAuthorHasText text author
-                || List.any (discordEmbedHasText text) embeds
+        ( ByMessage text, DiscordItem m ) ->
+            StringExtra.containsCaseIgnored text (DiscordMessage.getContent m)
+                || StringExtra.containsCaseIgnored text (DiscordMessage.getAuthorName m)
+                || List.any (discordEmbedHasText text) (DiscordMessage.getEmbeds m)
 
         ( ByMessage text, SlackItem m ) ->
             StringExtra.containsCaseIgnored text (SlackMessage.getText m)
+                || StringExtra.containsCaseIgnored text (SlackMessage.getAuthorName m)
                 || List.any (slackAttachmentHasText text) (SlackMessage.getAttachments m)
                 || List.any (slackFileHasText text) (SlackMessage.getFiles m)
 
@@ -77,17 +78,7 @@ matchAtom item filterAtom =
             False
 
 
-discordAuthorHasText : String -> Discord.Author -> Bool
-discordAuthorHasText text author =
-    case author of
-        Discord.UserAuthor user ->
-            StringExtra.containsCaseIgnored text user.username
-
-        Discord.WebhookAuthor user ->
-            StringExtra.containsCaseIgnored text user.username
-
-
-discordEmbedHasText : String -> Discord.Embed -> Bool
+discordEmbedHasText : String -> DiscordMessage.Embed -> Bool
 discordEmbedHasText text embed =
     checkMaybeField text embed.title
         || checkMaybeField text embed.description
@@ -104,19 +95,21 @@ checkMaybeField text stringMaybe =
             False
 
 
-discordMessageHasMedia : MediaFilter -> Discord.Message -> Bool
+discordMessageHasMedia : MediaFilter -> DiscordMessage.Message -> Bool
 discordMessageHasMedia mediaFilter dm =
     case mediaFilter of
         HasImage ->
-            List.any (\a -> extIsImage a.url.path) dm.attachments || List.any discordEmbedHasImage dm.embeds
+            List.any (\a -> extIsImage a.url.path) (DiscordMessage.getAttachments dm)
+                || List.any discordEmbedHasImage (DiscordMessage.getEmbeds dm)
 
         HasVideo ->
-            List.any (\a -> extIsVideo a.url.path) dm.attachments || List.any discordEmbedHasVideo dm.embeds
+            List.any (\a -> extIsVideo a.url.path) (DiscordMessage.getAttachments dm)
+                || List.any discordEmbedHasVideo (DiscordMessage.getEmbeds dm)
 
         HasNone ->
             not <|
-                List.any (\a -> extIsImage a.url.path || extIsVideo a.url.path) dm.attachments
-                    || List.any (\e -> discordEmbedHasImage e || discordEmbedHasVideo e) dm.embeds
+                List.any (\a -> extIsImage a.url.path || extIsVideo a.url.path) (DiscordMessage.getAttachments dm)
+                    || List.any (\e -> discordEmbedHasImage e || discordEmbedHasVideo e) (DiscordMessage.getEmbeds dm)
 
 
 extIsImage : String -> Bool
@@ -145,7 +138,7 @@ extIsVideo filename =
         || String.endsWith ".mov" lower
 
 
-discordEmbedHasImage : Discord.Embed -> Bool
+discordEmbedHasImage : DiscordMessage.Embed -> Bool
 discordEmbedHasImage embed =
     -- Not counting thumbnail as image
     case embed.image of
@@ -156,7 +149,7 @@ discordEmbedHasImage embed =
             False
 
 
-discordEmbedHasVideo : Discord.Embed -> Bool
+discordEmbedHasVideo : DiscordMessage.Embed -> Bool
 discordEmbedHasVideo embed =
     case embed.video of
         Just _ ->

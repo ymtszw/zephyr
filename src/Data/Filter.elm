@@ -23,6 +23,7 @@ For that, this module reluctantly exposes `append` API.
 
 -}
 
+import Data.Producer.Discord.Channel as Channel
 import Data.Producer.Slack.Convo as Convo
 import Id
 import Json.Decode as D exposing (Decoder)
@@ -37,7 +38,7 @@ type Filter
 
 
 type FilterAtom
-    = OfDiscordChannel String
+    = OfDiscordChannel Channel.Id
     | OfSlackConversation Convo.Id
     | ByMessage String
     | ByMedia MediaFilter
@@ -64,7 +65,7 @@ encodeFilterAtom : FilterAtom -> E.Value
 encodeFilterAtom filterAtom =
     case filterAtom of
         OfDiscordChannel channelId ->
-            E.tagged "OfDiscordChannel" (E.string channelId)
+            E.tagged "OfDiscordChannel" (Id.encode E.string channelId)
 
         OfSlackConversation convoId ->
             E.tagged "OfSlackConversation" (Id.encode E.string convoId)
@@ -104,7 +105,7 @@ decoder =
 filterAtomDecoder : Decoder FilterAtom
 filterAtomDecoder =
     D.oneOf
-        [ D.tagged "OfDiscordChannel" OfDiscordChannel D.string
+        [ D.tagged "OfDiscordChannel" OfDiscordChannel (Id.decoder D.string)
         , D.tagged "OfSlackConversation" OfSlackConversation Convo.idDecoder
         , D.tagged "ByMessage" ByMessage D.string
         , D.tagged "ByMedia" ByMedia mediaTypeDecoder
@@ -133,7 +134,7 @@ oldMetadataFilterDecoder =
     D.oneOf
         [ D.tag "IsDiscord" (ByMessage "system")
         , D.tag "OfDiscordGuild" (ByMessage "system")
-        , D.tagged "OfDiscordChannel" OfDiscordChannel D.string
+        , D.tagged "OfDiscordChannel" OfDiscordChannel (Id.decoder D.string)
         , D.tag "IsDefault" (ByMessage "system")
         ]
 
@@ -313,7 +314,7 @@ atomToString : FilterAtom -> String
 atomToString fa =
     case fa of
         OfDiscordChannel cId ->
-            "Discord Ch: " ++ cId
+            "Discord Ch: " ++ Id.to cId
 
         OfSlackConversation cId ->
             "Slack Ch: " ++ Id.to cId
@@ -338,7 +339,7 @@ compareFilterAtom : FilterAtom -> FilterAtom -> Order
 compareFilterAtom fa1 fa2 =
     case ( fa1, fa2 ) of
         ( OfDiscordChannel cId1, OfDiscordChannel cId2 ) ->
-            compare cId1 cId2
+            compare (Id.to cId1) (Id.to cId2)
 
         ( OfDiscordChannel _, _ ) ->
             LT

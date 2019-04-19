@@ -7,6 +7,7 @@ import Html exposing (Attribute, Html, button, div, img, span, textarea)
 import Html.Attributes exposing (alt, class, disabled, id, placeholder, spellcheck, src, title)
 import Html.Events exposing (on, onClick, onFocus, onInput, preventDefaultOn)
 import Html.Keyed
+import Id
 import Json.Decode as D
 import Json.DecodeExtra as D
 import List.Extra
@@ -139,7 +140,7 @@ editorSelectOption sources ( _, editor ) =
                 matchingDiscordSource s =
                     case s of
                         DiscordSource { id } ->
-                            id == channelId
+                            id == Id.to channelId
 
                         _ ->
                             False
@@ -149,7 +150,7 @@ editorSelectOption sources ( _, editor ) =
                     Source.horizontalBlock14 s
 
                 Nothing ->
-                    t channelId
+                    t (Id.to channelId)
 
         LocalMessageEditor _ ->
             t "Personal Memo"

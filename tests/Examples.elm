@@ -5,7 +5,7 @@ import ArrayExtra as Array
 import AssocList as Dict
 import Color
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
-import Data.Producer.Discord
+import Data.Producer.Discord.Message
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
 import Data.Producer.Slack.Bot as SlackBot
 import Data.Producer.Slack.Convo as SlackConvo exposing (Type(..))
@@ -562,33 +562,36 @@ testUnescapeTags initial expected =
 filterSuite : Test
 filterSuite =
     let
+        ofDiscordChannel channelId =
+            OfDiscordChannel (Id.from channelId)
+
         ofSlackConversation convoId =
             OfSlackConversation (Id.from convoId)
     in
     describe "Data.Filter"
         [ describe "compareFilterAtom"
-            [ testcompareFilterAtom (OfDiscordChannel "b") (OfDiscordChannel "a") GT
-            , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "a") EQ
-            , testcompareFilterAtom (OfDiscordChannel "a") (OfDiscordChannel "b") LT
-            , testcompareFilterAtom (OfDiscordChannel "a") (ofSlackConversation "a") LT
-            , testcompareFilterAtom (OfDiscordChannel "a") (ByMessage "a") LT
-            , testcompareFilterAtom (OfDiscordChannel "a") (ByMedia HasImage) LT
-            , testcompareFilterAtom (OfDiscordChannel "a") RemoveMe LT
-            , testcompareFilterAtom (ofSlackConversation "a") (OfDiscordChannel "a") GT
+            [ testcompareFilterAtom (ofDiscordChannel "b") (ofDiscordChannel "a") GT
+            , testcompareFilterAtom (ofDiscordChannel "a") (ofDiscordChannel "a") EQ
+            , testcompareFilterAtom (ofDiscordChannel "a") (ofDiscordChannel "b") LT
+            , testcompareFilterAtom (ofDiscordChannel "a") (ofSlackConversation "a") LT
+            , testcompareFilterAtom (ofDiscordChannel "a") (ByMessage "a") LT
+            , testcompareFilterAtom (ofDiscordChannel "a") (ByMedia HasImage) LT
+            , testcompareFilterAtom (ofDiscordChannel "a") RemoveMe LT
+            , testcompareFilterAtom (ofSlackConversation "a") (ofDiscordChannel "a") GT
             , testcompareFilterAtom (ofSlackConversation "b") (ofSlackConversation "a") GT
             , testcompareFilterAtom (ofSlackConversation "a") (ofSlackConversation "a") EQ
             , testcompareFilterAtom (ofSlackConversation "a") (ofSlackConversation "b") LT
             , testcompareFilterAtom (ofSlackConversation "a") (ByMessage "a") LT
             , testcompareFilterAtom (ofSlackConversation "a") (ByMedia HasImage) LT
             , testcompareFilterAtom (ofSlackConversation "a") RemoveMe LT
-            , testcompareFilterAtom (ByMessage "a") (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMessage "a") (ofDiscordChannel "a") GT
             , testcompareFilterAtom (ByMessage "a") (ofSlackConversation "a") GT
             , testcompareFilterAtom (ByMessage "b") (ByMessage "a") GT
             , testcompareFilterAtom (ByMessage "a") (ByMessage "a") EQ
             , testcompareFilterAtom (ByMessage "a") (ByMessage "b") LT
             , testcompareFilterAtom (ByMessage "a") (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMessage "a") RemoveMe LT
-            , testcompareFilterAtom (ByMedia HasImage) (OfDiscordChannel "a") GT
+            , testcompareFilterAtom (ByMedia HasImage) (ofDiscordChannel "a") GT
             , testcompareFilterAtom (ByMedia HasImage) (ofSlackConversation "a") GT
             , testcompareFilterAtom (ByMedia HasImage) (ByMessage "a") GT
             , testcompareFilterAtom (ByMedia HasNone) (ByMedia HasImage) GT
@@ -601,7 +604,7 @@ filterSuite =
             , testcompareFilterAtom (ByMedia HasImage) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasVideo) (ByMedia HasNone) LT
             , testcompareFilterAtom (ByMedia HasImage) RemoveMe LT
-            , testcompareFilterAtom RemoveMe (OfDiscordChannel "a") GT
+            , testcompareFilterAtom RemoveMe (ofDiscordChannel "a") GT
             , testcompareFilterAtom RemoveMe (ofSlackConversation "a") GT
             , testcompareFilterAtom RemoveMe (ByMessage "a") GT
             , testcompareFilterAtom RemoveMe (ByMedia HasImage) GT
@@ -705,9 +708,9 @@ testColorIntCodec colorNumStr expectedHex =
     test ("should decode/encode color integer " ++ colorNumStr) <|
         \_ ->
             colorNumStr
-                |> D.decodeString Data.Producer.Discord.colorDecoder
+                |> D.decodeString Data.Producer.Discord.Message.colorDecoder
                 |> Result.map (Color.encode >> E.encode 0)
-                |> Result.andThen (D.decodeString Data.Producer.Discord.colorDecoder)
+                |> Result.andThen (D.decodeString Data.Producer.Discord.Message.colorDecoder)
                 |> Expect.equal (Ok (Color.fromHexUnsafe expectedHex))
 
 

@@ -12,6 +12,7 @@ module Data.ColumnEditor exposing
 
 import Array exposing (Array)
 import Data.Filter as Filter exposing (Filter, FilterAtom(..))
+import Data.Producer.Discord.Channel as DiscordChannel
 import File exposing (File)
 import SelectArray exposing (SelectArray)
 
@@ -22,7 +23,7 @@ type ColumnEditor
 
 
 type alias DiscordOpts =
-    { channelId : String
+    { channelId : DiscordChannel.Id
     , buffer : String
     , file : Maybe ( File, String )
     }
