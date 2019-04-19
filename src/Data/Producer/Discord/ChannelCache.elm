@@ -1,9 +1,9 @@
 module Data.Producer.Discord.ChannelCache exposing (ChannelCache, decoder, encode, from)
 
 import AssocList exposing (Dict)
-import Data.Producer.Discord.Channel as Channel exposing (..)
+import Data.Producer.Discord.Channel exposing (..)
 import Data.Producer.Discord.Guild as Guild exposing (Guild)
-import Json.Decode as D exposing (Decoder)
+import Json.Decode exposing (Decoder)
 import Json.Encode exposing (Value)
 
 
