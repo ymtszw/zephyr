@@ -436,8 +436,8 @@ type Msg
     | IHydrate Team.Id (Dict User.Id User) (Dict Convo.Id Convo)
     | IRehydrate Team.Id
     | IRevisit Team.Id POV
-    | ISubscribe Team.Id String -- TODO Use Convo.Id
-    | IUnsubscribe Team.Id String -- TODO Use Convo.Id
+    | ISubscribe Team.Id Convo.Id
+    | IUnsubscribe Team.Id Convo.Id
     | Fetch Posix -- Fetch is shared across Teams
     | IFetched Team.Id FetchSuccess
     | ITokenInput Team.Id String
@@ -478,11 +478,11 @@ update msg sr =
         IRevisit teamId pov ->
             withTeam teamId sr <| handleIRevisit pov
 
-        ISubscribe teamId convoIdStr ->
-            withTeam teamId sr <| handleISubscribe (Id.from convoIdStr)
+        ISubscribe teamId convoId ->
+            withTeam teamId sr <| handleISubscribe convoId
 
-        IUnsubscribe teamId convoIdStr ->
-            withTeam teamId sr <| handleIUnsubscribe (Id.from convoIdStr)
+        IUnsubscribe teamId convoId ->
+            withTeam teamId sr <| handleIUnsubscribe convoId
 
         Fetch posix ->
             handleFetch posix sr

@@ -591,9 +591,9 @@ renderConfigSlack m =
             { onTokenInput = msgTagger << PSlack.UTokenInput
             , onTokenSubmit = msgTagger PSlack.UTokenCommit
             , onRehydrateButtonClick = msgTagger << PSlack.IRehydrate
-            , onConvSelect = \teamId convoId -> msgTagger (PSlack.ISubscribe teamId convoId)
+            , onConvoSelect = \teamId convoId -> msgTagger (PSlack.ISubscribe teamId convoId)
             , onForceFetchButtonClick = \_ _ -> NoOp -- TODO
-            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation << Id.from
+            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation
             , onUnsubscribeButtonClick = \teamId convoId -> msgTagger (PSlack.IUnsubscribe teamId convoId)
             , selectMsgTagger = SelectCtrl
             }
@@ -643,7 +643,7 @@ renderConfigSlack m =
 
                                 partitionThenMarshal c ( accNotSubbed, accSubbed ) =
                                     if FetchStatus.dormant (SlackConvo.getFetchStatus c) then
-                                        ( VSlack.SubbableConvo (Id.to (SlackConvo.getId c))
+                                        ( VSlack.SubbableConvo (SlackConvo.getId c)
                                             (SlackConvo.getName c)
                                             (SlackConvo.isPrivate (SlackConvo.getType_ c))
                                             :: accNotSubbed
@@ -653,7 +653,7 @@ renderConfigSlack m =
                                     else
                                         let
                                             marshalled =
-                                                VSlack.SubbedConvo (Id.to (SlackConvo.getId c))
+                                                VSlack.SubbedConvo (SlackConvo.getId c)
                                                     (SlackConvo.getName c)
                                                     (SlackConvo.isPrivate (SlackConvo.getType_ c))
                                                     (FetchStatus.fetching (SlackConvo.getFetchStatus c))
