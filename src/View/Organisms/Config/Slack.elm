@@ -1,4 +1,4 @@
-module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConv, SubbedConv, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
+module View.Organisms.Config.Slack exposing (Effects, Props, SubbableConvo, SubbedConvo, TeamSnip, TeamState(..), UserSnip, hydratedOnce, render)
 
 import Data.Producer.Slack.Team as Team
 import Html exposing (Html, div, img, p)
@@ -45,18 +45,18 @@ type TeamState
     | HydratedOnce
         { rehydrating : Bool
         , user : UserSnip
-        , subbableConvs : List SubbableConv
-        , subbedConvs : List SubbedConv
+        , subbableConvos : List SubbableConvo
+        , subbedConvos : List SubbedConvo
         }
 
 
-hydratedOnce : Bool -> UserSnip -> List SubbableConv -> List SubbedConv -> TeamState
-hydratedOnce rehydrating user subbableConvs subbedConvs =
+hydratedOnce : Bool -> UserSnip -> List SubbableConvo -> List SubbedConvo -> TeamState
+hydratedOnce rehydrating user subbableConvos subbedConvos =
     HydratedOnce
         { rehydrating = rehydrating
         , user = user
-        , subbableConvs = subbableConvs
-        , subbedConvs = subbedConvs
+        , subbableConvos = subbableConvos
+        , subbedConvos = subbedConvos
         }
 
 
@@ -75,14 +75,14 @@ type alias UserSnip =
     }
 
 
-type alias SubbableConv =
+type alias SubbableConvo =
     { id : String
     , name : String
     , isPrivate : Bool
     }
 
 
-type alias SubbedConv =
+type alias SubbedConvo =
     { id : String
     , name : String
     , isPrivate : Bool
@@ -131,7 +131,7 @@ teamState eff props ( team, ts ) =
                         { id = "slackConvSubscribeInput_" ++ Id.to team.id
                         , selectMsgTagger = eff.selectMsgTagger
                         , selectState = props.selectState
-                        , options = opts.subbableConvs
+                        , options = opts.subbableConvos
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
                         , optionHtml = div [] << Source.slackInline regularSize
                         }
@@ -143,7 +143,7 @@ teamState eff props ( team, ts ) =
                             }
                       in
                       ProducerConfig.subbedTable eff_
-                        { items = opts.subbedConvs
+                        { items = opts.subbedConvos
                         , itemHtml = div [] << Source.slackInline regularSize
                         }
                     ]

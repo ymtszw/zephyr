@@ -643,7 +643,7 @@ renderConfigSlack m =
 
                                 partitionThenMarshal c ( accNotSubbed, accSubbed ) =
                                     if FetchStatus.dormant (SlackConvo.getFetchStatus c) then
-                                        ( VSlack.SubbableConv (Id.to (SlackConvo.getId c))
+                                        ( VSlack.SubbableConvo (Id.to (SlackConvo.getId c))
                                             (SlackConvo.getName c)
                                             (SlackConvo.isPrivate (SlackConvo.getType_ c))
                                             :: accNotSubbed
@@ -653,7 +653,7 @@ renderConfigSlack m =
                                     else
                                         let
                                             marshalled =
-                                                VSlack.SubbedConv (Id.to (SlackConvo.getId c))
+                                                VSlack.SubbedConvo (Id.to (SlackConvo.getId c))
                                                     (SlackConvo.getName c)
                                                     (SlackConvo.isPrivate (SlackConvo.getType_ c))
                                                     (FetchStatus.fetching (SlackConvo.getFetchStatus c))
