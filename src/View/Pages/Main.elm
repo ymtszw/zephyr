@@ -13,6 +13,10 @@ import Data.Model exposing (Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref
 import Data.Producer.Discord as PDiscord
+import Data.Producer.Discord.Channel as DiscordChannel
+import Data.Producer.Discord.Guild as DiscordGuild
+import Data.Producer.Discord.Message as DiscordMessage
+import Data.Producer.Discord.User as DiscordUser
 import Data.Producer.FetchStatus as FetchStatus
 import Data.Producer.Slack as PSlack
 import Data.Producer.Slack.Bot as SlackBot
@@ -215,19 +219,19 @@ render m =
         availableSources =
             List.concat
                 [ case m.columnStore.fam.ofDiscordChannel of
-                    Just ( _, channels ) ->
+                    Just ( _, channelCaches ) ->
                         let
                             marshalWithGuild c =
                                 Maybe.map
                                     (\g ->
-                                        Source.discord c.id
+                                        Source.discord (Id.to c.id)
                                             c.name
-                                            g.name
-                                            (Maybe.map (PDiscord.imageUrlNoFallback (Just Source.desiredIconSize)) g.icon)
+                                            (DiscordGuild.getName g)
+                                            (DiscordGuild.iconUrl (Just Source.desiredIconSize) g)
                                     )
                                     c.guildMaybe
                         in
-                        List.filterMap marshalWithGuild channels
+                        List.filterMap marshalWithGuild channelCaches
 
                     Nothing ->
                         []
@@ -262,10 +266,10 @@ marshalSourcesAndFilters fam filters =
                     -- TODO support DMs
                     case withGuild (findDiscordChannel channelId fam) of
                         Just ( c, g ) ->
-                            ( Source.discord channelId
+                            ( Source.discord (Id.to channelId)
                                 c.name
-                                g.name
-                                (Maybe.map (PDiscord.imageUrlNoFallback (Just Source.desiredIconSize)) g.icon)
+                                (DiscordGuild.getName g)
+                                (DiscordGuild.iconUrl (Just Source.desiredIconSize) g)
                                 :: accSources
                             , accFilters
                             )
@@ -360,25 +364,29 @@ shouldGroupColumnItem older newer =
     sourceIdsMatch && authorsMatch && timestampsAreClose
 
 
-marshalDiscordMessage : String -> Int -> PDiscord.Message -> ItemForView
+marshalDiscordMessage : String -> Int -> DiscordMessage.Message -> ItemForView
 marshalDiscordMessage id scrollIndex m =
     -- XXX Possibly, m.id can be used for interaction handler
     let
         author =
             let
                 authorImpl isBot u =
-                    NamedEntity.new u.username
-                        |> NamedEntity.secondaryName ("#" ++ u.discriminator)
-                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (avatarSrc u)) u.username isBot)
+                    let
+                        username =
+                            DiscordUser.getUsername u
+                    in
+                    NamedEntity.new username
+                        |> NamedEntity.secondaryName ("#" ++ DiscordUser.getDiscriminator u)
+                        |> NamedEntity.avatar (NamedEntity.imageOrAbbr (Just (avatarSrc u)) username isBot)
 
                 avatarSrc u =
-                    PDiscord.imageUrlWithFallback (Just NamedEntity.desiredIconSize) u.discriminator u.avatar
+                    DiscordUser.avatarUrl (Just NamedEntity.desiredIconSize) u
             in
-            case m.author of
-                PDiscord.UserAuthor u ->
+            case DiscordMessage.getAuthor m of
+                DiscordMessage.UserAuthor u ->
                     authorImpl False u
 
-                PDiscord.WebhookAuthor u ->
+                DiscordMessage.WebhookAuthor u ->
                     authorImpl True u
 
         marshalEmbed e =
@@ -434,10 +442,10 @@ marshalDiscordMessage id scrollIndex m =
                 attachedOther (DownloadUrl (Url.toString a.proxyUrl))
                     |> attachedFileDescription a.filename
     in
-    ItemForView.new id scrollIndex author (Markdown m.content)
-        |> ItemForView.timestamp m.timestamp
-        |> ItemForView.attachedFiles (List.map marshalAttachment m.attachments)
-        |> ItemForView.embeddedMatters (List.map marshalEmbed m.embeds)
+    ItemForView.new id scrollIndex author (Markdown (DiscordMessage.getContent m))
+        |> ItemForView.timestamp (DiscordMessage.getTimestamp m)
+        |> ItemForView.attachedFiles (List.map marshalAttachment (DiscordMessage.getAttachments m))
+        |> ItemForView.embeddedMatters (List.map marshalEmbed (DiscordMessage.getEmbeds m))
 
 
 dimension : Int -> Int -> { width : Int, height : Int }
@@ -697,21 +705,27 @@ renderConfigDiscord m =
             let
                 ( subbable, subbed ) =
                     Dict.values pov.channels
-                        |> List.sortWith PDiscord.compareByNames
+                        |> List.sortWith DiscordChannel.compare
                         |> List.foldr partitionThenMarshal ( [], [] )
 
                 partitionThenMarshal c ( accNotSubbed, accSubbed ) =
-                    if FetchStatus.dormant c.fetchStatus then
-                        ( VDiscord.SubbableChannel c.id c.name c.guildMaybe :: accNotSubbed, accSubbed )
+                    if FetchStatus.dormant (DiscordChannel.getFetchStatus c) then
+                        let
+                            marshalled =
+                                VDiscord.SubbableChannel (DiscordChannel.getId c)
+                                    (DiscordChannel.getName c)
+                                    (DiscordChannel.getGuildMaybe c)
+                        in
+                        ( marshalled :: accNotSubbed, accSubbed )
 
                     else
                         let
                             marshalled =
-                                VDiscord.SubbedChannel c.id
-                                    c.name
-                                    c.guildMaybe
-                                    (FetchStatus.fetching c.fetchStatus)
-                                    (FetchStatus.subscribed c.fetchStatus)
+                                VDiscord.SubbedChannel (DiscordChannel.getId c)
+                                    (DiscordChannel.getName c)
+                                    (DiscordChannel.getGuildMaybe c)
+                                    (FetchStatus.fetching (DiscordChannel.getFetchStatus c))
+                                    (FetchStatus.subscribed (DiscordChannel.getFetchStatus c))
                         in
                         ( accNotSubbed, marshalled :: accSubbed )
             in
@@ -720,30 +734,37 @@ renderConfigDiscord m =
     VDiscord.render effects <|
         case m.producerRegistry.discord of
             PDiscord.TokenWritable token ->
-                VDiscord.Props token "Register" (not (String.isEmpty token)) VDiscord.NotIdentified m.viewState.selectState
+                let
+                    rawToken =
+                        PDiscord.fromToken token
+                in
+                VDiscord.Props rawToken "Register" (not (String.isEmpty rawToken)) VDiscord.NotIdentified m.viewState.selectState
 
             PDiscord.TokenReady token ->
-                VDiscord.Props token "Waiting..." False VDiscord.NotIdentified m.viewState.selectState
+                VDiscord.Props (PDiscord.fromToken token) "Waiting..." False VDiscord.NotIdentified m.viewState.selectState
 
             PDiscord.Identified s ->
-                VDiscord.Props s.token "Fetching data..." False (VDiscord.NowHydrating s.user) m.viewState.selectState
+                VDiscord.Props (PDiscord.fromToken s.token) "Fetching data..." False (VDiscord.NowHydrating s.user) m.viewState.selectState
 
             PDiscord.Hydrated token pov ->
                 let
+                    rawToken =
+                        PDiscord.fromToken token
+
                     text =
-                        if String.isEmpty token then
+                        if String.isEmpty rawToken then
                             "Unregister"
 
                         else
                             "Change Token"
                 in
-                VDiscord.Props token text (token /= pov.token) (hydratedOnce False pov) m.viewState.selectState
+                VDiscord.Props rawToken text (token /= pov.token) (hydratedOnce False pov) m.viewState.selectState
 
             PDiscord.Rehydrating token pov ->
-                VDiscord.Props token "Fetching data..." False (hydratedOnce True pov) m.viewState.selectState
+                VDiscord.Props (PDiscord.fromToken token) "Fetching data..." False (hydratedOnce True pov) m.viewState.selectState
 
             PDiscord.Revisit pov ->
-                VDiscord.Props pov.token "Reloading..." False (hydratedOnce True pov) m.viewState.selectState
+                VDiscord.Props (PDiscord.fromToken pov.token) "Reloading..." False (hydratedOnce True pov) m.viewState.selectState
 
             PDiscord.Expired token pov ->
                 let
@@ -754,10 +775,10 @@ renderConfigDiscord m =
                         else
                             "Change Token"
                 in
-                VDiscord.Props token text (token /= pov.token) (hydratedOnce False pov) m.viewState.selectState
+                VDiscord.Props (PDiscord.fromToken token) text (token /= pov.token) (hydratedOnce False pov) m.viewState.selectState
 
             PDiscord.Switching s pov ->
-                VDiscord.Props s.token "Switching user..." False (hydratedOnce False pov) m.viewState.selectState
+                VDiscord.Props (PDiscord.fromToken s.token) "Switching user..." False (hydratedOnce False pov) m.viewState.selectState
 
 
 renderConfigStatus : Model -> Html Msg
