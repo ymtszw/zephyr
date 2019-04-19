@@ -3,6 +3,7 @@ module View.Molecules.ProducerConfig exposing (styles, subSelect, subbedTable, t
 import Html exposing (Html, button, div, input, label, p, strong)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
+import Id
 import Octicons
 import View.Atoms.Animation as Animation
 import View.Atoms.Background as Background
@@ -61,47 +62,44 @@ tokenForm eff props =
         ]
 
 
-{-| TODO Make it Id-compatible
--}
 subSelect :
-    (String -> msg)
+    { onSelect : Id.Id String any -> msg
+    , selectMsgTagger : Select.Msg msg -> msg
+    }
     ->
         { id : String
-        , selectMsgTagger : Select.Msg msg -> msg
         , selectState : Select.State
-        , options : List { x | id : String }
-        , filterMatch : String -> { x | id : String } -> Bool
-        , optionHtml : { x | id : String } -> Html msg
+        , options : List { x | id : Id.Id String any }
+        , filterMatch : String -> { x | id : Id.Id String any } -> Bool
+        , optionHtml : { x | id : Id.Id String any } -> Html msg
         }
     -> Html msg
-subSelect onSelect props =
+subSelect eff props =
     div [ flexRow, flexCenter, spacingRow5 ]
         [ div [ prominent ] [ t "Subscribe:" ]
         , Select.render [ class subSelectClass, flexBasisAuto ]
             { state = props.selectState
-            , msgTagger = props.selectMsgTagger
+            , msgTagger = eff.selectMsgTagger
             , id = props.id
             , thin = True
-            , onSelect = .id >> onSelect
+            , onSelect = .id >> eff.onSelect
             , selectedOption = Nothing
             , filterMatch = Just props.filterMatch
-            , options = List.map (\c -> ( c.id, c )) props.options
+            , options = List.map (\c -> ( Id.to c.id, c )) props.options
             , optionHtml = props.optionHtml
             }
         ]
 
 
-{-| TODO Make it Id-compatible
--}
 subbedTable :
     { a
-        | onCreateColumnButtonClick : String -> msg
-        , onForceFetchButtonClick : String -> msg
-        , onUnsubscribeButtonClick : String -> msg
+        | onCreateColumnButtonClick : Id.Id String any -> msg
+        , onForceFetchButtonClick : Id.Id String any -> msg
+        , onUnsubscribeButtonClick : Id.Id String any -> msg
     }
     ->
-        { items : List { x | id : String, fetching : Bool, producing : Bool }
-        , itemHtml : { x | id : String, fetching : Bool, producing : Bool } -> Html msg
+        { items : List { x | id : Id.Id String any, fetching : Bool, producing : Bool }
+        , itemHtml : { x | id : Id.Id String any, fetching : Bool, producing : Bool } -> Html msg
         }
     -> Html msg
 subbedTable eff props =
@@ -124,7 +122,7 @@ subbedTable eff props =
             [ { header = "Name", cell = nameCell }
             , { header = "Action", cell = actionCell }
             ]
-        , rowKey = .id
+        , rowKey = .id >> Id.to
         , data = props.items
         }
 

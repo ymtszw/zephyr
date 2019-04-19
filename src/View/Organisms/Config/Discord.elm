@@ -20,10 +20,10 @@ type alias Effects msg =
     { onTokenInput : String -> msg
     , onTokenSubmit : msg
     , onRehydrateButtonClick : msg
-    , onChannelSelect : String -> msg
-    , onForceFetchButtonClick : String -> msg
-    , onCreateColumnButtonClick : String -> msg
-    , onUnsubscribeButtonClick : String -> msg
+    , onChannelSelect : Channel.Id -> msg
+    , onForceFetchButtonClick : Channel.Id -> msg
+    , onCreateColumnButtonClick : Channel.Id -> msg
+    , onUnsubscribeButtonClick : Channel.Id -> msg
     , selectMsgTagger : Select.Msg msg -> msg
     }
 
@@ -61,7 +61,7 @@ type CurrentState
     | HydratedOnce
         { rehydrating : Bool
         , user : User
-        , guilds : Dict String Guild
+        , guilds : Dict Guild.Id Guild
         , subbableChannels : List SubbableChannel
         , subbedChannels : List SubbedChannel -- Must be sorted already
         }
@@ -70,7 +70,7 @@ type CurrentState
 hydratedOnce :
     Bool
     -> User
-    -> Dict String Guild
+    -> Dict Guild.Id Guild
     -> List SubbableChannel
     -> List SubbedChannel
     -> CurrentState
@@ -85,14 +85,14 @@ hydratedOnce rehydrating user guilds_ subbableChannels subbedChannels =
 
 
 type alias SubbableChannel =
-    { id : String
+    { id : Channel.Id
     , name : String
     , guildMaybe : Maybe Guild
     }
 
 
 type alias SubbedChannel =
-    { id : String
+    { id : Channel.Id
     , name : String
     , guildMaybe : Maybe Guild
     , fetching : Bool -- May include InitialFetching
@@ -113,9 +113,11 @@ currentState eff props =
             div [ flexColumn, spacingColumn5 ]
                 [ userNameAndAvatar eff.onRehydrateButtonClick opts.rehydrating opts.user
                 , guilds opts.guilds
-                , ProducerConfig.subSelect eff.onChannelSelect
-                    { id = "discordChannelSubscribeInput"
+                , ProducerConfig.subSelect
+                    { onSelect = eff.onChannelSelect
                     , selectMsgTagger = eff.selectMsgTagger
+                    }
+                    { id = "discordChannelSubscribeInput"
                     , selectState = props.selectState
                     , options = opts.subbableChannels
                     , filterMatch = Channel.filterByStringShared
@@ -143,7 +145,7 @@ userNameAndAvatar onRehydrateButtonClick rehydrating user =
         ]
 
 
-guilds : Dict String Guild -> Html msg
+guilds : Dict Guild.Id Guild -> Html msg
 guilds guilds_ =
     Html.Keyed.node "div" [ flexRow, flexWrap, spacingWrapped5 ] <|
         if Dict.isEmpty guilds_ then
