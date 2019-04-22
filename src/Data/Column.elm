@@ -1,7 +1,7 @@
 module Data.Column exposing
     ( Column, Id, ColumnItem(..), Media(..), welcome, new, simple, encode, encodeColumnItem, decoder, columnItemLimit
     , Msg(..), PostProcess, Position(..), update, postProcess
-    , editorId, itemNotFound
+    , minimumItemHeight, editorId, itemNotFound
     , getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
     , setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
     )
@@ -15,7 +15,7 @@ Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, Id, ColumnItem, Media, welcome, new, simple, encode, encodeColumnItem, decoder, columnItemLimit
 @docs Msg, PostProcess, Position, update, postProcess
-@docs editorId, itemNotFound
+@docs minimumItemHeight, editorId, itemNotFound
 @docs getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
 @docs setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
 
@@ -45,7 +45,6 @@ import SelectArray exposing (SelectArray)
 import StringExtra
 import Task
 import Url
-import View.Organisms.Column.Items exposing (minimumItemHeight)
 
 
 type Column
@@ -278,6 +277,12 @@ columnHeaderHeight : Int
 columnHeaderHeight =
     -- Depends on View. Basically, paddingY (5px) x 2 + header icons' height (30px)
     40
+
+
+minimumItemHeight : Int
+minimumItemHeight =
+    -- Depends on View. itemGroupPaddingY * 2 + minGroupContentsHeight
+    50
 
 
 columnItemLimit : Int
