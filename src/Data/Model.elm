@@ -20,6 +20,7 @@ import Data.ItemBroker as ItemBroker
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
+import Id
 import Time exposing (Zone)
 import View.Atoms.Input.Select as Select
 import View.Organisms.Modeless as Modeless
@@ -50,10 +51,10 @@ type alias ViewState =
 
 
 type alias ColumnSwap =
-    { grabbedId : String
+    { grabbedId : Column.Id
     , pinned : Bool
     , originalIndex : Int
-    , originalOrder : Array String
+    , originalOrder : Array Column.Id
     }
 
 
@@ -105,6 +106,6 @@ addWelcomeColumn m =
         ( welcomeColumn, finalGen ) =
             m.idGen
                 |> UniqueIdGen.gen UniqueIdGen.columnPrefix
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome m.env.clientHeight idGen cId)
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome m.env.clientHeight idGen (Id.from cId))
     in
     { m | columnStore = ColumnStore.add Nothing welcomeColumn m.columnStore, idGen = finalGen }

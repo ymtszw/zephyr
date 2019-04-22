@@ -33,6 +33,7 @@ import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstru
 import Data.Item exposing (Item)
 import Data.Storable exposing (Storable)
 import Deque exposing (Deque)
+import Id
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -40,16 +41,16 @@ import Json.EncodeExtra as E
 
 
 type alias ColumnStore =
-    { dict : Dict String Column
-    , order : Array String
+    { dict : Dict Column.Id Column
+    , order : Array Column.Id
     , fam : FilterAtomMaterial
-    , scanQueue : Deque String
+    , scanQueue : Deque Column.Id
     }
 
 
-decoder : Int -> Decoder ( ColumnStore, List ( String, Cmd Column.Msg ) )
+decoder : Int -> Decoder ( ColumnStore, List ( Column.Id, Cmd Column.Msg ) )
 decoder clientHeight =
-    D.do (D.field "order" (D.array D.string)) <|
+    D.do (D.field "order" (D.array (Id.decoder D.string))) <|
         \order ->
             D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order)) <|
                 \( dict, idAndCmds ) ->
@@ -63,9 +64,9 @@ decoder clientHeight =
                             D.succeed ( ColumnStore dict order fam scanQueue, idAndCmds )
 
 
-dictAndInitCmdDecoder : Int -> Array String -> Decoder ( Dict String Column, List ( String, Cmd Column.Msg ) )
+dictAndInitCmdDecoder : Int -> Array Column.Id -> Decoder ( Dict Column.Id Column, List ( Column.Id, Cmd Column.Msg ) )
 dictAndInitCmdDecoder clientHeight order =
-    D.do (D.assocList identity (Column.decoder clientHeight)) <|
+    D.do (D.assocList Id.from (Column.decoder clientHeight)) <|
         \dictWithCmds ->
             let
                 reducer cId ( c, initCmd ) ( accDict, accCmds ) =
@@ -82,8 +83,8 @@ dictAndInitCmdDecoder clientHeight order =
 encode : ColumnStore -> Storable
 encode columnStore =
     Data.Storable.encode storeId
-        [ ( "dict", E.assocList identity Column.encode columnStore.dict )
-        , ( "order", E.array E.string columnStore.order )
+        [ ( "dict", E.assocList Id.to Column.encode columnStore.dict )
+        , ( "order", E.array (E.string << Id.to) columnStore.order )
         , ( "fam", FAM.encode columnStore.fam )
         ]
 
@@ -107,7 +108,7 @@ sizePinned : ColumnStore -> Int
 sizePinned cs =
     let
         countPinned _ c acc =
-            if c.pinned then
+            if Column.getPinned c then
                 acc + 1
 
             else
@@ -121,17 +122,17 @@ sizePinned cs =
 
 
 add : Maybe Int -> Column -> ColumnStore -> ColumnStore
-add limitMaybe column columnStore =
+add limitMaybe c columnStore =
     let
         newDict =
-            Dict.insert column.id column columnStore.dict
+            Dict.insert (Column.getId c) c columnStore.dict
 
         newOrder =
-            columnStore.order |> Array.squeeze 0 column.id |> autoArrange limitMaybe newDict
+            columnStore.order |> Array.squeeze 0 (Column.getId c) |> autoArrange limitMaybe newDict
 
         newScanQueue =
             -- Previous relative scan ordering is kept
-            Deque.pushFront column.id columnStore.scanQueue
+            Deque.pushFront (Column.getId c) columnStore.scanQueue
     in
     { columnStore | dict = newDict, order = newOrder, scanQueue = newScanQueue }
 
@@ -143,7 +144,7 @@ get index columnStore =
         |> Maybe.andThen (\id -> Dict.get id columnStore.dict)
 
 
-remove : String -> ColumnStore -> ColumnStore
+remove : Column.Id -> ColumnStore -> ColumnStore
 remove cId columnStore =
     let
         cs_ =
@@ -165,7 +166,7 @@ touchAt : Int -> ColumnStore -> ColumnStore
 touchAt index columnStore =
     case get index columnStore of
         Just c ->
-            { columnStore | dict = Dict.insert c.id { c | recentlyTouched = True } columnStore.dict }
+            { columnStore | dict = Dict.insert (Column.getId c) (Column.setRecentlyTouched True c) columnStore.dict }
 
         Nothing ->
             columnStore
@@ -205,7 +206,7 @@ mapForView mapper { dict, order, fam } =
     mapForViewImpl (mapper fam) dict (Array.toList order) 0 []
 
 
-mapForViewImpl : (Int -> Column -> a) -> Dict String Column -> List String -> Int -> List a -> List a
+mapForViewImpl : (Int -> Column -> a) -> Dict Column.Id Column -> List Column.Id -> Int -> List a -> List a
 mapForViewImpl mapper dict idList index acc =
     case idList of
         [] ->
@@ -233,20 +234,20 @@ listShadow columnStore =
     in
     Dict.foldr reducer [] columnStore.dict
         -- Sort is necessary, since AssocList is internally shuffled (due to remove then cons) on insert
-        |> List.sortBy .id
+        |> List.sortBy (Column.getId >> Id.to)
 
 
 
 -- Component APIs
 
 
-updateById : Maybe Int -> String -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+updateById : Maybe Int -> Column.Id -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
 updateById limitMaybe cId cMsg columnStore =
     case Dict.get cId columnStore.dict of
         Just c ->
             let
                 isVisible =
-                    Array.member c.id columnStore.order
+                    Array.member (Column.getId c) columnStore.order
 
                 ( newC, pp ) =
                     Column.update isVisible cMsg c
@@ -266,7 +267,7 @@ updateById limitMaybe cId cMsg columnStore =
                                 columnStore.order
 
                             else
-                                columnStore.order |> Array.squeeze 0 c.id |> autoArrange limitMaybe newDict
+                                columnStore.order |> Array.squeeze 0 (Column.getId c) |> autoArrange limitMaybe newDict
 
                         Keep ->
                             columnStore.order
@@ -282,13 +283,13 @@ pure columnStore =
     ( columnStore, Column.postProcess )
 
 
-autoArrange : Maybe Int -> Dict String Column -> Array String -> Array String
+autoArrange : Maybe Int -> Dict Column.Id Column -> Array Column.Id -> Array Column.Id
 autoArrange limitMaybe dict order =
     let
         stableClassify cId ( accPinned, accLoose ) =
             case Dict.get cId dict of
                 Just c ->
-                    if c.pinned then
+                    if Column.getPinned c then
                         ( Array.push cId accPinned, accLoose )
 
                     else
@@ -315,7 +316,7 @@ autoArrange limitMaybe dict order =
         |> concatClassified
 
 
-applyOrder : Array String -> ColumnStore -> ColumnStore
+applyOrder : Array Column.Id -> ColumnStore -> ColumnStore
 applyOrder order columnStore =
     { columnStore | order = order }
 
@@ -324,7 +325,7 @@ consumeBroker :
     Maybe Int
     -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
     -> ColumnStore
-    -> ( ColumnStore, Maybe ( String, Column.PostProcess ) )
+    -> ( ColumnStore, Maybe ( Column.Id, Column.PostProcess ) )
 consumeBroker limitMaybe opts columnStore =
     case Deque.popBack columnStore.scanQueue of
         ( Just cId, newScanQueue ) ->

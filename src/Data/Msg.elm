@@ -28,11 +28,11 @@ type Msg
     | SelectCtrl (Select.Msg Msg)
     | AddEmptyColumn
     | AddSimpleColumn Filter.FilterAtom
-    | DelColumn String
+    | DelColumn Column.Id
     | DismissColumn Int
-    | ShowColumn String
-    | DragStart { index : Int, id : String, pinned : Bool }
-    | DragEnter (Array String)
+    | ShowColumn Column.Id
+    | DragStart { index : Int, id : Column.Id, pinned : Bool }
+    | DragEnter (Array Column.Id)
     | DragEnd
     | LoadColumnStore ( ColumnStore, UniqueIdGen, Cmd Msg )
     | LoadItemBroker (Broker Item)
@@ -41,7 +41,7 @@ type Msg
     | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
-    | ColumnCtrl String Column.Msg
+    | ColumnCtrl Column.Id Column.Msg
     | ProducerCtrl ProducerRegistry.Msg
     | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
