@@ -16,11 +16,12 @@ ModelessWindows are identified by unique String IDs.
 -}
 
 import Browser.Events
-import Data.Column exposing (ColumnItem)
+import Data.Column as Column exposing (ColumnItem)
 import Html exposing (Html, button, div)
 import Html.Attributes exposing (class, style)
 import Html.Events exposing (on, onClick, stopPropagationOn)
 import Html.Keyed
+import Id
 import Json.Decode exposing (..)
 import List.Extra
 import Octicons
@@ -46,14 +47,14 @@ type State
 
 
 type ModelessId
-    = RawColumnItemId String Int
+    = RawColumnItemId Column.Id Int
 
 
 idStr : ModelessId -> String
 idStr mId =
     case mId of
         RawColumnItemId columnId itemIndex ->
-            "rawColumnItem_" ++ columnId ++ "_" ++ String.fromInt itemIndex
+            "rawColumnItem_" ++ Id.to columnId ++ "_" ++ String.fromInt itemIndex
 
 
 type alias Translate =
@@ -114,7 +115,7 @@ consDedup a list =
         dedup ( id, _ ) =
             case id of
                 RawColumnItemId columnId itemIndex ->
-                    ( columnId, itemIndex )
+                    ( Id.to columnId, itemIndex )
     in
     List.Extra.uniqueBy dedup (a :: list)
 

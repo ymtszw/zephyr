@@ -1,6 +1,6 @@
 module View.Organisms.Column.NewMessageEditor exposing (Effects, Props, render, selectId, styles)
 
-import Data.Column
+import Data.Column as Column
 import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..), getBuffer)
 import File exposing (File)
 import Html exposing (Attribute, Html, button, div, img, span, textarea)
@@ -28,18 +28,18 @@ import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { onEditorSelect : String -> Int -> msg
+    { onEditorSelect : Column.Id -> Int -> msg
     , selectMsgTagger : Select.Msg msg -> msg
-    , onTextInput : String -> String -> msg
+    , onTextInput : Column.Id -> String -> msg
     , -- Used for dragenter and dragover too
-      onInteracted : String -> UserAction -> msg
-    , onResetButtonClick : String -> msg
+      onInteracted : Column.Id -> UserAction -> msg
+    , onResetButtonClick : Column.Id -> msg
     , -- TODO support multiple files in a editor
-      onDiscardFileButtonClick : String -> msg
+      onDiscardFileButtonClick : Column.Id -> msg
     , -- XXX should diverge for different sources later
-      onRequestFileAreaClick : String -> msg
-    , onFileDrop : String -> File -> msg
-    , onSubmit : String -> msg
+      onRequestFileAreaClick : Column.Id -> msg
+    , onFileDrop : Column.Id -> File -> msg
+    , onSubmit : Column.Id -> msg
     }
 
 
@@ -48,7 +48,7 @@ type alias Props c =
     , column :
         ColumnProps
             { c
-                | id : String
+                | id : Column.Id
                 , editors : SelectArray ColumnEditor
                 , editorSeq : Int -- Force triggering DOM generation when incremented; workaround for https://github.com/elm/html/issues/55
                 , userActionOnEditor : UserAction
@@ -80,12 +80,12 @@ render eff props =
         , Border.bot1
         , Border.solid
         ]
-        [ ( "editorMenu_" ++ props.column.id, editorMenu eff props isActive selectedEditor )
-        , ( "editorTextarea_" ++ props.column.id ++ "_" ++ String.fromInt props.column.editorSeq
+        [ ( "editorMenu_" ++ Id.to props.column.id, editorMenu eff props isActive selectedEditor )
+        , ( "editorTextarea_" ++ Id.to props.column.id ++ "_" ++ String.fromInt props.column.editorSeq
           , editorTextarea eff props.column.id isActive selectedEditor
           )
-        , ( "selectedFiles_" ++ props.column.id, selectedFiles eff props.column isActive selectedEditor )
-        , ( "submitButton_" ++ props.column.id, submitButton (eff.onSubmit props.column.id) isActive selectedEditor )
+        , ( "selectedFiles_" ++ Id.to props.column.id, selectedFiles eff props.column isActive selectedEditor )
+        , ( "submitButton_" ++ Id.to props.column.id, submitButton (eff.onSubmit props.column.id) isActive selectedEditor )
         ]
 
 
@@ -127,9 +127,9 @@ editorSelect eff props editor =
         }
 
 
-selectId : String -> String
+selectId : Column.Id -> String
 selectId columnId =
-    "editorSelect_" ++ columnId
+    "editorSelect_" ++ Id.to columnId
 
 
 editorSelectOption : List Source -> ( Int, ColumnEditor ) -> Html msg
@@ -156,7 +156,7 @@ editorSelectOption sources ( _, editor ) =
             t "Personal Memo"
 
 
-editorTextarea : Effects msg -> String -> Bool -> ColumnEditor -> Html msg
+editorTextarea : Effects msg -> Column.Id -> Bool -> ColumnEditor -> Html msg
 editorTextarea eff cId isActive editor =
     let
         buffer =
@@ -164,7 +164,7 @@ editorTextarea eff cId isActive editor =
 
         baseAttrs =
             [ class textareaClass
-            , id (Data.Column.editorId cId) -- For Dom.Blur
+            , id (Column.editorId cId) -- For Dom.Blur
             , flexItem
             , widthFill
             , padding5
@@ -243,7 +243,7 @@ textareaKeyBinds notReady blur submit =
                     D.fail "not bound"
 
 
-selectedFiles : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
+selectedFiles : Effects msg -> { c | id : Column.Id, userActionOnEditor : UserAction } -> Bool -> ColumnEditor -> Html msg
 selectedFiles eff c isActive editor =
     case ( isActive, editor ) of
         ( True, DiscordMessageEditor { file } ) ->
@@ -352,7 +352,7 @@ filePreview onDiscardFileButtonClick f dataUrl =
         }
 
 
-fileSelectArea : Effects msg -> { c | id : String, userActionOnEditor : UserAction } -> Html msg
+fileSelectArea : Effects msg -> { c | id : Column.Id, userActionOnEditor : UserAction } -> Html msg
 fileSelectArea eff c =
     let
         staticAttrs =

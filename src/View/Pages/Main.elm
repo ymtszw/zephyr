@@ -89,15 +89,15 @@ render m =
                 marshalVisibleColumn fam _ c =
                     let
                         ( sources, filters ) =
-                            marshalSourcesAndFilters fam c.pendingFilters
+                            marshalSourcesAndFilters fam (Column.getPendingFilters c)
 
                         dragStatus =
                             case m.viewState.columnSwapMaybe of
                                 Just swap ->
-                                    if swap.grabbedId == c.id then
+                                    if swap.grabbedId == Column.getId c then
                                         Grabbed
 
-                                    else if swap.pinned == c.pinned then
+                                    else if swap.pinned == Column.getPinned c then
                                         Droppable
 
                                     else
@@ -106,26 +106,26 @@ render m =
                                 Nothing ->
                                     Settled
                     in
-                    { id = c.id
-                    , pinned = c.pinned
+                    { id = Column.getId c
+                    , pinned = Column.getPinned c
                     , sources = sources
                     , filters = filters
                     , dragStatus = dragStatus
-                    , configOpen = c.configOpen
-                    , scrolled = Scroll.scrolled c.items
-                    , numItems = Scroll.size c.items
-                    , items = c.items
-                    , recentlyTouched = c.recentlyTouched
-                    , editors = c.editors
-                    , editorSeq = c.editorSeq
-                    , userActionOnEditor = c.userActionOnEditor
+                    , configOpen = Column.getConfigOpen c
+                    , scrolled = Scroll.scrolled (Column.getItems c)
+                    , numItems = Scroll.size (Column.getItems c)
+                    , items = Column.getItems c
+                    , recentlyTouched = Column.getRecentlyTouched c
+                    , editors = Column.getEditors c
+                    , editorSeq = Column.getEditorSeq c
+                    , userActionOnEditor = Column.getUserActionOnEditor c
                     }
 
                 resolveModelessId mId =
                     case mId of
                         Modeless.RawColumnItemId cId itemIndex ->
                             Dict.get cId m.columnStore.dict
-                                |> Maybe.andThen (\c -> Scroll.getAt itemIndex c.items)
+                                |> Maybe.andThen (\c -> Scroll.getAt itemIndex (Column.getItems c))
                                 |> Maybe.withDefault Column.itemNotFound
                                 |> Modeless.RawColumnItem mId
             in
@@ -563,9 +563,9 @@ renderConfigPref m =
         marshalShadowColumn c =
             let
                 ( sources, filters ) =
-                    marshalSourcesAndFilters m.columnStore.fam c.filters
+                    marshalSourcesAndFilters m.columnStore.fam (Column.getFilters c)
             in
-            { id = c.id, pinned = c.pinned, sources = sources, filters = filters }
+            { id = Column.getId c, pinned = Column.getPinned c, sources = sources, filters = filters }
     in
     View.Organisms.Config.Pref.render
         { onZephyrModeChange = PrefCtrl << Pref.ZephyrMode

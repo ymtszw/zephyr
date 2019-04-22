@@ -1,6 +1,7 @@
-module View.Organisms.Column.Items exposing (minimumItemHeight, render, styles)
+module View.Organisms.Column.Items exposing (render, styles)
 
 import Color
+import Data.Column as Column
 import Html exposing (Html, div, img, p, pre, span, video)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -28,14 +29,14 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onLoadMoreClick : msg
-    , onItemSourceButtonClick : String -> Int -> msg
-    , onItemRefreshButtonClick : String -> Int -> msg
+    , onItemSourceButtonClick : Column.Id -> Int -> msg
+    , onItemRefreshButtonClick : Column.Id -> Int -> msg
     }
 
 
 type alias Props =
     { timezone : Time.Zone
-    , columnId : String
+    , columnId : Column.Id
     , hasMore : Bool
     , -- Expects it to be sorted from latest to oldest (globally), while reversed within each group.
       itemGroups : List ( ItemForView, List ItemForView )
@@ -519,12 +520,6 @@ minGroupContentsHeight : Int
 minGroupContentsHeight =
     -- Equals to avatar size;
     40
-
-
-minimumItemHeight : Int
-minimumItemHeight =
-    -- For Scroll's auto-adjust
-    itemGroupPaddingY * 2 + minGroupContentsHeight
 
 
 itemBlockClass : String

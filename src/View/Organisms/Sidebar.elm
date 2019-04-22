@@ -10,10 +10,12 @@ module View.Organisms.Sidebar exposing
 
 -}
 
+import Data.Column as Column
 import Html exposing (Html, button, div, nav, span)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Html.Keyed
+import Id
 import Octicons
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
@@ -34,7 +36,7 @@ type alias Props x c =
 
 
 type alias ColumnInSidebar c =
-    ColumnProps { c | id : String }
+    ColumnProps { c | id : Column.Id }
 
 
 type alias Effects msg =
@@ -110,7 +112,7 @@ withTooltip tooltip content =
 
 colummButtonKey : (Int -> msg) -> Int -> ColumnInSidebar c -> ( String, Html msg )
 colummButtonKey columnButtonClicker index c =
-    Tuple.pair c.id <|
+    Tuple.pair (Id.to c.id) <|
         withTooltip (Column.blockTitle [ flexBasisAuto ] c) <|
             button
                 [ flexItem
