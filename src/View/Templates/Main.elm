@@ -21,10 +21,12 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 -}
 
 import Color exposing (cssRgba)
+import Data.Column as Column
 import Html exposing (Attribute, Html, div, span)
 import Html.Attributes exposing (class, id)
 import Html.Events exposing (on, preventDefaultOn)
 import Html.Keyed
+import Id
 import Json.Decode exposing (succeed)
 import Octicons
 import View.Atoms.Animation as Animation
@@ -71,7 +73,7 @@ type alias Effects c msg =
     , -- DragStart is handled in Organisms.Column.Header
       onColumnDragEnd : msg
     , onColumnDragHover : Int -> msg
-    , onColumnBorderFlashEnd : String -> msg
+    , onColumnBorderFlashEnd : Column.Id -> msg
     , -- From Scroll.scrollAttrs; can be empty
       columnItemsScrollAttrs : VisibleColumn c -> List (Attribute msg)
     }
@@ -253,7 +255,7 @@ columnWrapperKey eff contents index c =
                 Settled ->
                     []
     in
-    Tuple.pair c.id <|
+    Tuple.pair (Id.to c.id) <|
         div (staticAttrs ++ dragHandlers)
             [ contents.header index c
             , if c.configOpen then

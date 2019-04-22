@@ -1,7 +1,9 @@
 module View.Organisms.Column.Config exposing (Effects, render, selectId)
 
+import Data.Column as Column
 import Html exposing (Html, button, div, p, span)
 import Html.Events exposing (onClick)
+import Id
 import Octicons
 import StringExtra
 import View.Atoms.Background as Background
@@ -16,11 +18,11 @@ import View.Molecules.Source as Source exposing (Source(..))
 
 
 type alias Effects msg =
-    { onCloseButtonClick : String -> msg
-    , onColumnDeleteButtonClick : String -> msg
-    , onSourceSelect : String -> Source -> msg
+    { onCloseButtonClick : Column.Id -> msg
+    , onColumnDeleteButtonClick : Column.Id -> msg
+    , onSourceSelect : Column.Id -> Source -> msg
     , selectMsgTagger : Select.Msg msg -> msg
-    , onRemoveSourceButtonClick : String -> Int -> msg
+    , onRemoveSourceButtonClick : Column.Id -> Int -> msg
     }
 
 
@@ -30,7 +32,7 @@ type alias Props c =
     , column :
         ColumnProps
             { c
-                | id : String
+                | id : Column.Id
                 , numItems : Int
             }
     }
@@ -94,10 +96,10 @@ configSection headerTexts contents =
     div [ flexColumn, flexBasisAuto, spacingColumn2 ] [ header, wrappedContents ]
 
 
-status : ColumnProps { c | id : String, numItems : Int } -> List (Html msg)
+status : ColumnProps { c | id : Column.Id, numItems : Int } -> List (Html msg)
 status props =
     List.map (div [] << List.map t << List.intersperse " - ") <|
-        [ [ "ID", props.id ]
+        [ [ "ID", Id.to props.id ]
         , [ "Stored messages", StringExtra.punctuateNumber props.numItems ]
         , [ "Pinned"
           , if props.pinned then
@@ -129,9 +131,9 @@ sourceSelector eff props =
         }
 
 
-selectId : String -> String
+selectId : Column.Id -> String
 selectId columnId =
-    "sourceSelect_" ++ columnId
+    "sourceSelect_" ++ Id.to columnId
 
 
 sourceFilterMatch : String -> Source -> Bool
@@ -168,7 +170,7 @@ selectedSources eff props =
     List.indexedMap selectedSource props.column.sources
 
 
-dangerZone : Effects msg -> ColumnProps { c | id : String } -> List (Html msg)
+dangerZone : Effects msg -> ColumnProps { c | id : Column.Id } -> List (Html msg)
 dangerZone eff props =
     let
         row =

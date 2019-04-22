@@ -30,6 +30,7 @@ import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Data.UniqueIdGen as UniqueIdGen
+import Id
 import IndexedDb exposing (..)
 import Task exposing (Task)
 import Time exposing (Posix)
@@ -126,7 +127,7 @@ update msg ({ env, pref, viewState } as m) =
 
         AddEmptyColumn ->
             UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen cId)
+                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen (Id.from cId))
                 |> (\( c, idGen ) ->
                         -- If Filters are somehow set to the new Column, then persist.
                         pure { m | columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore, idGen = idGen }
@@ -135,12 +136,12 @@ update msg ({ env, pref, viewState } as m) =
         AddSimpleColumn fa ->
             let
                 ( c, idGen ) =
-                    UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa)
+                    UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa << Id.from)
             in
             ( { m
                 | idGen = idGen
                 , columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore
-                , worque = Worque.push (BrokerCatchUp c.id) m.worque
+                , worque = Worque.push (BrokerCatchUp (Id.to (Column.getId c))) m.worque
               }
             , Cmd.none
             , saveColumnStore changeSet
@@ -177,7 +178,7 @@ update msg ({ env, pref, viewState } as m) =
 
             else
                 -- Broker reset and migration; reset columns' Offsets, discarding old itemBroker
-                ( { m | columnStore = ColumnStore.map (\c -> { c | offset = Nothing }) m.columnStore }
+                ( { m | columnStore = ColumnStore.map (Column.setOffset Nothing) m.columnStore }
                 , IndexedDb.requestProducerRegistry
                 , changeSet |> saveItemBroker |> saveColumnStore
                 )
@@ -327,8 +328,8 @@ onTick posix m_ =
                     }
             in
             m.columnStore
-                |> ColumnStore.updateById (columnLimit m.pref) cId (Column.ScanBroker scanOpts)
-                |> applyColumnUpdate m cId
+                |> ColumnStore.updateById (columnLimit m.pref) (Id.from cId) (Column.ScanBroker scanOpts)
+                |> applyColumnUpdate m (Id.from cId)
 
         Nothing ->
             pure m
@@ -383,7 +384,7 @@ scrollToColumn index parentVp =
         Browser.Dom.setViewportOf columnAreaParentId (targetX + cWidth - parentVp.viewport.width) 0
 
 
-applyColumnUpdate : Model -> String -> ( ColumnStore, Column.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
+applyColumnUpdate : Model -> Column.Id -> ( ColumnStore, Column.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
 applyColumnUpdate m cId ( columnStore, pp ) =
     let
         m_ =
@@ -391,7 +392,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
                 Just id ->
                     { m
                         | columnStore = columnStore
-                        , worque = Worque.push (BrokerCatchUp id) m.worque
+                        , worque = Worque.push (BrokerCatchUp (Id.to id)) m.worque
                     }
 
                 Nothing ->

@@ -1,5 +1,6 @@
 module View.Organisms.Column.Header exposing (Effects, render, styles)
 
+import Data.Column as Column
 import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick)
@@ -17,10 +18,10 @@ import View.Style exposing (..)
 
 
 type alias Effects msg =
-    { onColumnDragStart : Bool -> Int -> String -> msg
-    , onHeaderClickWhenScrolled : String -> msg
-    , onPinButtonClick : String -> Bool -> msg
-    , onConfigToggleButtonClick : String -> Bool -> msg
+    { onColumnDragStart : Bool -> Int -> Column.Id -> msg
+    , onHeaderClickWhenScrolled : Column.Id -> msg
+    , onPinButtonClick : Column.Id -> Bool -> msg
+    , onConfigToggleButtonClick : Column.Id -> Bool -> msg
     , onDismissButtonClick : Int -> msg
     }
 
@@ -28,7 +29,7 @@ type alias Effects msg =
 type alias Props c =
     ColumnProps
         { c
-            | id : String
+            | id : Column.Id
             , configOpen : Bool
             , scrolled : Bool
         }

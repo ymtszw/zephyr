@@ -21,7 +21,7 @@ type Work
     | DiscordFetch
     | SlackFetch
     | DropOldState
-    | BrokerCatchUp String
+    | BrokerCatchUp String -- FIXME Cannot convert to Column.Id due to cyclic imports
 
 
 init : Worque

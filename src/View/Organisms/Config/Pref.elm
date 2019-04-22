@@ -1,8 +1,10 @@
 module View.Organisms.Config.Pref exposing (Effects, Props, render, styles)
 
+import Data.Column as Column
 import Html exposing (Html, button, div, p)
 import Html.Attributes exposing (class, disabled)
 import Html.Events exposing (onClick)
+import Id
 import Octicons
 import View.Atoms.Background as Background
 import View.Atoms.Image as Image
@@ -19,8 +21,8 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onZephyrModeChange : Bool -> msg
-    , onShowColumnButtonClick : String -> msg
-    , onDeleteColumnButtonClick : String -> msg
+    , onShowColumnButtonClick : Column.Id -> msg
+    , onDeleteColumnButtonClick : Column.Id -> msg
     }
 
 
@@ -33,7 +35,7 @@ type alias Props =
 
 
 type alias ShadowColumn =
-    ColumnProps { id : String }
+    ColumnProps { id : Column.Id }
 
 
 render : Effects msg -> Props -> Html msg
@@ -100,7 +102,7 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
     in
     Table.render []
         { columns = [ { header = "Column", cell = columnCell }, { header = "Action", cell = actionCell } ]
-        , rowKey = .id
+        , rowKey = .id >> Id.to
         , data = shadowColumns
         }
 

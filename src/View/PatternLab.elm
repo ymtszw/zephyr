@@ -158,7 +158,7 @@ init () url key =
       , editorSeq = 0
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
-      , modeless = Modeless.touch (Modeless.RawColumnItemId "dummy" 0) Modeless.init
+      , modeless = Modeless.touch (Modeless.RawColumnItemId (Id.from "dummy") 0) Modeless.init
       }
     , Cmd.none
     )
@@ -2291,7 +2291,7 @@ sidebar m =
         [ h1 [ xxProminent ] [ t "Sidebar" ]
         , withSource """let
     dummyColumn index =
-        { id = String.fromInt index
+        { id = Id.from (String.fromInt index)
         , pinned = modBy 2 index == 0
         , sources =
             case modBy 3 index of
@@ -2324,7 +2324,7 @@ Sidebar.render
     }""" <|
             let
                 dummyColumn index =
-                    { id = String.fromInt index
+                    { id = Id.from (String.fromInt index)
                     , pinned = modBy 2 index == 0
                     , sources =
                         case modBy 3 index of
@@ -2364,9 +2364,9 @@ modeless m =
         [ h1 [ xxProminent ] [ t "Modeless" ]
         , withSource """div []
     [ div [ flexColumn, spacingColumn10 ]
-        [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
+        [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 0)) ]
             [ t "Click me to show Modeless 0 (RawColumnItem)" ]
-        , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 1)) ]
+        , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
             [ t "Click me to show Modeless 1 (RawColumnItem)" ]
         ]
     , Modeless.render
@@ -2379,9 +2379,9 @@ modeless m =
     ]""" <|
             div []
                 [ div [ flexColumn, spacingColumn10 ]
-                    [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 0)) ]
+                    [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 0)) ]
                         [ t "Click me to show Modeless 0 (RawColumnItem)" ]
-                    , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId "dummy" 1)) ]
+                    , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
                         [ t "Click me to show Modeless 1 (RawColumnItem)" ]
                     ]
                 , Modeless.render
@@ -2413,7 +2413,7 @@ configPref m =
         [ h1 [ xxProminent ] [ t "Config.Pref" ]
         , withSource """let
     dummyShadowColumn index =
-        { id = String.fromInt index
+        { id = Id.from (String.fromInt index)
         , pinned = False
         , sources =
             case modBy 3 index of
@@ -2446,7 +2446,7 @@ Pref.render
     }""" <|
             let
                 dummyShadowColumn index =
-                    { id = String.fromInt index
+                    { id = Id.from (String.fromInt index)
                     , pinned = False
                     , sources =
                         case modBy 3 index of
@@ -2759,7 +2759,7 @@ columnHeader m =
     , onDismissButtonClick = always NoOp
     }
     0
-    { id = "DUMMYID"
+    { id = Id.from "DUMMYID"
     , sources = [ DiscordSource { id = "ID1", name = "Channel1", guildName = "Guild", guildIcon = Just (Image.ph 40 40) } ]
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
@@ -2774,7 +2774,7 @@ columnHeader m =
                     , onDismissButtonClick = always NoOp
                     }
                     0
-                    { id = "DUMMYID"
+                    { id = Id.from "DUMMYID"
                     , sources = [ DiscordSource { id = "ID1", name = "Channel1", guildName = "Guild", guildIcon = Just (Image.ph 40 40) } ]
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
@@ -2789,7 +2789,7 @@ columnHeader m =
     , onDismissButtonClick = always NoOp
     }
     0
-    { id = "DUMMYID"
+    { id = Id.from "DUMMYID"
     , sources = []
     , filters = [ "\\"Elm\\"", "Has Media" ]
     , pinned = m.toggle
@@ -2804,7 +2804,7 @@ columnHeader m =
                     , onDismissButtonClick = always NoOp
                     }
                     0
-                    { id = "DUMMYID"
+                    { id = Id.from "DUMMYID"
                     , sources = []
                     , filters = [ "\"Elm\"", "Has Media" ]
                     , pinned = m.toggle
@@ -2822,7 +2822,7 @@ columnHeader m =
     , onDismissButtonClick = always NoOp
     }
     0
-    { id = "DUMMYID"
+    { id = Id.from "DUMMYID"
     , sources =
         [ SlackSource { id = "SID1", name = "Conv1", teamName = "Team", teamIcon = Just (Image.ph 41 41), isPrivate = True }
         , DiscordSource { id = "DID1", name = String.repeat 2 "Expands unless constrained ", guildName = "Guild", guildIcon = Just (Image.ph 40 40) }
@@ -2840,7 +2840,7 @@ columnHeader m =
                     , onDismissButtonClick = always NoOp
                     }
                     0
-                    { id = "DUMMYID"
+                    { id = Id.from "DUMMYID"
                     , sources =
                         [ SlackSource { id = "SID1", name = "Conv1", teamName = "Team", teamIcon = Just (Image.ph 41 41), isPrivate = True }
                         , DiscordSource { id = "DID1", name = String.repeat 2 "Expands unless constrained ", guildName = "Guild", guildIcon = Just (Image.ph 40 40) }
@@ -2858,7 +2858,7 @@ columnHeader m =
     , onDismissButtonClick = always NoOp
     }
     0
-    { id = "DUMMYID"
+    { id = Id.from "DUMMYID"
     , sources =
         [ SlackSource
             { id = "CID1"
@@ -2881,7 +2881,7 @@ columnHeader m =
                     , onDismissButtonClick = always NoOp
                     }
                     0
-                    { id = "DUMMYID"
+                    { id = Id.from "DUMMYID"
                     , sources =
                         [ SlackSource
                             { id = "CID1"
@@ -2929,7 +2929,7 @@ columnConfig m =
         [ h1 [ xxProminent ] [ t "Column.Config" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID1")) 300 """ColumnConfig.render
+            , withSourceInColumn (Just (ColumnConfig.selectId (Id.from "DUMMYID1"))) 300 """ColumnConfig.render
     { onCloseButtonClick = always (Toggle False)
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
@@ -2944,7 +2944,7 @@ columnConfig m =
         , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
         ]
     , column =
-        { id = "DUMMYID1"
+        { id = Id.from "DUMMYID1"
         , numItems = 1000
         , pinned = m.toggle
         , sources =
@@ -2969,7 +2969,7 @@ columnConfig m =
                         , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
                         ]
                     , column =
-                        { id = "DUMMYID1"
+                        { id = Id.from "DUMMYID1"
                         , numItems = 1000
                         , pinned = m.toggle
                         , sources =
@@ -2982,7 +2982,7 @@ columnConfig m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn (Just (ColumnConfig.selectId "DUMMYID2")) 400 """ColumnConfig.render
+            , withSourceInColumn (Just (ColumnConfig.selectId (Id.from "DUMMYID2"))) 400 """ColumnConfig.render
     { onCloseButtonClick = always (Toggle False)
     , onColumnDeleteButtonClick = always NoOp
     , onSourceSelect = \\_ _ -> NoOp
@@ -2997,7 +2997,7 @@ columnConfig m =
         , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
         ]
     , column =
-        { id = "DUMMYID2"
+        { id = Id.from "DUMMYID2"
         , numItems = 1000
         , pinned = m.toggle
         , sources =
@@ -3022,7 +3022,7 @@ columnConfig m =
                         , SlackSource { id = "SID2", name = String.repeat 3 "Slack Conversation ", teamName = "Team", teamIcon = Nothing, isPrivate = False }
                         ]
                     , column =
-                        { id = "DUMMYID2"
+                        { id = Id.from "DUMMYID2"
                         , numItems = 1000
                         , pinned = m.toggle
                         , sources =
@@ -3042,7 +3042,7 @@ columnNewMessageEditor m =
         [ h1 [ xxProminent ] [ t "Column.NewMessageEditor" ]
         , section [ oneDark ]
             [ h2 [ xProminent ] [ t "oneDark" ]
-            , withSourceInColumn (Just (NewMessageEditor.selectId "DUMMYID1")) 400 """NewMessageEditor.render
+            , withSourceInColumn (Just (NewMessageEditor.selectId (Id.from "DUMMYID1"))) 400 """NewMessageEditor.render
     { onEditorSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
     , onTextInput = \\_ str -> TextInput str
@@ -3055,7 +3055,7 @@ columnNewMessageEditor m =
     }
     { selectState = m.select
     , column =
-        { id = "DUMMYID1"
+        { id = Id.from "DUMMYID1"
         , pinned = False
         , sources =
             [ DiscordSource
@@ -3087,7 +3087,7 @@ columnNewMessageEditor m =
                     }
                     { selectState = m.select
                     , column =
-                        { id = "DUMMYID1"
+                        { id = Id.from "DUMMYID1"
                         , pinned = False
                         , sources =
                             [ DiscordSource
@@ -3109,7 +3109,7 @@ columnNewMessageEditor m =
             ]
         , section [ aubergine ]
             [ h2 [ xProminent ] [ t "aubergine" ]
-            , withSourceInColumn (Just (NewMessageEditor.selectId "DUMMYID2")) 400 """NewMessageEditor.render
+            , withSourceInColumn (Just (NewMessageEditor.selectId (Id.from "DUMMYID2"))) 400 """NewMessageEditor.render
     { onEditorSelect = \\_ _ -> NoOp
     , selectMsgTagger = SelectCtrl
     , onTextInput = \\_ str -> TextInput str
@@ -3122,7 +3122,7 @@ columnNewMessageEditor m =
     }
     { selectState = m.select
     , column =
-        { id = "DUMMYID2"
+        { id = Id.from "DUMMYID2"
         , pinned = False
         , sources = []
         , filters = []
@@ -3144,7 +3144,7 @@ columnNewMessageEditor m =
                     }
                     { selectState = m.select
                     , column =
-                        { id = "DUMMYID2"
+                        { id = Id.from "DUMMYID2"
                         , pinned = False
                         , sources = []
                         , filters = []
@@ -3168,20 +3168,20 @@ columnItems =
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
-    { timezone = Time.utc, itemGroups = [], columnId = themeStr ++ "01", hasMore = False }""" <|
+    { timezone = Time.utc, itemGroups = [], columnId = Id.from <| themeStr ++ "01", hasMore = False }""" <|
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
-                        { timezone = Time.utc, itemGroups = [], columnId = themeStr ++ "01", hasMore = False }
+                        { timezone = Time.utc, itemGroups = [], columnId = Id.from <| themeStr ++ "01", hasMore = False }
                 , withSourceInColumn Nothing 500 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
-    , columnId = themeStr ++ "02"
+    , columnId = Id.from <| themeStr ++ "02"
     , hasMore = False
     , itemGroups =
         List.map unit
@@ -3205,7 +3205,7 @@ columnItems =
                         , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
-                        , columnId = themeStr ++ "02"
+                        , columnId = Id.from <| themeStr ++ "02"
                         , hasMore = False
                         , itemGroups =
                             List.map unit
@@ -3229,7 +3229,7 @@ columnItems =
     , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
-    , columnId = themeStr ++ "03"
+    , columnId = Id.from <| themeStr ++ "03"
     , hasMore = True
     , itemGroups =
         List.map unit
@@ -3298,7 +3298,7 @@ columnItems =
                         , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
-                        , columnId = themeStr ++ "03"
+                        , columnId = Id.from <| themeStr ++ "03"
                         , hasMore = True
                         , itemGroups =
                             List.map unit
@@ -3338,7 +3338,7 @@ columnItems =
     , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
-    , columnId = themeStr ++ "04"
+    , columnId = Id.from <| themeStr ++ "04"
     , hasMore = False
     , itemGroups =
         List.map unit
@@ -3368,7 +3368,7 @@ columnItems =
                         , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
-                        , columnId = themeStr ++ "04"
+                        , columnId = Id.from <| themeStr ++ "04"
                         , hasMore = False
                         , itemGroups =
                             List.map unit
@@ -3398,7 +3398,7 @@ columnItems =
     , onItemRefreshButtonClick = \\_ _ -> NoOp
     }
     { timezone = Time.utc
-    , columnId = themeStr ++ "05"
+    , columnId = Id.from <| themeStr ++ "05"
     , hasMore = False
     , itemGroups =
         List.map unit
@@ -3456,7 +3456,7 @@ columnItems =
                         , onItemRefreshButtonClick = \_ _ -> NoOp
                         }
                         { timezone = Time.utc
-                        , columnId = themeStr ++ "05"
+                        , columnId = Id.from <| themeStr ++ "05"
                         , hasMore = False
                         , itemGroups =
                             List.map unit
@@ -3551,7 +3551,7 @@ mainTemplate m =
             List.map dummyColumn (List.range 0 (m.numColumns - 1))
 
         dummyColumn index =
-            { id = String.fromInt index
+            { id = Id.from (String.fromInt index)
             , pinned = modBy 2 index == 0
             , configOpen =
                 if modBy 2 index == 0 then
