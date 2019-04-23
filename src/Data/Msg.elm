@@ -10,7 +10,6 @@ import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
-import Data.SavedState exposing (SavedState)
 import Data.UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D
 import Time
@@ -38,7 +37,6 @@ type Msg
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry
     | LoadPref Pref
-    | LoadOk SavedState
     | LoadErr D.Error
     | ToggleConfig Bool
     | ColumnCtrl Column.Id Column.Msg

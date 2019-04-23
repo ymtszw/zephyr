@@ -191,17 +191,6 @@ update msg ({ env, pref, viewState } as m) =
             -- Pref decoding always succeeds, and it is not a part of critical state loading chain.
             ( { m | pref = loaded }, Cmd.none, savePref changeSet )
 
-        LoadOk ss ->
-            -- Old method; remove after migration
-            reloadProducers <|
-                { m
-                    | columnStore = ss.columnStore
-                    , itemBroker = ss.itemBroker
-                    , producerRegistry = ss.producerRegistry
-                    , idGen = ss.idGen
-                    , worque = Worque.push (initScan ss.columnStore) m.worque
-                }
-
         LoadErr _ ->
             pure <|
                 if ColumnStore.size m.columnStore == 0 then
