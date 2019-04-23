@@ -611,25 +611,8 @@ renderConfigSlack m =
 
         teamStates =
             let
-                marshal teamId teamState acc =
+                marshal ( teamId, teamState ) =
                     let
-                        pair =
-                            case teamState of
-                                PSlack.Identified s ->
-                                    ( marshalTeam s.team, VSlack.NowHydrating (marshalUser s.user) )
-
-                                PSlack.Hydrated _ pov ->
-                                    ( marshalTeam pov.team, hydratedOnce False pov )
-
-                                PSlack.Rehydrating _ pov ->
-                                    ( marshalTeam pov.team, hydratedOnce True pov )
-
-                                PSlack.Revisit pov ->
-                                    ( marshalTeam pov.team, hydratedOnce True pov )
-
-                                PSlack.Expired _ pov ->
-                                    ( marshalTeam pov.team, hydratedOnce False pov )
-
                         marshalTeam t =
                             VSlack.TeamSnip teamId (SlackTeam.getName t) (SlackTeam.getDomain t) (teamIcon44 t)
 
@@ -671,9 +654,27 @@ renderConfigSlack m =
                             in
                             VSlack.hydratedOnce rehydrating (marshalUser pov.user) subbable subbed
                     in
-                    pair :: acc
+                    case teamState of
+                        PSlack.Identified s ->
+                            ( marshalTeam s.team, VSlack.NowHydrating (marshalUser s.user) )
+
+                        PSlack.Hydrated _ pov ->
+                            ( marshalTeam pov.team, hydratedOnce False pov )
+
+                        PSlack.Rehydrating _ pov ->
+                            ( marshalTeam pov.team, hydratedOnce True pov )
+
+                        PSlack.Revisit pov ->
+                            ( marshalTeam pov.team, hydratedOnce True pov )
+
+                        PSlack.Expired _ pov ->
+                            ( marshalTeam pov.team, hydratedOnce False pov )
             in
-            Dict.foldr marshal [] m.producerRegistry.slack.dict
+            -- Sort is necessary since Dict is AssocList
+            m.producerRegistry.slack.dict
+                |> Dict.toList
+                |> List.sortBy (Tuple.first >> Id.to)
+                |> List.map marshal
     in
     VSlack.render effects <|
         case m.producerRegistry.slack.unidentified of
