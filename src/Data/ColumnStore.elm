@@ -28,6 +28,7 @@ import ArrayExtra as Array
 import AssocList as Dict exposing (Dict)
 import Broker exposing (Broker)
 import Data.Column as Column exposing (Column, Position(..))
+import Data.Column.IdGenerator exposing (idGenerator)
 import Data.Filter exposing (FilterAtom(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.Item exposing (Item)
@@ -121,22 +122,6 @@ sizePinned cs =
 
 
 -- SINGULAR APIs
-
-
-add : Maybe Int -> Column -> ColumnStore -> ColumnStore
-add limitMaybe c columnStore =
-    let
-        newDict =
-            Dict.insert (Column.getId c) c columnStore.dict
-
-        newOrder =
-            columnStore.order |> Array.squeeze 0 (Column.getId c) |> autoArrange limitMaybe newDict
-
-        newScanQueue =
-            -- Previous relative scan ordering is kept
-            Deque.pushFront (Column.getId c) columnStore.scanQueue
-    in
-    { columnStore | dict = newDict, order = newOrder, scanQueue = newScanQueue }
 
 
 get : Int -> ColumnStore -> Maybe Column
@@ -241,6 +226,73 @@ listShadow columnStore =
 
 
 -- Component APIs
+
+
+type Msg
+    = AddEmpty Int
+    | AddSimple Int FilterAtom
+    | Show Column.Id
+    | Delete Column.Id
+    | Dismiss Int
+    | Reveal Int
+    | ById Column.Id Column.Msg
+
+
+postProcess : Column.PostProcess
+postProcess =
+    Column.postProcess
+
+
+update : Maybe Int -> Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
+update limitMaybe msg cs =
+    case msg of
+        AddEmpty clientHeight ->
+            let
+                ( c, seed ) =
+                    Random.step (Column.emptyGenerator clientHeight) cs.seed
+            in
+            -- If Filters are somehow set to the new Column, then persist.
+            pure (add limitMaybe c { cs | seed = seed })
+
+        AddSimple clientHeight filterAtom ->
+            let
+                ( c, seed ) =
+                    Random.step (Column.simpleGenerator clientHeight filterAtom) cs.seed
+            in
+            ( add limitMaybe c { cs | seed = seed }
+            , { postProcess | persist = True, catchUpId = Column.getId c }
+            )
+
+        Show idColumn ->
+            todo
+
+        Delete idColumn ->
+            todo
+
+        Dismiss int ->
+            todo
+
+        Reveal int ->
+            todo
+
+        ById idColumn msgColumn ->
+            todo
+
+
+add : Maybe Int -> Column -> ColumnStore -> ColumnStore
+add limitMaybe c columnStore =
+    let
+        newDict =
+            Dict.insert (Column.getId c) c columnStore.dict
+
+        newOrder =
+            columnStore.order |> Array.squeeze 0 (Column.getId c) |> autoArrange limitMaybe newDict
+
+        newScanQueue =
+            -- Previous relative scan ordering is kept
+            Deque.pushFront (Column.getId c) columnStore.scanQueue
+    in
+    { columnStore | dict = newDict, order = newOrder, scanQueue = newScanQueue }
 
 
 updateById : Maybe Int -> Column.Id -> Column.Msg -> ColumnStore -> ( ColumnStore, Column.PostProcess )
