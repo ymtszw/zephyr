@@ -64,6 +64,7 @@ type alias Env =
     , isLocalDevelopment : Bool
     , clientWidth : Int
     , clientHeight : Int
+    , posix : Int
     }
 
 
@@ -71,7 +72,7 @@ init : Env -> Key -> Model
 init env navKey =
     let
         base =
-            { columnStore = ColumnStore.init
+            { columnStore = ColumnStore.init env.posix
             , itemBroker = ItemBroker.init
             , producerRegistry = ProducerRegistry.init
             , idGen = UniqueIdGen.init

@@ -21,7 +21,6 @@ import Data.Model exposing (Env, Model)
 import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref
 import Data.ProducerRegistry as ProducerRegistry
-import Data.SavedState as SavedState
 import Data.Storable as Storable exposing (Storable)
 import Data.UniqueIdGen as UniqueIdGen
 import Json.Decode as D exposing (Decoder)
@@ -63,7 +62,7 @@ stateDecoder env =
                             in
                             LoadColumnStore ( cs, idGen, initCmd )
                         )
-                        (ColumnStore.decoder env.clientHeight)
+                        (ColumnStore.decoder { clientHeight = env.clientHeight, posix = env.posix })
                         (D.field idGenStoreId UniqueIdGen.decoder)
 
                 else if id == ItemBroker.storeId then
@@ -77,9 +76,6 @@ stateDecoder env =
 
                 else
                     D.fail ("Unknown state id: " ++ id)
-
-        -- Old format; may remove after migration
-        , D.map LoadOk <| SavedState.decoder env.clientHeight
         ]
 
 

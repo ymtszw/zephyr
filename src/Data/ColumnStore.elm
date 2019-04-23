@@ -38,6 +38,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import Random
 
 
 type alias ColumnStore =
@@ -45,11 +46,12 @@ type alias ColumnStore =
     , order : Array Column.Id
     , fam : FilterAtomMaterial
     , scanQueue : Deque Column.Id
+    , idGenSeed : Random.Seed
     }
 
 
-decoder : Int -> Decoder ( ColumnStore, List ( Column.Id, Cmd Column.Msg ) )
-decoder clientHeight =
+decoder : { clientHeight : Int, posix : Int } -> Decoder ( ColumnStore, List ( Column.Id, Cmd Column.Msg ) )
+decoder { clientHeight, posix } =
     D.do (D.field "order" (D.array (Id.decoder D.string))) <|
         \order ->
             D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order)) <|
@@ -61,7 +63,7 @@ decoder clientHeight =
                                 scanQueue =
                                     Deque.fromList (Dict.keys dict)
                             in
-                            D.succeed ( ColumnStore dict order fam scanQueue, idAndCmds )
+                            D.succeed ( ColumnStore dict order fam scanQueue (Random.initialSeed posix), idAndCmds )
 
 
 dictAndInitCmdDecoder : Int -> Array Column.Id -> Decoder ( Dict Column.Id Column, List ( Column.Id, Cmd Column.Msg ) )
@@ -94,9 +96,9 @@ storeId =
     "columnStore"
 
 
-init : ColumnStore
-init =
-    ColumnStore Dict.empty Array.empty FAM.init Deque.empty
+init : Int -> ColumnStore
+init posix =
+    ColumnStore Dict.empty Array.empty FAM.init Deque.empty (Random.initialSeed posix)
 
 
 size : ColumnStore -> Int
