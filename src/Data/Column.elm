@@ -1,7 +1,7 @@
 module Data.Column exposing
     ( Column, Id, ColumnItem(..), Media(..), encode, encodeColumnItem, decoder, columnItemLimit
     , new, generator, emptyGenerator, welcomeGenerator, simpleGenerator
-    , Msg(..), PostProcess, Position(..), update, postProcess
+    , Msg(..), ScanOptions, PostProcess, Position(..), update, postProcess
     , minimumItemHeight, editorId, itemNotFound
     , getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
     , setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
@@ -16,7 +16,7 @@ Also, number of Items shown depends on runtime clientHeight.
 
 @docs Column, Id, ColumnItem, Media, encode, encodeColumnItem, decoder, columnItemLimit
 @docs new, generator, emptyGenerator, welcomeGenerator, simpleGenerator
-@docs Msg, PostProcess, Position, update, postProcess
+@docs Msg, ScanOptions, PostProcess, Position, update, postProcess
 @docs minimumItemHeight, editorId, itemNotFound
 @docs getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
 @docs setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
@@ -371,8 +371,16 @@ type Msg
     | EditorFileSelected File
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
-    | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    | ScanBroker ScanOptions
     | ScrollMsg Scroll.Msg
+
+
+type alias ScanOptions =
+    { broker : Broker Item
+    , maxCount : Int
+    , clientHeight : Int
+    , catchUp : Bool
+    }
 
 
 type alias PostProcess =
