@@ -7,15 +7,25 @@ jobs:
     steps:
       - restore_cache:
           keys:
-          - repo-{{ .Branch }}-{{ .Revision }}
-          - repo-{{ .Branch }}-
-          - repo-
+            - repo-{{ .Branch }}-{{ .Revision }}
+            - repo-{{ .Branch }}-
+            - repo-
       - checkout
       - run: elm-test
       - save_cache:
           paths:
             - ~/.elm
           key: repo-{{ .Branch }}-{{ .Revision }}
+  compile_pattern_lab:
+    docker:
+      - image: ymtszw/elm_for_ci:0.19
+    working_directory: ~/repo
+    steps:
+      - restore_cache:
+          keys:
+            - repo-{{ .Branch }}-{{ .Revision }}
+      - checkout
+      - run: elm make src/View/PatternLab.elm --output=index.html
   deploy:
     docker:
       - image: ymtszw/elm_for_ci:0.19
@@ -26,7 +36,7 @@ jobs:
             - "ca:ab:40:08:08:7e:38:57:80:73:a3:03:ee:2c:0a:42"
       - restore_cache:
           keys:
-          - repo-{{ .Branch }}-{{ .Revision }}
+            - repo-{{ .Branch }}-{{ .Revision }}
       - checkout
       - run: make release
       - run: git checkout zephyr-app || { git fetch origin zephyr-app && git checkout zephyr-app; }
@@ -44,9 +54,16 @@ workflows:
           filters:
             branches:
               ignore: gh-pages
+      - compile_pattern_lab:
+          requires:
+            - test
+          filters:
+            branches:
+              ignore: gh-pages
       - deploy:
           requires:
             - test
+            - compile_pattern_lab
           filters:
             branches:
               only: master

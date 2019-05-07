@@ -1,6 +1,7 @@
 module Data.Column exposing
-    ( Column, Id, ColumnItem(..), Media(..), welcome, new, simple, encode, encodeColumnItem, decoder, columnItemLimit
-    , Msg(..), PostProcess, Position(..), update, postProcess
+    ( Column, Id, ColumnItem(..), Media(..), encode, encodeColumnItem, decoder, columnItemLimit
+    , new, generator, emptyGenerator, welcomeGenerator, simpleGenerator
+    , Msg(..), ScanOptions, PostProcess, Position(..), update, postProcess
     , minimumItemHeight, editorId, itemNotFound
     , getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
     , setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
@@ -13,8 +14,9 @@ Items stored in List are ordered from latest to oldest.
 Now that Columns are backed by Scrolls, they have limit on maximum Items.
 Also, number of Items shown depends on runtime clientHeight.
 
-@docs Column, Id, ColumnItem, Media, welcome, new, simple, encode, encodeColumnItem, decoder, columnItemLimit
-@docs Msg, PostProcess, Position, update, postProcess
+@docs Column, Id, ColumnItem, Media, encode, encodeColumnItem, decoder, columnItemLimit
+@docs new, generator, emptyGenerator, welcomeGenerator, simpleGenerator
+@docs Msg, ScanOptions, PostProcess, Position, update, postProcess
 @docs minimumItemHeight, editorId, itemNotFound
 @docs getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
 @docs setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
@@ -25,13 +27,13 @@ import Array exposing (Array)
 import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
 import Browser.Dom
+import Data.Column.IdGenerator exposing (idGenerator)
 import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Producer.Discord as Discord
 import Data.ProducerRegistry as ProducerRegistry
-import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import File exposing (File)
 import File.Select
 import Hex
@@ -40,6 +42,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import Random
 import Scroll exposing (Scroll)
 import SelectArray exposing (SelectArray)
 import StringExtra
@@ -229,32 +232,6 @@ mediaDecoder =
         ]
 
 
-welcome : Int -> UniqueIdGen -> Id -> ( Column, UniqueIdGen )
-welcome clientHeight idGen id =
-    let
-        ( items, newGen ) =
-            UniqueIdGen.sequence UniqueIdGen.systemMessagePrefix idGen <|
-                [ welcomeItem
-                , systemMessage "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
-                ]
-    in
-    ( Column
-        { id = id
-        , items = Scroll.initWith (scrollInitOptions id clientHeight) items
-        , filters = Array.empty
-        , offset = Nothing
-        , pinned = False
-        , recentlyTouched = True
-        , configOpen = True
-        , pendingFilters = Array.empty
-        , editors = ColumnEditor.defaultEditors
-        , editorSeq = 0
-        , userActionOnEditor = ColumnEditor.OutOfFocus
-        }
-    , newGen
-    )
-
-
 scrollInitOptions : Id -> Int -> Scroll.InitOptions
 scrollInitOptions id clientHeight =
     let
@@ -300,9 +277,53 @@ tierRatio =
     4.0
 
 
+new : Int -> Id -> List ColumnItem -> Column
+new clientHeight id initialItems =
+    Column
+        { id = id
+        , items = Scroll.initWith (scrollInitOptions id clientHeight) initialItems
+        , filters = Array.empty
+        , offset = Nothing
+        , pinned = False
+        , recentlyTouched = True
+        , configOpen = False
+        , pendingFilters = Array.empty
+        , editors = ColumnEditor.defaultEditors
+        , editorSeq = 0
+        , userActionOnEditor = ColumnEditor.OutOfFocus
+        }
+
+
+generator : Int -> Random.Generator (List ColumnItem) -> Random.Generator Column
+generator clientHeight =
+    Random.map2 (new clientHeight) <| Random.map Id.from idGenerator
+
+
+emptyGenerator : Int -> Random.Generator Column
+emptyGenerator clientHeight =
+    Random.map (List.singleton << systemMessage "New column created! Let's configure filters above!") idGenerator
+        |> generator clientHeight
+        |> Random.map (setConfigOpen True)
+
+
 systemMessage : String -> String -> ColumnItem
 systemMessage message id =
     SystemMessage { id = id, message = message, mediaMaybe = Nothing }
+
+
+welcomeGenerator : Int -> Random.Generator Column
+welcomeGenerator clientHeight =
+    let
+        generateItemsFromIds =
+            Random.constant
+                << List.map2 (<|)
+                    [ welcomeItem
+                    , systemMessage "Source: https://github.com/ymtszw/zephyr\nOutstanding Elm language: https://elm-lang.org"
+                    ]
+    in
+    Random.andThen generateItemsFromIds (Random.list 2 idGenerator)
+        |> generator clientHeight
+        |> Random.map (setConfigOpen True)
 
 
 welcomeItem : String -> ColumnItem
@@ -319,49 +340,15 @@ welcomeGif =
     StringExtra.toUrlUnsafe "https://cdn.dribbble.com/users/27231/screenshots/2432051/welcome.gif"
 
 
-new : Int -> UniqueIdGen -> Id -> ( Column, UniqueIdGen )
-new clientHeight idGen id =
-    let
-        ( item, newGen ) =
-            UniqueIdGen.genAndMap UniqueIdGen.systemMessagePrefix idGen <|
-                systemMessage "New column created! Let's configure filters above!"
-    in
-    ( Column
-        { id = id
-        , items = Scroll.initWith (scrollInitOptions id clientHeight) [ item ]
-        , filters = Array.empty
-        , offset = Nothing
-        , pinned = False
-        , recentlyTouched = True
-        , configOpen = True
-        , pendingFilters = Array.empty
-        , editors = ColumnEditor.defaultEditors
-        , editorSeq = 0
-        , userActionOnEditor = ColumnEditor.OutOfFocus
-        }
-    , newGen
-    )
-
-
-simple : Int -> FilterAtom -> Id -> Column
-simple clientHeight fa id =
+simpleGenerator : Int -> FilterAtom -> Random.Generator Column
+simpleGenerator clientHeight fa =
     let
         filters =
             Array.fromList [ Filter.Singular fa ]
     in
-    Column
-        { id = id
-        , items = Scroll.init (scrollInitOptions id clientHeight)
-        , filters = filters
-        , offset = Nothing
-        , pinned = False
-        , recentlyTouched = True
-        , configOpen = False
-        , pendingFilters = filters
-        , editors = ColumnEditor.filtersToEditors filters
-        , editorSeq = 0
-        , userActionOnEditor = ColumnEditor.OutOfFocus
-        }
+    generator clientHeight (Random.constant [])
+        |> Random.map (setFilters filters)
+        |> Random.map (setEditors (ColumnEditor.filtersToEditors filters))
 
 
 type Msg
@@ -384,8 +371,16 @@ type Msg
     | EditorFileSelected File
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
-    | ScanBroker { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
+    | ScanBroker ScanOptions
     | ScrollMsg Scroll.Msg
+
+
+type alias ScanOptions =
+    { broker : Broker Item
+    , maxCount : Int
+    , clientHeight : Int
+    , catchUp : Bool
+    }
 
 
 type alias PostProcess =
@@ -542,11 +537,7 @@ pure c =
     ( c, postProcess )
 
 
-scanBroker :
-    Bool
-    -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
-    -> Column
-    -> ( Column, PostProcess )
+scanBroker : Bool -> ScanOptions -> Column -> ( Column, PostProcess )
 scanBroker isVisible { broker, maxCount, clientHeight, catchUp } (Column c_) =
     let
         adjustOpts =

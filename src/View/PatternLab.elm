@@ -75,7 +75,7 @@ main =
                 Sub.batch
                     [ Select.sub SelectCtrl m.select
                     , Sub.map PopoutCtrl (Popout.sub m.popout)
-                    , Modeless.sub ModelessMove m.modeless
+                    , Sub.map ModelessCtrl (Modeless.sub m.modeless)
                     ]
         , onUrlRequest = GoTo
         , onUrlChange = Arrived
@@ -158,7 +158,7 @@ init () url key =
       , editorSeq = 0
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
-      , modeless = Modeless.touch (Modeless.RawColumnItemId (Id.from "dummy") 0) Modeless.init
+      , modeless = Modeless.update (Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 0)) Modeless.init
       }
     , Cmd.none
     )
@@ -197,9 +197,7 @@ type Msg
     | EditorFileSelected File
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
-    | ModelessTouch Modeless.ModelessId
-    | ModelessMove Modeless.ModelessId Int Int
-    | ModelessRemove Modeless.ModelessId
+    | ModelessCtrl Modeless.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -265,14 +263,8 @@ update msg m =
         EditorFileDiscard ->
             ( { m | editorFile = Nothing }, Cmd.none )
 
-        ModelessTouch mId ->
-            ( { m | modeless = Modeless.touch mId m.modeless }, Cmd.none )
-
-        ModelessMove mId x y ->
-            ( { m | modeless = Modeless.move ( mId, x, y ) m.modeless }, Cmd.none )
-
-        ModelessRemove mId ->
-            ( { m | modeless = Modeless.remove mId m.modeless }, Cmd.none )
+        ModelessCtrl mMsg ->
+            ( { m | modeless = Modeless.update mMsg m.modeless }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2364,31 +2356,31 @@ modeless m =
         [ h1 [ xxProminent ] [ t "Modeless" ]
         , withSource """div []
     [ div [ flexColumn, spacingColumn10 ]
-        [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 0)) ]
+        [ button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 0)) ]
             [ t "Click me to show Modeless 0 (RawColumnItem)" ]
-        , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
+        , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
             [ t "Click me to show Modeless 1 (RawColumnItem)" ]
         ]
     , Modeless.render
-        { onCloseButtonClick = ModelessRemove
-        , onAnywhereClick = ModelessTouch
-        , onDrag = ModelessMove
-        , onDragEnd = ModelessTouch
+        { onCloseButtonClick = ModelessCtrl << Modeless.Remove
+        , onAnywhereClick = ModelessCtrl << Modeless.Touch
+        , onDrag = \\mId x y -> ModelessCtrl (Modeless.Move mId x y)
+        , onDragEnd = ModelessCtrl << Modeless.Touch
         }
         (Modeless.map dummyModelessResolver m.modeless)
     ]""" <|
             div []
                 [ div [ flexColumn, spacingColumn10 ]
-                    [ button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 0)) ]
+                    [ button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 0)) ]
                         [ t "Click me to show Modeless 0 (RawColumnItem)" ]
-                    , button [ flexItem, padding10, onClick (ModelessTouch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
+                    , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
                         [ t "Click me to show Modeless 1 (RawColumnItem)" ]
                     ]
                 , Modeless.render
-                    { onCloseButtonClick = ModelessRemove
-                    , onAnywhereClick = ModelessTouch
-                    , onDrag = ModelessMove
-                    , onDragEnd = ModelessTouch
+                    { onCloseButtonClick = ModelessCtrl << Modeless.Remove
+                    , onAnywhereClick = ModelessCtrl << Modeless.Touch
+                    , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
+                    , onDragEnd = ModelessCtrl << Modeless.Touch
                     }
                     (Modeless.map dummyModelessResolver m.modeless)
                 ]
@@ -3530,10 +3522,10 @@ mainTemplate m =
                 , onColumnButtonClickByIndex = always NoOp
                 }
             , modelessEffects =
-                { onCloseButtonClick = ModelessRemove
-                , onAnywhereClick = ModelessTouch
-                , onDrag = ModelessMove
-                , onDragEnd = ModelessTouch
+                { onCloseButtonClick = ModelessCtrl << Modeless.Remove
+                , onAnywhereClick = ModelessCtrl << Modeless.Touch
+                , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
+                , onDragEnd = ModelessCtrl << Modeless.Touch
                 }
             , onColumnDragEnd = NoOp
             , onColumnDragHover = always NoOp

@@ -7,7 +7,7 @@ The application's Model starts with almost-empty initial model.
   - If IndexedDB is unavailable, it immediately transits to Model.welcome.
   - If IndexedDB is available, it subscribes to state load:
       - State loading is initiated from JavaScript codes in static/index.html
-      - It loads saved states in the order of ColumnStore & UniqueIdGen => ItemBroker => ProducerRegistry
+      - It loads saved states in the order of ColumnStore => ItemBroker => ProducerRegistry
       - If the saved states are corrupted and somehow cannot be decoded,
         it defaults to appropriate preset values.
       - If a decoding attempt failed without any clue of "phase",
@@ -23,24 +23,22 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
-import Data.Model as Model exposing (ColumnSwap, Env, Model)
+import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
-import Data.UniqueIdGen as UniqueIdGen
 import Id
 import IndexedDb exposing (..)
-import Task exposing (Task)
+import Task
 import Time exposing (Posix)
 import TimeZone
 import Url
-import View.Atoms.Input.Select
+import View.Atoms.Input.Select as Select
 import View.Organisms.Modeless as Modeless
 import View.Pages.Main
 import View.Stylesheet
-import View.Templates.Main exposing (columnAreaParentId, columnWidth)
 import Worque exposing (..)
 
 
@@ -90,6 +88,9 @@ getTimeZone =
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
 update msg ({ env, pref, viewState } as m) =
     case msg of
+        NoOp ->
+            pure m
+
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
             noPersist ( m, adjustMaxHeight )
@@ -106,11 +107,8 @@ update msg ({ env, pref, viewState } as m) =
         GetTimeZone ( _, zone ) ->
             pure { m | viewState = { viewState | timezone = zone } }
 
-        VisibilityChanged True ->
-            pure { m | viewState = { viewState | visible = True } }
-
-        VisibilityChanged False ->
-            pure { m | viewState = { viewState | columnSwapMaybe = Nothing, visible = False } }
+        VisibilityChanged visible ->
+            pure { m | viewState = { viewState | visible = visible } }
 
         LinkClicked (Browser.Internal url) ->
             noPersist ( m, Nav.pushUrl m.navKey (Url.toString url) )
@@ -118,56 +116,8 @@ update msg ({ env, pref, viewState } as m) =
         LinkClicked (Browser.External url) ->
             noPersist ( m, Nav.load url )
 
-        SelectCtrl sMsg ->
-            let
-                ( ss, cmd ) =
-                    View.Atoms.Input.Select.update SelectCtrl sMsg viewState.selectState
-            in
-            noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
-
-        AddEmptyColumn ->
-            UniqueIdGen.gen UniqueIdGen.columnPrefix m.idGen
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.new env.clientHeight idGen (Id.from cId))
-                |> (\( c, idGen ) ->
-                        -- If Filters are somehow set to the new Column, then persist.
-                        pure { m | columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore, idGen = idGen }
-                   )
-
-        AddSimpleColumn fa ->
-            let
-                ( c, idGen ) =
-                    UniqueIdGen.genAndMap UniqueIdGen.columnPrefix m.idGen (Column.simple env.clientHeight fa << Id.from)
-            in
-            ( { m
-                | idGen = idGen
-                , columnStore = ColumnStore.add (columnLimit m.pref) c m.columnStore
-                , worque = Worque.push (BrokerCatchUp (Id.to (Column.getId c))) m.worque
-              }
-            , Cmd.none
-            , saveColumnStore changeSet
-            )
-
-        DelColumn cId ->
-            ( { m | columnStore = ColumnStore.remove cId m.columnStore }, Cmd.none, saveColumnStore changeSet )
-
-        DismissColumn index ->
-            ( { m | columnStore = ColumnStore.dismissAt index m.columnStore }, Cmd.none, saveColumnStore changeSet )
-
-        ShowColumn cId ->
-            applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId Column.Show m.columnStore
-
-        DragStart { index, pinned, id } ->
-            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
-
-        DragEnter newOrder ->
-            pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
-
-        DragEnd ->
-            -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
-            ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
-
-        LoadColumnStore ( cs, idGen, initCmd ) ->
-            ( { m | columnStore = cs, idGen = idGen }
+        LoadColumnStore ( cs, initCmd ) ->
+            ( { m | columnStore = cs }
             , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref, initCmd ]
             , saveColumnStore changeSet
             )
@@ -191,17 +141,6 @@ update msg ({ env, pref, viewState } as m) =
             -- Pref decoding always succeeds, and it is not a part of critical state loading chain.
             ( { m | pref = loaded }, Cmd.none, savePref changeSet )
 
-        LoadOk ss ->
-            -- Old method; remove after migration
-            reloadProducers <|
-                { m
-                    | columnStore = ss.columnStore
-                    , itemBroker = ss.itemBroker
-                    , producerRegistry = ss.producerRegistry
-                    , idGen = ss.idGen
-                    , worque = Worque.push (initScan ss.columnStore) m.worque
-                }
-
         LoadErr _ ->
             pure <|
                 if ColumnStore.size m.columnStore == 0 then
@@ -215,23 +154,14 @@ update msg ({ env, pref, viewState } as m) =
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
 
-        ColumnCtrl cId cMsg ->
-            applyColumnUpdate m cId <| ColumnStore.updateById (columnLimit m.pref) cId cMsg m.columnStore
-
-        ProducerCtrl pctrl ->
-            applyProducerYield m <| ProducerRegistry.update pctrl m.producerRegistry
-
         Tick posix ->
             onTick posix m
 
-        RevealColumn index ->
-            noPersist ( { m | columnStore = ColumnStore.touchAt index m.columnStore }, revealColumn index )
+        ColumnCtrl csMsg ->
+            applyColumnUpdate m <| ColumnStore.update (columnLimit m.pref) csMsg m.columnStore
 
-        DomOp (Ok ()) ->
-            pure m
-
-        DomOp (Err _) ->
-            pure m
+        ProducerCtrl pctrl ->
+            applyProducerYield m <| ProducerRegistry.update pctrl m.producerRegistry
 
         PrefCtrl pMsg ->
             case Pref.update pMsg pref of
@@ -241,17 +171,15 @@ update msg ({ env, pref, viewState } as m) =
                 ( newPref, False ) ->
                     pure { m | pref = newPref }
 
-        ModelessTouch mId ->
-            pure { m | viewState = { viewState | modeless = Modeless.touch mId viewState.modeless } }
+        SelectCtrl sMsg ->
+            let
+                ( ss, cmd ) =
+                    Select.update SelectCtrl sMsg viewState.selectState
+            in
+            noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
-        ModelessMove mId x y ->
-            pure { m | viewState = { viewState | modeless = Modeless.move ( mId, x, y ) viewState.modeless } }
-
-        ModelessRemove mId ->
-            pure { m | viewState = { viewState | modeless = Modeless.remove mId viewState.modeless } }
-
-        NoOp ->
-            pure m
+        ModelessCtrl mMsg ->
+            pure { m | viewState = { viewState | modeless = Modeless.update mMsg viewState.modeless } }
 
 
 pure : Model -> ( Model, Cmd Msg, ChangeSet )
@@ -278,30 +206,20 @@ onTick posix m_ =
     case workMaybe of
         Just (BrokerScan 0) ->
             let
-                ( columnStore, ppMaybe ) =
-                    ColumnStore.consumeBroker (columnLimit m.pref)
-                        { broker = m.itemBroker
-                        , maxCount = maxScanCount // ColumnStore.size m.columnStore
-                        , clientHeight = m.env.clientHeight
-                        , catchUp = False
-                        }
-                        m.columnStore
+                scanOpts =
+                    { broker = m.itemBroker
+                    , maxCount = maxScanCount // ColumnStore.size m.columnStore -- Rough throttling. XXX Unnecessary?? Or, seek better ways to "resuming"
+                    , clientHeight = m.env.clientHeight
+                    , catchUp = False
+                    }
 
-                ( cmd, changeSet_ ) =
-                    case ppMaybe of
-                        Just ( cId, pp ) ->
-                            ( Cmd.map (ColumnCtrl cId) pp.cmd
-                            , if pp.persist then
-                                saveColumnStore changeSet
-
-                              else
-                                changeSet
-                            )
-
-                        Nothing ->
-                            ( Cmd.none, changeSet )
+                scheduleNextScan ( mNew, cmd, cs ) =
+                    ( { mNew | worque = Worque.push (initScan mNew.columnStore) mNew.worque }, cmd, cs )
             in
-            ( { m | columnStore = columnStore, worque = Worque.push (initScan columnStore) m.worque }, cmd, changeSet_ )
+            m.columnStore
+                |> ColumnStore.update (columnLimit m.pref) (ColumnStore.ConsumeBroker scanOpts)
+                |> applyColumnUpdate m
+                |> scheduleNextScan
 
         Just (BrokerScan n) ->
             pure { m | worque = Worque.push (BrokerScan (n - 1)) m.worque }
@@ -328,8 +246,8 @@ onTick posix m_ =
                     }
             in
             m.columnStore
-                |> ColumnStore.updateById (columnLimit m.pref) (Id.from cId) (Column.ScanBroker scanOpts)
-                |> applyColumnUpdate m (Id.from cId)
+                |> ColumnStore.update (columnLimit m.pref) (ColumnStore.ById (Id.from cId) (Column.ScanBroker scanOpts))
+                |> applyColumnUpdate m
 
         Nothing ->
             pure m
@@ -358,34 +276,8 @@ maxScanInterval =
     10
 
 
-revealColumn : Int -> Cmd Msg
-revealColumn index =
-    Browser.Dom.getViewportOf columnAreaParentId
-        |> Task.andThen (scrollToColumn index)
-        |> Task.attempt DomOp
-
-
-scrollToColumn : Int -> Browser.Dom.Viewport -> Task Browser.Dom.Error ()
-scrollToColumn index parentVp =
-    let
-        cWidth =
-            toFloat columnWidth
-
-        targetX =
-            cWidth * toFloat index
-    in
-    if targetX < parentVp.viewport.x then
-        Browser.Dom.setViewportOf columnAreaParentId targetX 0
-
-    else if targetX + cWidth < parentVp.viewport.x + parentVp.viewport.width then
-        Task.succeed ()
-
-    else
-        Browser.Dom.setViewportOf columnAreaParentId (targetX + cWidth - parentVp.viewport.width) 0
-
-
-applyColumnUpdate : Model -> Column.Id -> ( ColumnStore, Column.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
-applyColumnUpdate m cId ( columnStore, pp ) =
+applyColumnUpdate : Model -> ( ColumnStore, ColumnStore.PostProcess ) -> ( Model, Cmd Msg, ChangeSet )
+applyColumnUpdate m ( columnStore, pp ) =
     let
         m_ =
             case pp.catchUpId of
@@ -400,7 +292,7 @@ applyColumnUpdate m cId ( columnStore, pp ) =
 
         finalize ( n, cmd, changeSet_ ) =
             ( n
-            , Cmd.batch [ Cmd.map (ColumnCtrl cId) pp.cmd, cmd ]
+            , Cmd.batch [ Cmd.map ColumnCtrl pp.cmd, cmd ]
             , if pp.persist then
                 saveColumnStore changeSet_
 
@@ -508,8 +400,8 @@ sub m =
 
                         Browser.Events.Hidden ->
                             False
-        , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
-        , Modeless.sub ModelessMove m.viewState.modeless
+        , Select.sub SelectCtrl m.viewState.selectState
+        , Sub.map ModelessCtrl (Modeless.sub m.viewState.modeless)
         ]
 
 
