@@ -12,7 +12,6 @@ module Data.Model exposing
 
 import Broker exposing (Broker)
 import Browser.Navigation exposing (Key)
-import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Item exposing (Item)
 import Data.ItemBroker as ItemBroker

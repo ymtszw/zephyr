@@ -31,7 +31,7 @@ import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
 import Id
 import IndexedDb exposing (..)
-import Task exposing (Task)
+import Task
 import Time exposing (Posix)
 import TimeZone
 import Url
@@ -39,7 +39,6 @@ import View.Atoms.Input.Select as Select
 import View.Organisms.Modeless as Modeless
 import View.Pages.Main
 import View.Stylesheet
-import View.Templates.Main exposing (columnAreaParentId, columnWidth)
 import Worque exposing (..)
 
 

@@ -26,13 +26,10 @@ This can be toggled at users' preferences. See Data.Model.
 import Array exposing (Array)
 import ArrayExtra as Array
 import AssocList as Dict exposing (Dict)
-import Broker exposing (Broker)
 import Browser.Dom
 import Data.Column as Column exposing (Column, Position(..))
-import Data.Column.IdGenerator exposing (idGenerator)
 import Data.Filter exposing (FilterAtom(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
-import Data.Item exposing (Item)
 import Data.ProducerRegistry as ProducerRegistry
 import Data.Storable exposing (Storable)
 import Deque exposing (Deque)
@@ -255,7 +252,9 @@ update limitMaybe msg cs =
                 ( c, seed ) =
                     Random.step (Column.simpleGenerator clientHeight filterAtom) cs.seed
             in
-            ( add limitMaybe c cs, { postProcess | persist = True, catchUpId = Just (Column.getId c) } )
+            ( add limitMaybe c { cs | seed = seed }
+            , { postProcess | persist = True, catchUpId = Just (Column.getId c) }
+            )
 
         Delete id ->
             let
