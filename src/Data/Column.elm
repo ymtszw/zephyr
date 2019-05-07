@@ -537,11 +537,7 @@ pure c =
     ( c, postProcess )
 
 
-scanBroker :
-    Bool
-    -> { broker : Broker Item, maxCount : Int, clientHeight : Int, catchUp : Bool }
-    -> Column
-    -> ( Column, PostProcess )
+scanBroker : Bool -> ScanOptions -> Column -> ( Column, PostProcess )
 scanBroker isVisible { broker, maxCount, clientHeight, catchUp } (Column c_) =
     let
         adjustOpts =

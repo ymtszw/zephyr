@@ -341,7 +341,7 @@ updateById limitMaybe cId cMsg cs =
         Just c ->
             let
                 isVisible =
-                    Array.member (Column.getId c) cs.order
+                    Array.member cId cs.order
 
                 ( newC, cPostProcess ) =
                     Column.update isVisible cMsg c
