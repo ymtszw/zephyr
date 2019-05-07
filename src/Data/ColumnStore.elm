@@ -1,5 +1,5 @@
 module Data.ColumnStore exposing
-    ( ColumnStore, init, addWelcome, encode, decoder, storeId, size, sizePinned
+    ( ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
     , map, mapForView, listShadow
     , Msg(..), PostProcess, update, applyOrder, updateFAM
     )
@@ -17,7 +17,7 @@ In "Zephyr mode", Columns are automatically evicted (dismissed)
 when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
-@docs ColumnStore, init, addWelcome, encode, decoder, storeId, size, sizePinned
+@docs ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
 @docs map, mapForView, listShadow
 @docs Msg, PostProcess, update, applyOrder, updateFAM
 
@@ -49,9 +49,18 @@ import View.Templates.Main exposing (columnAreaParentId, columnWidth)
 type alias ColumnStore =
     { dict : Dict Column.Id Column
     , order : Array Column.Id
+    , swapState : Maybe SwapState
     , fam : FilterAtomMaterial
     , scanQueue : Deque Column.Id
     , seed : Random.Seed
+    }
+
+
+type alias SwapState =
+    { grabbedId : Column.Id
+    , pinned : Bool
+    , originalIndex : Int
+    , originalOrder : Array Column.Id
     }
 
 
@@ -68,7 +77,7 @@ decoder { clientHeight, posix } =
                                 scanQueue =
                                     Deque.fromList (Dict.keys dict)
                             in
-                            D.succeed ( ColumnStore dict order fam scanQueue (Random.initialSeed posix), Cmd.batch cmds )
+                            D.succeed ( ColumnStore dict order Nothing fam scanQueue (Random.initialSeed posix), Cmd.batch cmds )
 
 
 dictAndInitCmdDecoder : Int -> Array Column.Id -> Decoder ( Dict Column.Id Column, List (Cmd Msg) )
@@ -103,7 +112,7 @@ storeId =
 
 init : Int -> ColumnStore
 init posix =
-    ColumnStore Dict.empty Array.empty FAM.init Deque.empty (Random.initialSeed posix)
+    ColumnStore Dict.empty Array.empty Nothing FAM.init Deque.empty (Random.initialSeed posix)
 
 
 {-| Add a welcome column to the ColumnStore. Exposed for Model initialization.
@@ -205,6 +214,9 @@ type Msg
     | Delete Column.Id
     | Dismiss Int
     | Reveal Int
+    | SwapStart { index : Int, id : Column.Id, pinned : Bool }
+    | ApplyOrder (Array Column.Id)
+    | SwapEnd
     | ConsumeBroker Column.ScanOptions
     | ById Column.Id Column.Msg
     | NoOp
@@ -276,6 +288,23 @@ update limitMaybe msg cs =
                 Nothing ->
                     -- Should not happen
                     pure cs
+
+        SwapStart { index, pinned, id } ->
+            pure { cs | swapState = Just (SwapState id pinned index cs.order) }
+
+        ApplyOrder newOrder ->
+            -- XXX Why don't we take newIndex and apply ArrayExtra.moveFromTo here?
+            -- Well it is because it allows "illegal messages" to be represented!
+            -- If we take newIndex, it must be applied onto originalOrder here,
+            -- but ***originalOrder only exists when swapState /= Nothing!***
+            -- To eliminate such check, we have to make sure ApplyOrder is fired only when swapState exists.
+            -- However, such guarantee can only be realized in view functons!
+            -- Also see src/View/Pages/Main.elm
+            pure { cs | order = newOrder }
+
+        SwapEnd ->
+            -- Drop event is somewhat flaky to correctly track, so we should always turn off swap at Dragend
+            ( { cs | swapState = Nothing }, { postProcess | persist = True } )
 
         ConsumeBroker opts ->
             case Deque.popBack cs.scanQueue of

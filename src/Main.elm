@@ -23,7 +23,7 @@ import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.ItemBroker as ItemBroker
-import Data.Model as Model exposing (ColumnSwap, Env, Model)
+import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
@@ -123,16 +123,6 @@ update msg ({ env, pref, viewState } as m) =
                     View.Atoms.Input.Select.update SelectCtrl sMsg viewState.selectState
             in
             noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
-
-        DragStart { index, pinned, id } ->
-            pure { m | viewState = { viewState | columnSwapMaybe = Just (ColumnSwap id pinned index m.columnStore.order) } }
-
-        DragEnter newOrder ->
-            pure { m | columnStore = ColumnStore.applyOrder newOrder m.columnStore }
-
-        DragEnd ->
-            -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
-            ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
         LoadColumnStore ( cs, initCmd ) ->
             ( { m | columnStore = cs }

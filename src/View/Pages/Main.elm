@@ -55,12 +55,13 @@ render m =
         effects =
             let
                 ( onColumnDragHover, onColumnDragEnd ) =
-                    case m.viewState.columnSwapMaybe of
+                    case m.columnStore.swapState of
                         Just swap ->
-                            ( \newIndex ->
-                                DragEnter (ArrayExtra.moveFromTo swap.originalIndex newIndex swap.originalOrder)
-                            , DragEnd
-                            )
+                            let
+                                newOrder newIndex =
+                                    ArrayExtra.moveFromTo swap.originalIndex newIndex swap.originalOrder
+                            in
+                            ( ColumnCtrl << ColumnStore.ApplyOrder << newOrder, ColumnCtrl ColumnStore.SwapEnd )
 
                         Nothing ->
                             ( always NoOp, NoOp )
@@ -92,7 +93,7 @@ render m =
                             marshalSourcesAndFilters fam (Column.getPendingFilters c)
 
                         dragStatus =
-                            case m.viewState.columnSwapMaybe of
+                            case m.columnStore.swapState of
                                 Just swap ->
                                     if swap.grabbedId == Column.getId c then
                                         Grabbed
@@ -144,7 +145,7 @@ render m =
             , columnContents =
                 { header =
                     View.Organisms.Column.Header.render
-                        { onColumnDragStart = \pinned index_ id -> DragStart { id = id, index = index_, pinned = pinned }
+                        { onColumnDragStart = \pinned index_ id -> ColumnCtrl (ColumnStore.SwapStart { id = id, index = index_, pinned = pinned })
                         , onHeaderClickWhenScrolled = \cId -> ColumnCtrl (ColumnStore.ById cId (Column.ScrollMsg Scroll.BackToTop))
                         , onPinButtonClick = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.Pin
                         , onConfigToggleButtonClick = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.ToggleConfig

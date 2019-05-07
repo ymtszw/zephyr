@@ -6,7 +6,6 @@ import Browser
 import Browser.Dom
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
-import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
@@ -24,9 +23,6 @@ type Msg
     | VisibilityChanged Bool
     | LinkClicked Browser.UrlRequest
     | SelectCtrl (Select.Msg Msg)
-    | DragStart { index : Int, id : Column.Id, pinned : Bool }
-    | DragEnter (Array Column.Id)
-    | DragEnd
     | LoadColumnStore ( ColumnStore, Cmd Msg )
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry

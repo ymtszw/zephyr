@@ -1,16 +1,15 @@
 module Data.Model exposing
-    ( Model, ViewState, Env, ColumnSwap
+    ( Model, ViewState, Env
     , init, addWelcomeColumn
     )
 
 {-| Model of the app.
 
-@docs Model, ViewState, Env, ColumnSwap
+@docs Model, ViewState, Env
 @docs init, addWelcomeColumn
 
 -}
 
-import Array exposing (Array)
 import Broker exposing (Broker)
 import Browser.Navigation exposing (Key)
 import Data.Column as Column
@@ -19,7 +18,6 @@ import Data.Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
-import Id
 import Time exposing (Zone)
 import View.Atoms.Input.Select as Select
 import View.Organisms.Modeless as Modeless
@@ -40,19 +38,10 @@ type alias Model =
 
 type alias ViewState =
     { configOpen : Bool
-    , columnSwapMaybe : Maybe ColumnSwap
     , selectState : Select.State
     , timezone : Zone
     , visible : Bool
     , modeless : Modeless.State
-    }
-
-
-type alias ColumnSwap =
-    { grabbedId : Column.Id
-    , pinned : Bool
-    , originalIndex : Int
-    , originalOrder : Array Column.Id
     }
 
 
@@ -90,7 +79,6 @@ init env navKey =
 defaultViewState : ViewState
 defaultViewState =
     { configOpen = False
-    , columnSwapMaybe = Nothing
     , selectState = Select.init
     , timezone = Time.utc
     , visible = True
