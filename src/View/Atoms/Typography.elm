@@ -23,7 +23,8 @@ module View.Atoms.Typography exposing
 
 -}
 
-import Color exposing (cssRgba, setAlpha)
+import Color exposing (toCssString)
+import ColorExtra exposing (setAlpha)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
 import View.Atoms.Layout as Layout
@@ -376,12 +377,12 @@ fontColorStyles : List Style
 fontColorStyles =
     let
         fc themeClass modeClass color =
-            scoped (c themeClass) (c modeClass) [ ( "color", cssRgba color ) ]
+            scoped (c themeClass) (c modeClass) [ ( "color", toCssString color ) ]
 
         ph themeClass modeClass color =
-            scoped (c themeClass) (c modeClass ++ "::placeholder") [ ( "color", cssRgba color ) ]
+            scoped (c themeClass) (c modeClass ++ "::placeholder") [ ( "color", toCssString color ) ]
     in
-    [ s (c oneDarkClass) [ ( "color", cssRgba oneDarkTheme.text ) ] -- Default Font Color of the theme
+    [ s (c oneDarkClass) [ ( "color", toCssString oneDarkTheme.text ) ] -- Default Font Color of the theme
     , fc oneDarkClass colorTextClass oneDarkTheme.text
     , fc oneDarkClass colorNoteClass oneDarkTheme.note
     , fc oneDarkClass colorLinkClass oneDarkTheme.link
@@ -391,7 +392,7 @@ fontColorStyles =
     , fc oneDarkClass colorErrClass oneDarkTheme.err
     , ph oneDarkClass phColorTextClass (setAlpha 0.3 oneDarkTheme.text)
     , ph oneDarkClass phColorNoteClass (setAlpha 0.6 oneDarkTheme.note)
-    , s (c aubergineClass) [ ( "color", cssRgba aubergineTheme.text ) ] -- Default Font Color of the theme
+    , s (c aubergineClass) [ ( "color", toCssString aubergineTheme.text ) ] -- Default Font Color of the theme
     , fc aubergineClass colorTextClass aubergineTheme.text
     , fc aubergineClass colorNoteClass aubergineTheme.note
     , fc aubergineClass colorLinkClass aubergineTheme.link
@@ -454,8 +455,8 @@ inlineCodeStyles =
     [ s "code" [ ( "border-radius", "0.2em" ) ]
         |> inject monospaceStyle
         |> inject Layout.paddingInlineStyle
-    , scoped (c oneDarkClass) "code" [ ( "color", cssRgba oneDarkTheme.err ), ( "background-color", cssRgba oneDarkTheme.bg ) ]
-    , scoped (c aubergineClass) "code" [ ( "color", cssRgba aubergineTheme.err ), ( "background-color", cssRgba aubergineTheme.bg ) ]
+    , scoped (c oneDarkClass) "code" [ ( "color", toCssString oneDarkTheme.err ), ( "background-color", toCssString oneDarkTheme.bg ) ]
+    , scoped (c aubergineClass) "code" [ ( "color", toCssString aubergineTheme.err ), ( "background-color", toCssString aubergineTheme.bg ) ]
     ]
 
 
@@ -463,8 +464,8 @@ linkStyles : List Style
 linkStyles =
     [ s "a:link" [ ( "text-decoration", "none" ) ] -- Cancelling UA's default decorations
     , s (hov "a:link") [ ( "text-decoration", "underline" ) ]
-    , scoped (c oneDarkClass) "a:link" [ ( "color", cssRgba oneDarkTheme.link ) ]
-    , scoped (c oneDarkClass) "a:visited" [ ( "color", cssRgba oneDarkTheme.link ) ]
-    , scoped (c aubergineClass) "a:link" [ ( "color", cssRgba aubergineTheme.link ) ]
-    , scoped (c aubergineClass) "a:visited" [ ( "color", cssRgba aubergineTheme.link ) ]
+    , scoped (c oneDarkClass) "a:link" [ ( "color", toCssString oneDarkTheme.link ) ]
+    , scoped (c oneDarkClass) "a:visited" [ ( "color", toCssString oneDarkTheme.link ) ]
+    , scoped (c aubergineClass) "a:link" [ ( "color", toCssString aubergineTheme.link ) ]
+    , scoped (c aubergineClass) "a:visited" [ ( "color", toCssString aubergineTheme.link ) ]
     ]

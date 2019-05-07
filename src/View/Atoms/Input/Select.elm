@@ -17,7 +17,7 @@ it uses Popout module under the hood. Thus its slightly odd API described below.
 
 -}
 
-import Color exposing (cssRgba)
+import Color exposing (toCssString)
 import Debounce exposing (Debounce)
 import Extra exposing (emit)
 import Html exposing (..)
@@ -381,7 +381,7 @@ styles =
     , s_ (c optionsClass)
         [ ( "position", "absolute" )
         , ( "z-index", "20" ) -- Pop above all else
-        , ( "box-shadow", "5px 5px 10px 0px " ++ cssRgba oneDarkTheme.bg )
+        , ( "box-shadow", "5px 5px 10px 0px " ++ toCssString oneDarkTheme.bg )
         , ( "padding-top", px optionListPaddingY )
         , ( "padding-bottom", px optionListPaddingY )
         ]
@@ -407,13 +407,13 @@ s_ =
 
 themedStyles : String -> Theme -> List Style
 themedStyles themeClass theme =
-    [ scoped (c themeClass) (c selectClass) [ ( "color", cssRgba theme.text ) ]
+    [ scoped (c themeClass) (c selectClass) [ ( "color", toCssString theme.text ) ]
     , let
         focusSelector =
             String.join "," <|
                 List.map (\pseudo -> descOf (c themeClass) (c optionRowClass) ++ pseudo) [ ":hover", ":focus" ]
       in
-      s_ focusSelector [ ( "background-color", cssRgba theme.sub ) ]
+      s_ focusSelector [ ( "background-color", toCssString theme.sub ) ]
     ]
 
 

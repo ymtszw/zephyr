@@ -3,7 +3,7 @@ module Examples exposing (suite)
 import Array exposing (fromList)
 import ArrayExtra as Array
 import AssocList as Dict
-import Color
+import ColorExtra
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord.Message
 import Data.Producer.FetchStatus as FetchStatus exposing (Backoff(..), FetchStatus(..))
@@ -644,9 +644,9 @@ testColorIntCodec colorNumStr expectedHex =
         \_ ->
             colorNumStr
                 |> D.decodeString Data.Producer.Discord.Message.colorDecoder
-                |> Result.map (Color.encode >> E.encode 0)
+                |> Result.map (ColorExtra.encode >> E.encode 0)
                 |> Result.andThen (D.decodeString Data.Producer.Discord.Message.colorDecoder)
-                |> Expect.equal (Ok (Color.fromHexUnsafe expectedHex))
+                |> Expect.equal (Ok (ColorExtra.fromHexUnsafe expectedHex))
 
 
 

@@ -16,7 +16,7 @@ module View.Atoms.Image exposing
 
 -}
 
-import Color exposing (Color, cssRgba)
+import Color exposing (Color, toCssString)
 import Html exposing (Attribute, Html)
 import Html.Attributes exposing (class)
 import Octicons
@@ -111,9 +111,9 @@ styles : List Style
 styles =
     [ s "img" [ ( "vertical-align", "middle" ) ]
     , s (c octiconClass) [ ( "vertical-align", "middle" ) ]
-    , s (String.join "," octiconPaths) [ ( "fill", cssRgba oneDarkTheme.note ) ] -- Default fill color
-    , octiconPathStyle (c oneDarkClass) [ ( "fill", cssRgba oneDarkTheme.note ) ]
-    , octiconPathStyle (c aubergineClass) [ ( "fill", cssRgba aubergineTheme.note ) ]
+    , s (String.join "," octiconPaths) [ ( "fill", toCssString oneDarkTheme.note ) ] -- Default fill color
+    , octiconPathStyle (c oneDarkClass) [ ( "fill", toCssString oneDarkTheme.note ) ]
+    , octiconPathStyle (c aubergineClass) [ ( "fill", toCssString aubergineTheme.note ) ]
     , scopedFillStyle (c oneDarkClass) (c fillPrimClass) oneDarkTheme.prim
     , scopedFillStyle (c oneDarkClass) (c fillSuccClass) oneDarkTheme.succ
     , scopedFillStyle (c oneDarkClass) (c fillWarnClass) oneDarkTheme.warn
@@ -161,7 +161,7 @@ octiconPathStyle scopeSelector props =
 
 scopedFillStyle : String -> String -> Color -> Style
 scopedFillStyle themeSelector targetSelector color =
-    octiconPathStyle (descOf themeSelector targetSelector) [ ( "fill", cssRgba color ) ]
+    octiconPathStyle (descOf themeSelector targetSelector) [ ( "fill", toCssString color ) ]
 
 
 fillPrimClass : String

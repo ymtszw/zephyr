@@ -13,6 +13,7 @@ module Data.Producer.Discord.Message exposing
 -}
 
 import Color exposing (Color)
+import ColorExtra
 import Data.Producer.Discord.Channel as Channel
 import Data.Producer.Discord.User as User exposing (User)
 import Hex
@@ -146,7 +147,7 @@ encodeEmbed embed =
         [ ( "title", E.maybe E.string embed.title )
         , ( "description", E.maybe E.string embed.description )
         , ( "url", E.maybe E.url embed.url )
-        , ( "color", E.maybe Color.encode embed.color )
+        , ( "color", E.maybe ColorExtra.encode embed.color )
         , ( "image", E.maybe encodeEmbedImage embed.image )
         , ( "thumbnail", E.maybe encodeEmbedImage embed.thumbnail )
         , ( "video", E.maybe encodeEmbedVideo embed.video )
@@ -247,11 +248,11 @@ embedDecoder =
 colorDecoder : Decoder Color
 colorDecoder =
     D.oneOf
-        [ Color.decoder
+        [ ColorExtra.decoder
         , -- From Discord API
           D.do D.int <|
             \int ->
-                case int |> Hex.toString |> String.padLeft 6 '0' |> Color.fromHex of
+                case int |> Hex.toString |> String.padLeft 6 '0' |> ColorExtra.fromHex of
                     Ok c ->
                         D.succeed c
 
