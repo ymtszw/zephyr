@@ -10,7 +10,6 @@ import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
-import Data.UniqueIdGen exposing (UniqueIdGen)
 import Json.Decode as D
 import Time
 import View.Atoms.Input.Select as Select
@@ -28,7 +27,7 @@ type Msg
     | DragStart { index : Int, id : Column.Id, pinned : Bool }
     | DragEnter (Array Column.Id)
     | DragEnd
-    | LoadColumnStore ( ColumnStore, UniqueIdGen, Cmd Msg )
+    | LoadColumnStore ( ColumnStore, Cmd Msg )
     | LoadItemBroker (Broker Item)
     | LoadProducerRegistry ProducerRegistry
     | LoadPref Pref

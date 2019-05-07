@@ -22,7 +22,6 @@ import Data.Msg exposing (Msg(..))
 import Data.Pref as Pref
 import Data.ProducerRegistry as ProducerRegistry
 import Data.Storable as Storable exposing (Storable)
-import Data.UniqueIdGen as UniqueIdGen
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
@@ -53,12 +52,9 @@ stateDecoder env =
     D.do (D.field "id" D.string) <|
         \id ->
             if id == ColumnStore.storeId then
-                D.map2
-                    (\( cs, idAndCmds ) idGen ->
-                        LoadColumnStore ( cs, idGen, Cmd.map ColumnCtrl idAndCmds )
-                    )
+                D.map
+                    (\( cs, idAndCmds ) -> LoadColumnStore ( cs, Cmd.map ColumnCtrl idAndCmds ))
                     (ColumnStore.decoder { clientHeight = env.clientHeight, posix = env.posix })
-                    (D.field idGenStoreId UniqueIdGen.decoder)
 
             else if id == ItemBroker.storeId then
                 D.map LoadItemBroker ItemBroker.decoder
@@ -166,27 +162,20 @@ postUpdate ( model, cmd, cs ) =
 
 changeSetToCmds : Model -> ChangeSet -> List (Cmd Msg)
 changeSetToCmds m (ChangeSet cs) =
-    [ toCmd cs.columnStore <|
-        \_ ->
-            doPersist <|
-                Storable.append [ ( idGenStoreId, UniqueIdGen.encode m.idGen ) ] <|
-                    ColumnStore.encode m.columnStore
-    , toCmd cs.itemBroker <|
-        \_ ->
-            doPersist (ItemBroker.encode m.itemBroker)
-    , toCmd cs.producerRegistry <|
-        \_ ->
-            doPersist (ProducerRegistry.encode m.producerRegistry)
-    , toCmd cs.pref <|
-        \_ ->
-            doPersist (Pref.encode m.pref)
-    ]
-        |> List.filterMap identity
-
-
-idGenStoreId : String
-idGenStoreId =
-    "idGen"
+    List.filterMap identity
+        [ toCmd cs.columnStore <|
+            \_ ->
+                doPersist (ColumnStore.encode m.columnStore)
+        , toCmd cs.itemBroker <|
+            \_ ->
+                doPersist (ItemBroker.encode m.itemBroker)
+        , toCmd cs.producerRegistry <|
+            \_ ->
+                doPersist (ProducerRegistry.encode m.producerRegistry)
+        , toCmd cs.pref <|
+            \_ ->
+                doPersist (Pref.encode m.pref)
+        ]
 
 
 toCmd : Bool -> (() -> Cmd Msg) -> Maybe (Cmd Msg)

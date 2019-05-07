@@ -7,7 +7,7 @@ The application's Model starts with almost-empty initial model.
   - If IndexedDB is unavailable, it immediately transits to Model.welcome.
   - If IndexedDB is available, it subscribes to state load:
       - State loading is initiated from JavaScript codes in static/index.html
-      - It loads saved states in the order of ColumnStore & UniqueIdGen => ItemBroker => ProducerRegistry
+      - It loads saved states in the order of ColumnStore => ItemBroker => ProducerRegistry
       - If the saved states are corrupted and somehow cannot be decoded,
         it defaults to appropriate preset values.
       - If a decoding attempt failed without any clue of "phase",
@@ -29,7 +29,6 @@ import Data.Pref as Pref exposing (Pref)
 import Data.Producer.Discord as Discord
 import Data.Producer.Slack as Slack
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
-import Data.UniqueIdGen as UniqueIdGen
 import Id
 import IndexedDb exposing (..)
 import Task exposing (Task)
@@ -135,8 +134,8 @@ update msg ({ env, pref, viewState } as m) =
             -- Drop event is somewhat flaky to be correctly tracked, so we always turn off swap mode at dragend
             ( { m | viewState = { viewState | columnSwapMaybe = Nothing } }, Cmd.none, saveColumnStore changeSet )
 
-        LoadColumnStore ( cs, idGen, initCmd ) ->
-            ( { m | columnStore = cs, idGen = idGen }
+        LoadColumnStore ( cs, initCmd ) ->
+            ( { m | columnStore = cs }
             , Cmd.batch [ IndexedDb.requestItemBroker, IndexedDb.requestPref, initCmd ]
             , saveColumnStore changeSet
             )

@@ -19,7 +19,6 @@ import Data.Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Pref as Pref exposing (Pref)
 import Data.ProducerRegistry as ProducerRegistry exposing (ProducerRegistry)
-import Data.UniqueIdGen as UniqueIdGen exposing (UniqueIdGen)
 import Id
 import Time exposing (Zone)
 import View.Atoms.Input.Select as Select
@@ -31,7 +30,6 @@ type alias Model =
     { columnStore : ColumnStore
     , itemBroker : Broker Item
     , producerRegistry : ProducerRegistry
-    , idGen : UniqueIdGen
     , pref : Pref
     , worque : Worque
     , navKey : Key
@@ -75,7 +73,6 @@ init env navKey =
             { columnStore = ColumnStore.init env.posix
             , itemBroker = ItemBroker.init
             , producerRegistry = ProducerRegistry.init
-            , idGen = UniqueIdGen.init
             , pref = Pref.init env.clientWidth
             , worque = Worque.init
             , navKey = navKey
