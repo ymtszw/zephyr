@@ -67,14 +67,14 @@ render m =
             in
             { onColumnDragHover = onColumnDragHover
             , onColumnDragEnd = onColumnDragEnd
-            , onColumnBorderFlashEnd = \cId -> ColumnCtrl cId Column.Calm
+            , onColumnBorderFlashEnd = \cId -> ColumnCtrl (ColumnStore.ById cId Column.Calm)
             , columnItemsScrollAttrs =
                 \c ->
-                    Scroll.scrollAttrs (ColumnCtrl c.id << Column.ScrollMsg) c.items
+                    Scroll.scrollAttrs (ColumnCtrl << ColumnStore.ById c.id << Column.ScrollMsg) c.items
             , sidebarEffects =
                 { onConfigToggleClick = ToggleConfig
-                , onAddColumnClick = AddEmptyColumn
-                , onColumnButtonClickByIndex = RevealColumn
+                , onAddColumnClick = ColumnCtrl (ColumnStore.AddEmpty m.env.clientHeight)
+                , onColumnButtonClickByIndex = ColumnCtrl << ColumnStore.Reveal
                 }
             , modelessEffects =
                 { onCloseButtonClick = ModelessRemove
@@ -145,32 +145,32 @@ render m =
                 { header =
                     View.Organisms.Column.Header.render
                         { onColumnDragStart = \pinned index_ id -> DragStart { id = id, index = index_, pinned = pinned }
-                        , onHeaderClickWhenScrolled = \cId -> ColumnCtrl cId (Column.ScrollMsg Scroll.BackToTop)
-                        , onPinButtonClick = \cId pinned -> ColumnCtrl cId (Column.Pin pinned)
-                        , onConfigToggleButtonClick = \cId open -> ColumnCtrl cId (Column.ToggleConfig open)
-                        , onDismissButtonClick = DismissColumn
+                        , onHeaderClickWhenScrolled = \cId -> ColumnCtrl (ColumnStore.ById cId (Column.ScrollMsg Scroll.BackToTop))
+                        , onPinButtonClick = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.Pin
+                        , onConfigToggleButtonClick = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.ToggleConfig
+                        , onDismissButtonClick = ColumnCtrl << ColumnStore.Dismiss
                         }
                 , config =
                     \index c ->
                         View.Organisms.Column.Config.render
-                            { onCloseButtonClick = \cId -> ColumnCtrl cId (Column.ToggleConfig False)
-                            , onColumnDeleteButtonClick = DelColumn
+                            { onCloseButtonClick = \cId -> ColumnCtrl (ColumnStore.ById cId (Column.ToggleConfig False))
+                            , onColumnDeleteButtonClick = ColumnCtrl << ColumnStore.Delete
                             , onSourceSelect =
                                 \cId source ->
                                     -- TODO Use brandnew & precise source update Msg
                                     -- Currently it is not working properly!!
                                     -- case source of
                                     --     Source.DiscordSource opts ->
-                                    --         ColumnCtrl cId (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfDiscordChannel opts.id })
+                                    --         ColumnCtrl (ColumnStore.ById cId) (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfDiscordChannel opts.id })
                                     --
                                     --     Source.SlackSource opts ->
-                                    --         ColumnCtrl cId (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfSlackConversation opts.id })
+                                    --         ColumnCtrl (ColumnStore.ById cId) (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfSlackConversation opts.id })
                                     NoOp
                             , selectMsgTagger = SelectCtrl
                             , onRemoveSourceButtonClick =
                                 \cId atomIndex ->
                                     -- TODO Use brandnew & precise source update Msg
-                                    -- ColumnCtrl cId (Column.DelFilterAtom { filterIndex = 0, atomIndex = atomIndex })
+                                    -- ColumnCtrl (ColumnStore.ById cId) (Column.DelFilterAtom { filterIndex = 0, atomIndex = atomIndex })
                                     NoOp
                             }
                             { selectState = m.viewState.selectState
@@ -180,15 +180,15 @@ render m =
                 , newMessageEditor =
                     \c ->
                         View.Organisms.Column.NewMessageEditor.render
-                            { onEditorSelect = \cId -> ColumnCtrl cId << Column.SelectEditor
+                            { onEditorSelect = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.SelectEditor
                             , selectMsgTagger = SelectCtrl
-                            , onTextInput = \cId -> ColumnCtrl cId << Column.EditorInput
-                            , onInteracted = \cId -> ColumnCtrl cId << Column.EditorInteracted
-                            , onResetButtonClick = \cId -> ColumnCtrl cId Column.EditorReset
-                            , onDiscardFileButtonClick = \cId -> ColumnCtrl cId Column.EditorFileDiscard
-                            , onRequestFileAreaClick = \cId -> ColumnCtrl cId (Column.EditorFileRequest [ "*/*" ])
-                            , onFileDrop = \cId -> ColumnCtrl cId << Column.EditorFileSelected
-                            , onSubmit = \cId -> ColumnCtrl cId Column.EditorSubmit
+                            , onTextInput = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.EditorInput
+                            , onInteracted = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.EditorInteracted
+                            , onResetButtonClick = \cId -> ColumnCtrl (ColumnStore.ById cId Column.EditorReset)
+                            , onDiscardFileButtonClick = \cId -> ColumnCtrl (ColumnStore.ById cId Column.EditorFileDiscard)
+                            , onRequestFileAreaClick = \cId -> ColumnCtrl (ColumnStore.ById cId (Column.EditorFileRequest [ "*/*" ]))
+                            , onFileDrop = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.EditorFileSelected
+                            , onSubmit = \cId -> ColumnCtrl (ColumnStore.ById cId Column.EditorSubmit)
                             }
                             { selectState = m.viewState.selectState, column = c }
                 , items =
@@ -198,8 +198,8 @@ render m =
                                 Scroll.toList c.items
                         in
                         View.Organisms.Column.Items.render
-                            { onLoadMoreClick = ColumnCtrl c.id (Column.ScrollMsg Scroll.LoadMore)
-                            , onItemSourceButtonClick = \cId index -> ModelessTouch (Modeless.RawColumnItemId cId index)
+                            { onLoadMoreClick = ColumnCtrl (ColumnStore.ById c.id (Column.ScrollMsg Scroll.LoadMore))
+                            , onItemSourceButtonClick = \cId -> ModelessTouch << Modeless.RawColumnItemId cId
                             , onItemRefreshButtonClick = \cId index -> NoOp -- TODO
                             }
                             { timezone = m.viewState.timezone
@@ -569,8 +569,8 @@ renderConfigPref m =
     in
     View.Organisms.Config.Pref.render
         { onZephyrModeChange = PrefCtrl << Pref.ZephyrMode
-        , onShowColumnButtonClick = ShowColumn
-        , onDeleteColumnButtonClick = DelColumn
+        , onShowColumnButtonClick = \cId -> ColumnCtrl (ColumnStore.ById cId Column.Show)
+        , onDeleteColumnButtonClick = ColumnCtrl << ColumnStore.Delete
         }
         { zephyrMode = m.pref.zephyrMode
         , evictThreshold = m.pref.evictThreshold
@@ -601,7 +601,7 @@ renderConfigSlack m =
             , onRehydrateButtonClick = msgTagger << PSlack.IRehydrate
             , onConvoSelect = \teamId convoId -> msgTagger (PSlack.ISubscribe teamId convoId)
             , onForceFetchButtonClick = \_ _ -> NoOp -- TODO
-            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfSlackConversation
+            , onCreateColumnButtonClick = ColumnCtrl << ColumnStore.AddSimple m.env.clientHeight << Filter.OfSlackConversation
             , onUnsubscribeButtonClick = \teamId convoId -> msgTagger (PSlack.IUnsubscribe teamId convoId)
             , selectMsgTagger = SelectCtrl
             }
@@ -694,7 +694,7 @@ renderConfigDiscord m =
             , onRehydrateButtonClick = msgTagger PDiscord.Rehydrate
             , onChannelSelect = msgTagger << PDiscord.Subscribe
             , onForceFetchButtonClick = always NoOp -- TODO
-            , onCreateColumnButtonClick = AddSimpleColumn << Filter.OfDiscordChannel
+            , onCreateColumnButtonClick = ColumnCtrl << ColumnStore.AddSimple m.env.clientHeight << Filter.OfDiscordChannel
             , onUnsubscribeButtonClick = msgTagger << PDiscord.Unsubscribe
             , selectMsgTagger = SelectCtrl
             }
