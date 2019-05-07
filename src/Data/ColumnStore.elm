@@ -1,7 +1,7 @@
 module Data.ColumnStore exposing
     ( ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
     , map, mapForView, listShadow
-    , Msg(..), PostProcess, update, applyOrder, updateFAM
+    , Msg(..), PostProcess, update, updateFAM
     )
 
 {-| Order-aware Column storage.
@@ -19,7 +19,7 @@ This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
 @docs map, mapForView, listShadow
-@docs Msg, PostProcess, update, applyOrder, updateFAM
+@docs Msg, PostProcess, update, updateFAM
 
 -}
 
@@ -443,11 +443,6 @@ autoArrange limitMaybe dict order =
     order
         |> Array.foldl stableClassify ( Array.empty, Array.empty )
         |> concatClassified
-
-
-applyOrder : Array Column.Id -> ColumnStore -> ColumnStore
-applyOrder order cs =
-    { cs | order = order }
 
 
 updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )

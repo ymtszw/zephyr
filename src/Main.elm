@@ -105,11 +105,8 @@ update msg ({ env, pref, viewState } as m) =
         GetTimeZone ( _, zone ) ->
             pure { m | viewState = { viewState | timezone = zone } }
 
-        VisibilityChanged True ->
-            pure { m | viewState = { viewState | visible = True } }
-
-        VisibilityChanged False ->
-            pure { m | viewState = { viewState | columnSwapMaybe = Nothing, visible = False } }
+        VisibilityChanged visible ->
+            pure { m | viewState = { viewState | visible = visible } }
 
         LinkClicked (Browser.Internal url) ->
             noPersist ( m, Nav.pushUrl m.navKey (Url.toString url) )
