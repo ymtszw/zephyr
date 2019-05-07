@@ -16,6 +16,7 @@ release: clean before_build dist/zephyr.js
 clean:
 	rm -rf elm-stuff/
 	rm -rf dist/
+	rm -f tests/ElmjutsuDumMyM0DuL3.elm
 
 .PHONY: before_build
 before_build:
