@@ -13,7 +13,6 @@ import Data.Producer.Slack.Message as SlackMessage
 import Data.Producer.Slack.Message.AngleCmd as AngleCmd
 import Data.Producer.Slack.Team as SlackTeam
 import Data.Producer.Slack.User as SlackUser
-import Data.UniqueIdGen exposing (UniqueIdGen)
 import Expect exposing (Expectation)
 import Fuzz
 import Hex
@@ -40,7 +39,6 @@ suite =
         [ selectArraySuite
         , stringSuite
         , arraySuite
-        , uniqueIdSuite
         , textParserSuite
         , filterSuite
         , fetchStatusSuite
@@ -322,69 +320,6 @@ testFindIndex initial item expected =
             fromList initial
                 |> Array.findIndex ((==) item)
                 |> Expect.equal expected
-
-
-
--- Data.UniqueIdGen
-
-
-uniqueIdSuite : Test
-uniqueIdSuite =
-    describe "Data.UniqueIdGen"
-        [ describe "gen"
-            [ testGen [ ( ( "prefixA", 0 ), "not generated" ) ]
-            , testGen [ ( ( "prefixA", 1 ), "prefixA_0" ) ]
-            , testGen [ ( ( "prefixA", 11 ), "prefixA_10" ) ]
-            , testGen [ ( ( "prefixA", 101 ), "prefixA_100" ) ]
-            , testGen
-                [ ( ( "prefixA", 10 ), "prefixA_9" )
-                , ( ( "prefixB", 20 ), "prefixB_19" )
-                , ( ( "prefixC", 0 ), "not generated" )
-                ]
-            ]
-        ]
-
-
-testGen : List ( ( String, Int ), String ) -> Test
-testGen reqExpects =
-    let
-        ( requests, expects ) =
-            List.unzip reqExpects
-    in
-    test ("should works for requests: " ++ Debug.toString requests) <|
-        \_ ->
-            let
-                ( actuals, _ ) =
-                    genAll requests Data.UniqueIdGen.init
-            in
-            Expect.equalLists expects actuals
-
-
-genAll : List ( String, Int ) -> UniqueIdGen -> ( List String, UniqueIdGen )
-genAll requests generator =
-    let
-        folder ( prefix, howMany ) ( accGenerated, accGenerator ) =
-            let
-                ( generated, newGenerator ) =
-                    seqGen prefix howMany accGenerator
-            in
-            ( generated :: accGenerated, newGenerator )
-    in
-    List.foldr folder ( [], generator ) requests
-
-
-seqGen : String -> Int -> UniqueIdGen -> ( String, UniqueIdGen )
-seqGen prefix howMany generator =
-    seqGenImpl prefix howMany ( "not generated", generator )
-
-
-seqGenImpl : String -> Int -> ( String, UniqueIdGen ) -> ( String, UniqueIdGen )
-seqGenImpl prefix howMany ( lastResult, accGenerator ) =
-    if howMany <= 0 then
-        ( lastResult, accGenerator )
-
-    else
-        seqGenImpl prefix (howMany - 1) (Data.UniqueIdGen.gen prefix accGenerator)
 
 
 
