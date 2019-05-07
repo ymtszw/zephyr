@@ -439,7 +439,13 @@ visualMediaBlock visualMedia =
         dimensionAttrs dim =
             case dim of
                 Just d ->
-                    [ width d.width, height d.height ]
+                    if d.width > d.height then
+                        -- Landscape images; respecting aspect ratio, since `height: auto` is automatically assumed.
+                        [ width d.width ]
+
+                    else
+                        -- Portrait images; height is eventually contained to max-height
+                        [ width d.width, height d.height ]
 
                 Nothing ->
                     []
@@ -482,7 +488,7 @@ styles =
         [ ( "padding-top", px itemGroupPaddingY )
         , ( "padding-bottom", px itemGroupPaddingY )
         ]
-    , s (c itemGroupClass ++ ">*") [ ( "margin-left", "5px" ) ] -- Unusual margin pattern; not to be confused with spacingRow5
+    , s (c itemGroupClass ++ ">*") [ ( "margin-left", px spacingWithinItemGroup ) ] -- Unusual margin pattern; not to be confused with spacingRow5
     , s (descOf (hov (c itemBlockClass)) (c flexHoverMenuClass)) [ ( "display", "flex" ) ]
     , s (c flexHoverMenuClass)
         [ ( "display", "none" )
@@ -516,6 +522,11 @@ itemGroupContentsClass =
     "cigc"
 
 
+spacingWithinItemGroup : Int
+spacingWithinItemGroup =
+    5
+
+
 minGroupContentsHeight : Int
 minGroupContentsHeight =
     -- Equals to avatar size;
@@ -534,7 +545,8 @@ flexHoverMenuClass =
 
 maxMediaHeight : Int
 maxMediaHeight =
-    400
+    -- Maximum value of Slack's image thumbnail size (either width or height).
+    360
 
 
 thumbnailParentClass : String
