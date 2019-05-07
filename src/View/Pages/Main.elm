@@ -78,10 +78,10 @@ render m =
                 , onColumnButtonClickByIndex = ColumnCtrl << ColumnStore.Reveal
                 }
             , modelessEffects =
-                { onCloseButtonClick = ModelessRemove
-                , onAnywhereClick = ModelessTouch
-                , onDrag = ModelessMove
-                , onDragEnd = ModelessTouch
+                { onCloseButtonClick = ModelessCtrl << Modeless.Remove
+                , onAnywhereClick = ModelessCtrl << Modeless.Touch
+                , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
+                , onDragEnd = ModelessCtrl << Modeless.Touch
                 }
             }
 
@@ -200,7 +200,7 @@ render m =
                         in
                         View.Organisms.Column.Items.render
                             { onLoadMoreClick = ColumnCtrl (ColumnStore.ById c.id (Column.ScrollMsg Scroll.LoadMore))
-                            , onItemSourceButtonClick = \cId -> ModelessTouch << Modeless.RawColumnItemId cId
+                            , onItemSourceButtonClick = \cId -> ModelessCtrl << Modeless.Touch << Modeless.RawColumnItemId cId
                             , onItemRefreshButtonClick = \cId index -> NoOp -- TODO
                             }
                             { timezone = m.viewState.timezone

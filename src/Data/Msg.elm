@@ -31,6 +31,4 @@ type Msg
     | ProducerCtrl ProducerRegistry.Msg
     | PrefCtrl Pref.Msg
     | SelectCtrl (Select.Msg Msg)
-    | ModelessTouch Modeless.ModelessId
-    | ModelessMove Modeless.ModelessId Int Int
-    | ModelessRemove Modeless.ModelessId
+    | ModelessCtrl Modeless.Msg

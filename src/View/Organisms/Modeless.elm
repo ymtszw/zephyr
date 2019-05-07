@@ -1,5 +1,5 @@
 module View.Organisms.Modeless exposing
-    ( State, ModelessId(..), idStr, init, sub, touch, move, remove, map
+    ( State, ModelessId(..), Msg(..), idStr, init, sub, update, map
     , Effects, Props, ResolvedPayload(..), render, styles
     )
 
@@ -10,7 +10,7 @@ Also it can be repositioned by drag and drop.
 
 ModelessWindows are identified by unique String IDs.
 
-@docs State, ModelessId, idStr, init, sub, touch, move, remove, map
+@docs State, ModelessId, Msg, idStr, init, sub, update, map
 @docs Effects, Props, ResolvedPayload, render, styles
 
 -}
@@ -69,15 +69,15 @@ init =
     State []
 
 
-sub : (ModelessId -> Int -> Int -> msg) -> State -> Sub msg
-sub toMsg (State list) =
+sub : State -> Sub Msg
+sub (State list) =
     let
         dragged ( _, { prevDragCoord } ) =
             prevDragCoord /= Nothing
     in
     case List.Extra.find dragged list of
         Just ( id, _ ) ->
-            Browser.Events.onMouseMove (cursorCoordDecoder (toMsg id))
+            Browser.Events.onMouseMove (cursorCoordDecoder (Move id))
 
         Nothing ->
             Sub.none
@@ -86,6 +86,34 @@ sub toMsg (State list) =
 cursorCoordDecoder : (Int -> Int -> msg) -> Decoder msg
 cursorCoordDecoder toMsg =
     map2 toMsg (field "clientX" int) (field "clientY" int)
+
+
+type Msg
+    = Touch ModelessId
+    | Move ModelessId Int Int
+    | Remove ModelessId
+
+
+{-| Unlike usual "update" function, this update is un-effectful, i.e. pure.
+
+It is this way just in order to consolidate APIs into single endpoint.
+
+-}
+update : Msg -> State -> State
+update msg (State list) =
+    case msg of
+        Touch id ->
+            touch id (State list)
+
+        Move id x y ->
+            move ( id, x, y ) (State list)
+
+        Remove id ->
+            let
+                remover ( id_, _ ) =
+                    id_ /= id
+            in
+            State (List.filter remover list)
 
 
 touch : ModelessId -> State -> State
@@ -148,15 +176,6 @@ move ( id, newX, newY ) (State list) =
         Nothing ->
             -- Not found but dragged? Curious...
             State (( id, Translate 0 0 (Just ( newX, newY )) ) :: list)
-
-
-remove : ModelessId -> State -> State
-remove id (State list) =
-    let
-        remover ( id_, _ ) =
-            id_ /= id
-    in
-    State (List.filter remover list)
 
 
 map : (ModelessId -> ResolvedPayload) -> State -> Props

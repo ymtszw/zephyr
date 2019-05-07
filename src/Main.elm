@@ -178,14 +178,8 @@ update msg ({ env, pref, viewState } as m) =
             in
             noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
-        ModelessTouch mId ->
-            pure { m | viewState = { viewState | modeless = Modeless.touch mId viewState.modeless } }
-
-        ModelessMove mId x y ->
-            pure { m | viewState = { viewState | modeless = Modeless.move ( mId, x, y ) viewState.modeless } }
-
-        ModelessRemove mId ->
-            pure { m | viewState = { viewState | modeless = Modeless.remove mId viewState.modeless } }
+        ModelessCtrl mMsg ->
+            pure { m | viewState = { viewState | modeless = Modeless.update mMsg viewState.modeless } }
 
 
 pure : Model -> ( Model, Cmd Msg, ChangeSet )
@@ -407,7 +401,7 @@ sub m =
                         Browser.Events.Hidden ->
                             False
         , Select.sub SelectCtrl m.viewState.selectState
-        , Modeless.sub ModelessMove m.viewState.modeless
+        , Sub.map ModelessCtrl (Modeless.sub m.viewState.modeless)
         ]
 
 
