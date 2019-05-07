@@ -31,7 +31,6 @@ type Msg
     | ToggleConfig Bool
     | ColumnCtrl ColumnStore.Msg
     | ProducerCtrl ProducerRegistry.Msg
-    | DomOp (Result Browser.Dom.Error ())
     | PrefCtrl Pref.Msg
     | ModelessTouch Modeless.ModelessId
     | ModelessMove Modeless.ModelessId Int Int

@@ -168,12 +168,6 @@ update msg ({ env, pref, viewState } as m) =
         Tick posix ->
             onTick posix m
 
-        DomOp (Ok ()) ->
-            pure m
-
-        DomOp (Err _) ->
-            pure m
-
         PrefCtrl pMsg ->
             case Pref.update pMsg pref of
                 ( newPref, True ) ->
