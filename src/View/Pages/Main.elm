@@ -90,7 +90,7 @@ render m =
                 marshalVisibleColumn fam _ c =
                     let
                         ( sources, filters ) =
-                            marshalSourcesAndFilters fam (Column.getPendingFilters c)
+                            marshalSourcesAndFilters fam (Column.getFilters c)
 
                         dragStatus =
                             case m.columnStore.swapState of
