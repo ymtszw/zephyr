@@ -35,7 +35,7 @@ import Task exposing (Task)
 import Time exposing (Posix)
 import TimeZone
 import Url
-import View.Atoms.Input.Select
+import View.Atoms.Input.Select as Select
 import View.Organisms.Modeless as Modeless
 import View.Pages.Main
 import View.Stylesheet
@@ -89,6 +89,9 @@ getTimeZone =
 update : Msg -> Model -> ( Model, Cmd Msg, ChangeSet )
 update msg ({ env, pref, viewState } as m) =
     case msg of
+        NoOp ->
+            pure m
+
         Resize _ _ ->
             -- Not using onResize event values directly; they are basically innerWidth/Height which include scrollbars
             noPersist ( m, adjustMaxHeight )
@@ -113,13 +116,6 @@ update msg ({ env, pref, viewState } as m) =
 
         LinkClicked (Browser.External url) ->
             noPersist ( m, Nav.load url )
-
-        SelectCtrl sMsg ->
-            let
-                ( ss, cmd ) =
-                    View.Atoms.Input.Select.update SelectCtrl sMsg viewState.selectState
-            in
-            noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
 
         LoadColumnStore ( cs, initCmd ) ->
             ( { m | columnStore = cs }
@@ -159,14 +155,14 @@ update msg ({ env, pref, viewState } as m) =
         ToggleConfig opened ->
             pure { m | viewState = { viewState | configOpen = opened } }
 
+        Tick posix ->
+            onTick posix m
+
         ColumnCtrl csMsg ->
             applyColumnUpdate m <| ColumnStore.update (columnLimit m.pref) csMsg m.columnStore
 
         ProducerCtrl pctrl ->
             applyProducerYield m <| ProducerRegistry.update pctrl m.producerRegistry
-
-        Tick posix ->
-            onTick posix m
 
         PrefCtrl pMsg ->
             case Pref.update pMsg pref of
@@ -176,6 +172,13 @@ update msg ({ env, pref, viewState } as m) =
                 ( newPref, False ) ->
                     pure { m | pref = newPref }
 
+        SelectCtrl sMsg ->
+            let
+                ( ss, cmd ) =
+                    Select.update SelectCtrl sMsg viewState.selectState
+            in
+            noPersist ( { m | viewState = { viewState | selectState = ss } }, cmd )
+
         ModelessTouch mId ->
             pure { m | viewState = { viewState | modeless = Modeless.touch mId viewState.modeless } }
 
@@ -184,9 +187,6 @@ update msg ({ env, pref, viewState } as m) =
 
         ModelessRemove mId ->
             pure { m | viewState = { viewState | modeless = Modeless.remove mId viewState.modeless } }
-
-        NoOp ->
-            pure m
 
 
 pure : Model -> ( Model, Cmd Msg, ChangeSet )
@@ -407,7 +407,7 @@ sub m =
 
                         Browser.Events.Hidden ->
                             False
-        , View.Atoms.Input.Select.sub SelectCtrl m.viewState.selectState
+        , Select.sub SelectCtrl m.viewState.selectState
         , Modeless.sub ModelessMove m.viewState.modeless
         ]
 
