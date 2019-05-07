@@ -14,6 +14,7 @@ module Data.Producer.Slack.Message exposing
 
 import AssocList exposing (Dict)
 import Color exposing (Color)
+import ColorExtra
 import Data.Producer.Slack.Bot as Bot exposing (Bot)
 import Data.Producer.Slack.Convo as Convo exposing (Convo)
 import Data.Producer.Slack.Message.AngleCmd as AngleCmd
@@ -241,7 +242,7 @@ encodeAttachment : Attachment -> E.Value
 encodeAttachment a =
     E.object
         [ ( "pretext", E.maybe E.string a.pretext )
-        , ( "color", E.maybe Color.encode a.color )
+        , ( "color", E.maybe ColorExtra.encode a.color )
         , ( "author", E.maybe encodeAttachmentAuthor a.author )
         , ( "title", E.maybe encodeAttachmentTitle a.title )
         , ( "text", E.string a.text )
@@ -393,7 +394,7 @@ attachmentDecoder =
 colorDecoder : Decoder Color
 colorDecoder =
     D.oneOf
-        [ Color.decoder
+        [ ColorExtra.decoder
         , -- From Slack API
           D.do D.string <|
             \str ->

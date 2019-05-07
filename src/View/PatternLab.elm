@@ -3,7 +3,7 @@ module View.PatternLab exposing (main)
 import AssocList as Dict
 import Browser
 import Browser.Navigation exposing (Key)
-import Color
+import ColorExtra
 import Data.Column exposing (ColumnItem(..))
 import Data.ColumnEditor exposing (ColumnEditor(..), UserAction(..))
 import Data.Producer.Discord.Guild as DiscordGuild
@@ -3397,7 +3397,7 @@ columnItems =
             [ ItemForView.new "ci0" 0 (NamedEntity.new "Embed") (Plain "With embeds")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
-                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                        |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#335577")
                         |> EmbeddedMatter.pretext (Plain "Leading text")
                         |> EmbeddedMatter.author
                             (NamedEntity.new "With Avatar"
@@ -3420,7 +3420,7 @@ columnItems =
             , ItemForView.new "ci1" 1 (NamedEntity.new "Embed") (Plain "With markdowns")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
-                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
+                        |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#773355")
                         |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
                         |> EmbeddedMatter.title (Markdown "**Marked-up title**")
                         |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
@@ -3428,7 +3428,7 @@ columnItems =
             , ItemForView.new "ci2" 2 (NamedEntity.new "Embed") (Plain "With attachement")
                 |> ItemForView.embeddedMatters
                     [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
-                        |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                        |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#557733")
                         |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                         |> EmbeddedMatter.attachedFiles
                             [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
@@ -3437,8 +3437,8 @@ columnItems =
                     ]
             , ItemForView.new "ci3" 3 (NamedEntity.new "Embed") (Plain "Multiple embeds")
                 |> ItemForView.embeddedMatters
-                    [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
-                    , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
+                    [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
+                    , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                     ]
             ]
     }""" <|
@@ -3455,7 +3455,7 @@ columnItems =
                                 [ ItemForView.new "ci0" 0 (NamedEntity.new "Embed") (Plain "With embeds")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("This is body text. " ++ lorem))
-                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577")
+                                            |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#335577")
                                             |> EmbeddedMatter.pretext (Plain "Leading text")
                                             |> EmbeddedMatter.author
                                                 (NamedEntity.new "With Avatar"
@@ -3478,7 +3478,7 @@ columnItems =
                                 , ItemForView.new "ci1" 1 (NamedEntity.new "Embed") (Plain "With markdowns")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Markdown MarkdownBlocks.sampleSource)
-                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#773355")
+                                            |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#773355")
                                             |> EmbeddedMatter.author (NamedEntity.new "Without Avatar")
                                             |> EmbeddedMatter.title (Markdown "**Marked-up title**")
                                             |> EmbeddedMatter.origin (NamedEntity.new "Origin Service" |> NamedEntity.url "https://example.com/origin")
@@ -3486,7 +3486,7 @@ columnItems =
                                 , ItemForView.new "ci2" 2 (NamedEntity.new "Embed") (Plain "With attachement")
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
-                                            |> EmbeddedMatter.color (Color.fromHexUnsafe "#557733")
+                                            |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#557733")
                                             |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                                             |> EmbeddedMatter.attachedFiles
                                                 [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
@@ -3495,8 +3495,8 @@ columnItems =
                                         ]
                                 , ItemForView.new "ci3" 3 (NamedEntity.new "Embed") (Plain "Multiple embeds")
                                     |> ItemForView.embeddedMatters
-                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (Color.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
-                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (Color.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
+                                        [ EmbeddedMatter.new (Plain lorem) |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#335577") |> EmbeddedMatter.pretext (Plain "First")
+                                        , EmbeddedMatter.new (Plain iroha) |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#775533") |> EmbeddedMatter.pretext (Plain "Second")
                                         ]
                                 ]
                         }

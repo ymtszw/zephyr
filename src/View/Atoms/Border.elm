@@ -14,7 +14,7 @@ module View.Atoms.Border exposing
 
 -}
 
-import Color exposing (Color, cssRgba)
+import Color exposing (Color, toCssString)
 import Html exposing (Attribute)
 import Html.Attributes as Attributes
 import View.Atoms.Theme exposing (aubergineClass, aubergineTheme, oneDarkClass, oneDarkTheme)
@@ -103,7 +103,7 @@ gutter =
 
 color : Color -> Attribute msg
 color color_ =
-    Attributes.style "border-color" (cssRgba color_)
+    Attributes.style "border-color" (toCssString color_)
 
 
 colorBd : Attribute msg
@@ -128,8 +128,8 @@ colorNote =
 
 styles : List Style
 styles =
-    [ s (c oneDarkClass ++ " *") [ ( "border-color", cssRgba oneDarkTheme.bd ) ] -- oneDark default
-    , s (c aubergineClass ++ " *") [ ( "border-color", cssRgba aubergineTheme.bd ) ] -- aubergine default
+    [ s (c oneDarkClass ++ " *") [ ( "border-color", toCssString oneDarkTheme.bd ) ] -- oneDark default
+    , s (c aubergineClass ++ " *") [ ( "border-color", toCssString aubergineTheme.bd ) ] -- aubergine default
     , s (c solidClass) [ ( "border-style", "solid" ) ]
     , s (c dottedClass) [ ( "border-style", "dotted" ) ]
     , s (c dashedClass) [ ( "border-style", "dashed" ) ]
@@ -274,7 +274,7 @@ gutterClass =
 
 bdc : String -> String -> Color -> Style
 bdc themeClass modeClass color_ =
-    scoped (c themeClass) (c modeClass) [ ( "border-color", cssRgba color_ ) ]
+    scoped (c themeClass) (c modeClass) [ ( "border-color", toCssString color_ ) ]
 
 
 colorBdClass : String

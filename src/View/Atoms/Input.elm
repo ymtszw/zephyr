@@ -10,7 +10,8 @@ module View.Atoms.Input exposing
 
 -}
 
-import Color exposing (cssRgba, setAlpha)
+import Color exposing (toCssString)
+import ColorExtra exposing (setAlpha)
 import Html exposing (Attribute, Html, button, div)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
@@ -45,21 +46,21 @@ toggle userAttrs opts =
 styles : List Style
 styles =
     [ s "input[type=text]"
-        [ ( "color", cssRgba oneDarkTheme.text )
-        , ( "background-color", cssRgba oneDarkTheme.note )
+        [ ( "color", toCssString oneDarkTheme.text )
+        , ( "background-color", toCssString oneDarkTheme.note )
         ]
     , -- Partial support in Edge, no-support in IE
       s "input[type=text]::placeholder"
-        [ ( "color", cssRgba (setAlpha 0.4 oneDarkTheme.text) )
+        [ ( "color", toCssString (setAlpha 0.4 oneDarkTheme.text) )
         ]
     , scoped (c aubergineClass)
         "input[type=text]"
-        [ ( "color", cssRgba aubergineTheme.text )
-        , ( "background-color", cssRgba aubergineTheme.note )
+        [ ( "color", toCssString aubergineTheme.text )
+        , ( "background-color", toCssString aubergineTheme.note )
         ]
     , scoped (c aubergineClass)
         "input[type=text]::placeholder"
-        [ ( "color", cssRgba (setAlpha 0.4 aubergineTheme.text) )
+        [ ( "color", toCssString (setAlpha 0.4 aubergineTheme.text) )
         ]
     , s (c toggleClass)
         [ ( "width", px (toggleHeight * 2) )

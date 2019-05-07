@@ -12,7 +12,7 @@ Color of buttons are decided by upstream themes and `Background`/`Typography` AP
 
 -}
 
-import Color exposing (Color, cssRgba)
+import Color exposing (Color, toCssString)
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attributes
 import View.Atoms.Layout as Layout
@@ -62,7 +62,7 @@ oneDarkDefaultFaceStyle =
 
 defaultFaceStyle : String -> Color -> Style
 defaultFaceStyle themeClass defaultColor =
-    scoped (c themeClass) "button" [ ( "background-color", cssRgba defaultColor ) ]
+    scoped (c themeClass) "button" [ ( "background-color", toCssString defaultColor ) ]
 
 
 linkButtonStyles : List Style

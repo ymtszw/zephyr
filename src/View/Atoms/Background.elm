@@ -12,7 +12,7 @@ module View.Atoms.Background exposing
 
 -}
 
-import Color exposing (Color, cssRgba)
+import Color exposing (Color, toCssString)
 import Html exposing (Attribute)
 import Html.Attributes exposing (class)
 import View.Atoms.Theme exposing (..)
@@ -121,17 +121,17 @@ styles =
 
 oneDarkMainStyle : Style
 oneDarkMainStyle =
-    s (c oneDarkClass) [ ( "background-color", cssRgba oneDarkTheme.main ) ]
+    s (c oneDarkClass) [ ( "background-color", toCssString oneDarkTheme.main ) ]
 
 
 aubergineMainStyle : Style
 aubergineMainStyle =
-    s (c aubergineClass) [ ( "background-color", cssRgba aubergineTheme.main ) ]
+    s (c aubergineClass) [ ( "background-color", toCssString aubergineTheme.main ) ]
 
 
 bg : String -> String -> Color -> Style
 bg themeClass modeClass color =
-    scoped (c themeClass) (c modeClass) [ ( "background-color", cssRgba color ) ]
+    scoped (c themeClass) (c modeClass) [ ( "background-color", toCssString color ) ]
 
 
 colorBgClass : String
@@ -186,7 +186,7 @@ transparentClass =
 
 hovBg : String -> String -> Color -> Style
 hovBg themeClass modeClass color =
-    scoped (c themeClass) (hov (c modeClass)) [ ( "background-color", cssRgba color ) ]
+    scoped (c themeClass) (hov (c modeClass)) [ ( "background-color", toCssString color ) ]
 
 
 hovSubClass : String

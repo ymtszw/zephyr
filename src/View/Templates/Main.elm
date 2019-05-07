@@ -20,7 +20,7 @@ And finally, Contents record aggregates actual contents to be placed in the temp
 
 -}
 
-import Color exposing (cssRgba)
+import Color exposing (toCssString)
 import Data.Column as Column
 import Html exposing (Attribute, Html, div, span)
 import Html.Attributes exposing (class, id)
@@ -317,7 +317,7 @@ styles =
         ]
     , s (c grabbedClass)
         [ ( "transform", "scale(0.98)" )
-        , ( "box-shadow", "0px 0px 20px 10px " ++ cssRgba oneDarkTheme.prim )
+        , ( "box-shadow", "0px 0px 20px 10px " ++ toCssString oneDarkTheme.prim )
         ]
     , s (c droppableClass) [ ( "transform", "scale(0.98)" ) ]
     , s (c undroppableClass) [ ( "opacity", "0.2" ) ]

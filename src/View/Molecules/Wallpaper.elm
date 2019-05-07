@@ -1,6 +1,6 @@
 module View.Molecules.Wallpaper exposing (styles, zephyr)
 
-import Color exposing (cssRgba)
+import Color exposing (toCssString)
 import Html exposing (Html, div)
 import Html.Attributes exposing (class)
 import View.Atoms.Background as Background
@@ -35,7 +35,7 @@ styles =
         , ( "width", "100vw" )
         , ( "height", "100vh" )
         , ( "justify-content", "center" )
-        , ( "color", cssRgba oneDarkTheme.sub )
+        , ( "color", toCssString oneDarkTheme.sub )
         ]
     ]
 
