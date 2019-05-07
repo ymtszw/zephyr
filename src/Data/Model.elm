@@ -103,10 +103,4 @@ defaultViewState =
 
 addWelcomeColumn : Model -> Model
 addWelcomeColumn m =
-    let
-        ( welcomeColumn, finalGen ) =
-            m.idGen
-                |> UniqueIdGen.gen UniqueIdGen.columnPrefix
-                |> UniqueIdGen.andThen (\( cId, idGen ) -> Column.welcome m.env.clientHeight idGen (Id.from cId))
-    in
-    { m | columnStore = ColumnStore.add Nothing welcomeColumn m.columnStore, idGen = finalGen }
+    { m | columnStore = ColumnStore.addWelcome m.env.clientHeight m.columnStore }

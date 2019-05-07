@@ -50,33 +50,27 @@ loadMsg env value =
 
 stateDecoder : Env -> Decoder Msg
 stateDecoder env =
-    D.oneOf
-        [ D.do (D.field "id" D.string) <|
-            \id ->
-                if id == ColumnStore.storeId then
-                    D.map2
-                        (\( cs, idAndCmds ) idGen ->
-                            let
-                                initCmd =
-                                    Cmd.batch <| List.map (\( cId, cCmd ) -> Cmd.map (ColumnCtrl cId) cCmd) <| idAndCmds
-                            in
-                            LoadColumnStore ( cs, idGen, initCmd )
-                        )
-                        (ColumnStore.decoder { clientHeight = env.clientHeight, posix = env.posix })
-                        (D.field idGenStoreId UniqueIdGen.decoder)
+    D.do (D.field "id" D.string) <|
+        \id ->
+            if id == ColumnStore.storeId then
+                D.map2
+                    (\( cs, idAndCmds ) idGen ->
+                        LoadColumnStore ( cs, idGen, Cmd.map ColumnCtrl idAndCmds )
+                    )
+                    (ColumnStore.decoder { clientHeight = env.clientHeight, posix = env.posix })
+                    (D.field idGenStoreId UniqueIdGen.decoder)
 
-                else if id == ItemBroker.storeId then
-                    D.map LoadItemBroker ItemBroker.decoder
+            else if id == ItemBroker.storeId then
+                D.map LoadItemBroker ItemBroker.decoder
 
-                else if id == ProducerRegistry.storeId then
-                    D.map LoadProducerRegistry ProducerRegistry.decoder
+            else if id == ProducerRegistry.storeId then
+                D.map LoadProducerRegistry ProducerRegistry.decoder
 
-                else if id == Pref.storeId then
-                    D.map LoadPref (Pref.decoder env.clientWidth)
+            else if id == Pref.storeId then
+                D.map LoadPref (Pref.decoder env.clientWidth)
 
-                else
-                    D.fail ("Unknown state id: " ++ id)
-        ]
+            else
+                D.fail ("Unknown state id: " ++ id)
 
 
 requestItemBroker : Cmd msg

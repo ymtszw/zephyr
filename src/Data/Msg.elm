@@ -5,7 +5,7 @@ import Broker exposing (Broker)
 import Browser
 import Browser.Dom
 import Data.Column as Column
-import Data.ColumnStore exposing (ColumnStore)
+import Data.ColumnStore as ColumnStore exposing (ColumnStore)
 import Data.Filter as Filter
 import Data.Item exposing (Item)
 import Data.Pref as Pref exposing (Pref)
@@ -25,11 +25,6 @@ type Msg
     | VisibilityChanged Bool
     | LinkClicked Browser.UrlRequest
     | SelectCtrl (Select.Msg Msg)
-    | AddEmptyColumn
-    | AddSimpleColumn Filter.FilterAtom
-    | DelColumn Column.Id
-    | DismissColumn Int
-    | ShowColumn Column.Id
     | DragStart { index : Int, id : Column.Id, pinned : Bool }
     | DragEnter (Array Column.Id)
     | DragEnd
@@ -39,9 +34,8 @@ type Msg
     | LoadPref Pref
     | LoadErr D.Error
     | ToggleConfig Bool
-    | ColumnCtrl Column.Id Column.Msg
+    | ColumnCtrl ColumnStore.Msg
     | ProducerCtrl ProducerRegistry.Msg
-    | RevealColumn Int
     | DomOp (Result Browser.Dom.Error ())
     | PrefCtrl Pref.Msg
     | ModelessTouch Modeless.ModelessId
