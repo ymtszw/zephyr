@@ -257,7 +257,7 @@ reload discord =
             ( discord, { yield | cmd = identify token } )
 
         Revisit pov ->
-            ( discord, { yield | cmd = identify pov.token, updateFAM = calculateFAM pov.channels } )
+            ( discord, { yield | cmd = identify pov.token } )
 
         _ ->
             -- Other state; possibly newly introduced one? Do check its possibility of persistence
@@ -415,6 +415,7 @@ handleIdentify : Discord -> User -> ( Discord, Yield )
 handleIdentify discord user =
     case discord of
         TokenReady token ->
+            -- Successful register. Start initial hydration
             ( Identified (NewSession token user), { yield | cmd = hydrate token, persist = True } )
 
         Hydrated token pov ->
@@ -424,9 +425,10 @@ handleIdentify discord user =
             detectUserSwitch token pov user
 
         Revisit pov ->
-            -- Successful reload; FAM is already calculated on reload
-            -- Currntly we do not auto-Rehydrate on reload since Rehydrate is costly.
-            ( Hydrated pov.token { pov | user = user }, { yield | persist = True, work = Just Worque.DiscordFetch } )
+            -- Successful reload; start rehydrating since current POV may be stale.
+            ( Rehydrating pov.token { pov | user = user }
+            , { yield | cmd = hydrate pov.token, persist = True, work = Just Worque.DiscordFetch }
+            )
 
         Switching _ pov ->
             -- Retried Identify with previous token after error on Switching phase
