@@ -8,7 +8,7 @@ import Data.Column as Column
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConvoCache)
-import Data.Item
+import Data.Item as Item
 import Data.Model exposing (Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref
@@ -30,8 +30,10 @@ import Html exposing (Html)
 import Id
 import List.Extra
 import Scroll
+import SelectArray
 import TimeExtra exposing (ms)
 import Url
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
@@ -82,6 +84,11 @@ render m =
                 , onAnywhereClick = ModelessCtrl << Modeless.Touch
                 , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                 , onDragEnd = ModelessCtrl << Modeless.Touch
+                , mediaViewerEffects =
+                    \mId ->
+                        { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                        , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                        }
                 }
             }
 
@@ -129,6 +136,45 @@ render m =
                                 |> Maybe.andThen (\c -> Scroll.getAt itemIndex (Column.getItems c))
                                 |> Maybe.withDefault Column.itemNotFound
                                 |> Modeless.RawColumnItem mId
+
+                        Modeless.MediaViewerId payload ->
+                            let
+                                marshalPayload mediaArray =
+                                    { selectedMedia = SelectArray.selectAt payload.mediaIndex mediaArray
+                                    , mediaIndex = payload.mediaIndex
+                                    , nMedia = SelectArray.size mediaArray
+                                    , isShrunk = payload.isShrunk
+                                    }
+
+                                collectColumnItemMedia columnItem =
+                                    case columnItem of
+                                        Column.Product _ (Item.DiscordItem dMsg) ->
+                                            todo
+
+                                        Column.Product _ (Item.SlackItem sMsg) ->
+                                            todo
+
+                                        Column.SystemMessage { mediaMaybe } ->
+                                            let
+                                                marshalMedia media =
+                                                    case media of
+                                                        Column.Image url ->
+                                                            MediaViewer.Image (Url.toString url)
+
+                                                        Column.Video url ->
+                                                            MediaViewer.Video (Url.toString url)
+                                            in
+                                            Maybe.map (marshalMedia >> SelectArray.singleton) mediaMaybe
+
+                                        Column.LocalMessage _ ->
+                                            Nothing
+                            in
+                            Dict.get cId m.columnStore.dict
+                                |> Maybe.andThen (\c -> Scroll.getAt payload.itemIndex (Column.getItems c))
+                                |> Maybe.andThen collectColumnItemMedia
+                                |> Maybe.withDefault (SelectArray.singleton MediaViewer.NotFound)
+                                |> marshalPayload
+                                |> Modeless.MediaViewer mId
             in
             { configOpen = m.viewState.configOpen
             , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
@@ -313,10 +359,10 @@ marshalSourcesAndFilters fam filters =
 marshalColumnItem : Int -> Column.ColumnItem -> ItemForView
 marshalColumnItem scrollIndex item =
     case item of
-        Column.Product offset (Data.Item.DiscordItem message) ->
+        Column.Product offset (Item.DiscordItem message) ->
             marshalDiscordMessage (Broker.offsetToString offset) scrollIndex message
 
-        Column.Product offset (Data.Item.SlackItem message) ->
+        Column.Product offset (Item.SlackItem message) ->
             marshalSlackMessage (Broker.offsetToString offset) scrollIndex message
 
         Column.SystemMessage sm ->
@@ -427,13 +473,13 @@ marshalDiscordMessage id scrollIndex m =
                 |> EmbeddedMatter.attachedFiles attachedFiles
 
         marshalAttachment a =
-            if Data.Item.extIsImage a.filename then
+            if Item.extIsImage a.filename then
                 attachedImage (Url.toString a.proxyUrl)
                     |> attachedFileLink (Url.toString a.url)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
-            else if Data.Item.extIsVideo a.filename then
+            else if Item.extIsVideo a.filename then
                 attachedVideo (Url.toString a.proxyUrl)
                     |> attachedFileLink (Url.toString a.url)
                     |> attachedFileDescription a.filename
@@ -537,10 +583,10 @@ marshalSlackMessage id scrollIndex m =
                         Nothing ->
                             ctor (Url.toString f.url_)
             in
-            if Data.Item.mimeIsImage f.mimetype then
+            if Item.mimeIsImage f.mimetype then
                 attachedFileDescription f.name (base attachedImage)
 
-            else if Data.Item.mimeIsVideo f.mimetype then
+            else if Item.mimeIsVideo f.mimetype then
                 attachedFileDescription f.name (base attachedVideo)
 
             else if f.mode == SlackMessage.Snippet || f.mode == SlackMessage.Post then
