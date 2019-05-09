@@ -1,4 +1,4 @@
-module View.Molecules.MediaViewer exposing (Media(..), render, styles)
+module View.Molecules.MediaViewer exposing (Effects, Media(..), Props, render, styles)
 
 import Color exposing (toCssString)
 import ColorExtra
@@ -40,7 +40,7 @@ render eff props =
     div [ class mediaViewerClass, flexRow, flexCenter, flexBasisAuto, Background.colorBg ] <|
         case props.selectedMedia of
             Image src_ ->
-                [ img [ flexItem, flexBasisAuto, flexShrink, src src_ ] [ t "Loading..." ]
+                [ img [ flexItem, flexBasisAuto, flexShrink, src src_ ] []
                 , hoverMenu eff.onPagerClick props.hasMore src_
                 ]
 
@@ -104,9 +104,9 @@ hoverMenu onPagerClick hasMore src_ =
 styles : List Style
 styles =
     [ s (c mediaViewerClass)
-        [ -- Fit to containing block
-          ( "width", "100%" )
-        , ( "height", "100%" )
+        [ -- Default size; fixed by viewport-ratio
+          ( "width", "80vw" )
+        , ( "height", "80vh" )
         , ( "position", "relative" )
         ]
     , s (descOf (c mediaViewerClass) "img," ++ descOf (c mediaViewerClass) "video")
