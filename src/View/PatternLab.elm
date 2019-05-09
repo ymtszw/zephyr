@@ -18,6 +18,7 @@ import Json.Decode exposing (succeed)
 import List.Extra
 import Octicons
 import SelectArray
+import SelectList exposing (SelectList)
 import StringExtra
 import Task
 import TextParser
@@ -40,6 +41,7 @@ import View.Atoms.Typography exposing (..)
 import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.RawColumnItem as RawColumnItem
 import View.Molecules.Source exposing (Source(..))
@@ -95,6 +97,7 @@ type alias Model =
     , editorFile : Maybe ( File, String )
     , userActionOnEditor : UserAction
     , modeless : Modeless.State
+    , mediaList : SelectList MediaViewer.Media
     }
 
 
@@ -131,6 +134,7 @@ routes =
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
     , R "column" "Molecules" "Column" <| pLab [ column ]
     , R "rawColumnItem" "Molecules" "RawColumnItem" <| pLab [ rawColumnItem ]
+    , R "mediaViewer" "Molecules" "MediaViewer" <| \m -> pLab [ mediaViewer m ] m
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "modeless" "Organisms" "Modeless" <| \m -> pLab [ modeless m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
@@ -159,6 +163,13 @@ init () url key =
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
       , modeless = Modeless.update (Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 0)) Modeless.init
+      , mediaList =
+            SelectList.fromLists
+                [ MediaViewer.Image (Image.ph 500 500) ]
+                (MediaViewer.Image (Image.ph 300 800))
+                [ MediaViewer.Image (Image.ph 800 300)
+                , MediaViewer.Video "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                ]
       }
     , Cmd.none
     )
@@ -198,6 +209,7 @@ type Msg
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
     | ModelessCtrl Modeless.Msg
+    | MediaSelectBy Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -265,6 +277,9 @@ update msg m =
 
         ModelessCtrl mMsg ->
             ( { m | modeless = Modeless.update mMsg m.modeless }, Cmd.none )
+
+        MediaSelectBy step ->
+            ( { m | mediaList = SelectList.selectWhileLoopBy step m.mediaList }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2274,6 +2289,37 @@ rawColumnItem =
     LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }""" <|
             RawColumnItem.render <|
                 LocalMessage { id = "lm01", message = "Local Message (Personal Memo) " ++ lorem }
+        ]
+
+
+mediaViewer : Model -> Html Msg
+mediaViewer m =
+    section []
+        [ h1 [ xxProminent ] [ t "MediaViewer" ]
+        , withSource """div [ style "width" (px 500), style "height" (px 500) ]
+    [ MediaViewer.render { onPagerClick = MediaSelectBy }
+        { selectedMedia = SelectList.selected m.mediaList
+        , hasMore = SelectList.length m.mediaList > 1
+        }
+    ]""" <|
+            div [ style "width" (px 500), style "height" (px 500) ]
+                [ MediaViewer.render { onPagerClick = MediaSelectBy }
+                    { selectedMedia = SelectList.selected m.mediaList
+                    , hasMore = SelectList.length m.mediaList > 1
+                    }
+                ]
+        , withSource """div [ style "width" (px 1000), style "height" (px 600) ]
+    [ MediaViewer.render { onPagerClick = MediaSelectBy }
+        { selectedMedia = SelectList.selected m.mediaList
+        , hasMore = SelectList.length m.mediaList > 1
+        }
+    ]""" <|
+            div [ style "width" (px 1000), style "height" (px 600) ]
+                [ MediaViewer.render { onPagerClick = MediaSelectBy }
+                    { selectedMedia = SelectList.selected m.mediaList
+                    , hasMore = False
+                    }
+                ]
         ]
 
 
