@@ -2296,30 +2296,14 @@ mediaViewer : Model -> Html Msg
 mediaViewer m =
     section []
         [ h1 [ xxProminent ] [ t "MediaViewer" ]
-        , withSource """div [ style "width" (px 500), style "height" (px 500) ]
-    [ MediaViewer.render { onPagerClick = MediaSelectBy }
-        { selectedMedia = SelectList.selected m.mediaList
-        , hasMore = SelectList.length m.mediaList > 1
-        }
-    ]""" <|
-            div [ style "width" (px 500), style "height" (px 500) ]
-                [ MediaViewer.render { onPagerClick = MediaSelectBy }
-                    { selectedMedia = SelectList.selected m.mediaList
-                    , hasMore = SelectList.length m.mediaList > 1
-                    }
-                ]
-        , withSource """div [ style "width" (px 1000), style "height" (px 600) ]
-    [ MediaViewer.render { onPagerClick = MediaSelectBy }
-        { selectedMedia = SelectList.selected m.mediaList
-        , hasMore = SelectList.length m.mediaList > 1
-        }
-    ]""" <|
-            div [ style "width" (px 1000), style "height" (px 600) ]
-                [ MediaViewer.render { onPagerClick = MediaSelectBy }
-                    { selectedMedia = SelectList.selected m.mediaList
-                    , hasMore = False
-                    }
-                ]
+        , withSource """MediaViewer.render { onPagerClick = MediaSelectBy }
+    { selectedMedia = SelectList.selected m.mediaList
+    , hasMore = SelectList.length m.mediaList > 1
+    }""" <|
+            MediaViewer.render { onPagerClick = MediaSelectBy }
+                { selectedMedia = SelectList.selected m.mediaList
+                , hasMore = True
+                }
         ]
 
 
@@ -2406,12 +2390,15 @@ modeless m =
             [ t "Click me to show Modeless 0 (RawColumnItem)" ]
         , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
             [ t "Click me to show Modeless 1 (RawColumnItem)" ]
+        , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.MediaViewerId (Id.from "dummy") 1 2)) ]
+            [ t "Click me to show Modeless 2 (MediaViewer)" ]
         ]
     , Modeless.render
         { onCloseButtonClick = ModelessCtrl << Modeless.Remove
         , onAnywhereClick = ModelessCtrl << Modeless.Touch
         , onDrag = \\mId x y -> ModelessCtrl (Modeless.Move mId x y)
         , onDragEnd = ModelessCtrl << Modeless.Touch
+        , mediaViewerEffects = { onPagerClick = MediaSelectBy }
         }
         (Modeless.map dummyModelessResolver m.modeless)
     ]""" <|
@@ -2421,12 +2408,15 @@ modeless m =
                         [ t "Click me to show Modeless 0 (RawColumnItem)" ]
                     , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
                         [ t "Click me to show Modeless 1 (RawColumnItem)" ]
+                    , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.MediaViewerId (Id.from "dummy") 1 2)) ]
+                        [ t "Click me to show Modeless 2 (MediaViewer)" ]
                     ]
                 , Modeless.render
                     { onCloseButtonClick = ModelessCtrl << Modeless.Remove
                     , onAnywhereClick = ModelessCtrl << Modeless.Touch
                     , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                     , onDragEnd = ModelessCtrl << Modeless.Touch
+                    , mediaViewerEffects = { onPagerClick = MediaSelectBy }
                     }
                     (Modeless.map dummyModelessResolver m.modeless)
                 ]
@@ -2443,6 +2433,12 @@ dummyModelessResolver mId =
                     , message = Modeless.idStr mId ++ lorem ++ iroha
                     , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
                     }
+
+        Modeless.MediaViewerId _ _ _ ->
+            Modeless.MediaViewer mId <|
+                { selectedMedia = MediaViewer.Image (Image.ph 800 800)
+                , hasMore = False
+                }
 
 
 configPref : Model -> Html Msg
@@ -3572,6 +3568,7 @@ mainTemplate m =
                 , onAnywhereClick = ModelessCtrl << Modeless.Touch
                 , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                 , onDragEnd = ModelessCtrl << Modeless.Touch
+                , mediaViewerEffects = { onPagerClick = MediaSelectBy }
                 }
             , onColumnDragEnd = NoOp
             , onColumnDragHover = always NoOp
