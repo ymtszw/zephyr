@@ -97,7 +97,8 @@ type alias Model =
     , editorFile : Maybe ( File, String )
     , userActionOnEditor : UserAction
     , modeless : Modeless.State
-    , mediaList : SelectList MediaViewer.Media
+    , mediaArray : SelectArray.SelectArray MediaViewer.Media
+    , mediaIsShrunk : Bool
     }
 
 
@@ -163,13 +164,14 @@ init () url key =
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
       , modeless = Modeless.update (Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 0)) Modeless.init
-      , mediaList =
-            SelectList.fromLists
+      , mediaArray =
+            SelectArray.fromLists
                 [ MediaViewer.Image (Image.ph 500 500) ]
                 (MediaViewer.Image (Image.ph 300 800))
                 [ MediaViewer.Image (Image.ph 800 300)
                 , MediaViewer.Video "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                 ]
+      , mediaIsShrunk = False
       }
     , Cmd.none
     )
@@ -209,7 +211,8 @@ type Msg
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
     | ModelessCtrl Modeless.Msg
-    | MediaSelectBy Int
+    | MediaSelectAt Int
+    | MediaToggleSize Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -278,8 +281,11 @@ update msg m =
         ModelessCtrl mMsg ->
             ( { m | modeless = Modeless.update mMsg m.modeless }, Cmd.none )
 
-        MediaSelectBy step ->
-            ( { m | mediaList = SelectList.selectWhileLoopBy step m.mediaList }, Cmd.none )
+        MediaSelectAt index ->
+            ( { m | mediaArray = SelectArray.selectAt index m.mediaArray }, Cmd.none )
+
+        MediaToggleSize isShrunk ->
+            ( { m | mediaIsShrunk = isShrunk }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2296,13 +2302,23 @@ mediaViewer : Model -> Html Msg
 mediaViewer m =
     section []
         [ h1 [ xxProminent ] [ t "MediaViewer" ]
-        , withSource """MediaViewer.render { onPagerClick = MediaSelectBy }
-    { selectedMedia = SelectList.selected m.mediaList
-    , hasMore = SelectList.length m.mediaList > 1
+        , withSource """MediaViewer.render
+    { onPagerClick = MediaSelectAt
+    , onToggleSizeClick = MediaToggleSize
+    }
+    { selectedMedia = SelectArray.selected m.mediaArray
+    , mediaIndex = SelectArray.selectedIndex m.mediaArray
+    , nMedia = SelectArray.size m.mediaArray
+    , isShrunk = m.mediaIsShrunk
     }""" <|
-            MediaViewer.render { onPagerClick = MediaSelectBy }
-                { selectedMedia = SelectList.selected m.mediaList
-                , hasMore = True
+            MediaViewer.render
+                { onPagerClick = MediaSelectAt
+                , onToggleSizeClick = MediaToggleSize
+                }
+                { selectedMedia = SelectArray.selected m.mediaArray
+                , mediaIndex = SelectArray.selectedIndex m.mediaArray
+                , nMedia = SelectArray.size m.mediaArray
+                , isShrunk = m.mediaIsShrunk
                 }
         ]
 
@@ -2390,7 +2406,11 @@ modeless m =
             [ t "Click me to show Modeless 0 (RawColumnItem)" ]
         , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
             [ t "Click me to show Modeless 1 (RawColumnItem)" ]
-        , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.MediaViewerId (Id.from "dummy") 1 2)) ]
+        , let
+            freshMediaViewerId =
+                Modeless.MediaViewerId (Modeless.MediaViewrIdPayload (Id.from "dummy") 2 0 (SelectArray.size m.mediaArray) False)
+          in
+          button [ flexItem, padding10, onClick (ModelessCtrl (Modeless.Touch freshMediaViewerId)) ]
             [ t "Click me to show Modeless 2 (MediaViewer)" ]
         ]
     , Modeless.render
@@ -2398,9 +2418,13 @@ modeless m =
         , onAnywhereClick = ModelessCtrl << Modeless.Touch
         , onDrag = \\mId x y -> ModelessCtrl (Modeless.Move mId x y)
         , onDragEnd = ModelessCtrl << Modeless.Touch
-        , mediaViewerEffects = { onPagerClick = MediaSelectBy }
+        , mediaViewerEffects =
+            \\mId ->
+                { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                }
         }
-        (Modeless.map dummyModelessResolver m.modeless)
+        (Modeless.map (dummyModelessResolver m) m.modeless)
     ]""" <|
             div []
                 [ div [ flexColumn, spacingColumn10 ]
@@ -2408,7 +2432,11 @@ modeless m =
                         [ t "Click me to show Modeless 0 (RawColumnItem)" ]
                     , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
                         [ t "Click me to show Modeless 1 (RawColumnItem)" ]
-                    , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.MediaViewerId (Id.from "dummy") 1 2)) ]
+                    , let
+                        freshMediaViewerId =
+                            Modeless.MediaViewerId (Modeless.MediaViewrIdPayload (Id.from "dummy") 2 0 (SelectArray.size m.mediaArray) False)
+                      in
+                      button [ flexItem, padding10, onClick (ModelessCtrl (Modeless.Touch freshMediaViewerId)) ]
                         [ t "Click me to show Modeless 2 (MediaViewer)" ]
                     ]
                 , Modeless.render
@@ -2416,15 +2444,19 @@ modeless m =
                     , onAnywhereClick = ModelessCtrl << Modeless.Touch
                     , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                     , onDragEnd = ModelessCtrl << Modeless.Touch
-                    , mediaViewerEffects = { onPagerClick = MediaSelectBy }
+                    , mediaViewerEffects =
+                        \mId ->
+                            { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                            , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                            }
                     }
-                    (Modeless.map dummyModelessResolver m.modeless)
+                    (Modeless.map (dummyModelessResolver m) m.modeless)
                 ]
         ]
 
 
-dummyModelessResolver : Modeless.ModelessId -> Modeless.ResolvedPayload
-dummyModelessResolver mId =
+dummyModelessResolver : Model -> Modeless.ModelessId -> Modeless.ResolvedPayload
+dummyModelessResolver m mId =
     case mId of
         Modeless.RawColumnItemId _ _ ->
             Modeless.RawColumnItem mId <|
@@ -2434,10 +2466,13 @@ dummyModelessResolver mId =
                     , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
                     }
 
-        Modeless.MediaViewerId _ _ _ ->
+        Modeless.MediaViewerId payload ->
+            -- Not directly using mediaArray's current selected, rather resolve from payload.mediaIndex
             Modeless.MediaViewer mId <|
-                { selectedMedia = MediaViewer.Image (Image.ph 800 800)
-                , hasMore = False
+                { selectedMedia = SelectArray.selected (SelectArray.selectAt payload.mediaIndex m.mediaArray)
+                , mediaIndex = payload.mediaIndex
+                , nMedia = payload.nMedia
+                , isShrunk = payload.isShrunk
                 }
 
 
@@ -3568,7 +3603,11 @@ mainTemplate m =
                 , onAnywhereClick = ModelessCtrl << Modeless.Touch
                 , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                 , onDragEnd = ModelessCtrl << Modeless.Touch
-                , mediaViewerEffects = { onPagerClick = MediaSelectBy }
+                , mediaViewerEffects =
+                    \mId ->
+                        { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                        , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                        }
                 }
             , onColumnDragEnd = NoOp
             , onColumnDragHover = always NoOp
@@ -3579,7 +3618,7 @@ mainTemplate m =
         mainProps =
             { configOpen = m.toggle
             , visibleColumns = dummyColumns
-            , modeless = Modeless.map dummyModelessResolver m.modeless
+            , modeless = Modeless.map (dummyModelessResolver m) m.modeless
             }
 
         dummyColumns =
