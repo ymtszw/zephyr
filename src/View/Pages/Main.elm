@@ -140,7 +140,7 @@ render m =
                         Modeless.MediaViewerId payload ->
                             let
                                 marshalPayload mediaArray =
-                                    { selectedMedia = SelectArray.selectAt payload.mediaIndex mediaArray
+                                    { selectedMedia = SelectArray.selected (SelectArray.selectAt payload.mediaIndex mediaArray)
                                     , mediaIndex = payload.mediaIndex
                                     , nMedia = SelectArray.size mediaArray
                                     , isShrunk = payload.isShrunk
@@ -149,10 +149,10 @@ render m =
                                 collectColumnItemMedia columnItem =
                                     case columnItem of
                                         Column.Product _ (Item.DiscordItem dMsg) ->
-                                            todo
+                                            collectMediaInProduct (marshalDiscordMessage "" 0 dMsg)
 
                                         Column.Product _ (Item.SlackItem sMsg) ->
-                                            todo
+                                            collectMediaInProduct (marshalSlackMessage "" 0 sMsg)
 
                                         Column.SystemMessage { mediaMaybe } ->
                                             let
@@ -169,7 +169,7 @@ render m =
                                         Column.LocalMessage _ ->
                                             Nothing
                             in
-                            Dict.get cId m.columnStore.dict
+                            Dict.get payload.columnId m.columnStore.dict
                                 |> Maybe.andThen (\c -> Scroll.getAt payload.itemIndex (Column.getItems c))
                                 |> Maybe.andThen collectColumnItemMedia
                                 |> Maybe.withDefault (SelectArray.singleton MediaViewer.NotFound)
@@ -602,6 +602,33 @@ marshalSlackMessage id scrollIndex m =
         |> ItemForView.timestamp (SlackTs.toPosix (SlackMessage.getTs m))
         |> ItemForView.embeddedMatters (List.map marshalAttachment (SlackMessage.getAttachments m))
         |> ItemForView.attachedFiles (List.map marshalFile (SlackMessage.getFiles m))
+
+
+collectMediaInProduct : ItemForView -> Maybe (SelectArray.SelectArray MediaViewer.Media)
+collectMediaInProduct item =
+    -- Order matters!
+    -- * EmbeddedMatter comes first when rendering ItemForView
+    -- * Thumbnail comes first within an EmbeddedMatter
+    let
+        attachedVisualMedia =
+            List.filterMap (Maybe.map marshalVisualMedia) <|
+                List.concatMap (\e -> e.thumbnail :: List.map unwrapVisualMedia e.attachedFiles) item.embeddedMatters
+                    ++ List.map unwrapVisualMedia item.attachedFiles
+
+        marshalVisualMedia vm =
+            case vm of
+                Image { src } ->
+                    MediaViewer.Image src
+
+                Video { src } ->
+                    MediaViewer.Video src
+    in
+    case attachedVisualMedia of
+        [] ->
+            Nothing
+
+        m :: ms ->
+            Just (SelectArray.fromLists [] m ms)
 
 
 renderConfigPref : Model -> Html Msg

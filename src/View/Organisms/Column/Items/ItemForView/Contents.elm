@@ -1,13 +1,13 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
-    , imageMedia, videoMedia
+    , unwrapVisualMedia, imageMedia, videoMedia
     , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
-@docs imageMedia, videoMedia
+@docs unwrapVisualMedia, imageMedia, videoMedia
 @docs attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
 
 -}
@@ -31,6 +31,16 @@ type AttachedFile
         , description : String
         , preview : Maybe String -- If present, it is rendered in code block. Non-text previews are not supported
         }
+
+
+unwrapVisualMedia : AttachedFile -> Maybe VisualMedia
+unwrapVisualMedia af =
+    case af of
+        VisualFile visualMedia ->
+            Just visualMedia
+
+        OtherFile _ ->
+            Nothing
 
 
 type VisualMedia
