@@ -4,7 +4,8 @@ import Color exposing (toCssString)
 import ColorExtra
 import Html exposing (Html, button, div, img, video)
 import Html.Attributes exposing (class, controls, src, style)
-import Html.Events exposing (onClick)
+import Html.Events exposing (stopPropagationOn)
+import Json.Decode exposing (succeed)
 import Octicons
 import SelectList exposing (SelectList)
 import View.Atoms.Background as Background
@@ -19,12 +20,15 @@ import View.Style exposing (..)
 
 type alias Effects msg =
     { onPagerClick : Int -> msg
+    , onToggleSizeClick : Bool -> msg
     }
 
 
 type alias Props =
     { selectedMedia : Media
-    , hasMore : Bool
+    , nMedia : Int
+    , mediaIndex : Int
+    , isShrunk : Bool
     }
 
 
@@ -37,15 +41,27 @@ type Media
 
 render : Effects msg -> Props -> Html msg
 render eff props =
-    div [ class mediaViewerClass, flexRow, flexCenter, flexBasisAuto, Background.colorBg ] <|
+    div
+        [ class mediaViewerClass
+        , if props.isShrunk then
+            class shrunkClass
+
+          else
+            noAttr
+        , flexRow
+        , flexCenter
+        , flexBasisAuto
+        , Background.colorBg
+        ]
+    <|
         case props.selectedMedia of
             Image src_ ->
                 [ img [ flexItem, flexBasisAuto, flexShrink, src src_ ] []
-                , hoverMenu eff.onPagerClick props.hasMore src_
+                , hoverMenu eff props src_
                 ]
 
             Video src_ ->
-                [ hoverMenu eff.onPagerClick props.hasMore src_
+                [ hoverMenu eff props src_
                 , -- Video has clickable control, thus it must come ABOVE hoverMenu
                   video [ flexItem, flexBasisAuto, flexShrink, src src_, controls True ]
                     [ t "Embedded video not supported. "
@@ -54,12 +70,12 @@ render eff props =
                 ]
 
 
-hoverMenu : (Int -> msg) -> Bool -> String -> Html msg
-hoverMenu onPagerClick hasMore src_ =
+hoverMenu : Effects msg -> Props -> String -> Html msg
+hoverMenu eff props src_ =
     div [ class hoverMenuClass, widthFill, flexColumn, flexBasisAuto ]
-        [ if hasMore then
+        [ if props.nMedia > 1 then
             let
-                pagerClickArea step pagerIcon =
+                pagerClickArea indexTo pagerIcon =
                     div
                         [ class pagerClickAreaClass
                         , flexGrow
@@ -67,16 +83,30 @@ hoverMenu onPagerClick hasMore src_ =
                         , flexCenter
                         , Image.hovText
                         , Cursor.pointer
-                        , onClick (onPagerClick step)
+                        , stopPropagationOn "click" (succeed ( eff.onPagerClick indexTo, True ))
                         ]
                         [ pagerIcon ]
+
+                prevIndex =
+                    if props.mediaIndex > 0 then
+                        props.mediaIndex - 1
+
+                    else
+                        props.nMedia - 1
+
+                nextIndex =
+                    if props.mediaIndex + 1 < props.nMedia then
+                        props.mediaIndex + 1
+
+                    else
+                        0
             in
             div [ flexRow, flexGrow ]
-                [ pagerClickArea -1 <|
+                [ pagerClickArea prevIndex <|
                     div [ class pagerIconClass ]
                         [ Image.octicon { size = xProminentSize, shape = Octicons.chevronLeft } ]
                 , div [ flexGrow ] [] -- Shim
-                , pagerClickArea 1 <|
+                , pagerClickArea nextIndex <|
                     div [ class pagerIconClass, pushRight ]
                         [ Image.octicon { size = xProminentSize, shape = Octicons.chevronRight } ]
                 ]
@@ -84,8 +114,25 @@ hoverMenu onPagerClick hasMore src_ =
           else
             none
         , div [ class paletteClass, flexRow, widthFill ]
-            [ div [ pushRight, padding10 ]
-                [ ntLink []
+            [ div [ pushRight, flexRow, spacingRow10, padding10 ]
+                [ button
+                    [ padding5
+                    , Border.round5
+                    , Background.colorSub
+                    , Image.hovText
+                    , stopPropagationOn "click" (succeed ( eff.onToggleSizeClick (not props.isShrunk), True ))
+                    ]
+                    [ Image.octicon
+                        { size = prominentSize
+                        , shape =
+                            if props.isShrunk then
+                                Octicons.screenFull
+
+                            else
+                                Octicons.screenNormal
+                        }
+                    ]
+                , ntLink [ flexItem ]
                     { url = src_
                     , children =
                         [ div [ padding5, Border.round5, Background.colorSub, Image.hovText ]
@@ -109,6 +156,10 @@ styles =
         , ( "height", "80vh" )
         , ( "position", "relative" )
         ]
+    , s (c shrunkClass)
+        [ ( "width", "30vw" )
+        , ( "height", "30vh" )
+        ]
     , s (descOf (c mediaViewerClass) "img," ++ descOf (c mediaViewerClass) "video")
         [ ( "max-width", "95%" )
         , ( "max-height", "95%" )
@@ -131,6 +182,11 @@ styles =
 mediaViewerClass : String
 mediaViewerClass =
     "mv"
+
+
+shrunkClass : String
+shrunkClass =
+    "mvs"
 
 
 hoverMenuClass : String
