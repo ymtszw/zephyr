@@ -3,7 +3,7 @@ module View.Molecules.MediaViewer exposing (Effects, Media(..), Props, render, s
 import Color exposing (toCssString)
 import ColorExtra
 import Html exposing (Html, button, div, img, span, video)
-import Html.Attributes exposing (class, controls, src, style)
+import Html.Attributes exposing (class, controls, src)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode exposing (succeed)
 import Octicons
