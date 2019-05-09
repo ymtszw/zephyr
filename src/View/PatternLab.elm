@@ -2306,6 +2306,24 @@ mediaViewer m =
     { onPagerClick = MediaSelectAt
     , onToggleSizeClick = MediaToggleSize
     }
+    { selectedMedia = MediaViewer.NotFound
+    , mediaIndex = 0
+    , nMedia = 0
+    , isShrunk = False
+    }""" <|
+            MediaViewer.render
+                { onPagerClick = MediaSelectAt
+                , onToggleSizeClick = MediaToggleSize
+                }
+                { selectedMedia = MediaViewer.NotFound
+                , mediaIndex = 0
+                , nMedia = 0
+                , isShrunk = False
+                }
+        , withSource """MediaViewer.render
+    { onPagerClick = MediaSelectAt
+    , onToggleSizeClick = MediaToggleSize
+    }
     { selectedMedia = SelectArray.selected m.mediaArray
     , mediaIndex = SelectArray.selectedIndex m.mediaArray
     , nMedia = SelectArray.size m.mediaArray

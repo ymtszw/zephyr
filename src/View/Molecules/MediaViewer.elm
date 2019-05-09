@@ -2,7 +2,7 @@ module View.Molecules.MediaViewer exposing (Effects, Media(..), Props, render, s
 
 import Color exposing (toCssString)
 import ColorExtra
-import Html exposing (Html, button, div, img, video)
+import Html exposing (Html, button, div, img, span, video)
 import Html.Attributes exposing (class, controls, src, style)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode exposing (succeed)
@@ -37,13 +37,14 @@ type alias Props =
 type Media
     = Image String
     | Video String
+    | NotFound
 
 
 render : Effects msg -> Props -> Html msg
 render eff props =
     div
         [ class mediaViewerClass
-        , if props.isShrunk then
+        , if props.isShrunk || props.selectedMedia == NotFound then
             class shrunkClass
 
           else
@@ -66,6 +67,13 @@ render eff props =
                   video [ flexItem, flexBasisAuto, flexShrink, src src_, controls True ]
                     [ t "Embedded video not supported. "
                     , ntLink [] { url = src_, children = [ t "[Source]" ] }
+                    ]
+                ]
+
+            NotFound ->
+                [ div [ widthFill, flexColumn, flexCenter, flexBasisAuto ]
+                    [ Image.octicon { size = xxxProminentSize, shape = Octicons.alert }
+                    , span [ xxProminent, colorNote ] [ t "Media Not Found" ]
                     ]
                 ]
 
