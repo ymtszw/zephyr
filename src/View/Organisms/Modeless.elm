@@ -33,6 +33,7 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (nowrap)
 import View.Atoms.Theme exposing (oneDark)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.RawColumnItem as RawColumnItem
 import View.Style exposing (..)
 
@@ -48,6 +49,7 @@ type State
 
 type ModelessId
     = RawColumnItemId Column.Id Int
+    | MediaViewerId Column.Id Int Int
 
 
 idStr : ModelessId -> String
@@ -55,6 +57,9 @@ idStr mId =
     case mId of
         RawColumnItemId columnId itemIndex ->
             "rawColumnItem_" ++ Id.to columnId ++ "_" ++ String.fromInt itemIndex
+
+        MediaViewerId columnId itemIndex mediaIndex ->
+            "mediaViewer_" ++ Id.to columnId ++ "_" ++ String.fromInt itemIndex ++ "_" ++ String.fromInt mediaIndex
 
 
 type alias Translate =
@@ -143,7 +148,11 @@ consDedup a list =
         dedup ( id, _ ) =
             case id of
                 RawColumnItemId columnId itemIndex ->
-                    ( Id.to columnId, itemIndex )
+                    ( "RawColumnItemId", Id.to columnId, itemIndex )
+
+                MediaViewerId columnId itemIndex _ ->
+                    -- Ignore mediaIndex, only show one MediaViewer per column item
+                    ( "MediaViewerId", Id.to columnId, itemIndex )
     in
     List.Extra.uniqueBy dedup (a :: list)
 
@@ -192,6 +201,7 @@ type alias Effects msg =
     , onAnywhereClick : ModelessId -> msg
     , onDrag : ModelessId -> Int -> Int -> msg
     , onDragEnd : ModelessId -> msg
+    , mediaViewerEffects : MediaViewer.Effects msg
     }
 
 
@@ -203,6 +213,7 @@ type alias Props =
 
 type ResolvedPayload
     = RawColumnItem ModelessId ColumnItem
+    | MediaViewer ModelessId MediaViewer.Props
 
 
 render : Effects msg -> Props -> Html msg
@@ -212,6 +223,9 @@ render eff props =
             case resolved of
                 RawColumnItem id columnItem ->
                     withHeader index trans id "Source of Column Item" (RawColumnItem.render columnItem)
+
+                MediaViewer id mProps ->
+                    withHeader index trans id "Media Viewer" (MediaViewer.render eff.mediaViewerEffects mProps)
 
         withHeader index trans id title content =
             let
