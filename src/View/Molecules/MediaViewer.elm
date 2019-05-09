@@ -7,7 +7,6 @@ import Html.Attributes exposing (class, controls, src, style)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode exposing (succeed)
 import Octicons
-import SelectList exposing (SelectList)
 import View.Atoms.Background as Background
 import View.Atoms.Border as Border
 import View.Atoms.Cursor as Cursor

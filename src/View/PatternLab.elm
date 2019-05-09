@@ -18,7 +18,6 @@ import Json.Decode exposing (succeed)
 import List.Extra
 import Octicons
 import SelectArray
-import SelectList exposing (SelectList)
 import StringExtra
 import Task
 import TextParser
