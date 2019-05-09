@@ -31,6 +31,7 @@ type alias Effects msg =
     { onLoadMoreClick : msg
     , onItemSourceButtonClick : Column.Id -> Int -> msg
     , onItemRefreshButtonClick : Column.Id -> Int -> msg
+    , onItemMediaClick : Column.Id -> Int -> Int -> msg
     }
 
 
@@ -194,12 +195,24 @@ itemBlockKey eff props item =
             , bottomRight = Nothing
             , content =
                 let
+                    mediaIndex0 =
+                        0
+
+                    onMediaClick =
+                        eff.onItemMediaClick props.columnId item.scrollIndex
+
+                    ( embeddedMatterBlocks, mediaIndex1 ) =
+                        List.foldr (embeddedMatterBlockAndPretext onMediaClick) ( [], mediaIndex0 ) item.embeddedMatters
+
+                    ( attachedFileBlocks, _ ) =
+                        List.foldr (attachedFileBlock onMediaClick) ( [], mediaIndex1 ) item.attachedFiles
+
                     children =
                         textBlocks item.body
-                            ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
+                            ++ embeddedMatterBlocks
                             ++ List.map ktBlock item.kts
                             -- TODO reactions
-                            ++ List.map attachedFileBlock item.attachedFiles
+                            ++ attachedFileBlocks
                 in
                 div
                     [ flexColumn
@@ -267,8 +280,8 @@ markdownBlocks raw =
         MarkdownBlocks.render TextParser.defaultOptions raw
 
 
-embeddedMatterBlockAndPretext : EmbeddedMatter -> List (Html msg)
-embeddedMatterBlockAndPretext matter =
+embeddedMatterBlockAndPretext : (Int -> msg) -> EmbeddedMatter -> ( List (Html msg), Int ) -> ( List (Html msg), Int )
+embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
     let
         wrapInLink urlMaybe children =
             case urlMaybe of
@@ -281,17 +294,21 @@ embeddedMatterBlockAndPretext matter =
         gutterColor =
             Maybe.withDefault Color.gray matter.color
 
-        textContentsAndThumbnailBlock =
+        ( textContentsAndThumbnailBlock, mediaIndexAfterThumb ) =
             case matter.thumbnail of
                 Just visualMedia ->
-                    [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
-                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
-                        , visualMediaBlock visualMedia
-                        ]
-                    ]
+                    ( [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
+                            [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
+                            , visualMediaBlock (onMediaClick mediaIndex) visualMedia
+                            ]
+                      ]
+                    , mediaIndex + 1
+                    )
 
                 Nothing ->
-                    authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
+                    ( authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
+                    , mediaIndex
+                    )
 
         authorBlock =
             case matter.author of
@@ -379,26 +396,29 @@ embeddedMatterBlockAndPretext matter =
                 Nothing ->
                     []
 
+        ( attachedFileBlocks, mediaIndexAfterAttachedFiles ) =
+            List.foldr (attachedFileBlock onMediaClick) ( [], mediaIndexAfterThumb ) matter.attachedFiles
+
         gutteredBlock =
             div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
                 textContentsAndThumbnailBlock
-                    ++ List.map attachedFileBlock matter.attachedFiles
+                    ++ attachedFileBlocks
                     ++ permalink
                     ++ originBlock
     in
     case matter.pretext of
         Just text ->
-            textBlocks text ++ [ gutteredBlock ]
+            ( textBlocks text ++ [ gutteredBlock ] ++ accBlocks, mediaIndexAfterAttachedFiles )
 
         Nothing ->
-            [ gutteredBlock ]
+            ( gutteredBlock :: accBlocks, mediaIndexAfterAttachedFiles )
 
 
-attachedFileBlock : AttachedFile -> Html msg
-attachedFileBlock attachedFile =
+attachedFileBlock : (Int -> msg) -> AttachedFile -> ( List (Html msg), Int ) -> ( List (Html msg), Int )
+attachedFileBlock onMediaClick attachedFile ( accBlocks, mediaIndex ) =
     case attachedFile of
         VisualFile visualMedia ->
-            visualMediaBlock visualMedia
+            ( visualMediaBlock (onMediaClick mediaIndex) visualMedia :: accBlocks, mediaIndex + 1 )
 
         OtherFile record ->
             let
@@ -421,20 +441,23 @@ attachedFileBlock attachedFile =
                             DownloadUrl url ->
                                 linkImpl [ download "" ] "Download original file " Octicons.cloudDownload url
                         ]
+
+                linkAndPreviewBlock =
+                    case record.preview of
+                        Just raw ->
+                            div [ flexColumn, Border.round5, Border.w1, Border.solid ]
+                                [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
+                                , pre [ minuscule, flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
+                                ]
+
+                        Nothing ->
+                            div [ Border.round5, Border.w1, Border.solid, Background.colorSub ] [ fileLink ]
             in
-            case record.preview of
-                Just raw ->
-                    div [ flexColumn, Border.round5, Border.w1, Border.solid ]
-                        [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
-                        , pre [ minuscule, flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
-                        ]
-
-                Nothing ->
-                    div [ Border.round5, Border.w1, Border.solid, Background.colorSub ] [ fileLink ]
+            ( linkAndPreviewBlock :: accBlocks, mediaIndex )
 
 
-visualMediaBlock : VisualMedia -> Html msg
-visualMediaBlock visualMedia =
+visualMediaBlock : msg -> VisualMedia -> Html msg
+visualMediaBlock onMediaClick visualMedia =
     let
         dimensionAttrs dim =
             case dim of
@@ -452,15 +475,19 @@ visualMediaBlock visualMedia =
     in
     case visualMedia of
         Image record ->
-            ntLink
-                [ flexItem
-                , flexBasisAuto
-                , alignStart
-                , padding2
-                ]
-                { url = record.link
-                , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
-                }
+            img
+                ([ src record.src
+                 , alt record.description
+                 , flexItem
+                 , flexBasisAuto
+                 , alignStart
+                 , padding2
+                 , Cursor.pointer
+                 , onClick onMediaClick
+                 ]
+                    ++ dimensionAttrs record.dimension
+                )
+                []
 
         Video record ->
             video

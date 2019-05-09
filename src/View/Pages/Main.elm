@@ -248,6 +248,12 @@ render m =
                             { onLoadMoreClick = ColumnCtrl (ColumnStore.ById c.id (Column.ScrollMsg Scroll.LoadMore))
                             , onItemSourceButtonClick = \cId -> ModelessCtrl << Modeless.Touch << Modeless.RawColumnItemId cId
                             , onItemRefreshButtonClick = \cId index -> NoOp -- TODO
+                            , onItemMediaClick =
+                                \cId itemIndex mediaIndex ->
+                                    ModelessCtrl <|
+                                        Modeless.Touch <|
+                                            Modeless.MediaViewerId <|
+                                                Modeless.MediaViewrIdPayload cId itemIndex mediaIndex False
                             }
                             { timezone = m.viewState.timezone
                             , columnId = c.id
@@ -447,15 +453,15 @@ marshalDiscordMessage id scrollIndex m =
                         |> apOrId (Url.toString >> NamedEntity.url) eAuthor.url
                         |> apOrId (marshalIcon >> NamedEntity.avatar) eAuthor.proxyIconUrl
 
-                marshalEmbedImage linkMaybe eImage =
-                    imageMedia (Url.toString eImage.url)
-                        (Url.toString (Maybe.withDefault eImage.url linkMaybe))
+                marshalEmbedImage eImage =
+                    imageMedia (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
+                        (Url.toString eImage.url)
                         "Embedded image"
                         (Maybe.map2 dimension eImage.width eImage.height)
 
                 attachedFiles =
                     List.filterMap identity
-                        [ Maybe.map (marshalEmbedImage Nothing >> VisualFile) e.image
+                        [ Maybe.map (marshalEmbedImage >> VisualFile) e.image
                         , Maybe.map
                             (\v ->
                                 attachedVideo (Url.toString v.url)
@@ -469,7 +475,7 @@ marshalDiscordMessage id scrollIndex m =
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
                 |> apOrId EmbeddedMatter.color e.color
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
-                |> apOrId (marshalEmbedImage e.url >> EmbeddedMatter.thumbnail) e.thumbnail
+                |> apOrId (marshalEmbedImage >> EmbeddedMatter.thumbnail) e.thumbnail
                 |> EmbeddedMatter.attachedFiles attachedFiles
 
         marshalAttachment a =
@@ -559,17 +565,17 @@ marshalSlackMessage id scrollIndex m =
                         |> apOrId (Url.toString >> NamedEntity.url) aAuthor.link
                         |> apOrId (marshalIcon >> NamedEntity.avatar) aAuthor.icon
 
-                marshalImageUrl linkMaybe url =
-                    imageMedia (Url.toString url) (Url.toString (Maybe.withDefault url linkMaybe)) "Embedded image" Nothing
+                marshalImageUrl url =
+                    imageMedia (Url.toString url) (Url.toString url) "Embedded image" Nothing
             in
             EmbeddedMatter.new textOrFallback
                 |> apOrId EmbeddedMatter.color a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
-                |> apOrId (marshalImageUrl (Maybe.andThen .link a.title) >> EmbeddedMatter.thumbnail) a.thumbUrl
+                |> apOrId (marshalImageUrl >> EmbeddedMatter.thumbnail) a.thumbUrl
                 |> EmbeddedMatter.attachedFiles
-                    (List.filterMap identity [ Maybe.map (marshalImageUrl Nothing >> VisualFile) a.imageUrl ])
+                    (List.filterMap identity [ Maybe.map (marshalImageUrl >> VisualFile) a.imageUrl ])
 
         marshalFile f =
             let
@@ -617,8 +623,8 @@ collectMediaInProduct item =
 
         marshalVisualMedia vm =
             case vm of
-                Image { src } ->
-                    MediaViewer.Image src
+                Image { link } ->
+                    MediaViewer.Image link
 
                 Video { src } ->
                     MediaViewer.Video src

@@ -3253,18 +3253,21 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc, itemGroups = [], columnId = Id.from <| themeStr ++ "01", hasMore = False }""" <|
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc, itemGroups = [], columnId = Id.from <| themeStr ++ "01", hasMore = False }
                 , withSourceInColumn Nothing 500 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "02"
@@ -3289,6 +3292,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "02"
@@ -3313,6 +3317,7 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "03"
@@ -3382,6 +3387,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "03"
@@ -3422,6 +3428,7 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "04"
@@ -3452,6 +3459,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "04"
@@ -3482,6 +3490,7 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "05"
@@ -3540,6 +3549,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "05"
