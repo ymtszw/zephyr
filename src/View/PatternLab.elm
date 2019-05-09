@@ -2452,7 +2452,7 @@ modeless m =
                         [ t "Click me to show Modeless 1 (RawColumnItem)" ]
                     , let
                         freshMediaViewerId =
-                            Modeless.MediaViewerId (Modeless.MediaViewrIdPayload (Id.from "dummy") 2 0 (SelectArray.size m.mediaArray) False)
+                            Modeless.MediaViewerId (Modeless.MediaViewrIdPayload (Id.from "dummy") 2 0 False)
                       in
                       button [ flexItem, padding10, onClick (ModelessCtrl (Modeless.Touch freshMediaViewerId)) ]
                         [ t "Click me to show Modeless 2 (MediaViewer)" ]
@@ -2489,7 +2489,7 @@ dummyModelessResolver m mId =
             Modeless.MediaViewer mId <|
                 { selectedMedia = SelectArray.selected (SelectArray.selectAt payload.mediaIndex m.mediaArray)
                 , mediaIndex = payload.mediaIndex
-                , nMedia = payload.nMedia
+                , nMedia = SelectArray.size m.mediaArray
                 , isShrunk = payload.isShrunk
                 }
 

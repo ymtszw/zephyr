@@ -57,8 +57,7 @@ type alias MediaViewrIdPayload =
     , itemIndex : Int
     , mediaIndex : Int
     , -- Belows are more of view states, not particularly "Id"
-      nMedia : Int
-    , isShrunk : Bool
+      isShrunk : Bool
     }
 
 
