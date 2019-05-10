@@ -490,19 +490,50 @@ visualMediaBlock onMediaClick visualMedia =
                 []
 
         Video record ->
-            video
-                ([ flexItem
-                 , flexBasisAuto
-                 , alignStart
-                 , padding2
-                 , controls True
-                 , src record.src
-                 ]
-                    ++ dimensionAttrs record.dimension
-                )
-                [ t "Embedded video not supported. "
-                , ntLink [] { url = record.link, children = [ t "[Source]" ] }
+            withBadge
+                [ flexBasisAuto
+                , alignStart
+                , padding2
+                , Cursor.pointer
+                , onClick onMediaClick
                 ]
+                { topRight = Nothing
+                , bottomRight =
+                    Just <|
+                        div [ padding5, Background.colorMain, Image.fillText ]
+                            [ Image.octicon { size = xxProminentSize, shape = Octicons.deviceCameraVideo } ]
+                , content =
+                    -- Not playing Video in-column, delegate to MediaViewer
+                    -- And withBadge is flex: row-reverse, so alignStart makes content to shrink upward
+                    case record.poster of
+                        Just src_ ->
+                            img
+                                ([ flexItem
+                                 , flexGrow
+                                 , flexBasisAuto
+                                 , alignStart
+                                 , src src_
+                                 , alt record.description
+                                 ]
+                                    ++ dimensionAttrs record.dimension
+                                )
+                                []
+
+                        Nothing ->
+                            -- Video tag used here just for showing pseudo-thumbnail (frame at 0.5s)
+                            video
+                                ([ flexItem
+                                 , flexGrow
+                                 , flexBasisAuto
+                                 , alignStart
+                                 , src (record.src ++ "#t=0.5")
+                                 , alt record.description
+                                 , controls False -- Hide it, delegate to MediaViewer via onClick
+                                 ]
+                                    ++ dimensionAttrs record.dimension
+                                )
+                                []
+                }
 
 
 
@@ -525,8 +556,9 @@ styles =
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
-        , ( "object-fit", "cover" )
         ]
+    , s (descOf (c itemGroupContentsClass) "img") [ ( "object-fit", "cover" ) ]
+    , s (descOf (c itemGroupContentsClass) "video") [ ( "object-fit", "contain" ) ]
     , s (descOf (c thumbnailParentClass) "img:last-child," ++ descOf (c thumbnailParentClass) "video:last-child")
         [ ( "max-width", px maxThumbnailSize )
         , ( "max-height", px maxThumbnailSize )

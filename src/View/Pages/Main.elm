@@ -464,8 +464,19 @@ marshalDiscordMessage id scrollIndex m =
                         [ Maybe.map (marshalEmbedImage >> VisualFile) e.image
                         , Maybe.map
                             (\v ->
-                                attachedVideo (Url.toString v.url)
-                                    |> apOrId attachedFileDimension (Maybe.map2 dimension v.width v.height)
+                                let
+                                    videoFile =
+                                        attachedVideo (Url.toString v.url)
+                                            |> apOrId attachedFileDimension (Maybe.map2 dimension v.width v.height)
+                                in
+                                case e.thumbnail of
+                                    Just th ->
+                                        videoFile
+                                            |> attachedFilePoster (Url.toString (Maybe.withDefault th.url th.proxyUrl))
+                                            |> apOrId attachedFileDimension (Maybe.map2 dimension th.width th.height)
+
+                                    Nothing ->
+                                        videoFile
                             )
                             e.video
                         ]

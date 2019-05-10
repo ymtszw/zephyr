@@ -1,14 +1,14 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
     , unwrapVisualMedia, imageMedia, videoMedia
-    , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
+    , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
 @docs unwrapVisualMedia, imageMedia, videoMedia
-@docs attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
+@docs attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
 
 -}
 
@@ -145,3 +145,16 @@ attachedFileDimension dimension f =
 type FileUrl
     = DownloadUrl String
     | ExternalLink String
+
+
+attachedFilePoster : String -> AttachedFile -> AttachedFile
+attachedFilePoster poster f =
+    case f of
+        VisualFile (Image record) ->
+            VisualFile (Image record)
+
+        VisualFile (Video record) ->
+            VisualFile (Video { record | poster = Just poster })
+
+        OtherFile record ->
+            OtherFile record
