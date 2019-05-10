@@ -44,26 +44,38 @@ unwrapVisualMedia af =
 
 
 type VisualMedia
-    = Image MediaRecord
-    | Video MediaRecord
+    = Image (MediaRecord {})
+    | Video (MediaRecord { poster : Maybe String })
 
 
-type alias MediaRecord =
-    { src : String
-    , link : String
-    , description : String
-    , dimension : Maybe { width : Int, height : Int }
+type alias MediaRecord a =
+    { a
+        | src : String
+        , link : String
+        , description : String
+        , dimension : Maybe { width : Int, height : Int }
     }
 
 
 imageMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
 imageMedia src link description dimension =
-    Image (MediaRecord src link description dimension)
+    Image
+        { src = src
+        , link = link
+        , description = description
+        , dimension = dimension
+        }
 
 
-videoMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
-videoMedia src link description dimension =
-    Video (MediaRecord src link description dimension)
+videoMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> Maybe String -> VisualMedia
+videoMedia src link description dimension poster =
+    Video
+        { src = src
+        , link = link
+        , description = description
+        , dimension = dimension
+        , poster = poster
+        }
 
 
 attachedImage : String -> AttachedFile
@@ -73,7 +85,7 @@ attachedImage src =
 
 attachedVideo : String -> AttachedFile
 attachedVideo src =
-    VisualFile (videoMedia src src "Attached video" Nothing)
+    VisualFile (videoMedia src src "Attached video" Nothing Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
