@@ -1,11 +1,11 @@
 module View.Organisms.Column.Items.ItemForView.EmbeddedMatter exposing
-    ( EmbeddedMatter, new
+    ( EmbeddedMatter, Thumbnail, new
     , color, pretext, author, title, url, kts, thumbnail, attachedFiles, origin
     )
 
 {-| EmbeddedMatter in ColumnItem, and its builder functions.
 
-@docs EmbeddedMatter, new
+@docs EmbeddedMatter, Thumbnail, new
 @docs color, pretext, author, title, url, kts, thumbnail, attachedFiles, origin
 
 -}
@@ -23,9 +23,18 @@ type alias EmbeddedMatter =
     , url : Maybe String
     , body : Text
     , kts : KTS
-    , thumbnail : Maybe VisualMedia
+    , thumbnail : Maybe Thumbnail
     , attachedFiles : List AttachedFile
     , origin : Maybe NamedEntity -- E.g. source service name
+    }
+
+
+type alias Thumbnail =
+    -- == MediaRecord {}
+    { src : String
+    , link : String
+    , description : String
+    , dimension : Maybe { width : Int, height : Int }
     }
 
 
@@ -74,7 +83,7 @@ kts val old =
     { old | kts = val }
 
 
-thumbnail : VisualMedia -> EmbeddedMatter -> EmbeddedMatter
+thumbnail : Thumbnail -> EmbeddedMatter -> EmbeddedMatter
 thumbnail val old =
     { old | thumbnail = Just val }
 

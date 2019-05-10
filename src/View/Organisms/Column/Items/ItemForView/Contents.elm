@@ -1,14 +1,16 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
     , unwrapVisualMedia, imageMedia, videoMedia
-    , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
+    , attachedImage, attachedVideo, attachedYoutube, attachedOther
+    , attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
 @docs unwrapVisualMedia, imageMedia, videoMedia
-@docs attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
+@docs attachedImage, attachedVideo, attachedYoutube, attachedOther
+@docs attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
 
 -}
 
@@ -46,6 +48,7 @@ unwrapVisualMedia af =
 type VisualMedia
     = Image (MediaRecord {})
     | Video (MediaRecord { poster : Maybe String })
+    | Youtube YoutubeRecord
 
 
 type alias MediaRecord a =
@@ -54,6 +57,13 @@ type alias MediaRecord a =
         , link : String
         , description : String
         , dimension : Maybe { width : Int, height : Int }
+    }
+
+
+type alias YoutubeRecord =
+    { id : String
+    , poster : Maybe String
+    , dimension : Maybe { width : Int, height : Int }
     }
 
 
@@ -78,6 +88,15 @@ videoMedia src link description dimension poster =
         }
 
 
+youtubeMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+youtubeMedia id poster dimension =
+    Youtube
+        { id = id
+        , poster = poster
+        , dimension = dimension
+        }
+
+
 attachedImage : String -> AttachedFile
 attachedImage src =
     VisualFile (imageMedia src src "Attached image" Nothing)
@@ -86,6 +105,11 @@ attachedImage src =
 attachedVideo : String -> AttachedFile
 attachedVideo src =
     VisualFile (videoMedia src src "Attached video" Nothing Nothing)
+
+
+attachedYoutube : String -> AttachedFile
+attachedYoutube id =
+    VisualFile (youtubeMedia id Nothing Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
@@ -102,6 +126,9 @@ attachedFileLink link f =
         VisualFile (Video record) ->
             VisualFile (Video { record | link = link })
 
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube record)
+
         OtherFile record ->
             OtherFile record
 
@@ -114,6 +141,9 @@ attachedFileDescription description f =
 
         VisualFile (Video record) ->
             VisualFile (Video { record | description = description })
+
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube record)
 
         OtherFile record ->
             OtherFile { record | description = description }
@@ -138,6 +168,9 @@ attachedFileDimension dimension f =
         VisualFile (Video record) ->
             VisualFile (Video { record | dimension = Just dimension })
 
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube { record | dimension = Just dimension })
+
         OtherFile record ->
             OtherFile record
 
@@ -155,6 +188,9 @@ attachedFilePoster poster f =
 
         VisualFile (Video record) ->
             VisualFile (Video { record | poster = Just poster })
+
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube { record | poster = Just poster })
 
         OtherFile record ->
             OtherFile record

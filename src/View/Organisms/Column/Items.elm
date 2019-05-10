@@ -296,10 +296,20 @@ embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
 
         ( textContentsAndThumbnailBlock, mediaIndexAfterThumb ) =
             case matter.thumbnail of
-                Just visualMedia ->
+                Just thumbnail ->
                     ( [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
                             [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
-                            , visualMediaBlock (onMediaClick mediaIndex) visualMedia
+                            , img
+                                [ flexItem
+                                , flexShrink
+                                , flexBasisAuto
+                                , alignStart
+                                , src thumbnail.src
+                                , alt thumbnail.description
+                                , Cursor.pointer
+                                , onClick (onMediaClick mediaIndex)
+                                ]
+                                []
                             ]
                       ]
                     , mediaIndex + 1
@@ -472,24 +482,8 @@ visualMediaBlock onMediaClick visualMedia =
 
                 Nothing ->
                     []
-    in
-    case visualMedia of
-        Image record ->
-            img
-                ([ src record.src
-                 , alt record.description
-                 , flexItem
-                 , flexBasisAuto
-                 , alignStart
-                 , padding2
-                 , Cursor.pointer
-                 , onClick onMediaClick
-                 ]
-                    ++ dimensionAttrs record.dimension
-                )
-                []
 
-        Video record ->
+        badgedThumbnail badge thumb =
             withBadge
                 [ flexBasisAuto
                 , alignStart
@@ -498,42 +492,102 @@ visualMediaBlock onMediaClick visualMedia =
                 , onClick onMediaClick
                 ]
                 { topRight = Nothing
-                , bottomRight =
-                    Just <|
-                        div [ padding5, Background.colorMain, Image.fillText ]
-                            [ Image.octicon { size = xxProminentSize, shape = Octicons.deviceCameraVideo } ]
-                , content =
-                    -- Not playing Video in-column, delegate to MediaViewer
-                    -- And withBadge is flex: row-reverse, so alignStart makes content to shrink upward
-                    case record.poster of
-                        Just src_ ->
-                            img
-                                ([ flexItem
-                                 , flexGrow
-                                 , flexBasisAuto
-                                 , alignStart
-                                 , src src_
-                                 , alt record.description
-                                 ]
-                                    ++ dimensionAttrs record.dimension
-                                )
-                                []
-
-                        Nothing ->
-                            -- Video tag used here just for showing pseudo-thumbnail (frame at 0.5s)
-                            video
-                                ([ flexItem
-                                 , flexGrow
-                                 , flexBasisAuto
-                                 , alignStart
-                                 , src (record.src ++ "#t=0.5")
-                                 , alt record.description
-                                 , controls False -- Hide it, delegate to MediaViewer via onClick
-                                 ]
-                                    ++ dimensionAttrs record.dimension
-                                )
-                                []
+                , bottomRight = Just <| div [ padding5, Image.fillText ] [ badge ]
+                , content = thumb
                 }
+
+        imgThumb dimension description src_ =
+            img ([ src src_, alt description ] ++ dimensionAttrs dimension) []
+    in
+    case visualMedia of
+        Image record ->
+            badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.fileMedia }) <|
+                imgThumb record.dimension record.description record.src
+
+        Video record ->
+            -- Not playing Video in-column, delegate to MediaViewer
+            case record.poster of
+                Just src_ ->
+                    badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.deviceCameraVideo }) <|
+                        imgThumb record.dimension record.description src_
+
+                Nothing ->
+                    -- Video tag used here just for showing pseudo-thumbnail (frame at 0.5s)
+                    badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.deviceCameraVideo }) <|
+                        video
+                            ([ src (record.src ++ "#t=0.5")
+                             , alt record.description
+                             , controls False -- Hide it, delegate to MediaViewer via onClick
+                             ]
+                                ++ dimensionAttrs record.dimension
+                            )
+                            []
+
+        Youtube record ->
+            let
+                youtubeLogo64 =
+                    img [ width 32, height 32, src ("data:image/png;base64," ++ youtubeLogo64Base64Data) ] []
+            in
+            badgedThumbnail youtubeLogo64 <|
+                case record.poster of
+                    Just src_ ->
+                        imgThumb record.dimension "YouTube video" src_
+
+                    Nothing ->
+                        div
+                            [ flexGrow
+                            , flexBasisAuto
+                            , alignStart
+                            , flexColumn
+                            , flexCenter
+                            , padding15
+                            , Background.colorBg
+                            ]
+                            [ Image.octicon { size = xxxProminentSize, shape = Octicons.deviceCameraVideo }
+                            ]
+
+
+youtubeLogo64Base64Data : String
+youtubeLogo64Base64Data =
+    String.join ""
+        [ "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFn"
+        , "ZVJlYWR5ccllPAAAA25pVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/"
+        , "IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6"
+        , "bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8w"
+        , "OS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9y"
+        , "Zy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIg"
+        , "eG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJo"
+        , "dHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0"
+        , "dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRp"
+        , "ZDoyMDI3QzRENzE5MjA2ODExODIyQUI5Q0YwOTk5NDQ5MiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRp"
+        , "ZDpGNDNEQUM4Njg5QzQxMUU3QjFGNTgwNzI0NjY4MzExRiIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlp"
+        , "ZDpGNDNEQUM4NTg5QzQxMUU3QjFGNTgwNzI0NjY4MzExRiIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQ"
+        , "aG90b3Nob3AgQ0MgMjAxNyAoV2luZG93cykiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFu"
+        , "Y2VJRD0ieG1wLmlpZDo3YjZjMTljNi0yZTYyLWZhNDQtOWY5Yy00ZmIyOTNjNGU4MmIiIHN0UmVmOmRv"
+        , "Y3VtZW50SUQ9InhtcC5kaWQ6MjAyN0M0RDcxOTIwNjgxMTgyMkFCOUNGMDk5OTQ0OTIiLz4gPC9yZGY6"
+        , "RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6A8lBe"
+        , "AAAE0klEQVR42uxbT2hURxz+drOJqcZSq3WlBk2q0AgxtUgV9RIxtIFKLVVob4VSsCDFQ26e9FAVzMGD"
+        , "XhQpXgStDaEiJlHS2mpjS2JVJGh7qCHRVGtI0VXjv0x/n/MeCWGTvNn3Jn270w8+EnaXx/y+92bm+2be"
+        , "JJRScBkpYUI4kQqlwjeErwtfypO6Hgv7hX8KM5MJkBQ+z/Ld28LPhe8JK73f5Rt6hd8LDwl/zPaDhHSB"
+        , "ojECvCzcKdzsCVQoOCpsEN6cSIAKYZN39wsRPcJNws5sAqSFPwirCnzc+1tYK+yG16+VNxAecqB44jXh"
+        , "EX9ApwDDwo3C9x2a/d4Sful3gWL5+5NwpWMWoE9YnfQKf8dBD1QurKcAdXk6x0eBd5Nef3AVb1KAVxwW"
+        , "oCgJt6GSkwShgofrT4ClsPNcnPXTp8CTJ8CzZ/ovP+P//EsOD2u+uA3JEaZSmkXi0IuLR1hSoj+LjQAs"
+        , "6vx54PJlSd0Su/slfg8MAPfuAQ8eAI8eSSp/rIUg/cJJLsL4fGHHEiNkkT4pBIufNk2MqzjXGTMkq0pY"
+        , "nT0bmDdPQrqk9JoaYM0a/X1Oo4BS7coUbW1K1dSMLuO/ZVWVUs3NKgf8bC5Aa6uY5+L4FO8zIa7++HHL"
+        , "AmQySlVWxq94n+m0UgMDRgKYzQLt7bq/xxW3bwMnT1qcBjnoxR2GbTQT4Nq1+Atw/bpFAXp74y/ArVt6"
+        , "qo1cgKEhPc+HQUUFsGCBXQEGB7UXiVyATAa4fz9c41atArq6gK1btbmxAcN2Bhfg4UPt7sKAT9GcOcDe"
+        , "vcCFC8CGDdELQPeZyVgSgPY3KixbBjQ3AydOAMuXR3dd5gu2NXIBqKzB4BIY69cDHR3Avn3A/PnRXJNP"
+        , "WuQCMNDYAgPPli3AxYtAQ0PuwWb0zYpcAEZZ25g7F2hsBLq7gXXrwsXxyAVgVJ0K8O61tAA3buR+DYO2"
+        , "Bl8PSE3BRjEHxR07gEuXQq5ypCwIwBUZKmvjjZLOTmD7duMgMy4MPEZwAUpLtbJRDoZ9fcDu3cCBA9Fe"
+        , "12AQDS7A9Ola2TAN9fsmDdX+/cCePcCdOxEv8qX00lnkAvCiFMHAZWUFjc+2bcDVq3bGET6pZWUWBOBF"
+        , "uSAZ5o6dOgU0NdkdSGfO1O2MfBrko8V5OgzCZokgYNYw6AJm6wGMs3EH47aBDzATYOnS+AtQXW30czMB"
+        , "1q6NvwB1dRYFWLECqK+Pb/GrVwO1tRYFYN86eND4MZsSLFoEHD5sbNnNd4fLy4GzZ3Vs5d6chQ3L4K1P"
+        , "6kGPUfrcOWDxYnNvxp0h9u6cGsCVl54ebWm5KXH37siiJA0Tv+fiBOlvkvo7xOPtDo/eEabzpLGhAfN9"
+        , "yKxZeqpLp/UCysKFRsZnDDrCRTw2bMkSzTyF8y9I/C8A9HvCriIx3mEJVzBMAfodFuAvCvCrwwJ0UYBW"
+        , "BlUHi2fXb6EAvwvbHBSARwR+86fBXQ4K8BW8V2WJX4SNDhUviQ5n/Czgf0hb/I3wwwIv/rTwA+HQWCfI"
+        , "zb9PhF8XcPHHhB/5xWezwtxW/Uz4qfCPAiqc5wW/EH6MMUdpExMcni7z1OJrHDxVwiXhkjwpmLs3ks1x"
+        , "Rfid8FvhP+OtBwS5IDfbXoU+SJ0P4JM8GMTfUIDJTo8XNP4VYAC5rGt3pYiQDwAAAABJRU5ErkJggg=="
+        ]
 
 
 
@@ -556,6 +610,7 @@ styles =
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
+        , ( "margin-right", "auto" )
         ]
     , s (descOf (c itemGroupContentsClass) "img") [ ( "object-fit", "cover" ) ]
     , s (descOf (c itemGroupContentsClass) "video") [ ( "object-fit", "contain" ) ]

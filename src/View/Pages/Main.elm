@@ -33,6 +33,8 @@ import Scroll
 import SelectArray
 import TimeExtra exposing (ms)
 import Url
+import Url.Parser exposing ((<?>))
+import Url.Parser.Query
 import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
@@ -453,20 +455,20 @@ marshalDiscordMessage id scrollIndex m =
                         |> apOrId (Url.toString >> NamedEntity.url) eAuthor.url
                         |> apOrId (marshalIcon >> NamedEntity.avatar) eAuthor.proxyIconUrl
 
-                marshalEmbedImage eImage =
-                    imageMedia (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
+                marshalEmbedImage ctor eImage =
+                    ctor (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
                         (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
                         "Embedded image"
                         (Maybe.map2 dimension eImage.width eImage.height)
 
                 attachedFiles =
                     List.filterMap identity
-                        [ Maybe.map (marshalEmbedImage >> VisualFile) e.image
+                        [ Maybe.map (marshalEmbedImage imageMedia >> VisualFile) e.image
                         , Maybe.map
                             (\v ->
                                 let
                                     videoFile =
-                                        attachedVideo (Url.toString v.url)
+                                        attachedVideoFromUrl v.url
                                             |> apOrId attachedFileDimension (Maybe.map2 dimension v.width v.height)
                                 in
                                 case e.thumbnail of
@@ -486,7 +488,7 @@ marshalDiscordMessage id scrollIndex m =
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
                 |> apOrId EmbeddedMatter.color e.color
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
-                |> apOrId (marshalEmbedImage >> EmbeddedMatter.thumbnail) e.thumbnail
+                |> apOrId (marshalEmbedImage EmbeddedMatter.Thumbnail >> EmbeddedMatter.thumbnail) e.thumbnail
                 |> EmbeddedMatter.attachedFiles attachedFiles
 
         marshalAttachment a =
@@ -515,6 +517,30 @@ marshalDiscordMessage id scrollIndex m =
 dimension : Int -> Int -> { width : Int, height : Int }
 dimension w h =
     { width = w, height = h }
+
+
+attachedVideoFromUrl : Url.Url -> AttachedFile
+attachedVideoFromUrl url =
+    if url.host == "www.youtube.com" then
+        case Url.Parser.parse (Url.Parser.s "watch" <?> Url.Parser.Query.string "v") url of
+            Just (Just id) ->
+                attachedYoutube id
+
+            _ ->
+                -- Fallback
+                attachedVideo (Url.toString url)
+
+    else if url.host == "youtu.be" then
+        case Url.Parser.parse Url.Parser.string url of
+            Just id ->
+                attachedYoutube id
+
+            Nothing ->
+                -- Fallback
+                attachedVideo (Url.toString url)
+
+    else
+        attachedVideo (Url.toString url)
 
 
 marshalSlackMessage : String -> Int -> SlackMessage.Message -> ItemForView
@@ -576,17 +602,17 @@ marshalSlackMessage id scrollIndex m =
                         |> apOrId (Url.toString >> NamedEntity.url) aAuthor.link
                         |> apOrId (marshalIcon >> NamedEntity.avatar) aAuthor.icon
 
-                marshalImageUrl url =
-                    imageMedia (Url.toString url) (Url.toString url) "Embedded image" Nothing
+                marshalImageUrl ctor url =
+                    ctor (Url.toString url) (Url.toString url) "Embedded image" Nothing
             in
             EmbeddedMatter.new textOrFallback
                 |> apOrId EmbeddedMatter.color a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
-                |> apOrId (marshalImageUrl >> EmbeddedMatter.thumbnail) a.thumbUrl
+                |> apOrId (marshalImageUrl EmbeddedMatter.Thumbnail >> EmbeddedMatter.thumbnail) a.thumbUrl
                 |> EmbeddedMatter.attachedFiles
-                    (List.filterMap identity [ Maybe.map (marshalImageUrl >> VisualFile) a.imageUrl ])
+                    (List.filterMap identity [ Maybe.map (marshalImageUrl imageMedia >> VisualFile) a.imageUrl ])
 
         marshalFile f =
             let
@@ -628,17 +654,28 @@ collectMediaInProduct item =
     -- * Thumbnail comes first within an EmbeddedMatter
     let
         attachedVisualMedia =
-            List.filterMap (Maybe.map marshalVisualMedia) <|
-                List.concatMap (\e -> e.thumbnail :: List.map unwrapVisualMedia e.attachedFiles) item.embeddedMatters
-                    ++ List.map unwrapVisualMedia item.attachedFiles
+            List.filterMap identity <|
+                let
+                    collectFromEmbeddedMatter e =
+                        Maybe.map (.link >> MediaViewer.Image) e.thumbnail :: List.map marshalVisualMedia e.attachedFiles
+                in
+                List.concatMap collectFromEmbeddedMatter item.embeddedMatters
+                    ++ List.map marshalVisualMedia item.attachedFiles
 
-        marshalVisualMedia vm =
-            case vm of
-                Image { link } ->
-                    MediaViewer.Image link
+        marshalVisualMedia attachedFile =
+            let
+                marshal vm =
+                    case vm of
+                        Image { link } ->
+                            MediaViewer.Image link
 
-                Video { src } ->
-                    MediaViewer.Video src
+                        Video { src } ->
+                            MediaViewer.Video src
+
+                        Youtube { id } ->
+                            MediaViewer.Youtube id
+            in
+            Maybe.map marshal (unwrapVisualMedia attachedFile)
     in
     case attachedVisualMedia of
         [] ->

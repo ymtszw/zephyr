@@ -169,6 +169,7 @@ init () url key =
                 (MediaViewer.Image (Image.ph 300 800))
                 [ MediaViewer.Image (Image.ph 800 300)
                 , MediaViewer.Video "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                , MediaViewer.Youtube "F9vhni6eNR8"
                 ]
       , mediaIsShrunk = False
       }
@@ -3352,6 +3353,10 @@ columnItems =
                     ]
             , ItemForView.new "ci11" 11 (NamedEntity.new "Attachement") (Plain "Multiple images")
                 |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+            , ItemForView.new "ci12" 12 (NamedEntity.new "Attachement") (Plain "YouTube without poster")
+                |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" ]
+            , ItemForView.new "ci13" 13 (NamedEntity.new "Attachement") (Plain "YouTube with poster")
+                |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" |> attachedFilePoster (Image.ph 300 200) ]
             ]
     }""" <|
                     let
@@ -3422,6 +3427,10 @@ columnItems =
                                         ]
                                 , ItemForView.new "ci11" 11 (NamedEntity.new "Attachement") (Plain "Multiple images")
                                     |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+                                , ItemForView.new "ci12" 12 (NamedEntity.new "Attachement") (Plain "YouTube without poster")
+                                    |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" ]
+                                , ItemForView.new "ci13" 13 (NamedEntity.new "Attachement") (Plain "YouTube with poster")
+                                    |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" |> attachedFilePoster (Image.ph 300 200) ]
                                 ]
                         }
                 , withSourceInColumn Nothing 300 """Items.render
@@ -3591,7 +3600,7 @@ columnItems =
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#557733")
-                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
+                                            |> EmbeddedMatter.thumbnail (EmbeddedMatter.Thumbnail (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                                             |> EmbeddedMatter.attachedFiles
                                                 [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"

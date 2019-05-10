@@ -2,8 +2,8 @@ module View.Molecules.MediaViewer exposing (Effects, Media(..), Props, render, s
 
 import Color exposing (toCssString)
 import ColorExtra
-import Html exposing (Html, button, div, img, span, video)
-import Html.Attributes exposing (class, controls, src)
+import Html exposing (Html, button, div, iframe, img, span, video)
+import Html.Attributes exposing (class, controls, height, src, type_, width)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode exposing (succeed)
 import Octicons
@@ -36,6 +36,7 @@ type alias Props =
 type Media
     = Image String
     | Video String
+    | Youtube String
     | NotFound
 
 
@@ -67,6 +68,20 @@ render eff props =
                     [ t "Embedded video not supported. "
                     , ntLink [] { url = src_, children = [ t "[Source]" ] }
                     ]
+                ]
+
+            Youtube id ->
+                [ hoverMenu eff props ("https://www.youtube.com/watch?v=" ++ id)
+                , iframe
+                    [ flexItem
+                    , flexBasisAuto
+                    , flexShrink
+                    , type_ "text/html"
+                    , width 640
+                    , height 360
+                    , src ("http://www.youtube.com/embed/" ++ id)
+                    ]
+                    []
                 ]
 
             NotFound ->
@@ -167,11 +182,18 @@ styles =
         [ ( "width", "30vw" )
         , ( "height", "30vh" )
         ]
-    , s (descOf (c mediaViewerClass) "img," ++ descOf (c mediaViewerClass) "video")
+    , let
+        selector =
+            [ "img", "video", "iframe" ]
+                |> List.map (descOf (c mediaViewerClass))
+                |> String.join ","
+      in
+      s selector
         [ ( "max-width", "95%" )
         , ( "max-height", "95%" )
         , ( "margin-left", "auto" )
         , ( "margin-right", "auto" )
+        , ( "position", "relative" )
         ]
     , s (c hoverMenuClass)
         [ ( "position", "absolute" )
