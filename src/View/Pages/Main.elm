@@ -455,7 +455,7 @@ marshalDiscordMessage id scrollIndex m =
 
                 marshalEmbedImage eImage =
                     imageMedia (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
-                        (Url.toString eImage.url)
+                        (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
                         "Embedded image"
                         (Maybe.map2 dimension eImage.width eImage.height)
 
@@ -481,13 +481,13 @@ marshalDiscordMessage id scrollIndex m =
         marshalAttachment a =
             if Item.extIsImage a.filename then
                 attachedImage (Url.toString a.proxyUrl)
-                    |> attachedFileLink (Url.toString a.url)
+                    |> attachedFileLink (Url.toString a.proxyUrl)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
             else if Item.extIsVideo a.filename then
                 attachedVideo (Url.toString a.proxyUrl)
-                    |> attachedFileLink (Url.toString a.url)
+                    |> attachedFileLink (Url.toString a.proxyUrl)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
