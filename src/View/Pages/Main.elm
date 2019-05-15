@@ -33,7 +33,7 @@ import Scroll
 import SelectArray
 import TimeExtra exposing (ms)
 import Url
-import Url.Parser exposing ((<?>))
+import Url.Parser exposing ((</>), (<?>))
 import Url.Parser.Query
 import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.Source as Source exposing (Source)
@@ -522,7 +522,14 @@ dimension w h =
 attachedVideoFromUrl : Url.Url -> AttachedFile
 attachedVideoFromUrl url =
     if url.host == "www.youtube.com" then
-        case Url.Parser.parse (Url.Parser.s "watch" <?> Url.Parser.Query.string "v") url of
+        let
+            idParser =
+                Url.Parser.oneOf
+                    [ Url.Parser.s "watch" <?> Url.Parser.Query.string "v"
+                    , Url.Parser.s "embed" </> Url.Parser.string |> Url.Parser.map Just
+                    ]
+        in
+        case Url.Parser.parse idParser url of
             Just (Just id) ->
                 attachedYoutube id
 
