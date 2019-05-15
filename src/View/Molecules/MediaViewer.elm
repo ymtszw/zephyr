@@ -100,7 +100,7 @@ hoverMenu eff props src_ =
                 pagerClickArea indexTo pagerIcon =
                     div
                         [ class pagerClickAreaClass
-                        , flexGrow
+                        , flexBasisAuto
                         , flexRow
                         , flexCenter
                         , Image.hovText
@@ -123,7 +123,7 @@ hoverMenu eff props src_ =
                     else
                         0
             in
-            div [ flexRow, flexGrow ]
+            div [ class pagerClass, flexRow, flexGrow ]
                 [ pagerClickArea prevIndex <|
                     div [ class pagerIconClass ]
                         [ Image.octicon { size = xProminentSize, shape = Octicons.chevronLeft } ]
@@ -199,12 +199,14 @@ styles =
         [ ( "position", "absolute" )
         , ( "display", "none" )
         , ( "height", "100%" )
+        , ( "pointer-events", "none" )
         ]
     , s (descOf (hov (c mediaViewerClass)) (c hoverMenuClass)) [ ( "display", "flex" ) ]
     , s (c pagerIconClass) [ ( "opacity", "0" ) ]
+    , s (c pagerClickAreaClass) [ ( "width", "30%" ), ( "pointer-events", "auto" ) ]
     , s (hov (c pagerClickAreaClass)) [ ( "background-color", toCssString (ColorExtra.setAlpha 0.3 oneDarkTheme.bg) ) ]
     , s (descOf (hov (c pagerClickAreaClass)) (c pagerIconClass)) [ ( "opacity", "1" ) ]
-    , s (c paletteClass) [ ( "position", "absolute" ) ]
+    , s (c paletteClass) [ ( "position", "absolute" ), ( "pointer-events", "auto" ) ]
     ]
 
 
@@ -226,6 +228,11 @@ hoverMenuClass =
 pagerClickAreaClass : String
 pagerClickAreaClass =
     "mvhmpca"
+
+
+pagerClass : String
+pagerClass =
+    "mvhmp"
 
 
 pagerIconClass : String
