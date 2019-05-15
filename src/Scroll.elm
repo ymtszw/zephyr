@@ -38,6 +38,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import List.Extra
+import Process
 import Task
 
 
@@ -432,6 +433,7 @@ type Msg
     = ScrollStart
     | ViewportResult (Result Browser.Dom.Error Browser.Dom.Viewport)
     | BackToTop
+    | RequestNextAnimationStep Float
     | Reveal
     | NewItem
     | LoadMore
@@ -477,14 +479,26 @@ update msg (Scroll s) =
             ( Scroll s, Cmd.none )
 
         BackToTop ->
-            -- Lazily resolves viewportStatus, not touching Scroll.
+            -- Manually animated scroll. After completion, lazily resolves viewportStatus.
             -- In my experience, this achieves the most consistent and acceptable behavior
-            ( Scroll s
-            , Task.map2 (\() vpRes -> vpRes)
-                (Browser.Dom.setViewportOf s.id 0 0)
-                (Browser.Dom.getViewportOf s.id)
-                |> Task.attempt ViewportResult
-            )
+            case s.viewportStatus of
+                OffTheTop vp ->
+                    ( Scroll { s | viewportStatus = Scrolling vp }
+                    , scrollWithManualAnimation s.id vp 0
+                    )
+
+                _ ->
+                    -- Do not allow another BackToTop when the viewport is not settled.
+                    ( Scroll s, Cmd.none )
+
+        RequestNextAnimationStep currentStep ->
+            case s.viewportStatus of
+                Scrolling vp ->
+                    ( Scroll s, scrollWithManualAnimation s.id vp currentStep )
+
+                _ ->
+                    -- Otherwise request should not arrive; discard.
+                    ( Scroll s, Cmd.none )
 
         Reveal ->
             ( Scroll { s | viewportStatus = Initial } |> pendingToBuffer |> calculateTier
@@ -580,6 +594,50 @@ incrementTier (Scroll s) =
             s.tier
     in
     Scroll { s | tier = Tier (n + 1) }
+
+
+scrollWithManualAnimation : String -> Browser.Dom.Viewport -> Float -> Cmd Msg
+scrollWithManualAnimation id originalVp step =
+    let
+        nextStep =
+            step + 1.0
+    in
+    if nextStep > numberOfAnimationStep then
+        Task.attempt ViewportResult (Browser.Dom.getViewportOf id)
+
+    else
+        let
+            nextViewportY =
+                originalVp.viewport.y * oneToZeroCubic (nextStep / numberOfAnimationStep)
+
+            requestNext result =
+                case result of
+                    Ok () ->
+                        RequestNextAnimationStep nextStep
+
+                    Err domErr ->
+                        ViewportResult (Err domErr)
+
+            waitAFrame =
+                Process.sleep 10
+        in
+        waitAFrame
+            |> Task.andThen (\() -> Browser.Dom.setViewportOf id 0 nextViewportY)
+            |> Task.attempt requestNext
+
+
+oneToZeroCubic : Float -> Float
+oneToZeroCubic x =
+    negate ((x - 1.0) ^ 3.0)
+
+
+numberOfAnimationStep : Float
+numberOfAnimationStep =
+    16.0
+
+
+
+-- VIEW API
 
 
 scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
