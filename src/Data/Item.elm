@@ -1,4 +1,14 @@
-module Data.Item exposing (Item(..), decoder, encode, extIsImage, extIsVideo, matchFilter, mimeIsImage, mimeIsVideo)
+module Data.Item exposing
+    ( Item(..), encode, decoder
+    , matchFilter, extIsImage, extIsVideo, mimeIsImage, mimeIsVideo
+    )
+
+{-| Items that goes through ItemBroker.
+
+@docs Item, encode, decoder
+@docs matchFilter, extIsImage, extIsVideo, mimeIsImage, mimeIsVideo
+
+-}
 
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord.Message as DiscordMessage

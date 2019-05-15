@@ -1,5 +1,5 @@
 module View.Organisms.Modeless exposing
-    ( State, ModelessId(..), Msg(..), idStr, init, sub, update, map
+    ( State, ModelessId(..), MediaViewrIdPayload, Msg(..), idStr, init, sub, update, map
     , Effects, Props, ResolvedPayload(..), render, styles
     )
 
@@ -10,7 +10,7 @@ Also it can be repositioned by drag and drop.
 
 ModelessWindows are identified by unique String IDs.
 
-@docs State, ModelessId, Msg, idStr, init, sub, update, map
+@docs State, ModelessId, MediaViewrIdPayload, Msg, idStr, init, sub, update, map
 @docs Effects, Props, ResolvedPayload, render, styles
 
 -}
@@ -33,6 +33,7 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (nowrap)
 import View.Atoms.Theme exposing (oneDark)
 import View.Atoms.Typography exposing (..)
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.RawColumnItem as RawColumnItem
 import View.Style exposing (..)
 
@@ -48,6 +49,16 @@ type State
 
 type ModelessId
     = RawColumnItemId Column.Id Int
+    | MediaViewerId MediaViewrIdPayload
+
+
+type alias MediaViewrIdPayload =
+    { columnId : Column.Id
+    , itemIndex : Int
+    , mediaIndex : Int
+    , -- Belows are more of view states, not particularly "Id"
+      isShrunk : Bool
+    }
 
 
 idStr : ModelessId -> String
@@ -55,6 +66,9 @@ idStr mId =
     case mId of
         RawColumnItemId columnId itemIndex ->
             "rawColumnItem_" ++ Id.to columnId ++ "_" ++ String.fromInt itemIndex
+
+        MediaViewerId { columnId, itemIndex } ->
+            "mediaViewer_" ++ Id.to columnId ++ "_" ++ String.fromInt itemIndex
 
 
 type alias Translate =
@@ -92,6 +106,8 @@ type Msg
     = Touch ModelessId
     | Move ModelessId Int Int
     | Remove ModelessId
+    | MediaViewerSelectAt ModelessId Int
+    | MediaViewerToggleSize ModelessId Bool
 
 
 {-| Unlike usual "update" function, this update is un-effectful, i.e. pure.
@@ -115,6 +131,18 @@ update msg (State list) =
             in
             State (List.filter remover list)
 
+        MediaViewerSelectAt (RawColumnItemId _ _) _ ->
+            State list
+
+        MediaViewerSelectAt (MediaViewerId payload) newIndex ->
+            touch (MediaViewerId { payload | mediaIndex = newIndex }) (State list)
+
+        MediaViewerToggleSize (RawColumnItemId _ _) _ ->
+            State list
+
+        MediaViewerToggleSize (MediaViewerId payload) isShrunk ->
+            touch (MediaViewerId { payload | isShrunk = isShrunk }) (State list)
+
 
 touch : ModelessId -> State -> State
 touch id (State list) =
@@ -123,7 +151,7 @@ touch id (State list) =
             State [ ( id, Translate 0 0 Nothing ) ]
 
         ( _, { x, y } ) :: _ ->
-            case List.Extra.find (\( id_, _ ) -> id_ == id) list of
+            case List.Extra.find (\( id_, _ ) -> idStr id_ == idStr id) list of
                 Just ( _, trans ) ->
                     -- Quit drag, can be used on DragEnd
                     State (consDedup ( id, { trans | prevDragCoord = Nothing } ) list)
@@ -139,13 +167,7 @@ touch id (State list) =
 
 consDedup : ( ModelessId, Translate ) -> List ( ModelessId, Translate ) -> List ( ModelessId, Translate )
 consDedup a list =
-    let
-        dedup ( id, _ ) =
-            case id of
-                RawColumnItemId columnId itemIndex ->
-                    ( Id.to columnId, itemIndex )
-    in
-    List.Extra.uniqueBy dedup (a :: list)
+    List.Extra.uniqueBy (\( id, _ ) -> idStr id) (a :: list)
 
 
 staggerAmountOnPush : Int
@@ -192,6 +214,7 @@ type alias Effects msg =
     , onAnywhereClick : ModelessId -> msg
     , onDrag : ModelessId -> Int -> Int -> msg
     , onDragEnd : ModelessId -> msg
+    , mediaViewerEffects : ModelessId -> MediaViewer.Effects msg
     }
 
 
@@ -203,6 +226,7 @@ type alias Props =
 
 type ResolvedPayload
     = RawColumnItem ModelessId ColumnItem
+    | MediaViewer ModelessId MediaViewer.Props
 
 
 render : Effects msg -> Props -> Html msg
@@ -212,6 +236,9 @@ render eff props =
             case resolved of
                 RawColumnItem id columnItem ->
                     withHeader index trans id "Source of Column Item" (RawColumnItem.render columnItem)
+
+                MediaViewer id mProps ->
+                    withHeader index trans id "Media Viewer" (MediaViewer.render (eff.mediaViewerEffects id) mProps)
 
         withHeader index trans id title content =
             let

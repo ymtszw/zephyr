@@ -31,6 +31,7 @@ type alias Effects msg =
     { onLoadMoreClick : msg
     , onItemSourceButtonClick : Column.Id -> Int -> msg
     , onItemRefreshButtonClick : Column.Id -> Int -> msg
+    , onItemMediaClick : Column.Id -> Int -> Int -> msg
     }
 
 
@@ -194,12 +195,24 @@ itemBlockKey eff props item =
             , bottomRight = Nothing
             , content =
                 let
+                    mediaIndex0 =
+                        0
+
+                    onMediaClick =
+                        eff.onItemMediaClick props.columnId item.scrollIndex
+
+                    ( embeddedMatterBlocks, mediaIndex1 ) =
+                        List.foldr (embeddedMatterBlockAndPretext onMediaClick) ( [], mediaIndex0 ) item.embeddedMatters
+
+                    ( attachedFileBlocks, _ ) =
+                        List.foldr (attachedFileBlock onMediaClick) ( [], mediaIndex1 ) item.attachedFiles
+
                     children =
                         textBlocks item.body
-                            ++ List.concatMap embeddedMatterBlockAndPretext item.embeddedMatters
+                            ++ embeddedMatterBlocks
                             ++ List.map ktBlock item.kts
                             -- TODO reactions
-                            ++ List.map attachedFileBlock item.attachedFiles
+                            ++ attachedFileBlocks
                 in
                 div
                     [ flexColumn
@@ -267,8 +280,8 @@ markdownBlocks raw =
         MarkdownBlocks.render TextParser.defaultOptions raw
 
 
-embeddedMatterBlockAndPretext : EmbeddedMatter -> List (Html msg)
-embeddedMatterBlockAndPretext matter =
+embeddedMatterBlockAndPretext : (Int -> msg) -> EmbeddedMatter -> ( List (Html msg), Int ) -> ( List (Html msg), Int )
+embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
     let
         wrapInLink urlMaybe children =
             case urlMaybe of
@@ -281,17 +294,31 @@ embeddedMatterBlockAndPretext matter =
         gutterColor =
             Maybe.withDefault Color.gray matter.color
 
-        textContentsAndThumbnailBlock =
+        ( textContentsAndThumbnailBlock, mediaIndexAfterThumb ) =
             case matter.thumbnail of
-                Just visualMedia ->
-                    [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
-                        [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
-                        , visualMediaBlock visualMedia
-                        ]
-                    ]
+                Just thumbnail ->
+                    ( [ div [ class thumbnailParentClass, flexRow, flexBasisAuto, spacingRow2 ]
+                            [ div [ flexGrow ] <| authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
+                            , img
+                                [ flexItem
+                                , flexShrink
+                                , flexBasisAuto
+                                , alignStart
+                                , src thumbnail.src
+                                , alt thumbnail.description
+                                , Cursor.zoomIn
+                                , onClick (onMediaClick mediaIndex)
+                                ]
+                                []
+                            ]
+                      ]
+                    , mediaIndex + 1
+                    )
 
                 Nothing ->
-                    authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
+                    ( authorBlock ++ titleBlock ++ textBlocks matter.body ++ List.map ktBlock matter.kts
+                    , mediaIndex
+                    )
 
         authorBlock =
             case matter.author of
@@ -329,13 +356,13 @@ embeddedMatterBlockAndPretext matter =
                     []
 
                 Just (Plain plainTitle) ->
-                    [ div [ prominent, Border.bot1, Border.solid ] [ t plainTitle ] ]
+                    [ div [ bold, Border.bot1, Border.solid ] [ t plainTitle ] ]
 
                 Just (Markdown "") ->
                     []
 
                 Just (Markdown mdTitle) ->
-                    [ div [ prominent, Border.bot1, Border.solid ] <| markdownBlocks mdTitle ]
+                    [ div [ bold, Border.bot1, Border.solid ] <| markdownBlocks mdTitle ]
 
                 Nothing ->
                     []
@@ -379,26 +406,29 @@ embeddedMatterBlockAndPretext matter =
                 Nothing ->
                     []
 
+        ( attachedFileBlocks, mediaIndexAfterAttachedFiles ) =
+            List.foldr (attachedFileBlock onMediaClick) ( [], mediaIndexAfterThumb ) matter.attachedFiles
+
         gutteredBlock =
             div [ flexColumn, flexBasisAuto, padding2, spacingColumn5, Border.gutter, Border.color gutterColor ] <|
                 textContentsAndThumbnailBlock
-                    ++ List.map attachedFileBlock matter.attachedFiles
+                    ++ attachedFileBlocks
                     ++ permalink
                     ++ originBlock
     in
     case matter.pretext of
         Just text ->
-            textBlocks text ++ [ gutteredBlock ]
+            ( textBlocks text ++ [ gutteredBlock ] ++ accBlocks, mediaIndexAfterAttachedFiles )
 
         Nothing ->
-            [ gutteredBlock ]
+            ( gutteredBlock :: accBlocks, mediaIndexAfterAttachedFiles )
 
 
-attachedFileBlock : AttachedFile -> Html msg
-attachedFileBlock attachedFile =
+attachedFileBlock : (Int -> msg) -> AttachedFile -> ( List (Html msg), Int ) -> ( List (Html msg), Int )
+attachedFileBlock onMediaClick attachedFile ( accBlocks, mediaIndex ) =
     case attachedFile of
         VisualFile visualMedia ->
-            visualMediaBlock visualMedia
+            ( visualMediaBlock (onMediaClick mediaIndex) visualMedia :: accBlocks, mediaIndex + 1 )
 
         OtherFile record ->
             let
@@ -421,20 +451,23 @@ attachedFileBlock attachedFile =
                             DownloadUrl url ->
                                 linkImpl [ download "" ] "Download original file " Octicons.cloudDownload url
                         ]
+
+                linkAndPreviewBlock =
+                    case record.preview of
+                        Just raw ->
+                            div [ flexColumn, Border.round5, Border.w1, Border.solid ]
+                                [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
+                                , pre [ minuscule, flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
+                                ]
+
+                        Nothing ->
+                            div [ Border.round5, Border.w1, Border.solid, Background.colorSub ] [ fileLink ]
             in
-            case record.preview of
-                Just raw ->
-                    div [ flexColumn, Border.round5, Border.w1, Border.solid ]
-                        [ div [ flexBasisAuto, Border.topRound5, Background.colorSub ] [ fileLink ]
-                        , pre [ minuscule, flexBasisAuto, breakWords, padding2, Border.bottomRound5, Background.colorBg ] [ t raw ]
-                        ]
-
-                Nothing ->
-                    div [ Border.round5, Border.w1, Border.solid, Background.colorSub ] [ fileLink ]
+            ( linkAndPreviewBlock :: accBlocks, mediaIndex )
 
 
-visualMediaBlock : VisualMedia -> Html msg
-visualMediaBlock visualMedia =
+visualMediaBlock : msg -> VisualMedia -> Html msg
+visualMediaBlock onMediaClick visualMedia =
     let
         dimensionAttrs dim =
             case dim of
@@ -449,33 +482,215 @@ visualMediaBlock visualMedia =
 
                 Nothing ->
                     []
+
+        badgedThumbnail badge thumb =
+            -- Left-aligned withBadge
+            div
+                [ flexRow
+                , flexBasisAuto
+                , alignStart -- Snap (shrink) to left of the containing column
+                , padding2
+                , Cursor.zoomIn
+                , onClick onMediaClick
+                ]
+                [ thumb
+                , div [ class mediaBadgeClass, padding5, Image.fillText ] [ badge ]
+                ]
+
+        imgThumb dimension description src_ =
+            img
+                ([ flexItem
+                 , alignStart -- Snap (shrink) to top of the containing row
+                 , src src_
+                 , alt description
+                 ]
+                    ++ dimensionAttrs dimension
+                )
+                []
+
+        videoThumbPlaceholder =
+            div
+                [ flexGrow
+                , flexBasisAuto
+                , alignStart
+                , flexColumn
+                , flexCenter
+                , padding15
+                , Background.colorBg
+                ]
+                [ Image.octicon { size = xxxProminentSize, shape = Octicons.deviceCameraVideo }
+                ]
     in
     case visualMedia of
         Image record ->
-            ntLink
-                [ flexItem
-                , flexBasisAuto
-                , alignStart
-                , padding2
-                ]
-                { url = record.link
-                , children = [ img ([ src record.src, alt record.description ] ++ dimensionAttrs record.dimension) [] ]
-                }
+            badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.fileMedia }) <|
+                imgThumb record.dimension record.description record.src
 
         Video record ->
-            video
-                ([ flexItem
-                 , flexBasisAuto
-                 , alignStart
-                 , padding2
-                 , controls True
-                 , src record.src
-                 ]
-                    ++ dimensionAttrs record.dimension
-                )
-                [ t "Embedded video not supported. "
-                , ntLink [] { url = record.link, children = [ t "[Source]" ] }
-                ]
+            -- Not playing Video in-column, delegate to MediaViewer
+            case record.poster of
+                Just src_ ->
+                    badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.deviceCameraVideo }) <|
+                        imgThumb record.dimension record.description src_
+
+                Nothing ->
+                    -- Video tag used here just for showing pseudo-thumbnail (frame at 0.5s)
+                    badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.deviceCameraVideo }) <|
+                        video
+                            ([ flexItem
+                             , alignStart -- Snap (shrink) to top of the containing row
+                             , src (record.src ++ "#t=0.5")
+                             , alt record.description
+                             , controls False -- Hide it, delegate to MediaViewer via onClick
+                             ]
+                                ++ dimensionAttrs record.dimension
+                            )
+                            []
+
+        Youtube record ->
+            let
+                youtubeLogo32 =
+                    img [ width 32, height 32, src ("data:image/png;base64," ++ youtubeLogo64Base64Data) ] []
+            in
+            badgedThumbnail youtubeLogo32 <|
+                case record.poster of
+                    Just src_ ->
+                        imgThumb record.dimension "YouTube video" src_
+
+                    Nothing ->
+                        videoThumbPlaceholder
+
+        TwitchChannel record ->
+            let
+                twitchLogo32 =
+                    img [ width 32, height 32, src ("data:image/png;base64," ++ twitchLogo128Base64Data) ] []
+            in
+            badgedThumbnail twitchLogo32 <|
+                case record.poster of
+                    Just src_ ->
+                        imgThumb record.dimension "Twitch channel" src_
+
+                    Nothing ->
+                        videoThumbPlaceholder
+
+        TwitchClip record ->
+            let
+                twitchLogo32 =
+                    img [ width 32, height 32, src ("data:image/png;base64," ++ twitchLogo128Base64Data) ] []
+            in
+            badgedThumbnail twitchLogo32 <|
+                case record.poster of
+                    Just src_ ->
+                        imgThumb record.dimension "Twitch clip" src_
+
+                    Nothing ->
+                        videoThumbPlaceholder
+
+
+youtubeLogo64Base64Data : String
+youtubeLogo64Base64Data =
+    String.join ""
+        [ "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFn"
+        , "ZVJlYWR5ccllPAAAA25pVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/"
+        , "IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6"
+        , "bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8w"
+        , "OS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9y"
+        , "Zy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIg"
+        , "eG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJo"
+        , "dHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0"
+        , "dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRp"
+        , "ZDoyMDI3QzRENzE5MjA2ODExODIyQUI5Q0YwOTk5NDQ5MiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRp"
+        , "ZDpGNDNEQUM4Njg5QzQxMUU3QjFGNTgwNzI0NjY4MzExRiIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlp"
+        , "ZDpGNDNEQUM4NTg5QzQxMUU3QjFGNTgwNzI0NjY4MzExRiIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQ"
+        , "aG90b3Nob3AgQ0MgMjAxNyAoV2luZG93cykiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFu"
+        , "Y2VJRD0ieG1wLmlpZDo3YjZjMTljNi0yZTYyLWZhNDQtOWY5Yy00ZmIyOTNjNGU4MmIiIHN0UmVmOmRv"
+        , "Y3VtZW50SUQ9InhtcC5kaWQ6MjAyN0M0RDcxOTIwNjgxMTgyMkFCOUNGMDk5OTQ0OTIiLz4gPC9yZGY6"
+        , "RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6A8lBe"
+        , "AAAE0klEQVR42uxbT2hURxz+drOJqcZSq3WlBk2q0AgxtUgV9RIxtIFKLVVob4VSsCDFQ26e9FAVzMGD"
+        , "XhQpXgStDaEiJlHS2mpjS2JVJGh7qCHRVGtI0VXjv0x/n/MeCWGTvNn3Jn270w8+EnaXx/y+92bm+2be"
+        , "JJRScBkpYUI4kQqlwjeErwtfypO6Hgv7hX8KM5MJkBQ+z/Ld28LPhe8JK73f5Rt6hd8LDwl/zPaDhHSB"
+        , "ojECvCzcKdzsCVQoOCpsEN6cSIAKYZN39wsRPcJNws5sAqSFPwirCnzc+1tYK+yG16+VNxAecqB44jXh"
+        , "EX9ApwDDwo3C9x2a/d4Sful3gWL5+5NwpWMWoE9YnfQKf8dBD1QurKcAdXk6x0eBd5Nef3AVb1KAVxwW"
+        , "oCgJt6GSkwShgofrT4ClsPNcnPXTp8CTJ8CzZ/ovP+P//EsOD2u+uA3JEaZSmkXi0IuLR1hSoj+LjQAs"
+        , "6vx54PJlSd0Su/slfg8MAPfuAQ8eAI8eSSp/rIUg/cJJLsL4fGHHEiNkkT4pBIufNk2MqzjXGTMkq0pY"
+        , "nT0bmDdPQrqk9JoaYM0a/X1Oo4BS7coUbW1K1dSMLuO/ZVWVUs3NKgf8bC5Aa6uY5+L4FO8zIa7++HHL"
+        , "AmQySlVWxq94n+m0UgMDRgKYzQLt7bq/xxW3bwMnT1qcBjnoxR2GbTQT4Nq1+Atw/bpFAXp74y/ArVt6"
+        , "qo1cgKEhPc+HQUUFsGCBXQEGB7UXiVyATAa4fz9c41atArq6gK1btbmxAcN2Bhfg4UPt7sKAT9GcOcDe"
+        , "vcCFC8CGDdELQPeZyVgSgPY3KixbBjQ3AydOAMuXR3dd5gu2NXIBqKzB4BIY69cDHR3Avn3A/PnRXJNP"
+        , "WuQCMNDYAgPPli3AxYtAQ0PuwWb0zYpcAEZZ25g7F2hsBLq7gXXrwsXxyAVgVJ0K8O61tAA3buR+DYO2"
+        , "Bl8PSE3BRjEHxR07gEuXQq5ypCwIwBUZKmvjjZLOTmD7duMgMy4MPEZwAUpLtbJRDoZ9fcDu3cCBA9Fe"
+        , "12AQDS7A9Ola2TAN9fsmDdX+/cCePcCdOxEv8qX00lnkAvCiFMHAZWUFjc+2bcDVq3bGET6pZWUWBOBF"
+        , "uSAZ5o6dOgU0NdkdSGfO1O2MfBrko8V5OgzCZokgYNYw6AJm6wGMs3EH47aBDzATYOnS+AtQXW30czMB"
+        , "1q6NvwB1dRYFWLECqK+Pb/GrVwO1tRYFYN86eND4MZsSLFoEHD5sbNnNd4fLy4GzZ3Vs5d6chQ3L4K1P"
+        , "6kGPUfrcOWDxYnNvxp0h9u6cGsCVl54ebWm5KXH37siiJA0Tv+fiBOlvkvo7xOPtDo/eEabzpLGhAfN9"
+        , "yKxZeqpLp/UCysKFRsZnDDrCRTw2bMkSzTyF8y9I/C8A9HvCriIx3mEJVzBMAfodFuAvCvCrwwJ0UYBW"
+        , "BlUHi2fXb6EAvwvbHBSARwR+86fBXQ4K8BW8V2WJX4SNDhUviQ5n/Czgf0hb/I3wwwIv/rTwA+HQWCfI"
+        , "zb9PhF8XcPHHhB/5xWezwtxW/Uz4qfCPAiqc5wW/EH6MMUdpExMcni7z1OJrHDxVwiXhkjwpmLs3ks1x"
+        , "Rfid8FvhP+OtBwS5IDfbXoU+SJ0P4JM8GMTfUIDJTo8XNP4VYAC5rGt3pYiQDwAAAABJRU5ErkJggg=="
+        ]
+
+
+twitchLogo128Base64Data : String
+twitchLogo128Base64Data =
+    String.join ""
+        [ "iVBORw0KGgoAAAANSUhEUgAAAhUAAAIuCAYAAAAIWfoQAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAGXRF"
+        , "WHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAADL1JREFUeNrs3cFtG0cUgOFhoAJYwpbAEjgd"
+        , "qAABXgFzTwmJO3ABAqLD9EF1YHeQdGCngmQ32kOgIAGc9ygul98HEOuTYL6Vod8zw9WurFCr/dfpMhQA"
+        , "4Gr8sMKgOAoKABAVGT64LQBwfXZr+su02vfT5avbAgDXZ20rFaNbAgCiIsOPbgkAiIqQVvuhOKAJAKIi"
+        , "gVUKALhiqziouRzQnJ9NsXdLAOA6rWWl4l5QAICoyGDrAwCu3MW3P5YDmp/dCgC4bmtYqfAETQAQFSlG"
+        , "twEAREVIq30OCgc0AUBUhNn6AICNuNhBzVb7UF6fTQEAbMAlVyp8jBQAREWKe+MHAFER0mqfg2IwfgAQ"
+        , "FVEOaALAxrz7QU0HNAFgmy6xUjEaOwCIigy2PgBAVMS02o/FAU0AEBUJrFIAwEa920HNVvv8Oz6+GjkA"
+        , "bNN7rlSMxg0AoiKDx3IDgKiIabUfigOaACAqElilAICNO/tBzeWA5vwEzb1xA8B2vcdKxb2gAABRkcHW"
+        , "BwDcgLNufywHND8bMwBs37lXKjxBEwBERYrRiAFAVIS02uegcEATAERFmK0PALghZzmo2WofyuuzKQCA"
+        , "G3GulQofIwUAUZHi3mgBQFSEtNrnoBiMFgBERZQDmgBwg1IPajqgCQC3K3ulYjRSABAVGWx9AICoiGm1"
+        , "H4sDmgAgKhJYpQCAG5ZyULPVPv+Oj6/GCQC36y7p64xG+ZePT6eHn40BgO/8z/lpuhyv/X1kbX94LDcA"
+        , "3LhwVEx1dSgOaAKAqEj4GlYpAIBYVCwHNP3yMAAgvFIxB8XeGAGAaFTY+gAAYlGxHNA8GCEAEIqK4gma"
+        , "AEBSVIzGBwCEoqLVPgeFA5oAQCwqiq0PACAaFa32oWzg+eQAwIWjovgYKQCQFBWeoAkAxKKi1T4HxWBs"
+        , "AEAoKooDmgBANCqWA5q2PgCAWFQUD7sCAJKiwtYHABCLilb7sTigCQBEo6JYpQAAolHRap9/x8doVABA"
+        , "KCoEBQCQFRUeyw0AxKKi1X4oDmgCANGoKFYpAIBoVCwHND1BEwCIRcUSFHsjAgCiUWHrAwCIRcVyQPNg"
+        , "PABAKCqKJ2gCAElRMRoNABCKilb7HBQOaAIAsagotj4AgGhUtNqH6XI0FgAgFBXFx0gBgKSo8ARNACAW"
+        , "Fa32OSgGIwEAQlFRHNAEAKJRsRzQtPUBAMSionjYFQCQFBW2PgCAWFS02o/FAU0AIBoVxSoFAJAUFaMx"
+        , "AAAZUQEAICoAAFEBAIgKAABRAQCICgBAVAAAogIAQFQAAKICABAVAICoAAAQFQCAqAAARAUAICqMAAAQ"
+        , "FQCAqAAARAUAgKgAAEQFACAqAABRAQAgKgAAUQEAiAoAQFQAAIgKAEBUAACiAgBAVAAAogIAEBUAgKgA"
+        , "ABAVAICoAABEBQAgKgAARAUAICoAAFEBAIgKAABRAQCICgBAVAAAiAoAQFQAAKICABAVAAD/4s4I4Hxa"
+        , "7cN0GTbwVr49nR6+uKNp3xfHLbyP6Xvixd1EVMD7GafXTxt4H/MPj+p2pjlt5H3s3Er+zvYHACAqAABR"
+        , "AQCICgAAUQEAiAoAQFQAAKICAEBUAACiAgAQFQCAqAAAEBUAgKgAAEQFAICoAABEBQAgKgAAUQEAICoA"
+        , "AFEBAIgKAEBUAACICgBAVAAAogIAEBUAAKICABAVAICoAAAQFQCAqAAARAUAICoAAEQFACAqAABRAQCI"
+        , "CgAAUQEAiAoAQFQAAKICAEBUAACiAgAQFQAAogIAEBUAgKgAAEQFAICoAABEBQAgKgAAUQEAICoAAFEB"
+        , "AIgKAEBUAACICgBAVAAAogIAQFQAAKICABAVAICoAAAQFQCAqAAARAUAICoAAEQFACAqAABRAQCICgAA"
+        , "UQEAiAoAQFQAAIgKAEBUAACiAgAQFQAAogIAEBUAgKgAAEQFAICoAABEBQAgKgAARAUAICoAAFEBAIgK"
+        , "AABRAQCICgBAVAAAogIAQFQAAKICABAVAICoAAAQFQCAqAAARAUAgKgAAEQFACAqAABRAQAgKgAAUQEA"
+        , "iAoAQFQAAIgKAEBUAACiAgAQFQAAogIAEBUAgKgAABAVAICoAABEBQAgKgAARAUAICoAAFEBAIgKAABR"
+        , "AQCICgBAVAAAogIAQFQAAKICABAVAACiAgAQFQCAqAAARAUAgKgAAEQFACAqAABRAQAgKgAAUQEAiAoA"
+        , "QFQAAIgKAGAN7owAzuq36fWygffxxa1M9WIEiArguzydHp6ny7NJ8Ob7opoCW2T7AwAQFQCAqAAARAUA"
+        , "gKgAAEQFACAqAABRAQAgKgAAUQEAiAoAQFQAAIgKAEBUAACiAgBAVAAAogIAEBUAgKgAABAVAICoAABE"
+        , "BQAgKgAARAUAXI29qAAAQlrtv0yXg6gAAKJBMW7l/YgKABAUogIABIWoAABBISoAAEEhKgBAUIgKABAU"
+        , "ogIABMXmiQoAEBSiAgAEhagAAEEhKgAAQSEqAEBQiAoAEBSiAgAEhagAAASFqAAAQSEqAEBQiAoAEBSi"
+        , "AgAQFKICAASFqAAAQSEqAEBQICoAQFCICgAQFGvyLCoAQFCEg+Lp9PAoKgBAUISDYv6DqAAAQREOClEB"
+        , "AIIiJShEBQAIipSgEBUAIChSgkJUACAoBEVKUIgKAASFoEgJClEBgKAgJShEBQCCgpSgEBUACApSgkJU"
+        , "ACAoSAkKUQGAoCAlKEQFAIKClKAQFQAIClKCQlQAIChICQpRAYCgICUoRAUAgoKUoBAVAAgKQfGY9cVE"
+        , "BQCCQlCICgAQFOsIClEBgKAQFKICAATFeoJCVAAgKASFqABAUAiK9QSFqABAUAgKUQGAoGA9QSEqABAU"
+        , "gkJUACAoWE9QiAoABIWgEBUACArWExSiAgBBIShEBQCCgvUEhagAQFAIClEBgKBgPUEhKgAQFIJCVAAg"
+        , "KATFuogKAASFoBAVAAgKQSEqAEBQbCgoRAUAgkJQiAoABIWgEBUACApBsbGgEBUACApBISoAEBSCQlQA"
+        , "ICjYWFCICgAEhaAQFQAICkEhKgAQFGwsKEQFAIJCUIgKAASFoBAVAAgKNhYUogIAQSEoRAUAgkJQiAoA"
+        , "BIWgEBUAICgEhagAQFAIijPaTd8Uf7jX8Gr6R78zhX/84DhMl9P02psGCIr/YqUCEBQgKEQFIChAUIgK"
+        , "QFCAoBAVgKAABIWoAAQFCApRAQgKEBSiAhAUIChEBSAoAEEhKgBBAYJCVACCAgSFqAAEBQgKUQEICkBQ"
+        , "iApAUICgEBWAoABBISoAQQGCAlEBggIQFKICEBQgKEQFIChAUIgKQFCAoEBUgKAABIWoAAQFCApRAQgK"
+        , "EBSiAhAUICgQFSAoAEEhKgBBAYJCVACCAgSFqAAEBQgKRAUICkBQiApAUICgEBWAoABBgagAQQGCAlEB"
+        , "ggIQFKICEBQgKEQFIChAUCAqQFCAoEBUgKAABIWoAAQFCApRAQgKEBSIChAUICgQFSAoAEEhKgBBAYJC"
+        , "VACCAgQFogIEBQgKRAUICkBQiApAUICgQFSAoABBgagAQQGCAlEBggIQFKICEBQgKBAVIChAUCAqQFCA"
+        , "oEBUgKAABIWoAAQFCApEBQgKEBSIChAUICgQFSAoTAMEhagABAUICkQFCAoQFIgKEBQgKBAVICgEBQgK"
+        , "RAUIChAUiAoQFCAoEBUgKEBQICpAUAgKEBSIChAUICgQFSAoQFAgKkBQgKBAVICgEBQgKBAVIChAUCAq"
+        , "YAUEBQgKRAWkEBQgKBAVAAgKRAUAggJRAYCgAFEBgKBAVAAgKBAVAAgKRAUAggJEBQCCAlEBgKBAVAAg"
+        , "KBAVAAgKY0BUACAoEBUACApEBQCCAlEBgKAQFPx/d9ProzHwxofpNRgDQZ+m1+/GcDW+TUHxyRiI2BkB"
+        , "b7XaT9PlaBIEPE4/oJ6NAW6L7Q9AUACiAhAUgKgABAUgKgAEBSAqAEEBiApAUACiAhAUgKgAEBSAqAAE"
+        , "BSAqAEEBiApAUACiAkBQAKICEBSAqAAEBSAqAEEBICoAQQGICkBQAKICEBSAqAAEBYCoAAQFICoAQQGI"
+        , "CkBQAKICEBQAogIQFICoAAQFICoAQQGICkBQAIgKQFAAogIQFICoAAQFgKgAQQEgKgBBAYgKQFAAogIQ"
+        , "FACiAgQFgKgABAUgKgBBAYgKQFAAiAoQFACiAhAUgKgABAUgKgBBASAqQFAAiApAUACiAhAUAKICBAWA"
+        , "qABBASAqAEEBiApAUACIChAUAKICBAWAqAAEBSAqAEEBICpAUACIChAUAKICEBSAqAAEBYCoAEEBICpA"
+        , "UACICkBQAIgKEBQAogIEBYCoAEEBICoAQQEgKkBQAIgKEBQAogIEBYCoAAQFgKgAQQFwEX8KMAB5fyri"
+        , "OffPRwAAAABJRU5ErkJggg=="
+        ]
 
 
 
@@ -498,12 +713,14 @@ styles =
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
-        , ( "object-fit", "cover" )
         ]
+    , s (descOf (c itemGroupContentsClass) "img") [ ( "object-fit", "cover" ) ]
+    , s (descOf (c itemGroupContentsClass) "video") [ ( "object-fit", "contain" ) ]
     , s (descOf (c thumbnailParentClass) "img:last-child," ++ descOf (c thumbnailParentClass) "video:last-child")
         [ ( "max-width", px maxThumbnailSize )
         , ( "max-height", px maxThumbnailSize )
         ]
+    , s (c mediaBadgeClass) [ ( "position", "absolute" ) ]
     ]
 
 
@@ -557,3 +774,8 @@ thumbnailParentClass =
 maxThumbnailSize : Int
 maxThumbnailSize =
     60
+
+
+mediaBadgeClass : String
+mediaBadgeClass =
+    "cimb"

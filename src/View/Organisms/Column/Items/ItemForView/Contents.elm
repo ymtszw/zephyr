@@ -1,14 +1,16 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
-    , imageMedia, videoMedia
-    , attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
+    , unwrapVisualMedia, imageMedia, videoMedia
+    , attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedTwitchClip, attachedOther
+    , attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
     )
 
 {-| Contents of ColumnItem, and some builder functions.
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
-@docs imageMedia, videoMedia
-@docs attachedImage, attachedVideo, attachedOther, attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension
+@docs unwrapVisualMedia, imageMedia, videoMedia
+@docs attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedTwitchClip, attachedOther
+@docs attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
 
 -}
 
@@ -33,27 +35,74 @@ type AttachedFile
         }
 
 
+unwrapVisualMedia : AttachedFile -> Maybe VisualMedia
+unwrapVisualMedia af =
+    case af of
+        VisualFile visualMedia ->
+            Just visualMedia
+
+        OtherFile _ ->
+            Nothing
+
+
 type VisualMedia
-    = Image MediaRecord
-    | Video MediaRecord
+    = Image (MediaRecord {})
+    | Video (MediaRecord { poster : Maybe String })
+    | Youtube ExternalServiceResourceRecord
+    | TwitchChannel ExternalServiceResourceRecord
+    | TwitchClip ExternalServiceResourceRecord
 
 
-type alias MediaRecord =
-    { src : String
-    , link : String
-    , description : String
+type alias MediaRecord a =
+    { a
+        | src : String
+        , link : String
+        , description : String
+        , dimension : Maybe { width : Int, height : Int }
+    }
+
+
+type alias ExternalServiceResourceRecord =
+    { id : String
+    , poster : Maybe String
     , dimension : Maybe { width : Int, height : Int }
     }
 
 
 imageMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
 imageMedia src link description dimension =
-    Image (MediaRecord src link description dimension)
+    Image
+        { src = src
+        , link = link
+        , description = description
+        , dimension = dimension
+        }
 
 
-videoMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
-videoMedia src link description dimension =
-    Video (MediaRecord src link description dimension)
+videoMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> Maybe String -> VisualMedia
+videoMedia src link description dimension poster =
+    Video
+        { src = src
+        , link = link
+        , description = description
+        , dimension = dimension
+        , poster = poster
+        }
+
+
+youtubeMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+youtubeMedia id poster dimension =
+    Youtube (ExternalServiceResourceRecord id poster dimension)
+
+
+twitchChannelMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+twitchChannelMedia id poster dimension =
+    TwitchChannel (ExternalServiceResourceRecord id poster dimension)
+
+
+twitchClipMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+twitchClipMedia slug poster dimension =
+    TwitchClip (ExternalServiceResourceRecord slug poster dimension)
 
 
 attachedImage : String -> AttachedFile
@@ -63,7 +112,22 @@ attachedImage src =
 
 attachedVideo : String -> AttachedFile
 attachedVideo src =
-    VisualFile (videoMedia src src "Attached video" Nothing)
+    VisualFile (videoMedia src src "Attached video" Nothing Nothing)
+
+
+attachedYoutube : String -> AttachedFile
+attachedYoutube id =
+    VisualFile (youtubeMedia id Nothing Nothing)
+
+
+attachedTwitchChannel : String -> AttachedFile
+attachedTwitchChannel id =
+    VisualFile (twitchChannelMedia id Nothing Nothing)
+
+
+attachedTwitchClip : String -> AttachedFile
+attachedTwitchClip slug =
+    VisualFile (twitchClipMedia slug Nothing Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
@@ -80,6 +144,15 @@ attachedFileLink link f =
         VisualFile (Video record) ->
             VisualFile (Video { record | link = link })
 
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube record)
+
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel record)
+
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip record)
+
         OtherFile record ->
             OtherFile record
 
@@ -92,6 +165,15 @@ attachedFileDescription description f =
 
         VisualFile (Video record) ->
             VisualFile (Video { record | description = description })
+
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube record)
+
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel record)
+
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip record)
 
         OtherFile record ->
             OtherFile { record | description = description }
@@ -116,6 +198,15 @@ attachedFileDimension dimension f =
         VisualFile (Video record) ->
             VisualFile (Video { record | dimension = Just dimension })
 
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube { record | dimension = Just dimension })
+
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel { record | dimension = Just dimension })
+
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip { record | dimension = Just dimension })
+
         OtherFile record ->
             OtherFile record
 
@@ -123,3 +214,25 @@ attachedFileDimension dimension f =
 type FileUrl
     = DownloadUrl String
     | ExternalLink String
+
+
+attachedFilePoster : String -> AttachedFile -> AttachedFile
+attachedFilePoster poster f =
+    case f of
+        VisualFile (Image record) ->
+            VisualFile (Image record)
+
+        VisualFile (Video record) ->
+            VisualFile (Video { record | poster = Just poster })
+
+        VisualFile (Youtube record) ->
+            VisualFile (Youtube { record | poster = Just poster })
+
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel { record | poster = Just poster })
+
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip { record | poster = Just poster })
+
+        OtherFile record ->
+            OtherFile record

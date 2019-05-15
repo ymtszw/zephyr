@@ -8,7 +8,7 @@ import Data.Column as Column
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConvoCache)
-import Data.Item
+import Data.Item as Item
 import Data.Model exposing (Model)
 import Data.Msg exposing (..)
 import Data.Pref as Pref
@@ -30,8 +30,12 @@ import Html exposing (Html)
 import Id
 import List.Extra
 import Scroll
+import SelectArray
 import TimeExtra exposing (ms)
 import Url
+import Url.Parser exposing ((</>), (<?>))
+import Url.Parser.Query
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.Source as Source exposing (Source)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
@@ -82,6 +86,11 @@ render m =
                 , onAnywhereClick = ModelessCtrl << Modeless.Touch
                 , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                 , onDragEnd = ModelessCtrl << Modeless.Touch
+                , mediaViewerEffects =
+                    \mId ->
+                        { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                        , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                        }
                 }
             }
 
@@ -90,7 +99,7 @@ render m =
                 marshalVisibleColumn fam _ c =
                     let
                         ( sources, filters ) =
-                            marshalSourcesAndFilters fam (Column.getPendingFilters c)
+                            marshalSourcesAndFilters fam (Column.getFilters c)
 
                         dragStatus =
                             case m.columnStore.swapState of
@@ -129,6 +138,45 @@ render m =
                                 |> Maybe.andThen (\c -> Scroll.getAt itemIndex (Column.getItems c))
                                 |> Maybe.withDefault Column.itemNotFound
                                 |> Modeless.RawColumnItem mId
+
+                        Modeless.MediaViewerId payload ->
+                            let
+                                marshalPayload mediaArray =
+                                    { selectedMedia = SelectArray.selected (SelectArray.selectAt payload.mediaIndex mediaArray)
+                                    , mediaIndex = payload.mediaIndex
+                                    , nMedia = SelectArray.size mediaArray
+                                    , isShrunk = payload.isShrunk
+                                    }
+
+                                collectColumnItemMedia columnItem =
+                                    case columnItem of
+                                        Column.Product _ (Item.DiscordItem dMsg) ->
+                                            collectMediaInProduct (marshalDiscordMessage "" 0 dMsg)
+
+                                        Column.Product _ (Item.SlackItem sMsg) ->
+                                            collectMediaInProduct (marshalSlackMessage "" 0 sMsg)
+
+                                        Column.SystemMessage { mediaMaybe } ->
+                                            let
+                                                marshalMedia media =
+                                                    case media of
+                                                        Column.Image url ->
+                                                            MediaViewer.Image (Url.toString url)
+
+                                                        Column.Video url ->
+                                                            MediaViewer.Video (Url.toString url)
+                                            in
+                                            Maybe.map (marshalMedia >> SelectArray.singleton) mediaMaybe
+
+                                        Column.LocalMessage _ ->
+                                            Nothing
+                            in
+                            Dict.get payload.columnId m.columnStore.dict
+                                |> Maybe.andThen (\c -> Scroll.getAt payload.itemIndex (Column.getItems c))
+                                |> Maybe.andThen collectColumnItemMedia
+                                |> Maybe.withDefault (SelectArray.singleton MediaViewer.NotFound)
+                                |> marshalPayload
+                                |> Modeless.MediaViewer mId
             in
             { configOpen = m.viewState.configOpen
             , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
@@ -202,6 +250,12 @@ render m =
                             { onLoadMoreClick = ColumnCtrl (ColumnStore.ById c.id (Column.ScrollMsg Scroll.LoadMore))
                             , onItemSourceButtonClick = \cId -> ModelessCtrl << Modeless.Touch << Modeless.RawColumnItemId cId
                             , onItemRefreshButtonClick = \cId index -> NoOp -- TODO
+                            , onItemMediaClick =
+                                \cId itemIndex mediaIndex ->
+                                    ModelessCtrl <|
+                                        Modeless.Touch <|
+                                            Modeless.MediaViewerId <|
+                                                Modeless.MediaViewrIdPayload cId itemIndex mediaIndex False
                             }
                             { timezone = m.viewState.timezone
                             , columnId = c.id
@@ -313,10 +367,10 @@ marshalSourcesAndFilters fam filters =
 marshalColumnItem : Int -> Column.ColumnItem -> ItemForView
 marshalColumnItem scrollIndex item =
     case item of
-        Column.Product offset (Data.Item.DiscordItem message) ->
+        Column.Product offset (Item.DiscordItem message) ->
             marshalDiscordMessage (Broker.offsetToString offset) scrollIndex message
 
-        Column.Product offset (Data.Item.SlackItem message) ->
+        Column.Product offset (Item.SlackItem message) ->
             marshalSlackMessage (Broker.offsetToString offset) scrollIndex message
 
         Column.SystemMessage sm ->
@@ -401,19 +455,30 @@ marshalDiscordMessage id scrollIndex m =
                         |> apOrId (Url.toString >> NamedEntity.url) eAuthor.url
                         |> apOrId (marshalIcon >> NamedEntity.avatar) eAuthor.proxyIconUrl
 
-                marshalEmbedImage linkMaybe eImage =
-                    imageMedia (Url.toString eImage.url)
-                        (Url.toString (Maybe.withDefault eImage.url linkMaybe))
+                marshalEmbedImage ctor eImage =
+                    ctor (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
+                        (Url.toString (Maybe.withDefault eImage.url eImage.proxyUrl))
                         "Embedded image"
                         (Maybe.map2 dimension eImage.width eImage.height)
 
                 attachedFiles =
                     List.filterMap identity
-                        [ Maybe.map (marshalEmbedImage Nothing >> VisualFile) e.image
+                        [ Maybe.map (marshalEmbedImage imageMedia >> VisualFile) e.image
                         , Maybe.map
                             (\v ->
-                                attachedVideo (Url.toString v.url)
-                                    |> apOrId attachedFileDimension (Maybe.map2 dimension v.width v.height)
+                                let
+                                    videoFile =
+                                        attachedVideoFromUrl v.url
+                                            |> apOrId attachedFileDimension (Maybe.map2 dimension v.width v.height)
+                                in
+                                case e.thumbnail of
+                                    Just th ->
+                                        videoFile
+                                            |> attachedFilePoster (Url.toString (Maybe.withDefault th.url th.proxyUrl))
+                                            |> apOrId attachedFileDimension (Maybe.map2 dimension th.width th.height)
+
+                                    Nothing ->
+                                        videoFile
                             )
                             e.video
                         ]
@@ -423,19 +488,19 @@ marshalDiscordMessage id scrollIndex m =
                 |> apOrId (Url.toString >> EmbeddedMatter.url) e.url
                 |> apOrId EmbeddedMatter.color e.color
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) e.author
-                |> apOrId (marshalEmbedImage e.url >> EmbeddedMatter.thumbnail) e.thumbnail
+                |> apOrId (marshalEmbedImage EmbeddedMatter.Thumbnail >> EmbeddedMatter.thumbnail) e.thumbnail
                 |> EmbeddedMatter.attachedFiles attachedFiles
 
         marshalAttachment a =
-            if Data.Item.extIsImage a.filename then
+            if Item.extIsImage a.filename then
                 attachedImage (Url.toString a.proxyUrl)
-                    |> attachedFileLink (Url.toString a.url)
+                    |> attachedFileLink (Url.toString a.proxyUrl)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
-            else if Data.Item.extIsVideo a.filename then
+            else if Item.extIsVideo a.filename then
                 attachedVideo (Url.toString a.proxyUrl)
-                    |> attachedFileLink (Url.toString a.url)
+                    |> attachedFileLink (Url.toString a.proxyUrl)
                     |> attachedFileDescription a.filename
                     |> apOrId attachedFileDimension (Maybe.map2 dimension a.width a.height)
 
@@ -452,6 +517,67 @@ marshalDiscordMessage id scrollIndex m =
 dimension : Int -> Int -> { width : Int, height : Int }
 dimension w h =
     { width = w, height = h }
+
+
+attachedVideoFromUrl : Url.Url -> AttachedFile
+attachedVideoFromUrl url =
+    let
+        fallback =
+            attachedVideo (Url.toString url)
+    in
+    if url.host == "www.youtube.com" then
+        let
+            idParser =
+                Url.Parser.oneOf
+                    [ Url.Parser.s "watch" <?> Url.Parser.Query.string "v"
+                    , Url.Parser.s "embed" </> Url.Parser.string |> Url.Parser.map Just
+                    ]
+        in
+        case Url.Parser.parse idParser url of
+            Just (Just id) ->
+                attachedYoutube id
+
+            _ ->
+                fallback
+
+    else if url.host == "youtu.be" then
+        Url.Parser.parse (Url.Parser.map attachedYoutube Url.Parser.string) url
+            |> Maybe.withDefault fallback
+
+    else if url.host == "www.twitch.tv" then
+        Url.Parser.parse (Url.Parser.map attachedTwitchChannel Url.Parser.string) url
+            |> Maybe.withDefault fallback
+
+    else if url.host == "player.twitch.tv" then
+        let
+            twitchResourceParser =
+                Url.Parser.oneOf
+                    [ unwrap attachedTwitchChannel (Url.Parser.top <?> Url.Parser.Query.string "channel")
+                    ]
+
+            unwrap fun =
+                Url.Parser.map (Maybe.map fun >> Maybe.withDefault fallback)
+        in
+        Url.Parser.parse twitchResourceParser url
+            |> Maybe.withDefault fallback
+
+    else if url.host == "clips.twitch.tv" then
+        let
+            slugParser =
+                Url.Parser.oneOf
+                    [ Url.Parser.s "embed" <?> Url.Parser.Query.string "clip"
+                    , Url.Parser.string |> Url.Parser.map Just
+                    ]
+        in
+        case Url.Parser.parse slugParser url of
+            Just (Just slug) ->
+                attachedTwitchClip slug
+
+            _ ->
+                fallback
+
+    else
+        attachedVideo (Url.toString url)
 
 
 marshalSlackMessage : String -> Int -> SlackMessage.Message -> ItemForView
@@ -513,17 +639,17 @@ marshalSlackMessage id scrollIndex m =
                         |> apOrId (Url.toString >> NamedEntity.url) aAuthor.link
                         |> apOrId (marshalIcon >> NamedEntity.avatar) aAuthor.icon
 
-                marshalImageUrl linkMaybe url =
-                    imageMedia (Url.toString url) (Url.toString (Maybe.withDefault url linkMaybe)) "Embedded image" Nothing
+                marshalImageUrl ctor url =
+                    ctor (Url.toString url) (Url.toString url) "Embedded image" Nothing
             in
             EmbeddedMatter.new textOrFallback
                 |> apOrId EmbeddedMatter.color a.color
                 |> apOrId (Plain >> EmbeddedMatter.pretext) a.pretext
                 |> apOrId (marshalTitle >> EmbeddedMatter.title) a.title
                 |> apOrId (marshalAuthor >> EmbeddedMatter.author) a.author
-                |> apOrId (marshalImageUrl (Maybe.andThen .link a.title) >> EmbeddedMatter.thumbnail) a.thumbUrl
+                |> apOrId (marshalImageUrl EmbeddedMatter.Thumbnail >> EmbeddedMatter.thumbnail) a.thumbUrl
                 |> EmbeddedMatter.attachedFiles
-                    (List.filterMap identity [ Maybe.map (marshalImageUrl Nothing >> VisualFile) a.imageUrl ])
+                    (List.filterMap identity [ Maybe.map (marshalImageUrl imageMedia >> VisualFile) a.imageUrl ])
 
         marshalFile f =
             let
@@ -537,10 +663,10 @@ marshalSlackMessage id scrollIndex m =
                         Nothing ->
                             ctor (Url.toString f.url_)
             in
-            if Data.Item.mimeIsImage f.mimetype then
+            if Item.mimeIsImage f.mimetype then
                 attachedFileDescription f.name (base attachedImage)
 
-            else if Data.Item.mimeIsVideo f.mimetype then
+            else if Item.mimeIsVideo f.mimetype then
                 attachedFileDescription f.name (base attachedVideo)
 
             else if f.mode == SlackMessage.Snippet || f.mode == SlackMessage.Post then
@@ -556,6 +682,50 @@ marshalSlackMessage id scrollIndex m =
         |> ItemForView.timestamp (SlackTs.toPosix (SlackMessage.getTs m))
         |> ItemForView.embeddedMatters (List.map marshalAttachment (SlackMessage.getAttachments m))
         |> ItemForView.attachedFiles (List.map marshalFile (SlackMessage.getFiles m))
+
+
+collectMediaInProduct : ItemForView -> Maybe (SelectArray.SelectArray MediaViewer.Media)
+collectMediaInProduct item =
+    -- Order matters!
+    -- * EmbeddedMatter comes first when rendering ItemForView
+    -- * Thumbnail comes first within an EmbeddedMatter
+    let
+        attachedVisualMedia =
+            List.filterMap identity <|
+                let
+                    collectFromEmbeddedMatter e =
+                        Maybe.map (.link >> MediaViewer.Image) e.thumbnail :: List.map marshalVisualMedia e.attachedFiles
+                in
+                List.concatMap collectFromEmbeddedMatter item.embeddedMatters
+                    ++ List.map marshalVisualMedia item.attachedFiles
+
+        marshalVisualMedia attachedFile =
+            let
+                marshal vm =
+                    case vm of
+                        Image { link } ->
+                            MediaViewer.Image link
+
+                        Video { src } ->
+                            MediaViewer.Video src
+
+                        Youtube { id } ->
+                            MediaViewer.Youtube id
+
+                        TwitchChannel { id } ->
+                            MediaViewer.TwitchChannel id
+
+                        TwitchClip { id } ->
+                            MediaViewer.TwitchClip id
+            in
+            Maybe.map marshal (unwrapVisualMedia attachedFile)
+    in
+    case attachedVisualMedia of
+        [] ->
+            Nothing
+
+        m :: ms ->
+            Just (SelectArray.fromLists [] m ms)
 
 
 renderConfigPref : Model -> Html Msg

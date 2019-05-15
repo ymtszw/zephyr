@@ -13,6 +13,7 @@ import View.Atoms.Layout as Layout
 import View.Atoms.TextBlock as TextBlock
 import View.Atoms.Typography as Typography
 import View.Molecules.Icon as Icon
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.RawColumnItem as RawColumnItem
 import View.Molecules.Source as Source
@@ -58,6 +59,7 @@ rendered =
                 ++ Source.styles
                 ++ ProducerConfig.styles
                 ++ RawColumnItem.styles
+                ++ MediaViewer.styles
                 ++ Sidebar.styles
                 ++ Modeless.styles
                 ++ Pref.styles

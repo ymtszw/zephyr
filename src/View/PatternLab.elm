@@ -40,6 +40,7 @@ import View.Atoms.Typography exposing (..)
 import View.Molecules.Column as Column
 import View.Molecules.Icon as Icon
 import View.Molecules.MarkdownBlocks as MarkdownBlocks
+import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.RawColumnItem as RawColumnItem
 import View.Molecules.Source exposing (Source(..))
@@ -95,6 +96,8 @@ type alias Model =
     , editorFile : Maybe ( File, String )
     , userActionOnEditor : UserAction
     , modeless : Modeless.State
+    , mediaArray : SelectArray.SelectArray MediaViewer.Media
+    , mediaIsShrunk : Bool
     }
 
 
@@ -131,6 +134,7 @@ routes =
     , R "producer_config" "Molecules" "ProducerConfig" <| \m -> pLab [ producerConfig m ] m
     , R "column" "Molecules" "Column" <| pLab [ column ]
     , R "rawColumnItem" "Molecules" "RawColumnItem" <| pLab [ rawColumnItem ]
+    , R "mediaViewer" "Molecules" "MediaViewer" <| \m -> pLab [ mediaViewer m ] m
     , R "sidebar" "Organisms" "Sidebar" <| \m -> pLab [ sidebar m ] m
     , R "modeless" "Organisms" "Modeless" <| \m -> pLab [ modeless m ] m
     , R "config_pref" "Organisms" "Config.Pref" <| \m -> pLab [ configPref m ] m
@@ -159,6 +163,16 @@ init () url key =
       , editorFile = Nothing
       , userActionOnEditor = OutOfFocus
       , modeless = Modeless.update (Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 0)) Modeless.init
+      , mediaArray =
+            SelectArray.fromLists
+                [ MediaViewer.Image (Image.ph 500 500) ]
+                (MediaViewer.Image (Image.ph 300 800))
+                [ MediaViewer.Image (Image.ph 800 300)
+                , MediaViewer.Video "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
+                , MediaViewer.Youtube "F9vhni6eNR8"
+                , MediaViewer.TwitchChannel "followgrubby"
+                ]
+      , mediaIsShrunk = False
       }
     , Cmd.none
     )
@@ -198,6 +212,8 @@ type Msg
     | EditorFileLoaded ( File, String )
     | EditorFileDiscard
     | ModelessCtrl Modeless.Msg
+    | MediaSelectAt Int
+    | MediaToggleSize Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -265,6 +281,12 @@ update msg m =
 
         ModelessCtrl mMsg ->
             ( { m | modeless = Modeless.update mMsg m.modeless }, Cmd.none )
+
+        MediaSelectAt index ->
+            ( { m | mediaArray = SelectArray.selectAt index m.mediaArray }, Cmd.none )
+
+        MediaToggleSize isShrunk ->
+            ( { m | mediaIsShrunk = isShrunk }, Cmd.none )
 
 
 view : Model -> { title : String, body : List (Html Msg) }
@@ -2277,6 +2299,49 @@ rawColumnItem =
         ]
 
 
+mediaViewer : Model -> Html Msg
+mediaViewer m =
+    section []
+        [ h1 [ xxProminent ] [ t "MediaViewer" ]
+        , withSource """MediaViewer.render
+    { onPagerClick = MediaSelectAt
+    , onToggleSizeClick = MediaToggleSize
+    }
+    { selectedMedia = MediaViewer.NotFound
+    , mediaIndex = 0
+    , nMedia = 0
+    , isShrunk = False
+    }""" <|
+            MediaViewer.render
+                { onPagerClick = MediaSelectAt
+                , onToggleSizeClick = MediaToggleSize
+                }
+                { selectedMedia = MediaViewer.NotFound
+                , mediaIndex = 0
+                , nMedia = 0
+                , isShrunk = False
+                }
+        , withSource """MediaViewer.render
+    { onPagerClick = MediaSelectAt
+    , onToggleSizeClick = MediaToggleSize
+    }
+    { selectedMedia = SelectArray.selected m.mediaArray
+    , mediaIndex = SelectArray.selectedIndex m.mediaArray
+    , nMedia = SelectArray.size m.mediaArray
+    , isShrunk = m.mediaIsShrunk
+    }""" <|
+            MediaViewer.render
+                { onPagerClick = MediaSelectAt
+                , onToggleSizeClick = MediaToggleSize
+                }
+                { selectedMedia = SelectArray.selected m.mediaArray
+                , mediaIndex = SelectArray.selectedIndex m.mediaArray
+                , nMedia = SelectArray.size m.mediaArray
+                , isShrunk = m.mediaIsShrunk
+                }
+        ]
+
+
 sidebar : Model -> Html Msg
 sidebar m =
     section []
@@ -2360,14 +2425,25 @@ modeless m =
             [ t "Click me to show Modeless 0 (RawColumnItem)" ]
         , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
             [ t "Click me to show Modeless 1 (RawColumnItem)" ]
+        , let
+            freshMediaViewerId =
+                Modeless.MediaViewerId (Modeless.MediaViewrIdPayload (Id.from "dummy") 2 0 (SelectArray.size m.mediaArray) False)
+          in
+          button [ flexItem, padding10, onClick (ModelessCtrl (Modeless.Touch freshMediaViewerId)) ]
+            [ t "Click me to show Modeless 2 (MediaViewer)" ]
         ]
     , Modeless.render
         { onCloseButtonClick = ModelessCtrl << Modeless.Remove
         , onAnywhereClick = ModelessCtrl << Modeless.Touch
         , onDrag = \\mId x y -> ModelessCtrl (Modeless.Move mId x y)
         , onDragEnd = ModelessCtrl << Modeless.Touch
+        , mediaViewerEffects =
+            \\mId ->
+                { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                }
         }
-        (Modeless.map dummyModelessResolver m.modeless)
+        (Modeless.map (dummyModelessResolver m) m.modeless)
     ]""" <|
             div []
                 [ div [ flexColumn, spacingColumn10 ]
@@ -2375,20 +2451,31 @@ modeless m =
                         [ t "Click me to show Modeless 0 (RawColumnItem)" ]
                     , button [ flexItem, padding10, onClick (ModelessCtrl <| Modeless.Touch (Modeless.RawColumnItemId (Id.from "dummy") 1)) ]
                         [ t "Click me to show Modeless 1 (RawColumnItem)" ]
+                    , let
+                        freshMediaViewerId =
+                            Modeless.MediaViewerId (Modeless.MediaViewrIdPayload (Id.from "dummy") 2 0 False)
+                      in
+                      button [ flexItem, padding10, onClick (ModelessCtrl (Modeless.Touch freshMediaViewerId)) ]
+                        [ t "Click me to show Modeless 2 (MediaViewer)" ]
                     ]
                 , Modeless.render
                     { onCloseButtonClick = ModelessCtrl << Modeless.Remove
                     , onAnywhereClick = ModelessCtrl << Modeless.Touch
                     , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                     , onDragEnd = ModelessCtrl << Modeless.Touch
+                    , mediaViewerEffects =
+                        \mId ->
+                            { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                            , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                            }
                     }
-                    (Modeless.map dummyModelessResolver m.modeless)
+                    (Modeless.map (dummyModelessResolver m) m.modeless)
                 ]
         ]
 
 
-dummyModelessResolver : Modeless.ModelessId -> Modeless.ResolvedPayload
-dummyModelessResolver mId =
+dummyModelessResolver : Model -> Modeless.ModelessId -> Modeless.ResolvedPayload
+dummyModelessResolver m mId =
     case mId of
         Modeless.RawColumnItemId _ _ ->
             Modeless.RawColumnItem mId <|
@@ -2397,6 +2484,15 @@ dummyModelessResolver mId =
                     , message = Modeless.idStr mId ++ lorem ++ iroha
                     , mediaMaybe = Just (Data.Column.Image (StringExtra.toUrlUnsafe "https://example.com/image.png"))
                     }
+
+        Modeless.MediaViewerId payload ->
+            -- Not directly using mediaArray's current selected, rather resolve from payload.mediaIndex
+            Modeless.MediaViewer mId <|
+                { selectedMedia = SelectArray.selected (SelectArray.selectAt payload.mediaIndex m.mediaArray)
+                , mediaIndex = payload.mediaIndex
+                , nMedia = SelectArray.size m.mediaArray
+                , isShrunk = payload.isShrunk
+                }
 
 
 configPref : Model -> Html Msg
@@ -3159,18 +3255,21 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc, itemGroups = [], columnId = Id.from <| themeStr ++ "01", hasMore = False }""" <|
                     Items.render
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc, itemGroups = [], columnId = Id.from <| themeStr ++ "01", hasMore = False }
                 , withSourceInColumn Nothing 500 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "02"
@@ -3195,6 +3294,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "02"
@@ -3219,6 +3319,7 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "03"
@@ -3253,6 +3354,14 @@ columnItems =
                     ]
             , ItemForView.new "ci11" 11 (NamedEntity.new "Attachement") (Plain "Multiple images")
                 |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+            , ItemForView.new "ci12" 12 (NamedEntity.new "Attachement") (Plain "YouTube without poster")
+                |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" ]
+            , ItemForView.new "ci13" 13 (NamedEntity.new "Attachement") (Plain "YouTube with poster")
+                |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" |> attachedFilePoster (Image.ph 300 200) ]
+            , ItemForView.new "ci14" 14 (NamedEntity.new "Attachement") (Plain "Twitch channel without poster")
+                |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" ]
+            , ItemForView.new "ci15" 15 (NamedEntity.new "Attachement") (Plain "Twitch channel with poster")
+                |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" |> attachedFilePoster (Image.ph 300 200) ]
             ]
     }""" <|
                     let
@@ -3288,6 +3397,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "03"
@@ -3322,12 +3432,21 @@ columnItems =
                                         ]
                                 , ItemForView.new "ci11" 11 (NamedEntity.new "Attachement") (Plain "Multiple images")
                                     |> ItemForView.attachedFiles [ sampleImage500x500, sampleImage600x100 ]
+                                , ItemForView.new "ci12" 12 (NamedEntity.new "Attachement") (Plain "YouTube without poster")
+                                    |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" ]
+                                , ItemForView.new "ci13" 13 (NamedEntity.new "Attachement") (Plain "YouTube with poster")
+                                    |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" |> attachedFilePoster (Image.ph 300 200) ]
+                                , ItemForView.new "ci14" 14 (NamedEntity.new "Attachement") (Plain "Twitch channel without poster")
+                                    |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" ]
+                                , ItemForView.new "ci15" 15 (NamedEntity.new "Attachement") (Plain "Twitch channel with poster")
+                                    |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" |> attachedFilePoster (Image.ph 300 200) ]
                                 ]
                         }
                 , withSourceInColumn Nothing 300 """Items.render
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "04"
@@ -3358,6 +3477,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "04"
@@ -3388,6 +3508,7 @@ columnItems =
     { onLoadMoreClick = NoOp
     , onItemSourceButtonClick = \\_ _ -> NoOp
     , onItemRefreshButtonClick = \\_ _ -> NoOp
+    , onItemMediaClick = \\_ _ _ -> NoOp
     }
     { timezone = Time.utc
     , columnId = Id.from <| themeStr ++ "05"
@@ -3446,6 +3567,7 @@ columnItems =
                         { onLoadMoreClick = NoOp
                         , onItemSourceButtonClick = \_ _ -> NoOp
                         , onItemRefreshButtonClick = \_ _ -> NoOp
+                        , onItemMediaClick = \_ _ _ -> NoOp
                         }
                         { timezone = Time.utc
                         , columnId = Id.from <| themeStr ++ "05"
@@ -3487,7 +3609,7 @@ columnItems =
                                     |> ItemForView.embeddedMatters
                                         [ EmbeddedMatter.new (Plain ("200x200 image and video, and thumbnail. " ++ lorem))
                                             |> EmbeddedMatter.color (ColorExtra.fromHexUnsafe "#557733")
-                                            |> EmbeddedMatter.thumbnail (imageMedia (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
+                                            |> EmbeddedMatter.thumbnail (EmbeddedMatter.Thumbnail (Image.ph 100 100) (Image.ph 100 100) "Thumbnail" (Just { width = 100, height = 100 }))
                                             |> EmbeddedMatter.attachedFiles
                                                 [ attachedImage (Image.ph 200 200) |> attachedFileDimension { width = 200, height = 200 }
                                                 , attachedVideo "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
@@ -3526,6 +3648,11 @@ mainTemplate m =
                 , onAnywhereClick = ModelessCtrl << Modeless.Touch
                 , onDrag = \mId x y -> ModelessCtrl (Modeless.Move mId x y)
                 , onDragEnd = ModelessCtrl << Modeless.Touch
+                , mediaViewerEffects =
+                    \mId ->
+                        { onPagerClick = ModelessCtrl << Modeless.MediaViewerSelectAt mId
+                        , onToggleSizeClick = ModelessCtrl << Modeless.MediaViewerToggleSize mId
+                        }
                 }
             , onColumnDragEnd = NoOp
             , onColumnDragHover = always NoOp
@@ -3536,7 +3663,7 @@ mainTemplate m =
         mainProps =
             { configOpen = m.toggle
             , visibleColumns = dummyColumns
-            , modeless = Modeless.map dummyModelessResolver m.modeless
+            , modeless = Modeless.map (dummyModelessResolver m) m.modeless
             }
 
         dummyColumns =

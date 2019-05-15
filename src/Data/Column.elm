@@ -389,7 +389,6 @@ type alias PostProcess =
     , catchUpId : Maybe Id
     , position : Position
     , producerMsg : Maybe ProducerRegistry.Msg
-    , heartstopper : Bool -- TODO Remove
     }
 
 
@@ -406,7 +405,6 @@ postProcess =
     , catchUpId = Nothing
     , position = Keep
     , producerMsg = Nothing
-    , heartstopper = False
     }
 
 
@@ -481,41 +479,30 @@ update isVisible msg (Column c) =
                         _ ->
                             Cmd.none
             in
-            ( Column { c | userActionOnEditor = action }, { postProcess | heartstopper = False, cmd = cmd } )
+            ( Column { c | userActionOnEditor = action }, { postProcess | cmd = cmd } )
 
         EditorInput input ->
             pure (Column { c | editors = SelectArray.updateSelected (ColumnEditor.updateBuffer input) c.editors })
 
         EditorReset ->
-            ( Column
-                { c
-                    | editors = SelectArray.updateSelected ColumnEditor.reset c.editors
-                    , editorSeq = c.editorSeq + 1
-                }
-            , { postProcess | heartstopper = False }
-            )
+            pure (Column { c | editors = SelectArray.updateSelected ColumnEditor.reset c.editors, editorSeq = c.editorSeq + 1 })
 
         EditorSubmit ->
             editorSubmit (Column c)
 
         EditorFileRequest mimeTypes ->
-            ( Column c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected, heartstopper = True } )
+            ( Column c, { postProcess | cmd = File.Select.file mimeTypes EditorFileSelected } )
 
         EditorFileSelected file ->
             ( Column { c | userActionOnEditor = ColumnEditor.Authoring }
-            , { postProcess
-                | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file))
-                , heartstopper = False
-              }
+            , { postProcess | cmd = Task.perform EditorFileLoaded (Task.map (Tuple.pair file) (File.toUrl file)) }
             )
 
         EditorFileLoaded fileTuple ->
             pure (Column { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile (Just fileTuple)) c.editors })
 
         EditorFileDiscard ->
-            ( Column { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile Nothing) c.editors }
-            , { postProcess | heartstopper = False }
-            )
+            pure (Column { c | editors = SelectArray.updateSelected (ColumnEditor.updateFile Nothing) c.editors })
 
         ScanBroker opts ->
             scanBroker isVisible opts (Column c)
