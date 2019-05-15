@@ -507,6 +507,19 @@ visualMediaBlock onMediaClick visualMedia =
                     ++ dimensionAttrs dimension
                 )
                 []
+
+        videoThumbPlaceholder =
+            div
+                [ flexGrow
+                , flexBasisAuto
+                , alignStart
+                , flexColumn
+                , flexCenter
+                , padding15
+                , Background.colorBg
+                ]
+                [ Image.octicon { size = xxxProminentSize, shape = Octicons.deviceCameraVideo }
+                ]
     in
     case visualMedia of
         Image record ->
@@ -536,26 +549,29 @@ visualMediaBlock onMediaClick visualMedia =
 
         Youtube record ->
             let
-                youtubeLogo64 =
+                youtubeLogo32 =
                     img [ width 32, height 32, src ("data:image/png;base64," ++ youtubeLogo64Base64Data) ] []
             in
-            badgedThumbnail youtubeLogo64 <|
+            badgedThumbnail youtubeLogo32 <|
                 case record.poster of
                     Just src_ ->
                         imgThumb record.dimension "YouTube video" src_
 
                     Nothing ->
-                        div
-                            [ flexGrow
-                            , flexBasisAuto
-                            , alignStart
-                            , flexColumn
-                            , flexCenter
-                            , padding15
-                            , Background.colorBg
-                            ]
-                            [ Image.octicon { size = xxxProminentSize, shape = Octicons.deviceCameraVideo }
-                            ]
+                        videoThumbPlaceholder
+
+        TwitchChannel record ->
+            let
+                twitchLogo32 =
+                    img [ width 32, height 32, src ("data:image/png;base64," ++ twitchLogo128Base64Data) ] []
+            in
+            badgedThumbnail twitchLogo32 <|
+                case record.poster of
+                    Just src_ ->
+                        imgThumb record.dimension "Twitch channel" src_
+
+                    Nothing ->
+                        videoThumbPlaceholder
 
 
 youtubeLogo64Base64Data : String
@@ -598,6 +614,69 @@ youtubeLogo64Base64Data =
         , "BlUHi2fXb6EAvwvbHBSARwR+86fBXQ4K8BW8V2WJX4SNDhUviQ5n/Czgf0hb/I3wwwIv/rTwA+HQWCfI"
         , "zb9PhF8XcPHHhB/5xWezwtxW/Uz4qfCPAiqc5wW/EH6MMUdpExMcni7z1OJrHDxVwiXhkjwpmLs3ks1x"
         , "Rfid8FvhP+OtBwS5IDfbXoU+SJ0P4JM8GMTfUIDJTo8XNP4VYAC5rGt3pYiQDwAAAABJRU5ErkJggg=="
+        ]
+
+
+twitchLogo128Base64Data : String
+twitchLogo128Base64Data =
+    String.join ""
+        [ "iVBORw0KGgoAAAANSUhEUgAAAhUAAAIuCAYAAAAIWfoQAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAGXRF"
+        , "WHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAADL1JREFUeNrs3cFtG0cUgOFhoAJYwpbAEjgd"
+        , "qAABXgFzTwmJO3ABAqLD9EF1YHeQdGCngmQ32kOgIAGc9ygul98HEOuTYL6Vod8zw9WurFCr/dfpMhQA"
+        , "4Gr8sMKgOAoKABAVGT64LQBwfXZr+su02vfT5avbAgDXZ20rFaNbAgCiIsOPbgkAiIqQVvuhOKAJAKIi"
+        , "gVUKALhiqziouRzQnJ9NsXdLAOA6rWWl4l5QAICoyGDrAwCu3MW3P5YDmp/dCgC4bmtYqfAETQAQFSlG"
+        , "twEAREVIq30OCgc0AUBUhNn6AICNuNhBzVb7UF6fTQEAbMAlVyp8jBQAREWKe+MHAFER0mqfg2IwfgAQ"
+        , "FVEOaALAxrz7QU0HNAFgmy6xUjEaOwCIigy2PgBAVMS02o/FAU0AEBUJrFIAwEa920HNVvv8Oz6+GjkA"
+        , "bNN7rlSMxg0AoiKDx3IDgKiIabUfigOaACAqElilAICNO/tBzeWA5vwEzb1xA8B2vcdKxb2gAABRkcHW"
+        , "BwDcgLNufywHND8bMwBs37lXKjxBEwBERYrRiAFAVIS02uegcEATAERFmK0PALghZzmo2WofyuuzKQCA"
+        , "G3GulQofIwUAUZHi3mgBQFSEtNrnoBiMFgBERZQDmgBwg1IPajqgCQC3K3ulYjRSABAVGWx9AICoiGm1"
+        , "H4sDmgAgKhJYpQCAG5ZyULPVPv+Oj6/GCQC36y7p64xG+ZePT6eHn40BgO/8z/lpuhyv/X1kbX94LDcA"
+        , "3LhwVEx1dSgOaAKAqEj4GlYpAIBYVCwHNP3yMAAgvFIxB8XeGAGAaFTY+gAAYlGxHNA8GCEAEIqK4gma"
+        , "AEBSVIzGBwCEoqLVPgeFA5oAQCwqiq0PACAaFa32oWzg+eQAwIWjovgYKQCQFBWeoAkAxKKi1T4HxWBs"
+        , "AEAoKooDmgBANCqWA5q2PgCAWFQUD7sCAJKiwtYHABCLilb7sTigCQBEo6JYpQAAolHRap9/x8doVABA"
+        , "KCoEBQCQFRUeyw0AxKKi1X4oDmgCANGoKFYpAIBoVCwHND1BEwCIRcUSFHsjAgCiUWHrAwCIRcVyQPNg"
+        , "PABAKCqKJ2gCAElRMRoNABCKilb7HBQOaAIAsagotj4AgGhUtNqH6XI0FgAgFBXFx0gBgKSo8ARNACAW"
+        , "Fa32OSgGIwEAQlFRHNAEAKJRsRzQtPUBAMSionjYFQCQFBW2PgCAWFS02o/FAU0AIBoVxSoFAJAUFaMx"
+        , "AAAZUQEAICoAAFEBAIgKAABRAQCICgBAVAAAogIAQFQAAKICABAVAICoAAAQFQCAqAAARAUAICqMAAAQ"
+        , "FQCAqAAARAUAgKgAAEQFACAqAABRAQAgKgAAUQEAiAoAQFQAAIgKAEBUAACiAgBAVAAAogIAEBUAgKgA"
+        , "ABAVAICoAABEBQAgKgAARAUAICoAAFEBAIgKAABRAQCICgBAVAAAiAoAQFQAAKICABAVAAD/4s4I4Hxa"
+        , "7cN0GTbwVr49nR6+uKNp3xfHLbyP6Xvixd1EVMD7GafXTxt4H/MPj+p2pjlt5H3s3Er+zvYHACAqAABR"
+        , "AQCICgAAUQEAiAoAQFQAAKICAEBUAACiAgAQFQCAqAAAEBUAgKgAAEQFAICoAABEBQAgKgAAUQEAICoA"
+        , "AFEBAIgKAEBUAACICgBAVAAAogIAEBUAAKICABAVAICoAAAQFQCAqAAARAUAICoAAEQFACAqAABRAQCI"
+        , "CgAAUQEAiAoAQFQAAKICAEBUAACiAgAQFQAAogIAEBUAgKgAAEQFAICoAABEBQAgKgAAUQEAICoAAFEB"
+        , "AIgKAEBUAACICgBAVAAAogIAQFQAAKICABAVAICoAAAQFQCAqAAARAUAICoAAEQFACAqAABRAQCICgAA"
+        , "UQEAiAoAQFQAAIgKAEBUAACiAgAQFQAAogIAEBUAgKgAAEQFAICoAABEBQAgKgAARAUAICoAAFEBAIgK"
+        , "AABRAQCICgBAVAAAogIAQFQAAKICABAVAICoAAAQFQCAqAAARAUAgKgAAEQFACAqAABRAQAgKgAAUQEA"
+        , "iAoAQFQAAIgKAEBUAACiAgAQFQAAogIAEBUAgKgAABAVAICoAABEBQAgKgAARAUAICoAAFEBAIgKAABR"
+        , "AQCICgBAVAAAogIAQFQAAKICABAVAACiAgAQFQCAqAAARAUAgKgAAEQFACAqAABRAQAgKgAAUQEAiAoA"
+        , "QFQAAIgKAGAN7owAzuq36fWygffxxa1M9WIEiArguzydHp6ny7NJ8Ob7opoCW2T7AwAQFQCAqAAARAUA"
+        , "gKgAAEQFACAqAABRAQAgKgAAUQEAiAoAQFQAAIgKAEBUAACiAgBAVAAAogIAEBUAgKgAABAVAICoAABE"
+        , "BQAgKgAARAUAXI29qAAAQlrtv0yXg6gAAKJBMW7l/YgKABAUogIABIWoAABBISoAAEEhKgBAUIgKABAU"
+        , "ogIABMXmiQoAEBSiAgAEhagAAEEhKgAAQSEqAEBQiAoAEBSiAgAEhagAAASFqAAAQSEqAEBQiAoAEBSi"
+        , "AgAQFKICAASFqAAAQSEqAEBQICoAQFCICgAQFGvyLCoAQFCEg+Lp9PAoKgBAUISDYv6DqAAAQREOClEB"
+        , "AIIiJShEBQAIipSgEBUAIChSgkJUACAoBEVKUIgKAASFoEgJClEBgKAgJShEBQCCgpSgEBUACApSgkJU"
+        , "ACAoSAkKUQGAoCAlKEQFAIKClKAQFQAIClKCQlQAIChICQpRAYCgICUoRAUAgoKUoBAVAAgKQfGY9cVE"
+        , "BQCCQlCICgAQFOsIClEBgKAQFKICAATFeoJCVAAgKASFqABAUAiK9QSFqABAUAgKUQGAoGA9QSEqABAU"
+        , "gkJUACAoWE9QiAoABIWgEBUACArWExSiAgBBIShEBQCCgvUEhagAQFAIClEBgKBgPUEhKgAQFIJCVAAg"
+        , "KATFuogKAASFoBAVAAgKQSEqAEBQbCgoRAUAgkJQiAoABIWgEBUACApBsbGgEBUACApBISoAEBSCQlQA"
+        , "ICjYWFCICgAEhaAQFQAICkEhKgAQFGwsKEQFAIJCUIgKAASFoBAVAAgKNhYUogIAQSEoRAUAgkJQiAoA"
+        , "BIWgEBUAICgEhagAQFAIijPaTd8Uf7jX8Gr6R78zhX/84DhMl9P02psGCIr/YqUCEBQgKEQFIChAUIgK"
+        , "QFCAoBAVgKAABIWoAAQFCApRAQgKEBSiAhAUIChEBSAoAEEhKgBBAYJCVACCAgSFqAAEBQgKUQEICkBQ"
+        , "iApAUICgEBWAoABBISoAQQGCAlEBggIQFKICEBQgKEQFIChAUIgKQFCAoEBUgKAABIWoAAQFCApRAQgK"
+        , "EBSiAhAUICgQFSAoAEEhKgBBAYJCVACCAgSFqAAEBQgKRAUICkBQiApAUICgEBWAoABBgagAQQGCAlEB"
+        , "ggIQFKICEBQgKEQFIChAUCAqQFCAoEBUgKAABIWoAAQFCApRAQgKEBSIChAUICgQFSAoAEEhKgBBAYJC"
+        , "VACCAgQFogIEBQgKRAUICkBQiApAUICgQFSAoABBgagAQQGCAlEBggIQFKICEBQgKBAVIChAUCAqQFCA"
+        , "oEBUgKAABIWoAAQFCApEBQgKEBSIChAUICgQFSAoTAMEhagABAUICkQFCAoQFIgKEBQgKBAVICgEBQgK"
+        , "RAUIChAUiAoQFCAoEBUgKEBQICpAUAgKEBSIChAUICgQFSAoQFAgKkBQgKBAVICgEBQgKBAVIChAUCAq"
+        , "YAUEBQgKRAWkEBQgKBAVAAgKRAUAggJRAYCgAFEBgKBAVAAgKBAVAAgKRAUAggJEBQCCAlEBgKBAVAAg"
+        , "KBAVAAgKY0BUACAoEBUACApEBQCCAlEBgKAQFPx/d9ProzHwxofpNRgDQZ+m1+/GcDW+TUHxyRiI2BkB"
+        , "b7XaT9PlaBIEPE4/oJ6NAW6L7Q9AUACiAhAUgKgABAUgKgAEBSAqAEEBiApAUACiAhAUgKgAEBSAqAAE"
+        , "BSAqAEEBiApAUACiAkBQAKICEBSAqAAEBSAqAEEBICoAQQGICkBQAKICEBSAqAAEBYCoAAQFICoAQQGI"
+        , "CkBQAKICEBQAogIQFICoAAQFICoAQQGICkBQAIgKQFAAogIQFICoAAQFgKgAQQEgKgBBAYgKQFAAogIQ"
+        , "FACiAgQFgKgABAUgKgBBAYgKQFAAiAoQFACiAhAUgKgABAUgKgBBASAqQFAAiApAUACiAhAUAKICBAWA"
+        , "qABBASAqAEEBiApAUACIChAUAKICBAWAqAAEBSAqAEEBICpAUACIChAUAKICEBSAqAAEBYCoAEEBICpA"
+        , "UACICkBQAIgKEBQAogIEBYCoAEEBICoAQQEgKkBQAIgKEBQAogIEBYCoAAQFgKgAQQFwEX8KMAB5fyri"
+        , "OffPRwAAAABJRU5ErkJggg=="
         ]
 
 

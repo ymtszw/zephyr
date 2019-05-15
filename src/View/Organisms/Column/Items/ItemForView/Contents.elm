@@ -1,7 +1,7 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
     , unwrapVisualMedia, imageMedia, videoMedia
-    , attachedImage, attachedVideo, attachedYoutube, attachedOther
+    , attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedOther
     , attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
     )
 
@@ -9,7 +9,7 @@ module View.Organisms.Column.Items.ItemForView.Contents exposing
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
 @docs unwrapVisualMedia, imageMedia, videoMedia
-@docs attachedImage, attachedVideo, attachedYoutube, attachedOther
+@docs attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedOther
 @docs attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
 
 -}
@@ -48,7 +48,8 @@ unwrapVisualMedia af =
 type VisualMedia
     = Image (MediaRecord {})
     | Video (MediaRecord { poster : Maybe String })
-    | Youtube YoutubeRecord
+    | Youtube ExternalServiceResourceRecord
+    | TwitchChannel ExternalServiceResourceRecord
 
 
 type alias MediaRecord a =
@@ -60,7 +61,7 @@ type alias MediaRecord a =
     }
 
 
-type alias YoutubeRecord =
+type alias ExternalServiceResourceRecord =
     { id : String
     , poster : Maybe String
     , dimension : Maybe { width : Int, height : Int }
@@ -90,11 +91,12 @@ videoMedia src link description dimension poster =
 
 youtubeMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
 youtubeMedia id poster dimension =
-    Youtube
-        { id = id
-        , poster = poster
-        , dimension = dimension
-        }
+    Youtube (ExternalServiceResourceRecord id poster dimension)
+
+
+twitchChannelMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+twitchChannelMedia id poster dimension =
+    TwitchChannel (ExternalServiceResourceRecord id poster dimension)
 
 
 attachedImage : String -> AttachedFile
@@ -110,6 +112,11 @@ attachedVideo src =
 attachedYoutube : String -> AttachedFile
 attachedYoutube id =
     VisualFile (youtubeMedia id Nothing Nothing)
+
+
+attachedTwitchChannel : String -> AttachedFile
+attachedTwitchChannel id =
+    VisualFile (twitchChannelMedia id Nothing Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
@@ -129,6 +136,9 @@ attachedFileLink link f =
         VisualFile (Youtube record) ->
             VisualFile (Youtube record)
 
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel record)
+
         OtherFile record ->
             OtherFile record
 
@@ -144,6 +154,9 @@ attachedFileDescription description f =
 
         VisualFile (Youtube record) ->
             VisualFile (Youtube record)
+
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel record)
 
         OtherFile record ->
             OtherFile { record | description = description }
@@ -171,6 +184,9 @@ attachedFileDimension dimension f =
         VisualFile (Youtube record) ->
             VisualFile (Youtube { record | dimension = Just dimension })
 
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel { record | dimension = Just dimension })
+
         OtherFile record ->
             OtherFile record
 
@@ -191,6 +207,9 @@ attachedFilePoster poster f =
 
         VisualFile (Youtube record) ->
             VisualFile (Youtube { record | poster = Just poster })
+
+        VisualFile (TwitchChannel record) ->
+            VisualFile (TwitchChannel { record | poster = Just poster })
 
         OtherFile record ->
             OtherFile record

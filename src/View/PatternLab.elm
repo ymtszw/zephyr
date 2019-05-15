@@ -3358,6 +3358,10 @@ columnItems =
                 |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" ]
             , ItemForView.new "ci13" 13 (NamedEntity.new "Attachement") (Plain "YouTube with poster")
                 |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" |> attachedFilePoster (Image.ph 300 200) ]
+            , ItemForView.new "ci14" 14 (NamedEntity.new "Attachement") (Plain "Twitch channel without poster")
+                |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" ]
+            , ItemForView.new "ci15" 15 (NamedEntity.new "Attachement") (Plain "Twitch channel with poster")
+                |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" |> attachedFilePoster (Image.ph 300 200) ]
             ]
     }""" <|
                     let
@@ -3432,6 +3436,10 @@ columnItems =
                                     |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" ]
                                 , ItemForView.new "ci13" 13 (NamedEntity.new "Attachement") (Plain "YouTube with poster")
                                     |> ItemForView.attachedFiles [ attachedYoutube "F9vhni6eNR8" |> attachedFilePoster (Image.ph 300 200) ]
+                                , ItemForView.new "ci14" 14 (NamedEntity.new "Attachement") (Plain "Twitch channel without poster")
+                                    |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" ]
+                                , ItemForView.new "ci15" 15 (NamedEntity.new "Attachement") (Plain "Twitch channel with poster")
+                                    |> ItemForView.attachedFiles [ attachedTwitchChannel "followgrubby" |> attachedFilePoster (Image.ph 300 200) ]
                                 ]
                         }
                 , withSourceInColumn Nothing 300 """Items.render

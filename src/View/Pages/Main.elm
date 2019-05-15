@@ -546,6 +546,15 @@ attachedVideoFromUrl url =
                 -- Fallback
                 attachedVideo (Url.toString url)
 
+    else if url.host == "www.twitch.tv" then
+        case Url.Parser.parse Url.Parser.string url of
+            Just id ->
+                attachedTwitchChannel id
+
+            Nothing ->
+                -- Fallback
+                attachedVideo (Url.toString url)
+
     else
         attachedVideo (Url.toString url)
 
@@ -681,6 +690,9 @@ collectMediaInProduct item =
 
                         Youtube { id } ->
                             MediaViewer.Youtube id
+
+                        TwitchChannel { id } ->
+                            MediaViewer.TwitchChannel id
             in
             Maybe.map marshal (unwrapVisualMedia attachedFile)
     in
