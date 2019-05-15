@@ -356,13 +356,13 @@ embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
                     []
 
                 Just (Plain plainTitle) ->
-                    [ div [ prominent, Border.bot1, Border.solid ] [ t plainTitle ] ]
+                    [ div [ bold, Border.bot1, Border.solid ] [ t plainTitle ] ]
 
                 Just (Markdown "") ->
                     []
 
                 Just (Markdown mdTitle) ->
-                    [ div [ prominent, Border.bot1, Border.solid ] <| markdownBlocks mdTitle ]
+                    [ div [ bold, Border.bot1, Border.solid ] <| markdownBlocks mdTitle ]
 
                 Nothing ->
                     []

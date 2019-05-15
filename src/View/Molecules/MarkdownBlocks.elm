@@ -28,17 +28,10 @@ renderBlock quoteLevel block =
             hr [] []
 
         Heading _ level inlines ->
-            let
-                size =
-                    if level <= 2 then
-                        prominent
-
-                    else
-                        noAttr
-            in
+            -- Not enlarging fonts, since markdowns in user contents can oftentimes be ill-formatted,
+            -- such that subsequent paragraphs are incorrectly included in headings, breaking styles.
             Html.node ("h" ++ String.fromInt level)
                 [ breakWords
-                , size
                 , Border.bot1
                 , Border.solid
                 ]
