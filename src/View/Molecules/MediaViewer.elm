@@ -3,7 +3,7 @@ module View.Molecules.MediaViewer exposing (Effects, Media(..), Props, render, s
 import Color exposing (toCssString)
 import ColorExtra
 import Html exposing (Html, button, div, iframe, img, span, video)
-import Html.Attributes exposing (autoplay, class, controls, height, src, type_, width)
+import Html.Attributes exposing (attribute, autoplay, class, controls, height, src, type_, width)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode exposing (succeed)
 import Octicons
@@ -35,6 +35,8 @@ type Media
     = Image String
     | Video String
     | Youtube String
+      -- TODO: Youtube playlist
+    | TwitchChannel String
     | NotFound
 
 
@@ -84,6 +86,23 @@ render eff props =
                     ]
                     []
                 , menu eff props ("https://www.youtube.com/watch?v=" ++ id)
+                ]
+
+            TwitchChannel id ->
+                [ pager eff props
+                , iframe
+                    [ flexItem
+                    , flexBasisAuto
+                    , flexShrink
+                    , type_ "text/html"
+                    , -- Forced standard size. Users may choose fullscreen if they want.
+                      width 640
+                    , height 360
+                    , src ("https://player.twitch.tv/?channel=" ++ id ++ "?autoplay=true")
+                    , attribute "allowfullscreen" "true"
+                    ]
+                    []
+                , menu eff props ("https://www.twitch.tv/" ++ id)
                 ]
 
             NotFound ->

@@ -170,6 +170,7 @@ init () url key =
                 [ MediaViewer.Image (Image.ph 800 300)
                 , MediaViewer.Video "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"
                 , MediaViewer.Youtube "F9vhni6eNR8"
+                , MediaViewer.TwitchChannel "followgrubby"
                 ]
       , mediaIsShrunk = False
       }
