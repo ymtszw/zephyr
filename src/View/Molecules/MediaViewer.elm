@@ -83,6 +83,8 @@ render eff props =
                       width 640
                     , height 360
                     , src ("http://www.youtube.com/embed/" ++ id ++ "?autoplay=1")
+                    , attribute "frameborder" "0"
+                    , attribute "allowfullscreen" ""
                     ]
                     []
                 , menu eff props ("https://www.youtube.com/watch?v=" ++ id)
@@ -99,7 +101,8 @@ render eff props =
                       width 640
                     , height 360
                     , src ("https://player.twitch.tv/?channel=" ++ id ++ "?autoplay=true")
-                    , attribute "allowfullscreen" "true"
+                    , attribute "frameborder" "0"
+                    , attribute "allowfullscreen" ""
                     ]
                     []
                 , menu eff props ("https://www.twitch.tv/" ++ id)
