@@ -1,4 +1,4 @@
-module View.Atoms.Cursor exposing (allScroll, default, pointer, styles)
+module View.Atoms.Cursor exposing (allScroll, default, pointer, styles, zoomIn)
 
 import Html exposing (Attribute)
 import Html.Attributes exposing (class)
@@ -20,11 +20,17 @@ allScroll =
     class allScrollClass
 
 
+zoomIn : Attribute msg
+zoomIn =
+    class zoomInClass
+
+
 styles : List Style
 styles =
     [ s (c defaultClass) [ ( "cursor", "default" ) ]
     , s (c pointerClass) [ ( "cursor", "pointer" ) ]
     , s (c allScrollClass) [ ( "cursor", "all-scroll" ) ]
+    , s (c zoomInClass) [ ( "cursor", "zoom-in" ) ]
     ]
 
 
@@ -41,3 +47,8 @@ pointerClass =
 allScrollClass : String
 allScrollClass =
     "crsrAlls"
+
+
+zoomInClass : String
+zoomInClass =
+    "crsrZmin"
