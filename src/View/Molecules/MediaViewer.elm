@@ -3,7 +3,7 @@ module View.Molecules.MediaViewer exposing (Effects, Media(..), Props, render, s
 import Color exposing (toCssString)
 import ColorExtra
 import Html exposing (Html, button, div, iframe, img, span, video)
-import Html.Attributes exposing (class, controls, height, src, type_, width)
+import Html.Attributes exposing (autoplay, class, controls, height, src, type_, width)
 import Html.Events exposing (stopPropagationOn)
 import Json.Decode exposing (succeed)
 import Octicons
@@ -31,8 +31,6 @@ type alias Props =
     }
 
 
-{-| Possibly add external services for embedded players like YouTube or Twitch
--}
 type Media
     = Image String
     | Video String
@@ -58,30 +56,34 @@ render eff props =
         case props.selectedMedia of
             Image src_ ->
                 [ img [ flexItem, flexBasisAuto, flexShrink, src src_ ] []
-                , hoverMenu eff props src_
+                , pager eff props
+                , menu eff props src_
                 ]
 
             Video src_ ->
-                [ hoverMenu eff props src_
-                , -- Video has clickable control, thus it must come ABOVE hoverMenu
-                  video [ flexItem, flexBasisAuto, flexShrink, src src_, controls True ]
+                [ -- Video has clickable control, thus it must come ABOVE pager
+                  pager eff props
+                , video [ flexItem, flexBasisAuto, flexShrink, src src_, controls True, autoplay True ]
                     [ t "Embedded video not supported. "
                     , ntLink [] { url = src_, children = [ t "[Source]" ] }
                     ]
+                , menu eff props src_
                 ]
 
             Youtube id ->
-                [ hoverMenu eff props ("https://www.youtube.com/watch?v=" ++ id)
+                [ pager eff props
                 , iframe
                     [ flexItem
                     , flexBasisAuto
                     , flexShrink
                     , type_ "text/html"
-                    , width 640
+                    , -- Forced standard size. Users may choose fullscreen if they want.
+                      width 640
                     , height 360
-                    , src ("http://www.youtube.com/embed/" ++ id)
+                    , src ("http://www.youtube.com/embed/" ++ id ++ "?autoplay=1")
                     ]
                     []
+                , menu eff props ("https://www.youtube.com/watch?v=" ++ id)
                 ]
 
             NotFound ->
@@ -92,78 +94,80 @@ render eff props =
                 ]
 
 
-hoverMenu : Effects msg -> Props -> String -> Html msg
-hoverMenu eff props src_ =
-    div [ class hoverMenuClass, widthFill, flexColumn, flexBasisAuto ]
-        [ if props.nMedia > 1 then
-            let
-                pagerClickArea indexTo pagerIcon =
-                    div
-                        [ class pagerClickAreaClass
-                        , flexBasisAuto
-                        , flexRow
-                        , flexCenter
-                        , Image.hovText
-                        , Cursor.pointer
-                        , stopPropagationOn "click" (succeed ( eff.onPagerClick indexTo, True ))
-                        ]
-                        [ pagerIcon ]
-
-                prevIndex =
-                    if props.mediaIndex > 0 then
-                        props.mediaIndex - 1
-
-                    else
-                        props.nMedia - 1
-
-                nextIndex =
-                    if props.mediaIndex + 1 < props.nMedia then
-                        props.mediaIndex + 1
-
-                    else
-                        0
-            in
-            div [ class pagerClass, flexRow, flexGrow ]
-                [ pagerClickArea prevIndex <|
-                    div [ class pagerIconClass ]
-                        [ Image.octicon { size = xProminentSize, shape = Octicons.chevronLeft } ]
-                , div [ flexGrow ] [] -- Shim
-                , pagerClickArea nextIndex <|
-                    div [ class pagerIconClass, pushRight ]
-                        [ Image.octicon { size = xProminentSize, shape = Octicons.chevronRight } ]
+menu : Effects msg -> Props -> String -> Html msg
+menu eff props src_ =
+    div [ class menuClass, flexRow, widthFill, alignStart ]
+        [ div [ pushRight, flexRow, spacingRow10, padding10 ]
+            [ button
+                [ padding5
+                , Border.round5
+                , Background.colorSub
+                , Image.hovText
+                , stopPropagationOn "click" (succeed ( eff.onToggleSizeClick (not props.isShrunk), True ))
                 ]
+                [ Image.octicon
+                    { size = prominentSize
+                    , shape =
+                        if props.isShrunk then
+                            Octicons.screenFull
 
-          else
-            none
-        , div [ class paletteClass, flexRow, widthFill ]
-            [ div [ pushRight, flexRow, spacingRow10, padding10 ]
-                [ button
-                    [ padding5
-                    , Border.round5
-                    , Background.colorSub
-                    , Image.hovText
-                    , stopPropagationOn "click" (succeed ( eff.onToggleSizeClick (not props.isShrunk), True ))
-                    ]
-                    [ Image.octicon
-                        { size = prominentSize
-                        , shape =
-                            if props.isShrunk then
-                                Octicons.screenFull
-
-                            else
-                                Octicons.screenNormal
-                        }
-                    ]
-                , ntLink [ flexItem ]
-                    { url = src_
-                    , children =
-                        [ div [ padding5, Border.round5, Background.colorSub, Image.hovText ]
-                            [ Image.octicon { size = prominentSize, shape = Octicons.linkExternal } ]
-                        ]
+                        else
+                            Octicons.screenNormal
                     }
                 ]
+            , ntLink [ flexItem ]
+                { url = src_
+                , children =
+                    [ div [ padding5, Border.round5, Background.colorSub, Image.hovText ]
+                        [ Image.octicon { size = prominentSize, shape = Octicons.linkExternal } ]
+                    ]
+                }
             ]
         ]
+
+
+pager : Effects msg -> Props -> Html msg
+pager eff props =
+    if props.nMedia > 1 then
+        let
+            pagerClickArea indexTo pagerIcon =
+                div
+                    [ class pagerClickAreaClass
+                    , flexBasisAuto
+                    , flexRow
+                    , flexCenter
+                    , Image.hovText
+                    , Cursor.pointer
+                    , stopPropagationOn "click" (succeed ( eff.onPagerClick indexTo, True ))
+                    ]
+                    [ pagerIcon ]
+
+            prevIndex =
+                if props.mediaIndex > 0 then
+                    props.mediaIndex - 1
+
+                else
+                    props.nMedia - 1
+
+            nextIndex =
+                if props.mediaIndex + 1 < props.nMedia then
+                    props.mediaIndex + 1
+
+                else
+                    0
+        in
+        div [ class pagerClass, flexRow, flexGrow, widthFill ]
+            [ pagerClickArea prevIndex <|
+                div [ class pagerIconClass ]
+                    [ Image.octicon { size = xProminentSize, shape = Octicons.chevronLeft } ]
+            , div [ flexGrow ] [] -- Shim
+            , pagerClickArea nextIndex <|
+                div [ class pagerIconClass, pushRight ]
+                    [ Image.octicon { size = xProminentSize, shape = Octicons.chevronRight } ]
+            ]
+
+    else
+        none
 
 
 
@@ -195,18 +199,19 @@ styles =
         , ( "margin-right", "auto" )
         , ( "position", "relative" )
         ]
-    , s (c hoverMenuClass)
+    , s (c pagerClass)
         [ ( "position", "absolute" )
         , ( "display", "none" )
         , ( "height", "100%" )
         , ( "pointer-events", "none" )
         ]
-    , s (descOf (hov (c mediaViewerClass)) (c hoverMenuClass)) [ ( "display", "flex" ) ]
+    , s (descOf (hov (c mediaViewerClass)) (c pagerClass)) [ ( "display", "flex" ) ]
+    , s (c menuClass) [ ( "position", "absolute" ), ( "display", "none" ) ]
+    , s (descOf (hov (c mediaViewerClass)) (c menuClass)) [ ( "display", "flex" ) ]
     , s (c pagerIconClass) [ ( "opacity", "0" ) ]
     , s (c pagerClickAreaClass) [ ( "width", "30%" ), ( "pointer-events", "auto" ) ]
     , s (hov (c pagerClickAreaClass)) [ ( "background-color", toCssString (ColorExtra.setAlpha 0.3 oneDarkTheme.bg) ) ]
     , s (descOf (hov (c pagerClickAreaClass)) (c pagerIconClass)) [ ( "opacity", "1" ) ]
-    , s (c paletteClass) [ ( "position", "absolute" ), ( "pointer-events", "auto" ) ]
     ]
 
 
@@ -220,26 +225,21 @@ shrunkClass =
     "mvs"
 
 
-hoverMenuClass : String
-hoverMenuClass =
-    "mvhm"
+menuClass : String
+menuClass =
+    "mvm"
 
 
 pagerClickAreaClass : String
 pagerClickAreaClass =
-    "mvhmpca"
+    "mvpca"
 
 
 pagerClass : String
 pagerClass =
-    "mvhmp"
+    "mvp"
 
 
 pagerIconClass : String
 pagerIconClass =
-    "mvhmpi"
-
-
-paletteClass : String
-paletteClass =
-    "mvhmpa"
+    "mvpi"
