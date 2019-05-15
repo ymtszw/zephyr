@@ -521,6 +521,10 @@ dimension w h =
 
 attachedVideoFromUrl : Url.Url -> AttachedFile
 attachedVideoFromUrl url =
+    let
+        fallback =
+            attachedVideo (Url.toString url)
+    in
     if url.host == "www.youtube.com" then
         let
             idParser =
@@ -534,26 +538,28 @@ attachedVideoFromUrl url =
                 attachedYoutube id
 
             _ ->
-                -- Fallback
-                attachedVideo (Url.toString url)
+                fallback
 
     else if url.host == "youtu.be" then
-        case Url.Parser.parse Url.Parser.string url of
-            Just id ->
-                attachedYoutube id
-
-            Nothing ->
-                -- Fallback
-                attachedVideo (Url.toString url)
+        Url.Parser.parse (Url.Parser.map attachedYoutube Url.Parser.string) url
+            |> Maybe.withDefault fallback
 
     else if url.host == "www.twitch.tv" then
-        case Url.Parser.parse Url.Parser.string url of
-            Just id ->
-                attachedTwitchChannel id
+        Url.Parser.parse (Url.Parser.map attachedTwitchChannel Url.Parser.string) url
+            |> Maybe.withDefault fallback
 
-            Nothing ->
-                -- Fallback
-                attachedVideo (Url.toString url)
+    else if url.host == "player.twitch.tv" then
+        let
+            twitchResourceParser =
+                Url.Parser.oneOf
+                    [ unwrap attachedTwitchChannel (Url.Parser.top <?> Url.Parser.Query.string "channel")
+                    ]
+
+            unwrap fun =
+                Url.Parser.map (Maybe.map fun >> Maybe.withDefault fallback)
+        in
+        Url.Parser.parse twitchResourceParser url
+            |> Maybe.withDefault fallback
 
     else
         attachedVideo (Url.toString url)
