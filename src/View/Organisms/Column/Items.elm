@@ -306,7 +306,7 @@ embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
                                 , alignStart
                                 , src thumbnail.src
                                 , alt thumbnail.description
-                                , Cursor.pointer
+                                , Cursor.zoomIn
                                 , onClick (onMediaClick mediaIndex)
                                 ]
                                 []
@@ -488,7 +488,7 @@ visualMediaBlock onMediaClick visualMedia =
                 [ flexBasisAuto
                 , alignStart
                 , padding2
-                , Cursor.pointer
+                , Cursor.zoomIn
                 , onClick onMediaClick
                 ]
                 { topRight = Nothing
