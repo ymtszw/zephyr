@@ -37,6 +37,8 @@ type Media
     | Youtube String
       -- TODO: Youtube playlist
     | TwitchChannel String
+    | TwitchClip String
+      -- TODO: Twitch video/collection
     | NotFound
 
 
@@ -102,10 +104,28 @@ render eff props =
                     , height 360
                     , src ("https://player.twitch.tv/?channel=" ++ id ++ "?autoplay=true")
                     , attribute "frameborder" "0"
-                    , attribute "allowfullscreen" ""
+                    , attribute "allowfullscreen" "true"
                     ]
                     []
                 , menu eff props ("https://www.twitch.tv/" ++ id)
+                ]
+
+            TwitchClip slug ->
+                [ pager eff props
+                , iframe
+                    [ flexItem
+                    , flexBasisAuto
+                    , flexShrink
+                    , type_ "text/html"
+                    , -- Forced standard size. Users may choose fullscreen if they want.
+                      width 640
+                    , height 360
+                    , src ("https://clips.twitch.tv/embed?clip=" ++ slug)
+                    , attribute "frameborder" "0"
+                    , attribute "allowfullscreen" "true"
+                    ]
+                    []
+                , menu eff props ("https://clips.twitch.tv/" ++ slug)
                 ]
 
             NotFound ->

@@ -561,6 +561,21 @@ attachedVideoFromUrl url =
         Url.Parser.parse twitchResourceParser url
             |> Maybe.withDefault fallback
 
+    else if url.host == "clips.twitch.tv" then
+        let
+            slugParser =
+                Url.Parser.oneOf
+                    [ Url.Parser.s "embed" <?> Url.Parser.Query.string "clip"
+                    , Url.Parser.string |> Url.Parser.map Just
+                    ]
+        in
+        case Url.Parser.parse slugParser url of
+            Just (Just slug) ->
+                attachedTwitchClip slug
+
+            _ ->
+                fallback
+
     else
         attachedVideo (Url.toString url)
 
@@ -699,6 +714,9 @@ collectMediaInProduct item =
 
                         TwitchChannel { id } ->
                             MediaViewer.TwitchChannel id
+
+                        TwitchClip { id } ->
+                            MediaViewer.TwitchClip id
             in
             Maybe.map marshal (unwrapVisualMedia attachedFile)
     in

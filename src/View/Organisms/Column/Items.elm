@@ -573,6 +573,19 @@ visualMediaBlock onMediaClick visualMedia =
                     Nothing ->
                         videoThumbPlaceholder
 
+        TwitchClip record ->
+            let
+                twitchLogo32 =
+                    img [ width 32, height 32, src ("data:image/png;base64," ++ twitchLogo128Base64Data) ] []
+            in
+            badgedThumbnail twitchLogo32 <|
+                case record.poster of
+                    Just src_ ->
+                        imgThumb record.dimension "Twitch clip" src_
+
+                    Nothing ->
+                        videoThumbPlaceholder
+
 
 youtubeLogo64Base64Data : String
 youtubeLogo64Base64Data =

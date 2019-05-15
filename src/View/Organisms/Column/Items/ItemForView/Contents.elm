@@ -1,7 +1,7 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
     ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
     , unwrapVisualMedia, imageMedia, videoMedia
-    , attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedOther
+    , attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedTwitchClip, attachedOther
     , attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
     )
 
@@ -9,7 +9,7 @@ module View.Organisms.Column.Items.ItemForView.Contents exposing
 
 @docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
 @docs unwrapVisualMedia, imageMedia, videoMedia
-@docs attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedOther
+@docs attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedTwitchClip, attachedOther
 @docs attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
 
 -}
@@ -50,6 +50,7 @@ type VisualMedia
     | Video (MediaRecord { poster : Maybe String })
     | Youtube ExternalServiceResourceRecord
     | TwitchChannel ExternalServiceResourceRecord
+    | TwitchClip ExternalServiceResourceRecord
 
 
 type alias MediaRecord a =
@@ -99,6 +100,11 @@ twitchChannelMedia id poster dimension =
     TwitchChannel (ExternalServiceResourceRecord id poster dimension)
 
 
+twitchClipMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+twitchClipMedia slug poster dimension =
+    TwitchClip (ExternalServiceResourceRecord slug poster dimension)
+
+
 attachedImage : String -> AttachedFile
 attachedImage src =
     VisualFile (imageMedia src src "Attached image" Nothing)
@@ -117,6 +123,11 @@ attachedYoutube id =
 attachedTwitchChannel : String -> AttachedFile
 attachedTwitchChannel id =
     VisualFile (twitchChannelMedia id Nothing Nothing)
+
+
+attachedTwitchClip : String -> AttachedFile
+attachedTwitchClip slug =
+    VisualFile (twitchClipMedia slug Nothing Nothing)
 
 
 attachedOther : FileUrl -> AttachedFile
@@ -139,6 +150,9 @@ attachedFileLink link f =
         VisualFile (TwitchChannel record) ->
             VisualFile (TwitchChannel record)
 
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip record)
+
         OtherFile record ->
             OtherFile record
 
@@ -157,6 +171,9 @@ attachedFileDescription description f =
 
         VisualFile (TwitchChannel record) ->
             VisualFile (TwitchChannel record)
+
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip record)
 
         OtherFile record ->
             OtherFile { record | description = description }
@@ -187,6 +204,9 @@ attachedFileDimension dimension f =
         VisualFile (TwitchChannel record) ->
             VisualFile (TwitchChannel { record | dimension = Just dimension })
 
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip { record | dimension = Just dimension })
+
         OtherFile record ->
             OtherFile record
 
@@ -210,6 +230,9 @@ attachedFilePoster poster f =
 
         VisualFile (TwitchChannel record) ->
             VisualFile (TwitchChannel { record | poster = Just poster })
+
+        VisualFile (TwitchClip record) ->
+            VisualFile (TwitchClip { record | poster = Just poster })
 
         OtherFile record ->
             OtherFile record
