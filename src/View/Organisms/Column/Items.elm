@@ -484,20 +484,29 @@ visualMediaBlock onMediaClick visualMedia =
                     []
 
         badgedThumbnail badge thumb =
-            withBadge
-                [ flexBasisAuto
-                , alignStart
+            -- Left-aligned withBadge
+            div
+                [ flexRow
+                , flexBasisAuto
+                , alignStart -- Snap (shrink) to left of the containing column
                 , padding2
                 , Cursor.zoomIn
                 , onClick onMediaClick
                 ]
-                { topRight = Nothing
-                , bottomRight = Just <| div [ padding5, Image.fillText ] [ badge ]
-                , content = thumb
-                }
+                [ thumb
+                , div [ class mediaBadgeClass, padding5, Image.fillText ] [ badge ]
+                ]
 
         imgThumb dimension description src_ =
-            img ([ src src_, alt description ] ++ dimensionAttrs dimension) []
+            img
+                ([ flexItem
+                 , alignStart -- Snap (shrink) to top of the containing row
+                 , src src_
+                 , alt description
+                 ]
+                    ++ dimensionAttrs dimension
+                )
+                []
     in
     case visualMedia of
         Image record ->
@@ -515,7 +524,9 @@ visualMediaBlock onMediaClick visualMedia =
                     -- Video tag used here just for showing pseudo-thumbnail (frame at 0.5s)
                     badgedThumbnail (Image.octicon { size = xProminentSize, shape = Octicons.deviceCameraVideo }) <|
                         video
-                            ([ src (record.src ++ "#t=0.5")
+                            ([ flexItem
+                             , alignStart -- Snap (shrink) to top of the containing row
+                             , src (record.src ++ "#t=0.5")
                              , alt record.description
                              , controls False -- Hide it, delegate to MediaViewer via onClick
                              ]
@@ -610,7 +621,6 @@ styles =
     , s (descOf (c itemGroupContentsClass) "img," ++ descOf (c itemGroupContentsClass) "video")
         [ ( "max-width", "100%" )
         , ( "max-height", px maxMediaHeight )
-        , ( "margin-right", "auto" )
         ]
     , s (descOf (c itemGroupContentsClass) "img") [ ( "object-fit", "cover" ) ]
     , s (descOf (c itemGroupContentsClass) "video") [ ( "object-fit", "contain" ) ]
@@ -618,6 +628,7 @@ styles =
         [ ( "max-width", px maxThumbnailSize )
         , ( "max-height", px maxThumbnailSize )
         ]
+    , s (c mediaBadgeClass) [ ( "position", "absolute" ) ]
     ]
 
 
@@ -671,3 +682,8 @@ thumbnailParentClass =
 maxThumbnailSize : Int
 maxThumbnailSize =
     60
+
+
+mediaBadgeClass : String
+mediaBadgeClass =
+    "cimb"
