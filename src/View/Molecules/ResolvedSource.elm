@@ -1,22 +1,15 @@
-module View.Molecules.Source exposing
-    ( Source(..), discord, slack, desiredIconSize, id, theme, headTheme
+module View.Molecules.ResolvedSource exposing
+    ( ResolvedSource(..), discordChannel, slackConvo, desiredIconSize, id, theme, headTheme
     , inline, slackInline, concatInline, horizontalBlock14
     , icon, badge10, badge14
     , styles
     )
 
-{-| Data source Molecule.
+{-| Resolved (joined) data source Molecule.
 
-Note that the Source data type here is "joined" as it is essentially a ViewModel.
-Persisted data of Sources should be identifiers for said Sources,
-and they must be "resolved" on marshalling to ViewModel.
-(e.g. Resolve guild and channel information for DiscordSource,
-from channel ID and required entity dictionaries)
+From Data.Column.Source and other stored data, ResolvedSource must be constructed on Pages.
 
-TODO Refactor control flow of the app, and make Source a persistant data structure.
-<https://github.com/ymtszw/zephyr/issues/64>
-
-@docs Source, discord, slack, desiredIconSize, id, theme, headTheme
+@docs ResolvedSource, discordChannel, slackConvo, desiredIconSize, id, theme, headTheme
 @docs inline, slackInline, concatInline, horizontalBlock14
 @docs icon, badge10, badge14
 @docs styles
@@ -40,30 +33,31 @@ import View.Style exposing (..)
 In current usages, the maximum desired icon size is 40px (desiredIconSize).
 
 -}
-type Source
-    = DiscordSource
+type ResolvedSource
+    = DiscordChannel
         { id : String
         , name : String
         , guildName : String -- Currently DM/GroupDM are not supported
         , guildIcon : Maybe String
         }
-    | SlackSource
+    | SlackConvo
         { id : String
         , name : String
+        , isPrivate : Bool
+        , teamId : String
         , teamName : String
         , teamIcon : Maybe String
-        , isPrivate : Bool
         }
 
 
-discord : String -> String -> String -> Maybe String -> Source
-discord id_ name guildName guildIcon =
-    DiscordSource { id = id_, name = name, guildName = guildName, guildIcon = guildIcon }
+discordChannel : String -> String -> String -> Maybe String -> ResolvedSource
+discordChannel id_ name guildName guildIcon =
+    DiscordChannel { id = id_, name = name, guildName = guildName, guildIcon = guildIcon }
 
 
-slack : String -> String -> String -> Maybe String -> Bool -> Source
-slack id_ name teamName teamIcon isPrivate =
-    SlackSource { id = id_, name = name, teamName = teamName, teamIcon = teamIcon, isPrivate = isPrivate }
+slackConvo : String -> String -> Bool -> String -> String -> Maybe String -> ResolvedSource
+slackConvo id_ name isPrivate teamId teamName teamIcon =
+    SlackConvo { id = id_, name = name, isPrivate = isPrivate, teamId = teamId, teamName = teamName, teamIcon = teamIcon }
 
 
 desiredIconSize : Int
@@ -71,27 +65,27 @@ desiredIconSize =
     40
 
 
-id : Source -> String
+id : ResolvedSource -> String
 id source =
     case source of
-        DiscordSource opts ->
+        DiscordChannel opts ->
             "DiscordSource_" ++ opts.id
 
-        SlackSource opts ->
+        SlackConvo opts ->
             "SlackSource_" ++ opts.id
 
 
-theme : Source -> Attribute msg
+theme : ResolvedSource -> Attribute msg
 theme s =
     case s of
-        SlackSource _ ->
+        SlackConvo _ ->
             aubergine
 
-        DiscordSource _ ->
+        DiscordChannel _ ->
             oneDark
 
 
-headTheme : List Source -> Attribute msg
+headTheme : List ResolvedSource -> Attribute msg
 headTheme sources =
     case sources of
         [] ->
@@ -101,15 +95,15 @@ headTheme sources =
             theme s
 
 
-{-| Renders a list of inline Html nodes from a Source.
+{-| Renders a list of inline Html nodes from a ResolvedSource.
 -}
-inline : Int -> Source -> List (Html msg)
+inline : Int -> ResolvedSource -> List (Html msg)
 inline octiconSize source =
     case source of
-        DiscordSource { name } ->
+        DiscordChannel { name } ->
             [ t ("#" ++ name) ]
 
-        SlackSource opts ->
+        SlackConvo opts ->
             slackInline octiconSize opts
 
 
@@ -125,42 +119,42 @@ slackInline octiconSize { name, isPrivate } =
     ]
 
 
-concatInline : Int -> List Source -> List (Html msg)
+concatInline : Int -> List ResolvedSource -> List (Html msg)
 concatInline octiconSize sources =
     sources |> List.map (inline octiconSize) |> List.intersperse [ t ", " ] |> List.concat
 
 
-icon : List (Attribute msg) -> Source -> Html msg
+icon : List (Attribute msg) -> ResolvedSource -> Html msg
 icon attrs source =
     case source of
-        DiscordSource opts ->
+        DiscordChannel opts ->
             Icon.imgOrAbbr (serif :: attrs) opts.guildName opts.guildIcon
 
-        SlackSource opts ->
+        SlackConvo opts ->
             Icon.imgOrAbbr (serif :: attrs) opts.teamName opts.teamIcon
 
 
-badge10 : List (Attribute msg) -> Source -> Html msg
+badge10 : List (Attribute msg) -> ResolvedSource -> Html msg
 badge10 attrs source =
     case source of
-        DiscordSource _ ->
+        DiscordChannel _ ->
             Icon.discord10 attrs
 
-        SlackSource _ ->
+        SlackConvo _ ->
             Icon.slack10 attrs
 
 
-badge14 : List (Attribute msg) -> Source -> Html msg
+badge14 : List (Attribute msg) -> ResolvedSource -> Html msg
 badge14 attrs source =
     case source of
-        DiscordSource _ ->
+        DiscordChannel _ ->
             Icon.discord14 attrs
 
-        SlackSource _ ->
+        SlackConvo _ ->
             Icon.slack14 attrs
 
 
-horizontalBlock14 : Source -> Html msg
+horizontalBlock14 : ResolvedSource -> Html msg
 horizontalBlock14 source =
     div [ flexRow, flexCenter, spacingRow2, clip ] <|
         [ badge14 [ flexItem ] source
