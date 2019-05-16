@@ -5,6 +5,7 @@ import ArrayExtra
 import AssocList as Dict
 import Broker
 import Data.Column as Column
+import Data.Column.Source exposing (Source(..))
 import Data.ColumnStore as ColumnStore
 import Data.Filter as Filter exposing (Filter)
 import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConvoCache)
@@ -98,7 +99,10 @@ render m =
             let
                 marshalVisibleColumn fam _ c =
                     let
-                        ( sources, filters ) =
+                        sources =
+                            resolveSources fam (Column.getSources c)
+
+                        ( _, filters ) =
                             marshalSourcesAndFilters fam (Column.getFilters c)
 
                         dragStatus =
@@ -308,6 +312,43 @@ render m =
                 ]
     in
     View.Templates.Main.render effects props contents
+
+
+resolveSources : FilterAtomMaterial -> List Source -> List ResolvedSource
+resolveSources fam sources =
+    let
+        resolver s =
+            case s of
+                DiscordChannel id ->
+                    let
+                        withGuild c =
+                            Maybe.map
+                                (\g ->
+                                    discordChannel (Id.to id)
+                                        c.name
+                                        (DiscordGuild.getName g)
+                                        (DiscordGuild.iconUrl (Just ResolvedSource.desiredIconSize) g)
+                                )
+                                c.guildMaybe
+                    in
+                    -- TODO support DMs
+                    findDiscordChannel id fam
+                        |> Maybe.andThen withGuild
+
+                SlackConvo _ convoId ->
+                    -- teamId is currently not used since Slack.FAM is not structured by teamId, and only requires convoId
+                    findSlackConvoCache convoId fam
+                        |> Maybe.map
+                            (\c ->
+                                slackConvo (Id.to convoId)
+                                    c.name
+                                    (SlackConvo.isPrivate c.type_)
+                                    (Id.to (SlackTeam.getId c.team))
+                                    (SlackTeam.getName c.team)
+                                    (teamIcon44 c.team)
+                            )
+    in
+    List.filterMap resolver sources
 
 
 marshalSourcesAndFilters : FilterAtomMaterial -> Array Filter -> ( List ResolvedSource, List String )

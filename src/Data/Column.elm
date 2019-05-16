@@ -249,10 +249,9 @@ sourcesDecoder fam =
                     acc
     in
     D.oneOf
-        [ -- When "filters" field are removed from encoded object, this line loses effect, effectively completes migration
-          D.field "filters" (D.array Filter.decoder)
+        [ D.field "sources" (D.list Source.decoder)
+        , D.field "filters" (D.array Filter.decoder)
             |> D.map (Array.foldr convertFromFilter [])
-        , D.field "sources" (D.list Source.decoder)
         ]
 
 
@@ -592,7 +591,7 @@ scanBroker isVisible { broker, maxCount, clientHeight, catchUp } (Column c_) =
                 ppBase =
                     { postProcess | persist = True }
             in
-            case ( catchUp, List.filterMap (applyFilters c.filters) items ) of
+            case ( catchUp, List.filterMap (filterBySources c.sources) items ) of
                 ( True, [] ) ->
                     adjustScroll adjustOpts ( Column c, { ppBase | catchUpId = Just c.id } )
 
@@ -635,6 +634,16 @@ adjustScroll { isVisible, clientHeight, hasNewItem } ( Column c, pp ) =
                 ( c.items, Cmd.none )
     in
     ( Column { c | items = items }, { pp | cmd = Cmd.map ScrollMsg sCmd } )
+
+
+filterBySources : List Source -> ( Item, Offset ) -> Maybe ColumnItem
+filterBySources sources ( item, offset ) =
+    if List.any (Item.isFromSource item) sources then
+        -- List.any return False when sources are empty; not allowing "pass all"
+        Just (Product offset item)
+
+    else
+        Nothing
 
 
 applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem

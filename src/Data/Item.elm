@@ -1,15 +1,16 @@
 module Data.Item exposing
     ( Item(..), encode, decoder
-    , matchFilter, extIsImage, extIsVideo, mimeIsImage, mimeIsVideo
+    , isFromSource, matchFilter, extIsImage, extIsVideo, mimeIsImage, mimeIsVideo
     )
 
 {-| Items that goes through ItemBroker.
 
 @docs Item, encode, decoder
-@docs matchFilter, extIsImage, extIsVideo, mimeIsImage, mimeIsVideo
+@docs isFromSource, matchFilter, extIsImage, extIsVideo, mimeIsImage, mimeIsVideo
 
 -}
 
+import Data.Column.Source exposing (Source(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom(..), MediaFilter(..))
 import Data.Producer.Discord.Message as DiscordMessage
 import Data.Producer.Slack.Message as SlackMessage
@@ -41,6 +42,24 @@ decoder =
         [ D.tagged "DiscordItem" DiscordItem DiscordMessage.decoder
         , D.tagged "SlackItem" SlackItem SlackMessage.decoder
         ]
+
+
+{-| Argument order is reversed to better cope with List.any.
+-}
+isFromSource : Item -> Source -> Bool
+isFromSource item s =
+    case ( s, item ) of
+        ( DiscordChannel cId, DiscordItem dMessage ) ->
+            cId == DiscordMessage.getChannelId dMessage
+
+        ( DiscordChannel _, _ ) ->
+            False
+
+        ( SlackConvo _ cId, SlackItem sMessage ) ->
+            cId == SlackMessage.getConvoId sMessage
+
+        ( SlackConvo _ _, _ ) ->
+            False
 
 
 matchFilter : Item -> Filter -> Bool
