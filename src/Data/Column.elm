@@ -3,8 +3,8 @@ module Data.Column exposing
     , new, generator, emptyGenerator, welcomeGenerator, simpleGenerator
     , Msg(..), ScanOptions, PostProcess, Position(..), update, postProcess
     , minimumItemHeight, editorId, itemNotFound
-    , getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
-    , setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
+    , getId, getItems, getFilters, getSources, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
+    , setId, setItems, setFilters, setSources, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
     )
 
 {-| Types and functions for columns in Zephyr.
@@ -18,8 +18,8 @@ Also, number of Items shown depends on runtime clientHeight.
 @docs new, generator, emptyGenerator, welcomeGenerator, simpleGenerator
 @docs Msg, ScanOptions, PostProcess, Position, update, postProcess
 @docs minimumItemHeight, editorId, itemNotFound
-@docs getId, getItems, getFilters, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
-@docs setId, setItems, setFilters, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
+@docs getId, getItems, getFilters, getSources, getOffset, getPinned, getRecentlyTouched, getConfigOpen, getPendingFilters, getEditors, getEditorSeq, getUserActionOnEditor
+@docs setId, setItems, setFilters, setSources, setOffset, setPinned, setRecentlyTouched, setConfigOpen, setPendingFilters, setEditors, setEditorSeq, setUserActionOnEditor
 
 -}
 
@@ -28,6 +28,7 @@ import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
 import Browser.Dom
 import Data.Column.IdGenerator exposing (idGenerator)
+import Data.Column.Source as Source exposing (Source)
 import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
 import Data.Item as Item exposing (Item)
@@ -58,6 +59,7 @@ type alias ColumnRecord =
     { id : Id
     , items : Scroll ColumnItem
     , filters : Array Filter
+    , sources : List Source -- Unique list
     , offset : Maybe Offset
     , pinned : Bool
     , recentlyTouched : Bool -- This property may become stale, though it should have no harm
@@ -108,6 +110,7 @@ encode (Column c) =
         [ ( "id", Id.encode E.string c.id )
         , ( "items", Scroll.encode encodeColumnItem c.items )
         , ( "filters", E.array Filter.encode c.filters )
+        , ( "sources", E.list Source.encode c.sources )
         , ( "offset", E.maybe (E.string << Broker.offsetToString) c.offset )
         , ( "pinned", E.bool c.pinned )
         ]
@@ -157,27 +160,16 @@ decoder clientHeight =
                 \( items, sCmd ) ->
                     D.do (D.field "filters" (D.array Filter.decoder)) <|
                         \filters ->
-                            D.do (D.maybeField "offset" offsetDecoder) <|
-                                \offset ->
-                                    -- Migration; use field instead of optionField later
-                                    D.do (D.optionField "pinned" D.bool False) <|
-                                        \pinned ->
-                                            let
-                                                c =
-                                                    { id = id
-                                                    , items = items
-                                                    , filters = filters
-                                                    , offset = offset
-                                                    , pinned = pinned
-                                                    , recentlyTouched = False
-                                                    , configOpen = False
-                                                    , pendingFilters = filters
-                                                    , editors = ColumnEditor.filtersToEditors filters
-                                                    , editorSeq = 0
-                                                    , userActionOnEditor = ColumnEditor.OutOfFocus
-                                                    }
-                                            in
-                                            D.succeed ( Column c, Cmd.map ScrollMsg sCmd )
+                            new id items
+                                |> setFilters filters
+                                |> setPendingFilters filters
+                                |> setEditors (ColumnEditor.filtersToEditors filters)
+                                |> D.succeed
+                                |> D.map2 setOffset (D.maybeField "offset" offsetDecoder)
+                                |> D.map2 setPinned (D.field "pinned" D.bool)
+                                |> -- Migration; use D.field later
+                                   D.map2 setSources (D.optionField "sources" (D.list Source.decoder) [])
+                                |> D.map (\c -> ( c, Cmd.map ScrollMsg sCmd ))
 
 
 columnItemDecoder : Decoder ColumnItem
@@ -277,15 +269,16 @@ tierRatio =
     4.0
 
 
-new : Int -> Id -> List ColumnItem -> Column
-new clientHeight id initialItems =
+new : Id -> Scroll ColumnItem -> Column
+new id items =
     Column
         { id = id
-        , items = Scroll.initWith (scrollInitOptions id clientHeight) initialItems
+        , items = items
         , filters = Array.empty
+        , sources = []
         , offset = Nothing
         , pinned = False
-        , recentlyTouched = True
+        , recentlyTouched = False
         , configOpen = False
         , pendingFilters = Array.empty
         , editors = ColumnEditor.defaultEditors
@@ -295,8 +288,13 @@ new clientHeight id initialItems =
 
 
 generator : Int -> Random.Generator (List ColumnItem) -> Random.Generator Column
-generator clientHeight =
-    Random.map2 (new clientHeight) <| Random.map Id.from idGenerator
+generator clientHeight itemsGenerator =
+    let
+        withId id =
+            Random.map (new id) <|
+                Random.map (Scroll.initWith (scrollInitOptions id clientHeight)) itemsGenerator
+    in
+    Random.andThen withId (Random.map Id.from idGenerator)
 
 
 emptyGenerator : Int -> Random.Generator Column
@@ -304,6 +302,7 @@ emptyGenerator clientHeight =
     Random.map (List.singleton << systemMessage "New column created! Let's configure filters above!") idGenerator
         |> generator clientHeight
         |> Random.map (setConfigOpen True)
+        |> Random.map (setRecentlyTouched True)
 
 
 systemMessage : String -> String -> ColumnItem
@@ -324,6 +323,7 @@ welcomeGenerator clientHeight =
     Random.andThen generateItemsFromIds (Random.list 2 idGenerator)
         |> generator clientHeight
         |> Random.map (setConfigOpen True)
+        |> Random.map (setRecentlyTouched True)
 
 
 welcomeItem : String -> ColumnItem
@@ -349,6 +349,7 @@ simpleGenerator clientHeight fa =
     generator clientHeight (Random.constant [])
         |> Random.map (setFilters filters)
         |> Random.map (setEditors (ColumnEditor.filtersToEditors filters))
+        |> Random.map (setRecentlyTouched True)
 
 
 type Msg
@@ -737,6 +738,11 @@ getFilters (Column c) =
     c.filters
 
 
+getSources : Column -> List Source
+getSources (Column c) =
+    c.sources
+
+
 getOffset : Column -> Maybe Offset
 getOffset (Column c) =
     c.offset
@@ -790,6 +796,11 @@ setItems val (Column c) =
 setFilters : Array Filter -> Column -> Column
 setFilters val (Column c) =
     Column { c | filters = val }
+
+
+setSources : List Source -> Column -> Column
+setSources val (Column c) =
+    Column { c | sources = val }
 
 
 setOffset : Maybe Offset -> Column -> Column
