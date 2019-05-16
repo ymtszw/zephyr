@@ -596,7 +596,7 @@ scrollWithManualAnimation id originalVp step =
     else
         let
             nextViewportY =
-                originalVp.viewport.y * oneToZeroInOutCubic (nextStep / numberOfAnimationStep)
+                originalVp.viewport.y * easeOutCubic (nextStep / numberOfAnimationStep)
 
             requestNext result =
                 case result of
@@ -607,6 +607,7 @@ scrollWithManualAnimation id originalVp step =
                         ViewportResult (Err domErr)
 
             waitAFrame =
+                -- It is terser to use this crude delaying rather than subscribing to animationFrame
                 Process.sleep 1
         in
         waitAFrame
@@ -614,13 +615,9 @@ scrollWithManualAnimation id originalVp step =
             |> Task.attempt requestNext
 
 
-oneToZeroInOutCubic : Float -> Float
-oneToZeroInOutCubic x =
-    if x < 0.5 then
-        1.0 - 4.0 * x ^ 3
-
-    else
-        negate (4.0 * (x - 1) ^ 3)
+easeOutCubic : Float -> Float
+easeOutCubic x =
+    negate ((x - 1) ^ 3)
 
 
 numberOfAnimationStep : Float
