@@ -1,5 +1,5 @@
 module View.Organisms.Column.Items.ItemForView.Contents exposing
-    ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, FileUrl(..)
+    ( Text(..), KTS, AttachedFile(..), VisualMedia(..), MediaRecord, Dimension, FileUrl(..)
     , unwrapVisualMedia, imageMedia, videoMedia
     , attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedTwitchClip, attachedOther
     , attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
@@ -7,7 +7,7 @@ module View.Organisms.Column.Items.ItemForView.Contents exposing
 
 {-| Contents of ColumnItem, and some builder functions.
 
-@docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, FileUrl
+@docs Text, KTS, AttachedFile, VisualMedia, MediaRecord, Dimension, FileUrl
 @docs unwrapVisualMedia, imageMedia, videoMedia
 @docs attachedImage, attachedVideo, attachedYoutube, attachedTwitchChannel, attachedTwitchClip, attachedOther
 @docs attachedFileLink, attachedFileDescription, attachedFilePreview, attachedFileDimension, attachedFilePoster
@@ -58,18 +58,24 @@ type alias MediaRecord a =
         | src : String
         , link : String
         , description : String
-        , dimension : Maybe { width : Int, height : Int }
+        , dimension : Maybe Dimension
+    }
+
+
+type alias Dimension =
+    { width : Int
+    , height : Int
     }
 
 
 type alias ExternalServiceResourceRecord =
     { id : String
     , poster : Maybe String
-    , dimension : Maybe { width : Int, height : Int }
+    , dimension : Maybe Dimension
     }
 
 
-imageMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> VisualMedia
+imageMedia : String -> String -> String -> Maybe Dimension -> VisualMedia
 imageMedia src link description dimension =
     Image
         { src = src
@@ -79,7 +85,7 @@ imageMedia src link description dimension =
         }
 
 
-videoMedia : String -> String -> String -> Maybe { width : Int, height : Int } -> Maybe String -> VisualMedia
+videoMedia : String -> String -> String -> Maybe Dimension -> Maybe String -> VisualMedia
 videoMedia src link description dimension poster =
     Video
         { src = src
@@ -90,17 +96,17 @@ videoMedia src link description dimension poster =
         }
 
 
-youtubeMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+youtubeMedia : String -> Maybe String -> Maybe Dimension -> VisualMedia
 youtubeMedia id poster dimension =
     Youtube (ExternalServiceResourceRecord id poster dimension)
 
 
-twitchChannelMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+twitchChannelMedia : String -> Maybe String -> Maybe Dimension -> VisualMedia
 twitchChannelMedia id poster dimension =
     TwitchChannel (ExternalServiceResourceRecord id poster dimension)
 
 
-twitchClipMedia : String -> Maybe String -> Maybe { width : Int, height : Int } -> VisualMedia
+twitchClipMedia : String -> Maybe String -> Maybe Dimension -> VisualMedia
 twitchClipMedia slug poster dimension =
     TwitchClip (ExternalServiceResourceRecord slug poster dimension)
 
@@ -189,7 +195,7 @@ attachedFilePreview preview f =
             OtherFile { record | preview = Just preview }
 
 
-attachedFileDimension : { width : Int, height : Int } -> AttachedFile -> AttachedFile
+attachedFileDimension : Dimension -> AttachedFile -> AttachedFile
 attachedFileDimension dimension f =
     case f of
         VisualFile (Image record) ->

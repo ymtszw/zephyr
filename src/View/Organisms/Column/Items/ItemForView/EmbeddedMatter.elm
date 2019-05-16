@@ -34,7 +34,7 @@ type alias Thumbnail =
     { src : String
     , link : String
     , description : String
-    , dimension : Maybe { width : Int, height : Int }
+    , dimension : Maybe Dimension
     }
 
 

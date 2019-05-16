@@ -30,7 +30,6 @@ Its internal data structure may be persisted.
 
 import BoundedDeque exposing (BoundedDeque)
 import Browser.Dom
-import Extra exposing (doAfter)
 import Html
 import Html.Attributes exposing (id)
 import Html.Events
