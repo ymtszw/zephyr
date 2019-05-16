@@ -478,7 +478,7 @@ update msg (Scroll s) =
 
         Reveal ->
             ( Scroll { s | viewportStatus = Initial } |> pendingToBuffer |> calculateTier
-            , queryViewportWithDelay s.id
+            , Task.attempt ViewportResult (Browser.Dom.getViewportOf s.id)
             )
 
         NewItem ->
@@ -517,16 +517,6 @@ update msg (Scroll s) =
                 |> setViewportStatus vp
             , Cmd.none
             )
-
-
-queryViewportWithDelay : String -> Cmd Msg
-queryViewportWithDelay id =
-    doAfter queryDelay (Result.map Tuple.second >> ViewportResult) (Browser.Dom.getViewportOf id)
-
-
-queryDelay : Float
-queryDelay =
-    500
 
 
 setViewportStatus : Browser.Dom.Viewport -> Scroll a -> Scroll a
