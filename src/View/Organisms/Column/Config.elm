@@ -14,13 +14,13 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column exposing (ColumnProps)
-import View.Molecules.Source as Source exposing (Source(..))
+import View.Molecules.ResolvedSource as ResolvedSource exposing (ResolvedSource(..))
 
 
 type alias Effects msg =
     { onCloseButtonClick : Column.Id -> msg
     , onColumnDeleteButtonClick : Column.Id -> msg
-    , onSourceSelect : Column.Id -> Source -> msg
+    , onSourceSelect : Column.Id -> ResolvedSource -> msg
     , selectMsgTagger : Select.Msg msg -> msg
     , onRemoveSourceButtonClick : Column.Id -> Int -> msg
     }
@@ -28,7 +28,7 @@ type alias Effects msg =
 
 type alias Props c =
     { selectState : Select.State
-    , availableSourecs : List Source -- Expects it to be already parsed
+    , availableSourecs : List ResolvedSource -- Expects it to be already parsed
     , column :
         ColumnProps
             { c
@@ -126,8 +126,8 @@ sourceSelector eff props =
         , onSelect = eff.onSourceSelect props.column.id
         , selectedOption = Nothing
         , filterMatch = Just sourceFilterMatch
-        , options = List.map (\s -> ( Source.id s, s )) props.availableSourecs
-        , optionHtml = Source.horizontalBlock14
+        , options = List.map (\s -> ( ResolvedSource.id s, s )) props.availableSourecs
+        , optionHtml = ResolvedSource.horizontalBlock14
         }
 
 
@@ -136,14 +136,14 @@ selectId columnId =
     "sourceSelect_" ++ Id.to columnId
 
 
-sourceFilterMatch : String -> Source -> Bool
+sourceFilterMatch : String -> ResolvedSource -> Bool
 sourceFilterMatch query source =
     case source of
-        DiscordSource opts ->
+        DiscordChannel opts ->
             StringExtra.containsCaseIgnored query opts.name
                 || StringExtra.containsCaseIgnored query opts.guildName
 
-        SlackSource opts ->
+        SlackConvo opts ->
             StringExtra.containsCaseIgnored query opts.name
                 || StringExtra.containsCaseIgnored query opts.teamName
 
@@ -154,7 +154,7 @@ selectedSources eff props =
         selectedSource index s =
             div [ flexRow, flexCenter ]
                 [ div [ flexGrow, flexBasisAuto, flexShrink, clip, padding5, Background.colorSub, Border.leftRound5 ]
-                    [ Source.horizontalBlock14 s ]
+                    [ ResolvedSource.horizontalBlock14 s ]
                 , button
                     [ flexItem
                     , padding5

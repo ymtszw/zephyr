@@ -37,7 +37,7 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.Theme exposing (aubergine, oneDark, oneDarkTheme)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
-import View.Molecules.Source as Source
+import View.Molecules.ResolvedSource as ResolvedSource
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Modeless as Modeless
 import View.Organisms.Sidebar as Sidebar exposing (ColumnInSidebar, sidebarExpansionWidth, sidebarWidth)
@@ -227,7 +227,7 @@ columnWrapperKey eff contents index c =
             , Border.solid
             , Border.colorBg
             , Background.colorMain
-            , Source.headTheme c.sources
+            , ResolvedSource.headTheme c.sources
             , if c.recentlyTouched then
                 Animation.borderFlash
 

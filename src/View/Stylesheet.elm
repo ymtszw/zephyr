@@ -16,7 +16,7 @@ import View.Molecules.Icon as Icon
 import View.Molecules.MediaViewer as MediaViewer
 import View.Molecules.ProducerConfig as ProducerConfig
 import View.Molecules.RawColumnItem as RawColumnItem
-import View.Molecules.Source as Source
+import View.Molecules.ResolvedSource as ResolvedSource
 import View.Molecules.Table as Table
 import View.Molecules.Wallpaper as Wallpaper
 import View.Organisms.Column.Header as Header
@@ -56,7 +56,7 @@ rendered =
                 ++ Icon.styles
                 ++ Wallpaper.styles
                 ++ Table.styles
-                ++ Source.styles
+                ++ ResolvedSource.styles
                 ++ ProducerConfig.styles
                 ++ RawColumnItem.styles
                 ++ MediaViewer.styles

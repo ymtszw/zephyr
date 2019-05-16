@@ -14,7 +14,7 @@ import View.Atoms.Theme exposing (..)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column as Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
-import View.Molecules.Source exposing (Source(..))
+import View.Molecules.ResolvedSource as ResolvedSource
 import View.Molecules.Table as Table
 import View.Style exposing (..)
 
@@ -75,7 +75,7 @@ shadowColumnsTable : Effects msg -> Bool -> List ShadowColumn -> Html msg
 shadowColumnsTable eff slotsAvailable shadowColumns =
     let
         columnCell sc =
-            ( [ widthFill, theme sc ]
+            ( [ widthFill, ResolvedSource.headTheme sc.sources ]
             , [ div [ flexRow, flexCenter, spacingRow5 ]
                     [ Column.icon20 sc
                     , div [ flexBasisAuto ] (Column.inlineTitle regularSize sc)
@@ -84,21 +84,13 @@ shadowColumnsTable eff slotsAvailable shadowColumns =
             )
 
         actionCell sc =
-            ( [ theme sc ]
+            ( [ ResolvedSource.headTheme sc.sources ]
             , [ div [ flexRow, flexCenter, spacingRow2 ]
                     [ showColumnButton (eff.onShowColumnButtonClick sc.id) slotsAvailable
                     , deleteColumnButton (eff.onDeleteColumnButtonClick sc.id)
                     ]
               ]
             )
-
-        theme sc =
-            case sc.sources of
-                (SlackSource _) :: _ ->
-                    aubergine
-
-                _ ->
-                    noAttr
     in
     Table.render []
         { columns = [ { header = "Column", cell = columnCell }, { header = "Action", cell = actionCell } ]

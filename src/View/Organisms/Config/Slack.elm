@@ -15,7 +15,7 @@ import View.Atoms.TextBlock exposing (forceBreak)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
 import View.Molecules.ProducerConfig as ProducerConfig
-import View.Molecules.Source as Source
+import View.Molecules.ResolvedSource as ResolvedSource
 import View.Style exposing (..)
 
 
@@ -134,7 +134,7 @@ teamState eff props ( team, ts ) =
                         , selectState = props.selectState
                         , options = opts.subbableConvos
                         , filterMatch = \f conv -> StringExtra.containsCaseIgnored f conv.name
-                        , optionHtml = div [] << Source.slackInline regularSize
+                        , optionHtml = div [] << ResolvedSource.slackInline regularSize
                         }
                     , let
                         eff_ =
@@ -145,7 +145,7 @@ teamState eff props ( team, ts ) =
                       in
                       ProducerConfig.subbedTable eff_
                         { items = opts.subbedConvos
-                        , itemHtml = div [] << Source.slackInline regularSize
+                        , itemHtml = div [] << ResolvedSource.slackInline regularSize
                         }
                     ]
 

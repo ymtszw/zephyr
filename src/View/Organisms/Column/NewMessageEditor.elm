@@ -23,7 +23,7 @@ import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Column exposing (ColumnProps)
 import View.Molecules.Icon as Icon
-import View.Molecules.Source as Source exposing (Source(..))
+import View.Molecules.ResolvedSource as ResolvedSource exposing (ResolvedSource(..))
 import View.Style exposing (..)
 
 
@@ -132,14 +132,14 @@ selectId columnId =
     "editorSelect_" ++ Id.to columnId
 
 
-editorSelectOption : List Source -> ( Int, ColumnEditor ) -> Html msg
+editorSelectOption : List ResolvedSource -> ( Int, ColumnEditor ) -> Html msg
 editorSelectOption sources ( _, editor ) =
     case editor of
         DiscordMessageEditor { channelId } ->
             let
                 matchingDiscordSource s =
                     case s of
-                        DiscordSource { id } ->
+                        DiscordChannel { id } ->
                             id == Id.to channelId
 
                         _ ->
@@ -147,7 +147,7 @@ editorSelectOption sources ( _, editor ) =
             in
             case List.Extra.find matchingDiscordSource sources of
                 Just s ->
-                    Source.horizontalBlock14 s
+                    ResolvedSource.horizontalBlock14 s
 
                 Nothing ->
                     t (Id.to channelId)

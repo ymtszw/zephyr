@@ -16,14 +16,14 @@ import View.Atoms.Layout exposing (..)
 import View.Atoms.TextBlock exposing (clip, ellipsis, nowrap)
 import View.Atoms.Typography exposing (..)
 import View.Molecules.Icon as Icon
-import View.Molecules.Source as Source exposing (Source(..))
+import View.Molecules.ResolvedSource as ResolvedSource exposing (ResolvedSource(..))
 import View.Style exposing (..)
 
 
 type alias ColumnProps c =
     { c
         | pinned : Bool
-        , sources : List Source -- Empty list indicates "any" sources
+        , sources : List ResolvedSource -- Empty list indicates "any" sources
         , filters : List String
     }
 
@@ -40,13 +40,13 @@ inlineTitle octiconSize cp =
             [ t "New Column" ]
 
         ( sources, [] ) ->
-            Source.concatInline octiconSize sources
+            ResolvedSource.concatInline octiconSize sources
 
         ( [], filters ) ->
             [ t (String.join ", " filters) ]
 
         ( sources, filters ) ->
-            Source.concatInline octiconSize sources
+            ResolvedSource.concatInline octiconSize sources
                 ++ [ t ", ", t (String.join ", " filters) ]
 
 
@@ -71,13 +71,13 @@ blockTitle userAttrs cp =
                 [ mainText [ t "New Column" ] ]
 
             ( sources, [] ) ->
-                [ mainText (Source.concatInline prominentSize sources) ]
+                [ mainText (ResolvedSource.concatInline prominentSize sources) ]
 
             ( [], filters ) ->
                 [ mainText [ t (String.join ", " filters) ] ]
 
             ( sources, filters ) ->
-                [ mainText (Source.concatInline prominentSize sources)
+                [ mainText (ResolvedSource.concatInline prominentSize sources)
                 , div [ colorNote, minuscule, ellipsis ] [ t (String.join ", " filters) ]
                 ]
 
@@ -95,7 +95,7 @@ icon20 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded20, serif ] "Zephyr" )
 
             source :: _ ->
-                ( Just (Source.badge10 [] source), Source.icon [ Icon.rounded20 ] source )
+                ( Just (ResolvedSource.badge10 [] source), ResolvedSource.icon [ Icon.rounded20 ] source )
 
 
 {-| Renders a badged icon representing a column in 30x30 size.
@@ -111,7 +111,7 @@ icon30 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded30, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (Source.badge14 [] source), Source.icon [ Icon.rounded30, xProminent ] source )
+                ( Just (ResolvedSource.badge14 [] source), ResolvedSource.icon [ Icon.rounded30, xProminent ] source )
 
 
 {-| Renders a pinned/badged icon representing a column in 40x40 size.
@@ -135,7 +135,7 @@ icon40 cp =
                 ( Nothing, Icon.abbr [ Icon.rounded40, serif, xProminent ] "Zephyr" )
 
             source :: _ ->
-                ( Just (Source.badge14 [] source), Source.icon [ Icon.rounded40, xProminent ] source )
+                ( Just (ResolvedSource.badge14 [] source), ResolvedSource.icon [ Icon.rounded40, xProminent ] source )
 
 
 badgedIcon : List (Attribute msg) -> Maybe (Html msg) -> ( Maybe (Html msg), Html msg ) -> Html msg
