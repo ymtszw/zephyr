@@ -65,11 +65,10 @@ decoder : { clientHeight : Int, posix : Int } -> Decoder ( ColumnStore, Cmd Msg 
 decoder { clientHeight, posix } =
     D.do (D.field "order" (D.array (Id.decoder D.string))) <|
         \order ->
-            D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order)) <|
-                \( dict, cmds ) ->
-                    -- Migration; use field instead of optionField later
-                    D.do (D.optionField "fam" FAM.decoder FAM.init) <|
-                        \fam ->
+            D.do (D.field "fam" FAM.decoder) <|
+                \fam ->
+                    D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order fam)) <|
+                        \( dict, cmds ) ->
                             let
                                 scanQueue =
                                     Deque.fromList (Dict.keys dict)
@@ -77,9 +76,9 @@ decoder { clientHeight, posix } =
                             D.succeed ( ColumnStore dict order Nothing fam scanQueue (Random.initialSeed posix), Cmd.batch cmds )
 
 
-dictAndInitCmdDecoder : Int -> Array Column.Id -> Decoder ( Dict Column.Id Column, List (Cmd Msg) )
-dictAndInitCmdDecoder clientHeight order =
-    D.do (D.assocList Id.from (Column.decoder clientHeight)) <|
+dictAndInitCmdDecoder : Int -> Array Column.Id -> FilterAtomMaterial -> Decoder ( Dict Column.Id Column, List (Cmd Msg) )
+dictAndInitCmdDecoder clientHeight order fam =
+    D.do (D.assocList Id.from (Column.decoder clientHeight fam)) <|
         \dictWithCmds ->
             let
                 reducer cId ( c, initCmd ) ( accDict, accCmds ) =

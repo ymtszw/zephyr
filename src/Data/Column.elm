@@ -28,12 +28,14 @@ import ArrayExtra as Array
 import Broker exposing (Broker, Offset)
 import Browser.Dom
 import Data.Column.IdGenerator exposing (idGenerator)
-import Data.Column.Source as Source exposing (Source)
+import Data.Column.Source as Source exposing (Source(..))
 import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
 import Data.Filter as Filter exposing (Filter, FilterAtom)
+import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Producer.Discord as Discord
+import Data.Producer.Slack.Team as SlackTeam
 import Data.ProducerRegistry as ProducerRegistry
 import File exposing (File)
 import File.Select
@@ -148,8 +150,8 @@ encodeMedia media =
             E.tagged "Video" (E.string (Url.toString url))
 
 
-decoder : Int -> Decoder ( Column, Cmd Msg )
-decoder clientHeight =
+decoder : Int -> FilterAtomMaterial -> Decoder ( Column, Cmd Msg )
+decoder clientHeight fam =
     let
         scrollDecoder id =
             Scroll.decoder (scrollInitOptions id clientHeight) columnItemDecoder
@@ -167,8 +169,7 @@ decoder clientHeight =
                                 |> D.succeed
                                 |> D.map2 setOffset (D.maybeField "offset" offsetDecoder)
                                 |> D.map2 setPinned (D.field "pinned" D.bool)
-                                |> -- Migration; use D.field later
-                                   D.map2 setSources (D.optionField "sources" (D.list Source.decoder) [])
+                                |> D.map2 setSources (sourcesDecoder fam)
                                 |> D.map (\c -> ( c, Cmd.map ScrollMsg sCmd ))
 
 
@@ -221,6 +222,36 @@ mediaDecoder =
         , D.tagged "Video" Video D.url
         , -- Old formats
           D.tagged "Movie" Video D.url
+        ]
+
+
+sourcesDecoder : FilterAtomMaterial -> Decoder (List Source)
+sourcesDecoder fam =
+    let
+        convertFromFilter filter acc =
+            Filter.foldl convertFilterAtom acc filter
+
+        convertFilterAtom fa acc =
+            case fa of
+                Filter.OfDiscordChannel id ->
+                    DiscordChannel id :: acc
+
+                Filter.OfSlackConversation convoId ->
+                    case FAM.findSlackConvoCache convoId fam of
+                        Just convo ->
+                            SlackConvo (SlackTeam.getId convo.team) convoId :: acc
+
+                        Nothing ->
+                            acc
+
+                _ ->
+                    acc
+    in
+    D.oneOf
+        [ -- When "filters" field are removed from encoded object, this line loses effect, effectively completes migration
+          D.field "filters" (D.array Filter.decoder)
+            |> D.map (Array.foldr convertFromFilter [])
+        , D.field "sources" (D.list Source.decoder)
         ]
 
 
