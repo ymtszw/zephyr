@@ -61,10 +61,10 @@ type alias ScrollRecord a =
 
 
 type ViewportStatus
-    = Scrolling Browser.Dom.Viewport
-    | OffTheTop Browser.Dom.Viewport
+    = Initial
     | AtTop Browser.Dom.Viewport
-    | Initial
+    | OffTheTop Browser.Dom.Viewport
+    | ReturningToTop Browser.Dom.Viewport
 
 
 type Tier
@@ -421,7 +421,7 @@ scrolled (Scroll s) =
         OffTheTop _ ->
             True
 
-        Scrolling _ ->
+        ReturningToTop _ ->
             True
 
 
@@ -430,7 +430,7 @@ scrolled (Scroll s) =
 
 
 type Msg
-    = ScrollStart
+    = Scrolled Browser.Dom.Viewport
     | ViewportResult (Result Browser.Dom.Error Browser.Dom.Viewport)
     | BackToTop
     | RequestNextAnimationStep Float
@@ -444,35 +444,11 @@ type Msg
 update : Msg -> Scroll a -> ( Scroll a, Cmd Msg )
 update msg (Scroll s) =
     case msg of
-        ScrollStart ->
-            case s.viewportStatus of
-                OffTheTop vp ->
-                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewportWithDelay s.id )
+        Scrolled vp ->
+            ( setViewportStatus vp (Scroll s), Cmd.none )
 
-                AtTop vp ->
-                    ( Scroll { s | viewportStatus = Scrolling vp }, queryViewportWithDelay s.id )
-
-                Initial ->
-                    ( Scroll s, queryViewportWithDelay s.id )
-
-                Scrolling _ ->
-                    ( Scroll s, Cmd.none )
-
-        ViewportResult (Ok newVp) ->
-            if newVp.viewport.y == 0 then
-                ( Scroll { s | viewportStatus = AtTop newVp } |> pendingToBuffer |> calculateTier, Cmd.none )
-
-            else
-                case s.viewportStatus of
-                    Scrolling oldVp ->
-                        if newVp == oldVp then
-                            ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
-
-                        else
-                            ( Scroll { s | viewportStatus = Scrolling newVp } |> calculateTier, queryViewportWithDelay s.id )
-
-                    _ ->
-                        ( Scroll { s | viewportStatus = OffTheTop newVp } |> calculateTier, Cmd.none )
+        ViewportResult (Ok vp) ->
+            ( setViewportStatus vp (Scroll s), Cmd.none )
 
         ViewportResult (Err (Browser.Dom.NotFound _)) ->
             -- Column is dismissed? Keep current state
@@ -483,17 +459,17 @@ update msg (Scroll s) =
             -- In my experience, this achieves the most consistent and acceptable behavior
             case s.viewportStatus of
                 OffTheTop vp ->
-                    ( Scroll { s | viewportStatus = Scrolling vp }
+                    ( Scroll { s | viewportStatus = ReturningToTop vp }
                     , scrollWithManualAnimation s.id vp 0
                     )
 
                 _ ->
-                    -- Do not allow another BackToTop when the viewport is not settled.
+                    -- Otherwise BackToTop does not make sense
                     ( Scroll s, Cmd.none )
 
         RequestNextAnimationStep currentStep ->
             case s.viewportStatus of
-                Scrolling vp ->
+                ReturningToTop vp ->
                     ( Scroll s, scrollWithManualAnimation s.id vp currentStep )
 
                 _ ->
@@ -515,16 +491,11 @@ update msg (Scroll s) =
             ( incrementTier (Scroll s), Cmd.none )
 
         AdjustReq boundingHeight ->
-            case s.viewportStatus of
-                Scrolling _ ->
-                    ( Scroll s, Cmd.none )
+            if boundingHeight /= s.lastBoundingHeight then
+                ( Scroll s, adjustParams s.id boundingHeight )
 
-                _ ->
-                    if boundingHeight /= s.lastBoundingHeight then
-                        ( Scroll s, adjustParams s.id boundingHeight )
-
-                    else
-                        ( Scroll s, Cmd.none )
+            else
+                ( Scroll s, Cmd.none )
 
         AdjustExec boundingHeight vp ->
             -- Adjust parameters dynamically (in somewhat crude way),
@@ -539,12 +510,12 @@ update msg (Scroll s) =
             in
             ( Scroll
                 { s
-                    | viewportStatus = AtTop vp
-                    , lastBoundingHeight = boundingHeight
+                    | lastBoundingHeight = boundingHeight
                     , baseAmount = ratioToAmount approxFillAmountF s.config.baseRatio
                     , tierAmount = ratioToAmount approxFillAmountF s.config.tierRatio
                 }
-            , queryViewportWithDelay s.id
+                |> setViewportStatus vp
+            , Cmd.none
             )
 
 
@@ -556,6 +527,22 @@ queryViewportWithDelay id =
 queryDelay : Float
 queryDelay =
     500
+
+
+setViewportStatus : Browser.Dom.Viewport -> Scroll a -> Scroll a
+setViewportStatus vp (Scroll s) =
+    if vp.viewport.y == 0 then
+        -- Scrolled to the top, either manually or via auto-travel
+        Scroll { s | viewportStatus = AtTop vp } |> pendingToBuffer |> calculateTier
+
+    else
+        case s.viewportStatus of
+            ReturningToTop _ ->
+                -- Do not interfare return-travel with manual scroll
+                Scroll s
+
+            _ ->
+                Scroll { s | viewportStatus = OffTheTop vp } |> calculateTier
 
 
 calculateTier : Scroll a -> Scroll a
@@ -570,8 +557,9 @@ calculateTier (Scroll s) =
         OffTheTop vp ->
             calculateTierImpl vp (Scroll s)
 
-        Scrolling vp ->
-            calculateTierImpl vp (Scroll s)
+        ReturningToTop _ ->
+            -- Do not change Tier while traveling top
+            Scroll s
 
 
 calculateTierImpl : Browser.Dom.Viewport -> Scroll s -> Scroll s
@@ -600,7 +588,7 @@ scrollWithManualAnimation : String -> Browser.Dom.Viewport -> Float -> Cmd Msg
 scrollWithManualAnimation id originalVp step =
     let
         nextStep =
-            step + 1.0
+            step + 1
     in
     if nextStep > numberOfAnimationStep then
         Task.attempt ViewportResult (Browser.Dom.getViewportOf id)
@@ -608,7 +596,7 @@ scrollWithManualAnimation id originalVp step =
     else
         let
             nextViewportY =
-                originalVp.viewport.y * oneToZeroCubic (nextStep / numberOfAnimationStep)
+                originalVp.viewport.y * oneToZeroInOutCubic (nextStep / numberOfAnimationStep)
 
             requestNext result =
                 case result of
@@ -619,21 +607,25 @@ scrollWithManualAnimation id originalVp step =
                         ViewportResult (Err domErr)
 
             waitAFrame =
-                Process.sleep 10
+                Process.sleep 1
         in
         waitAFrame
             |> Task.andThen (\() -> Browser.Dom.setViewportOf id 0 nextViewportY)
             |> Task.attempt requestNext
 
 
-oneToZeroCubic : Float -> Float
-oneToZeroCubic x =
-    negate ((x - 1.0) ^ 3.0)
+oneToZeroInOutCubic : Float -> Float
+oneToZeroInOutCubic x =
+    if x < 0.5 then
+        1.0 - 4.0 * x ^ 3
+
+    else
+        negate (4.0 * (x - 1) ^ 3)
 
 
 numberOfAnimationStep : Float
 numberOfAnimationStep =
-    16.0
+    25
 
 
 
@@ -644,7 +636,7 @@ scrollAttrs : (Msg -> msg) -> Scroll a -> List (Html.Attribute msg)
 scrollAttrs tagger (Scroll s) =
     let
         scrollHandler =
-            Html.Events.on "scroll" (D.succeed (tagger ScrollStart))
+            Html.Events.on "scroll" (D.map (tagger << Scrolled) domViewportDecoder)
     in
     case s.viewportStatus of
         Initial ->
@@ -656,5 +648,32 @@ scrollAttrs tagger (Scroll s) =
         OffTheTop _ ->
             [ id s.id, scrollHandler ]
 
-        Scrolling _ ->
+        ReturningToTop _ ->
             [ id s.id ]
+
+
+domViewportDecoder : Decoder Browser.Dom.Viewport
+domViewportDecoder =
+    let
+        sceneDecoder =
+            D.map2 makeScene
+                (D.field "scrollWidth" D.float)
+                (D.field "scrollHeight" D.float)
+
+        viewportDecoder =
+            D.map4 makeViewport
+                (D.field "scrollLeft" D.float)
+                (D.field "scrollTop" D.float)
+                (D.field "clientWidth" D.float)
+                (D.field "clientHeight" D.float)
+
+        makeScene w h =
+            { width = w, height = h }
+
+        makeViewport x y w h =
+            { x = x, y = y, width = w, height = h }
+
+        makeDomViewport s vp =
+            { scene = s, viewport = vp }
+    in
+    D.field "target" (D.map2 makeDomViewport sceneDecoder viewportDecoder)
