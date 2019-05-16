@@ -577,7 +577,7 @@ attachedVideoFromUrl url =
                 fallback
 
     else
-        attachedVideo (Url.toString url)
+        fallback
 
 
 marshalSlackMessage : String -> Int -> SlackMessage.Message -> ItemForView
