@@ -45,6 +45,7 @@ import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
 import Json.EncodeExtra as E
+import List.Extra
 import Random
 import Scroll exposing (Scroll)
 import SelectArray exposing (SelectArray)
@@ -394,6 +395,8 @@ type Msg
     | SetFilterAtom { filterIndex : Int, atomIndex : Int, atom : FilterAtom }
     | DelFilterAtom { filterIndex : Int, atomIndex : Int }
     | ConfirmFilter
+    | AddSource Source
+    | DelSource Source
     | SelectEditor Int
     | EditorInteracted ColumnEditor.UserAction
     | EditorInput String
@@ -496,6 +499,21 @@ update isVisible msg (Column c) =
             ( Column { c | filters = c.pendingFilters, offset = Nothing, items = Scroll.clear c.items, configOpen = False }
             , { postProcess | persist = True, catchUpId = Just c.id }
             )
+
+        AddSource source ->
+            let
+                uniqueAdd x list =
+                    if List.member x list then
+                        -- Not likely gonna happen, but check anyway
+                        list
+
+                    else
+                        x :: list
+            in
+            ( Column { c | sources = uniqueAdd source c.sources }, { postProcess | persist = True } )
+
+        DelSource source ->
+            ( Column { c | sources = List.Extra.remove source c.sources }, { postProcess | persist = True } )
 
         SelectEditor index ->
             pure (Column { c | editors = SelectArray.selectAt index c.editors, editorSeq = c.editorSeq + 1 })
