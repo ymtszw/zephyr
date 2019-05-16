@@ -3,6 +3,7 @@ module View.Organisms.Column.Config exposing (Effects, render, selectId)
 import Data.Column as Column
 import Html exposing (Html, button, div, p, span)
 import Html.Events exposing (onClick)
+import Html.Keyed
 import Id
 import Octicons
 import StringExtra
@@ -22,7 +23,7 @@ type alias Effects msg =
     , onColumnDeleteButtonClick : Column.Id -> msg
     , onSourceSelect : Column.Id -> ResolvedSource -> msg
     , selectMsgTagger : Select.Msg msg -> msg
-    , onRemoveSourceButtonClick : Column.Id -> Int -> msg
+    , onRemoveSourceButtonClick : Column.Id -> ResolvedSource -> msg
     }
 
 
@@ -57,8 +58,7 @@ render eff props =
             (status props.column)
         , configSection
             [ span [ Image.fillPrim ] [ Image.octicon { size = xProminentSize, shape = Octicons.beaker } ]
-            , t " Sources "
-            , span [ bold, colorErr ] [ t "[WIP] Broken right now!" ] -- TODO
+            , t " Sources"
             ]
             (sources eff props)
         , configSection
@@ -99,8 +99,7 @@ configSection headerTexts contents =
 status : ColumnProps { c | id : Column.Id, numItems : Int } -> List (Html msg)
 status props =
     List.map (div [] << List.map t << List.intersperse " - ") <|
-        [ [ "ID", Id.to props.id ]
-        , [ "Stored messages", StringExtra.punctuateNumber props.numItems ]
+        [ [ "Stored messages", StringExtra.punctuateNumber props.numItems ]
         , [ "Pinned"
           , if props.pinned then
                 "Yes"
@@ -113,7 +112,10 @@ status props =
 
 sources : Effects msg -> Props c -> List (Html msg)
 sources eff props =
-    sourceSelector eff props :: selectedSources eff props
+    [ sourceSelector eff props
+    , Html.Keyed.node "div" [ flexColumn, flexBasisAuto ] <|
+        List.map (selectedSource eff props.column.id) props.column.sources
+    ]
 
 
 sourceSelector : Effects msg -> Props c -> Html msg
@@ -148,26 +150,23 @@ sourceFilterMatch query source =
                 || StringExtra.containsCaseIgnored query opts.teamName
 
 
-selectedSources : Effects msg -> Props c -> List (Html msg)
-selectedSources eff props =
-    let
-        selectedSource index s =
-            div [ flexRow, flexCenter ]
-                [ div [ flexGrow, flexBasisAuto, flexShrink, clip, padding5, Background.colorSub, Border.leftRound5 ]
-                    [ ResolvedSource.horizontalBlock14 s ]
-                , button
-                    [ flexItem
-                    , padding5
-                    , Border.rightRound5
-                    , Background.colorSub
-                    , Background.hovBd
-                    , Image.hovErr
-                    , onClick (eff.onRemoveSourceButtonClick props.column.id index)
-                    ]
-                    [ Image.octicon { size = regularSize, shape = Octicons.x } ]
+selectedSource : Effects msg -> Column.Id -> ResolvedSource -> ( String, Html msg )
+selectedSource eff id s =
+    Tuple.pair (Id.to id ++ ResolvedSource.id s) <|
+        div [ flexRow, flexCenter ]
+            [ div [ flexGrow, flexBasisAuto, flexShrink, clip, padding5, Background.colorSub, Border.leftRound5 ]
+                [ ResolvedSource.horizontalBlock14 s ]
+            , button
+                [ flexItem
+                , padding5
+                , Border.rightRound5
+                , Background.colorSub
+                , Background.hovBd
+                , Image.hovErr
+                , onClick (eff.onRemoveSourceButtonClick id s)
                 ]
-    in
-    List.indexedMap selectedSource props.column.sources
+                [ Image.octicon { size = regularSize, shape = Octicons.x } ]
+            ]
 
 
 dangerZone : Effects msg -> ColumnProps { c | id : Column.Id } -> List (Html msg)

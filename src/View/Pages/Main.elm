@@ -208,23 +208,9 @@ render m =
                         View.Organisms.Column.Config.render
                             { onCloseButtonClick = \cId -> ColumnCtrl (ColumnStore.ById cId (Column.ToggleConfig False))
                             , onColumnDeleteButtonClick = ColumnCtrl << ColumnStore.Delete
-                            , onSourceSelect =
-                                \cId source ->
-                                    -- TODO Use brandnew & precise source update Msg
-                                    -- Currently it is not working properly!!
-                                    -- case source of
-                                    --     ResolvedSource.DiscordSource opts ->
-                                    --         ColumnCtrl (ColumnStore.ById cId) (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfDiscordChannel opts.id })
-                                    --
-                                    --     ResolvedSource.SlackSource opts ->
-                                    --         ColumnCtrl (ColumnStore.ById cId) (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfSlackConversation opts.id })
-                                    NoOp
+                            , onSourceSelect = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.AddSource << unjoinSource
                             , selectMsgTagger = SelectCtrl
-                            , onRemoveSourceButtonClick =
-                                \cId atomIndex ->
-                                    -- TODO Use brandnew & precise source update Msg
-                                    -- ColumnCtrl (ColumnStore.ById cId) (Column.DelFilterAtom { filterIndex = 0, atomIndex = atomIndex })
-                                    NoOp
+                            , onRemoveSourceButtonClick = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.DelSource << unjoinSource
                             }
                             { selectState = m.viewState.selectState
                             , availableSourecs = List.filter (\s -> not (List.member s c.sources)) availableSources
@@ -349,6 +335,16 @@ resolveSources fam sources =
                             )
     in
     List.filterMap resolver sources
+
+
+unjoinSource : ResolvedSource -> Source
+unjoinSource rs =
+    case rs of
+        ResolvedSource.DiscordChannel opts ->
+            DiscordChannel (Id.from opts.id)
+
+        ResolvedSource.SlackConvo opts ->
+            SlackConvo (Id.from opts.teamId) (Id.from opts.id)
 
 
 marshalSourcesAndFilters : FilterAtomMaterial -> Array Filter -> ( List ResolvedSource, List String )
