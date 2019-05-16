@@ -137,8 +137,9 @@ globalStyles =
     [ -- Hidden scrollbars, Webkit only
       s "::-webkit-scrollbar" [ ( "display", "none" ) ]
     , s "*"
-        [ ( "scroll-behavior", "smooth" )
-        , ( "box-sizing", "border-box" ) -- Really, WHO needs other than border-box??? JK
+        [ ( "box-sizing", "border-box" ) -- Really, WHO needs other than border-box??? JK
+
+        -- , ( "scroll-behavior", "smooth" )
         ]
     , s ":focus"
         [ ( "box-shadow", "0px 0px 3px 1px #677bc4" )
