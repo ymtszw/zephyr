@@ -36,7 +36,7 @@ import Url
 import Url.Parser exposing ((</>), (<?>))
 import Url.Parser.Query
 import View.Molecules.MediaViewer as MediaViewer
-import View.Molecules.Source as Source exposing (Source)
+import View.Molecules.ResolvedSource as ResolvedSource exposing (ResolvedSource, discordChannel, slackConvo)
 import View.Organisms.Column.Config
 import View.Organisms.Column.Header
 import View.Organisms.Column.Items
@@ -209,10 +209,10 @@ render m =
                                     -- TODO Use brandnew & precise source update Msg
                                     -- Currently it is not working properly!!
                                     -- case source of
-                                    --     Source.DiscordSource opts ->
+                                    --     ResolvedSource.DiscordSource opts ->
                                     --         ColumnCtrl (ColumnStore.ById cId) (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfDiscordChannel opts.id })
                                     --
-                                    --     Source.SlackSource opts ->
+                                    --     ResolvedSource.SlackSource opts ->
                                     --         ColumnCtrl (ColumnStore.ById cId) (Column.AddFilterAtom { filterIndex = 0, atom = Filter.OfSlackConversation opts.id })
                                     NoOp
                             , selectMsgTagger = SelectCtrl
@@ -279,10 +279,10 @@ render m =
                             marshalWithGuild c =
                                 Maybe.map
                                     (\g ->
-                                        Source.discord (Id.to c.id)
+                                        discordChannel (Id.to c.id)
                                             c.name
                                             (DiscordGuild.getName g)
-                                            (DiscordGuild.iconUrl (Just Source.desiredIconSize) g)
+                                            (DiscordGuild.iconUrl (Just ResolvedSource.desiredIconSize) g)
                                     )
                                     c.guildMaybe
                         in
@@ -294,7 +294,12 @@ render m =
                     Just { convos } ->
                         let
                             marshal c =
-                                Source.slack (Id.to c.id) c.name (SlackTeam.getName c.team) (teamIcon44 c.team) (SlackConvo.isPrivate c.type_)
+                                slackConvo (Id.to c.id)
+                                    c.name
+                                    (SlackConvo.isPrivate c.type_)
+                                    (Id.to (SlackTeam.getId c.team))
+                                    (SlackTeam.getName c.team)
+                                    (teamIcon44 c.team)
                         in
                         List.map marshal convos
 
@@ -305,7 +310,7 @@ render m =
     View.Templates.Main.render effects props contents
 
 
-marshalSourcesAndFilters : FilterAtomMaterial -> Array Filter -> ( List Source, List String )
+marshalSourcesAndFilters : FilterAtomMaterial -> Array Filter -> ( List ResolvedSource, List String )
 marshalSourcesAndFilters fam filters =
     let
         collectSourceAndFilter f ( accSoures, accFilters ) =
@@ -321,10 +326,10 @@ marshalSourcesAndFilters fam filters =
                     -- TODO support DMs
                     case withGuild (findDiscordChannel channelId fam) of
                         Just ( c, g ) ->
-                            ( Source.discord (Id.to channelId)
+                            ( discordChannel (Id.to channelId)
                                 c.name
                                 (DiscordGuild.getName g)
-                                (DiscordGuild.iconUrl (Just Source.desiredIconSize) g)
+                                (DiscordGuild.iconUrl (Just ResolvedSource.desiredIconSize) g)
                                 :: accSources
                             , accFilters
                             )
@@ -338,7 +343,12 @@ marshalSourcesAndFilters fam filters =
                         Just c ->
                             let
                                 slackSource =
-                                    Source.slack (Id.to convoId) c.name (SlackTeam.getName c.team) (teamIcon44 c.team) (SlackConvo.isPrivate c.type_)
+                                    slackConvo (Id.to convoId)
+                                        c.name
+                                        (SlackConvo.isPrivate c.type_)
+                                        (Id.to (SlackTeam.getId c.team))
+                                        (SlackTeam.getName c.team)
+                                        (teamIcon44 c.team)
                             in
                             ( slackSource :: accSources, accFilters )
 
