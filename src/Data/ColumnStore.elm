@@ -2,6 +2,7 @@ module Data.ColumnStore exposing
     ( ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
     , map, mapForView, listShadow
     , Msg(..), PostProcess, update, updateFAM
+    , setDict, setOrder, setSwapState, setFam, setAvailableSources, setScanQueue, setSeed
     )
 
 {-| Order-aware Column storage.
@@ -20,6 +21,7 @@ This can be toggled at users' preferences. See Data.Model.
 @docs ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
 @docs map, mapForView, listShadow
 @docs Msg, PostProcess, update, updateFAM
+@docs setDict, setOrder, setSwapState, setFam, setAvailableSources, setScanQueue, setSeed
 
 -}
 
@@ -28,6 +30,7 @@ import ArrayExtra as Array
 import AssocList as Dict exposing (Dict)
 import Browser.Dom
 import Data.Column as Column exposing (Column, Position(..))
+import Data.ColumnStore.AvailableSources as AvailableSources exposing (AvailableSources)
 import Data.Filter exposing (FilterAtom(..))
 import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
 import Data.ProducerRegistry as ProducerRegistry
@@ -48,6 +51,7 @@ type alias ColumnStore =
     , order : Array Column.Id
     , swapState : Maybe SwapState
     , fam : FilterAtomMaterial
+    , availableSources : AvailableSources
     , scanQueue : Deque Column.Id
     , seed : Random.Seed
     }
@@ -61,6 +65,18 @@ type alias SwapState =
     }
 
 
+init : Int -> ColumnStore
+init posix =
+    { dict = Dict.empty
+    , order = Array.empty
+    , swapState = Nothing
+    , fam = FAM.init
+    , availableSources = AvailableSources.init
+    , scanQueue = Deque.empty
+    , seed = Random.initialSeed posix
+    }
+
+
 decoder : { clientHeight : Int, posix : Int } -> Decoder ( ColumnStore, Cmd Msg )
 decoder { clientHeight, posix } =
     D.do (D.field "order" (D.array (Id.decoder D.string))) <|
@@ -69,11 +85,13 @@ decoder { clientHeight, posix } =
                 \fam ->
                     D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order fam)) <|
                         \( dict, cmds ) ->
-                            let
-                                scanQueue =
-                                    Deque.fromList (Dict.keys dict)
-                            in
-                            D.succeed ( ColumnStore dict order Nothing fam scanQueue (Random.initialSeed posix), Cmd.batch cmds )
+                            init posix
+                                |> setDict dict
+                                |> setFam fam
+                                |> setOrder order
+                                |> setScanQueue (Deque.fromList (Dict.keys dict))
+                                |> D.succeed
+                                |> D.map (\cs -> ( cs, Cmd.batch cmds ))
 
 
 dictAndInitCmdDecoder : Int -> Array Column.Id -> FilterAtomMaterial -> Decoder ( Dict Column.Id Column, List (Cmd Msg) )
@@ -104,11 +122,6 @@ encode cs =
 storeId : String
 storeId =
     "columnStore"
-
-
-init : Int -> ColumnStore
-init posix =
-    ColumnStore Dict.empty Array.empty Nothing FAM.init Deque.empty (Random.initialSeed posix)
 
 
 {-| Add a welcome column to the ColumnStore. Exposed for Model initialization.
@@ -447,3 +460,42 @@ updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )
 updateFAM instructions cs =
     FAM.update instructions cs.fam
         |> Tuple.mapFirst (\newFAM -> { cs | fam = newFAM })
+
+
+
+-- Accessors
+
+
+setDict : Dict Column.Id Column -> ColumnStore -> ColumnStore
+setDict val cs =
+    { cs | dict = val }
+
+
+setOrder : Array Column.Id -> ColumnStore -> ColumnStore
+setOrder val cs =
+    { cs | order = val }
+
+
+setSwapState : Maybe SwapState -> ColumnStore -> ColumnStore
+setSwapState val cs =
+    { cs | swapState = val }
+
+
+setFam : FilterAtomMaterial -> ColumnStore -> ColumnStore
+setFam val cs =
+    { cs | fam = val }
+
+
+setAvailableSources : AvailableSources -> ColumnStore -> ColumnStore
+setAvailableSources val cs =
+    { cs | availableSources = val }
+
+
+setScanQueue : Deque Column.Id -> ColumnStore -> ColumnStore
+setScanQueue val cs =
+    { cs | scanQueue = val }
+
+
+setSeed : Random.Seed -> ColumnStore -> ColumnStore
+setSeed val cs =
+    { cs | seed = val }
