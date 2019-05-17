@@ -12,7 +12,6 @@ Stored in ColumnStore for faster access, act as cache of ProducerRegistry.
 
 -}
 
-import Data.Column.Source as Source exposing (Source)
 import Data.Producer.Discord.ChannelCache as ChannelCache exposing (ChannelCache)
 import Data.Producer.Slack.ConvoCache as ConvoCache exposing (ConvoCache)
 import Json.Decode as D exposing (Decoder)

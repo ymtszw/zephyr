@@ -204,7 +204,7 @@ render m =
                         , onDismissButtonClick = ColumnCtrl << ColumnStore.Dismiss
                         }
                 , config =
-                    \index c ->
+                    \_ c ->
                         View.Organisms.Column.Config.render
                             { onCloseButtonClick = \cId -> ColumnCtrl (ColumnStore.ById cId (Column.ToggleConfig False))
                             , onColumnDeleteButtonClick = ColumnCtrl << ColumnStore.Delete
@@ -239,7 +239,7 @@ render m =
                         View.Organisms.Column.Items.render
                             { onLoadMoreClick = ColumnCtrl (ColumnStore.ById c.id (Column.ScrollMsg Scroll.LoadMore))
                             , onItemSourceButtonClick = \cId -> ModelessCtrl << Modeless.Touch << Modeless.RawColumnItemId cId
-                            , onItemRefreshButtonClick = \cId index -> NoOp -- TODO
+                            , onItemRefreshButtonClick = \_ _ -> NoOp -- TODO
                             , onItemMediaClick =
                                 \cId itemIndex mediaIndex ->
                                     ModelessCtrl <|

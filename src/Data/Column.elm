@@ -646,19 +646,6 @@ filterBySources sources ( item, offset ) =
         Nothing
 
 
-applyFilters : Array Filter -> ( Item, Offset ) -> Maybe ColumnItem
-applyFilters filters ( item, offset ) =
-    if Array.isEmpty filters then
-        -- "No filter" (e.g. pass all) is not allowed
-        Nothing
-
-    else if Array.all (Item.matchFilter item) filters then
-        Just (Product offset item)
-
-    else
-        Nothing
-
-
 editorSubmit : Column -> ( Column, PostProcess )
 editorSubmit (Column c) =
     case SelectArray.selected c.editors of

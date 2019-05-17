@@ -344,7 +344,7 @@ embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
                                         Nothing ->
                                             []
                             in
-                            avatar ++ [ t namedEntity.primaryName ] ++ secondaryName
+                            avatar ++ (t namedEntity.primaryName :: secondaryName)
                     ]
 
                 Nothing ->
@@ -418,7 +418,7 @@ embeddedMatterBlockAndPretext onMediaClick matter ( accBlocks, mediaIndex ) =
     in
     case matter.pretext of
         Just text ->
-            ( textBlocks text ++ [ gutteredBlock ] ++ accBlocks, mediaIndexAfterAttachedFiles )
+            ( textBlocks text ++ (gutteredBlock :: accBlocks), mediaIndexAfterAttachedFiles )
 
         Nothing ->
             ( gutteredBlock :: accBlocks, mediaIndexAfterAttachedFiles )
