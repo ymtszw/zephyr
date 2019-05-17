@@ -1,4 +1,14 @@
-module Data.Producer.Slack.ConvoCache exposing (ConvoCache, compare, decoder, encode, from)
+module Data.Producer.Slack.ConvoCache exposing
+    ( ConvoCache, from, encode, decoder, compare
+    , encodeList, listDecoder
+    )
+
+{-| Cache of Slack.Channel. Stored in ColumnStore.
+
+@docs ConvoCache, from, encode, decoder, compare
+@docs encodeList, listDecoder
+
+-}
 
 import AssocList exposing (Dict)
 import Data.Producer.Slack.Convo as Convo exposing (Convo)
@@ -7,6 +17,7 @@ import Id
 import Json.Decode as D exposing (Decoder)
 import Json.DecodeExtra as D
 import Json.Encode as E
+import Json.EncodeExtra as E
 
 
 {-| Rarely updated prts of Convo. Saved in ColumnStore for fast and atomic referencing.
@@ -36,6 +47,28 @@ encode cache =
         ]
 
 
+encodeList : List ConvoCache -> E.Value
+encodeList convos =
+    let
+        ( encodedConvos, teams ) =
+            unjoinTeamsAndEncodeConvos convos
+    in
+    E.object
+        [ ( "convos", E.list identity encodedConvos )
+        , ( "teams", E.assocList Id.to Team.encode teams )
+        ]
+
+
+unjoinTeamsAndEncodeConvos : List ConvoCache -> ( List E.Value, Dict Team.Id Team )
+unjoinTeamsAndEncodeConvos convos =
+    let
+        reducer c ( accList, accTeams ) =
+            ( encode c :: accList, AssocList.insert (Team.getId c.team) c.team accTeams )
+    in
+    -- Conserve the order of convos; already sorted
+    List.foldr reducer ( [], AssocList.empty ) convos
+
+
 decoder : Dict Team.Id Team -> Decoder ConvoCache
 decoder teams =
     D.do (D.field "team_id" Team.idDecoder) <|
@@ -52,6 +85,13 @@ decoder teams =
                 Nothing ->
                     -- Should not happen
                     D.fail ("Team [" ++ Id.to teamId ++ "] is not cached!")
+
+
+listDecoder : Decoder (List ConvoCache)
+listDecoder =
+    D.do (D.field "teams" (D.assocList Id.from Team.decoder)) <|
+        \teams ->
+            D.field "convos" (D.list (decoder teams))
 
 
 from : Team -> Convo -> ConvoCache

@@ -91,6 +91,7 @@ decoder { clientHeight, posix } =
                                 |> setOrder order
                                 |> setScanQueue (Deque.fromList (Dict.keys dict))
                                 |> D.succeed
+                                |> D.map2 setAvailableSources (availableSourcesDecoder fam)
                                 |> D.map (\cs -> ( cs, Cmd.batch cmds ))
 
 
@@ -110,12 +111,41 @@ dictAndInitCmdDecoder clientHeight order fam =
             D.succeed (Dict.foldl reducer ( Dict.empty, [] ) dictWithCmds)
 
 
+availableSourcesDecoder : FilterAtomMaterial -> Decoder AvailableSources
+availableSourcesDecoder { ofDiscordChannel, ofSlackConversation } =
+    D.oneOf
+        [ D.field "availableSources" AvailableSources.decoder
+        , D.lazy <|
+            \() ->
+                let
+                    discordChannels =
+                        case ofDiscordChannel of
+                            Just ( _, channelCaches ) ->
+                                channelCaches
+
+                            Nothing ->
+                                []
+
+                    slackConvos =
+                        case ofSlackConversation of
+                            Just { convos } ->
+                                convos
+
+                            Nothing ->
+                                []
+                in
+                D.succeed (AvailableSources discordChannels slackConvos)
+        ]
+
+
 encode : ColumnStore -> Storable
 encode cs =
     Data.Storable.encode storeId
         [ ( "dict", E.assocList Id.to Column.encode cs.dict )
         , ( "order", E.array (E.string << Id.to) cs.order )
         , ( "fam", FAM.encode cs.fam )
+
+        -- TODO store availableSources
         ]
 
 

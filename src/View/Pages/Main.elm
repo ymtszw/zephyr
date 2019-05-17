@@ -213,7 +213,7 @@ render m =
                             , onRemoveSourceButtonClick = \cId -> ColumnCtrl << ColumnStore.ById cId << Column.DelSource << unjoinSource
                             }
                             { selectState = m.viewState.selectState
-                            , availableSourecs = List.filter (\s -> not (List.member s c.sources)) availableSources
+                            , availableSources = List.filter (\s -> not (List.member s c.sources)) availableSources
                             , column = c
                             }
                 , newMessageEditor =
