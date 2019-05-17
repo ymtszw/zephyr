@@ -244,7 +244,7 @@ famDecoder =
 
 
 type alias Yield =
-    Producer.Yield Message FAM Msg
+    Producer.Yield Message FAM ChannelCache Msg
 
 
 reload : Discord -> ( Discord, Yield )
@@ -257,6 +257,7 @@ reload discord =
             ( discord, { yield | cmd = identify token } )
 
         Revisit pov ->
+            -- AvailableSources are updated after identify => rehydrate
             ( discord, { yield | cmd = identify pov.token } )
 
         _ ->
@@ -455,13 +456,23 @@ handleHydrate discord guilds channels =
         Identified { token, user } ->
             -- Successful register
             ( Hydrated token (POV token user guilds channels)
-            , { yield | persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch }
+            , { yield
+                | persist = True
+                , updateFAM = calculateFAM channels
+                , availableSources = availableChannelCaches channels
+                , work = Just Worque.DiscordFetch
+              }
             )
 
         Switching { token, user } _ ->
             -- Successful user switch; XXX we may not need to put Worque.DiscordFetch
             ( Hydrated token (POV token user guilds channels)
-            , { yield | persist = True, updateFAM = calculateFAM channels, work = Just Worque.DiscordFetch }
+            , { yield
+                | persist = True
+                , updateFAM = calculateFAM channels
+                , availableSources = availableChannelCaches channels
+                , work = Just Worque.DiscordFetch
+              }
             )
 
         Rehydrating token pov ->
@@ -470,7 +481,11 @@ handleHydrate discord guilds channels =
                     mergeChannels pov.channels channels
             in
             ( Hydrated token { pov | guilds = guilds, channels = newChannels }
-            , { yield | persist = True, updateFAM = calculateFAM newChannels }
+            , { yield
+                | persist = True
+                , updateFAM = calculateFAM newChannels
+                , availableSources = availableChannelCaches newChannels
+              }
             )
 
         Expired token pov ->
@@ -505,6 +520,19 @@ mergeChannels oldChannels newChannels =
             Dict.insert cId new acc
     in
     Dict.merge foundOnlyInOld foundInBoth foundOnlyInNew oldChannels newChannels Dict.empty
+
+
+availableChannelCaches : Dict Channel.Id Channel -> Maybe (List ChannelCache)
+availableChannelCaches channels =
+    let
+        collectSubscribed _ c acc =
+            if FetchStatus.subscribed (Channel.getFetchStatus c) then
+                ChannelCache.from c :: acc
+
+            else
+                acc
+    in
+    channels |> Dict.foldl collectSubscribed [] |> List.sortWith Channel.compareShared |> Just
 
 
 handleRehydrate : Discord -> ( Discord, Yield )
@@ -583,7 +611,11 @@ unsubscribeImpl tagger cId pov =
                     Dict.insert cId (Channel.setFetchStatus fs c) pov.channels
             in
             ( tagger { pov | channels = newChannels }
-            , { yield | persist = persist, updateFAM = updateOrKeepFAM updateFAM newChannels }
+            , { yield
+                | persist = persist
+                , updateFAM = updateOrKeepFAM updateFAM newChannels
+                , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+              }
             )
 
         Nothing ->
@@ -597,6 +629,15 @@ updateOrKeepFAM doUpdate channels =
 
     else
         KeepFAM
+
+
+updateOrKeepChannelCaches : Bool -> Dict Channel.Id Channel -> Maybe (List ChannelCache)
+updateOrKeepChannelCaches doUpdate channels =
+    if doUpdate then
+        availableChannelCaches channels
+
+    else
+        Nothing
 
 
 {-| Handles Fetch event caused by the root timer.
@@ -685,6 +726,7 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
                     , { yield
                         | persist = persist
                         , updateFAM = updateOrKeepFAM updateFAM newChannels
+                        , availableSources = updateOrKeepChannelCaches updateFAM newChannels
                         , work = Just Worque.DiscordFetch
                       }
                     )
@@ -710,6 +752,7 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
                         | persist = True
                         , items = List.reverse ms
                         , updateFAM = updateOrKeepFAM updateFAM newChannels
+                        , availableSources = updateOrKeepChannelCaches updateFAM newChannels
                         , work = Just Worque.DiscordFetch
                       }
                     )
@@ -720,6 +763,7 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
             , { yield
                 | persist = True
                 , updateFAM = calculateFAM pov.channels
+                , availableSources = availableChannelCaches pov.channels
                 , work = Just Worque.DiscordFetch
               }
             )
@@ -793,12 +837,22 @@ updatePovOnPostSuccess tagger cId posix pov =
                     Dict.insert cId (Channel.setFetchStatus fs c) pov.channels
             in
             ( tagger { pov | channels = newChannels }
-            , { yield | persist = persist, updateFAM = updateOrKeepFAM updateFAM newChannels }
+            , { yield
+                | persist = persist
+                , updateFAM = updateOrKeepFAM updateFAM newChannels
+                , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+              }
             )
 
         Nothing ->
             -- Target Channel somehow gone; deleted?
-            ( tagger pov, { yield | persist = True, updateFAM = calculateFAM pov.channels } )
+            ( tagger pov
+            , { yield
+                | persist = True
+                , updateFAM = calculateFAM pov.channels
+                , availableSources = availableChannelCaches pov.channels
+              }
+            )
 
 
 handleChannelAPIError : Channel.Id -> HttpClient.Failure -> Discord -> ( Discord, Yield )
@@ -848,6 +902,7 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
                 , { yield
                     | persist = True
                     , updateFAM = calculateFAM newChannels
+                    , availableSources = availableChannelCaches newChannels
                     , work = Just Worque.DiscordFetch
                   }
                 )
@@ -872,6 +927,7 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
                 , { yield
                     | persist = persist
                     , updateFAM = updateOrKeepFAM updateFAM newChannels
+                    , availableSources = updateOrKeepChannelCaches updateFAM newChannels
                     , work = work
                   }
                 )

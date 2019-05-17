@@ -336,8 +336,18 @@ reloadProducers m =
 applyProducerYield : Model -> ( ProducerRegistry, ProducerRegistry.Yield ) -> ( Model, Cmd Msg, ChangeSet )
 applyProducerYield m_ ( producerRegistry, y ) =
     let
-        ( columnStore, persistColumnStore ) =
+        ( columnStore_, _ ) =
             ColumnStore.updateFAM [ y.famInstruction ] m_.columnStore
+
+        ( columnStore, persistColumnStore ) =
+            case y.updateAvailableSources of
+                Just updater ->
+                    ( columnStore_ |> ColumnStore.setAvailableSources (updater columnStore_.availableSources)
+                    , True
+                    )
+
+                Nothing ->
+                    ( columnStore_, False )
 
         m =
             { m_

@@ -12,6 +12,7 @@ module Data.ProducerRegistry exposing
 
 -}
 
+import Data.ColumnStore.AvailableSources as AvailableSources exposing (AvailableSources)
 import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
 import Data.Item exposing (Item(..))
 import Data.Producer as Producer exposing (UpdateFAM(..))
@@ -73,6 +74,7 @@ type Msg
 type alias GrossReload =
     { cmd : Cmd Msg
     , famInstructions : List UpdateInstruction
+    , availableSources : Maybe (AvailableSources -> AvailableSources)
     , works : List Work
     }
 
@@ -85,28 +87,32 @@ On reload, items are ignored and states are always persisted.
 -}
 reloadAll : ProducerRegistry -> ( ProducerRegistry, GrossReload )
 reloadAll producerRegistry =
-    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], works = [] } )
+    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], availableSources = Nothing, works = [] } )
         |> reloadImpl DiscordInstruction
+            AvailableSources.setDiscordChannels
             DiscordMsg
-            (\d pr -> { pr | discord = d })
+            setDiscord
             (Discord.reload producerRegistry.discord)
         |> reloadImpl SlackInstruction
+            AvailableSources.setSlackConvos
             SlackMsg
-            (\s pr -> { pr | slack = s })
+            setSlack
             (Slack.reload producerRegistry.slack)
 
 
 reloadImpl :
     (UpdateFAM mat -> UpdateInstruction)
+    -> (List s -> AvailableSources -> AvailableSources)
     -> (msg -> Msg)
     -> (state -> ProducerRegistry -> ProducerRegistry)
-    -> ( state, Producer.Yield item mat msg )
+    -> ( state, Producer.Yield item mat s msg )
     -> ( ProducerRegistry, GrossReload )
     -> ( ProducerRegistry, GrossReload )
-reloadImpl famTagger msgTagger stateUpdater ( nesState, y ) ( producerRegistry, gr ) =
+reloadImpl famTagger asSetter msgTagger stateUpdater ( nesState, y ) ( producerRegistry, gr ) =
     ( stateUpdater nesState producerRegistry
     , { cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
       , famInstructions = famTagger y.updateFAM :: gr.famInstructions
+      , availableSources = transitiveMap asSetter y.availableSources gr.availableSources
       , works =
             case y.work of
                 Just w ->
@@ -118,6 +124,21 @@ reloadImpl famTagger msgTagger stateUpdater ( nesState, y ) ( producerRegistry, 
     )
 
 
+transitiveMap : (a -> b -> b) -> Maybe a -> Maybe (b -> b) -> Maybe (b -> b)
+transitiveMap setter originator acc =
+    case originator of
+        Just val ->
+            case acc of
+                Just fun ->
+                    Just (fun >> setter val)
+
+                Nothing ->
+                    Just (setter val)
+
+        Nothing ->
+            acc
+
+
 
 -- UPDATE
 
@@ -127,6 +148,7 @@ type alias Yield =
     , persist : Bool
     , items : List Item
     , famInstruction : UpdateInstruction
+    , updateAvailableSources : Maybe (AvailableSources -> AvailableSources)
     , work : Maybe Work
     }
 

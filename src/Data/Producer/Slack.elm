@@ -300,7 +300,7 @@ famDecoder =
 
 
 type alias Yield =
-    Producer.Yield Message FAM Msg
+    Producer.Yield Message FAM ConvoCache Msg
 
 
 {-| Yield from sub component of SlackRegistry (i.e. Team or Convo).
@@ -339,6 +339,12 @@ liftToYield sy sr =
 
         else
             KeepFAM
+    , availableSources =
+        if sy.updateFAM then
+            Just (subscribedConvsAcrossTeams sr.dict)
+
+        else
+            Nothing
     }
 
 

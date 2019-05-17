@@ -29,11 +29,12 @@ Also, regardless of persist instruction, the newState will be persisted,
 in order to apply new encoding format (if any).
 
 -}
-type alias Yield item mat msg =
+type alias Yield item mat s msg =
     { cmd : Cmd msg
     , persist : Bool
     , items : List item
     , updateFAM : UpdateFAM mat
+    , availableSources : Maybe (List s)
     , work : Maybe Work
     }
 
@@ -46,13 +47,13 @@ type UpdateFAM mat
 
 {-| Default Yield. No side-effect at all.
 -}
-yield : Yield item mat msg
+yield : Yield item mat s msg
 yield =
-    { cmd = Cmd.none, persist = False, items = [], updateFAM = KeepFAM, work = Nothing }
+    { cmd = Cmd.none, persist = False, items = [], updateFAM = KeepFAM, availableSources = Nothing, work = Nothing }
 
 
 {-| Just entering a specific state of a Producer, without any sort of side-effect.
 -}
-pure : state -> ( state, Yield item mat msg )
+pure : state -> ( state, Yield item mat s msg )
 pure state =
     ( state, yield )
