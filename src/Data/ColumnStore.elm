@@ -1,6 +1,6 @@
 module Data.ColumnStore exposing
     ( ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
-    , map, mapForView, listShadow
+    , map, listVisible, listShadow
     , Msg(..), PostProcess, update, updateFAM
     , setDict, setOrder, setSwapState, setFam, setAvailableSources, setScanQueue, setSeed
     )
@@ -19,7 +19,7 @@ when there are too many Columns displayed.
 This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
-@docs map, mapForView, listShadow
+@docs map, listVisible, listShadow
 @docs Msg, PostProcess, update, updateFAM
 @docs setDict, setOrder, setSwapState, setFam, setAvailableSources, setScanQueue, setSeed
 
@@ -187,45 +187,16 @@ sizePinned cs =
 -- BULK APIs
 
 
+{-| Map over all Columns in ColumnStore, either visible or shadow.
+-}
 map : (Column -> Column) -> ColumnStore -> ColumnStore
 map mapper cs =
     { cs | dict = Dict.map (\_ c -> mapper c) cs.dict }
 
 
-{-| `indexedMap` intended for view usages.
-
-It returns list of values derived from a mapper function.
-The mapper function receives FAM, index number, and a Column.
-
-It only iterates over Columns whose IDs can be found in `order` Array, i.e. visible Columns.
-
-Other Columns are considered "shadow" Columns which is hidden from the view (at the moment).
-Shadow Columns are re-introduced to the view via side-effect APIs,
-where their IDs are squeezed into `order` Array.
-
-Columns can be "dismissed" also via side-effect APIs, becoming shadow Columns,
-when ther IDs are removed from the `order` Array but not permanently removed from the `dict`.
-
--}
-mapForView : (FilterAtomMaterial -> Int -> Column -> a) -> ColumnStore -> List a
-mapForView mapper { dict, order, fam } =
-    mapForViewImpl (mapper fam) dict (Array.toList order) 0 []
-
-
-mapForViewImpl : (Int -> Column -> a) -> Dict Column.Id Column -> List Column.Id -> Int -> List a -> List a
-mapForViewImpl mapper dict idList index acc =
-    case idList of
-        [] ->
-            List.reverse acc
-
-        id :: ids ->
-            case Dict.get id dict of
-                Just column ->
-                    mapForViewImpl mapper dict ids (index + 1) (mapper index column :: acc)
-
-                Nothing ->
-                    -- Should not happen as long as contents of ColumnStore are manipulated by functions in this module
-                    mapForViewImpl mapper dict ids index acc
+listVisible : ColumnStore -> List Column
+listVisible cs =
+    List.filterMap (\id -> Dict.get id cs.dict) (Array.toList cs.order)
 
 
 listShadow : ColumnStore -> List Column

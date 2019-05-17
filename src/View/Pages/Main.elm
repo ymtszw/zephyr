@@ -7,8 +7,8 @@ import Broker
 import Data.Column as Column
 import Data.Column.Source exposing (Source(..))
 import Data.ColumnStore as ColumnStore
+import Data.ColumnStore.AvailableSources exposing (AvailableSources)
 import Data.Filter as Filter exposing (Filter)
-import Data.FilterAtomMaterial exposing (FilterAtomMaterial, findDiscordChannel, findSlackConvoCache)
 import Data.Item as Item
 import Data.Model exposing (Model)
 import Data.Msg exposing (..)
@@ -97,13 +97,13 @@ render m =
 
         props =
             let
-                marshalVisibleColumn fam _ c =
+                marshalVisibleColumn c =
                     let
                         sources =
-                            resolveSources fam (Column.getSources c)
+                            resolveSources m.columnStore.availableSources (Column.getSources c)
 
-                        ( _, filters ) =
-                            marshalSourcesAndFilters fam (Column.getFilters c)
+                        filters =
+                            marshalFilters (Column.getFilters c)
 
                         dragStatus =
                             case m.columnStore.swapState of
@@ -183,7 +183,7 @@ render m =
                                 |> Modeless.MediaViewer mId
             in
             { configOpen = m.viewState.configOpen
-            , visibleColumns = ColumnStore.mapForView marshalVisibleColumn m.columnStore
+            , visibleColumns = List.map marshalVisibleColumn (ColumnStore.listVisible m.columnStore)
             , modeless = Modeless.map resolveModelessId m.viewState.modeless
             }
 
@@ -262,46 +262,33 @@ render m =
             }
 
         availableSources =
-            List.concat
-                [ case m.columnStore.fam.ofDiscordChannel of
-                    Just ( _, channelCaches ) ->
-                        let
-                            marshalWithGuild c =
-                                Maybe.map
-                                    (\g ->
-                                        discordChannel (Id.to c.id)
-                                            c.name
-                                            (DiscordGuild.getName g)
-                                            (DiscordGuild.iconUrl (Just ResolvedSource.desiredIconSize) g)
-                                    )
-                                    c.guildMaybe
-                        in
-                        List.filterMap marshalWithGuild channelCaches
+            let
+                marshalDiscordChannel c =
+                    Maybe.map
+                        (\g ->
+                            discordChannel (Id.to c.id)
+                                c.name
+                                (DiscordGuild.getName g)
+                                (DiscordGuild.iconUrl (Just ResolvedSource.desiredIconSize) g)
+                        )
+                        c.guildMaybe
 
-                    Nothing ->
-                        []
-                , case m.columnStore.fam.ofSlackConversation of
-                    Just { convos } ->
-                        let
-                            marshal c =
-                                slackConvo (Id.to c.id)
-                                    c.name
-                                    (SlackConvo.isPrivate c.type_)
-                                    (Id.to (SlackTeam.getId c.team))
-                                    (SlackTeam.getName c.team)
-                                    (teamIcon44 c.team)
-                        in
-                        List.map marshal convos
-
-                    Nothing ->
-                        []
-                ]
+                marshalSlackConvo c =
+                    slackConvo (Id.to c.id)
+                        c.name
+                        (SlackConvo.isPrivate c.type_)
+                        (Id.to (SlackTeam.getId c.team))
+                        (SlackTeam.getName c.team)
+                        (teamIcon44 c.team)
+            in
+            List.filterMap marshalDiscordChannel m.columnStore.availableSources.discordChannels
+                ++ List.map marshalSlackConvo m.columnStore.availableSources.slackConvos
     in
     View.Templates.Main.render effects props contents
 
 
-resolveSources : FilterAtomMaterial -> List Source -> List ResolvedSource
-resolveSources fam sources =
+resolveSources : AvailableSources -> List Source -> List ResolvedSource
+resolveSources { discordChannels, slackConvos } sources =
     let
         resolver s =
             case s of
@@ -318,12 +305,12 @@ resolveSources fam sources =
                                 c.guildMaybe
                     in
                     -- TODO support DMs
-                    findDiscordChannel id fam
+                    List.Extra.find (\c -> c.id == id) discordChannels
                         |> Maybe.andThen withGuild
 
                 SlackConvo _ convoId ->
-                    -- teamId is currently not used since Slack.FAM is not structured by teamId, and only requires convoId
-                    findSlackConvoCache convoId fam
+                    -- teamId is currently not used since Slack.ConvoCache does have Team in it
+                    List.Extra.find (\c -> c.id == convoId) slackConvos
                         |> Maybe.map
                             (\c ->
                                 slackConvo (Id.to convoId)
@@ -347,68 +334,38 @@ unjoinSource rs =
             SlackConvo (Id.from opts.teamId) (Id.from opts.id)
 
 
-marshalSourcesAndFilters : FilterAtomMaterial -> Array Filter -> ( List ResolvedSource, List String )
-marshalSourcesAndFilters fam filters =
+marshalFilters : Array Filter -> List String
+marshalFilters filters =
     let
-        collectSourceAndFilter f ( accSoures, accFilters ) =
-            Tuple.mapBoth ((++) accSoures) ((++) accFilters) (Filter.foldl findSourceOrFilter ( [], [] ) f)
+        collectJustFilter f accFilters =
+            -- Tuple.mapBoth ((++) accSoures) ((++) accFilters) (Filter.foldl findSourceOrFilter ( [], [] ) f)
+            Filter.foldl convertNonSourceFilter accFilters f
 
-        findSourceOrFilter fa ( accSources, accFilters ) =
+        convertNonSourceFilter fa accFilters =
             case fa of
-                Filter.OfDiscordChannel channelId ->
-                    let
-                        withGuild =
-                            Maybe.andThen (\c -> Maybe.map (Tuple.pair c) c.guildMaybe)
-                    in
-                    -- TODO support DMs
-                    case withGuild (findDiscordChannel channelId fam) of
-                        Just ( c, g ) ->
-                            ( discordChannel (Id.to channelId)
-                                c.name
-                                (DiscordGuild.getName g)
-                                (DiscordGuild.iconUrl (Just ResolvedSource.desiredIconSize) g)
-                                :: accSources
-                            , accFilters
-                            )
+                Filter.OfDiscordChannel _ ->
+                    accFilters
 
-                        Nothing ->
-                            ( accSources, accFilters )
-
-                Filter.OfSlackConversation convoId ->
-                    -- TODO support IM/MPIMs
-                    case findSlackConvoCache convoId fam of
-                        Just c ->
-                            let
-                                slackSource =
-                                    slackConvo (Id.to convoId)
-                                        c.name
-                                        (SlackConvo.isPrivate c.type_)
-                                        (Id.to (SlackTeam.getId c.team))
-                                        (SlackTeam.getName c.team)
-                                        (teamIcon44 c.team)
-                            in
-                            ( slackSource :: accSources, accFilters )
-
-                        Nothing ->
-                            ( accSources, accFilters )
+                Filter.OfSlackConversation _ ->
+                    accFilters
 
                 Filter.ByMessage text ->
                     -- Wrap in extra quotation
-                    ( accSources, ("\"" ++ text ++ "\"") :: accFilters )
+                    ("\"" ++ text ++ "\"") :: accFilters
 
                 Filter.ByMedia Filter.HasImage ->
-                    ( accSources, "Has Image" :: accFilters )
+                    "Has Image" :: accFilters
 
                 Filter.ByMedia Filter.HasVideo ->
-                    ( accSources, "Has Video" :: accFilters )
+                    "Has Video" :: accFilters
 
                 Filter.ByMedia Filter.HasNone ->
-                    ( accSources, "Without Media" :: accFilters )
+                    "Without Media" :: accFilters
 
                 Filter.RemoveMe ->
-                    ( accSources, accFilters )
+                    accFilters
     in
-    Array.foldl collectSourceAndFilter ( [], [] ) filters
+    Array.foldl collectJustFilter [] filters
 
 
 marshalColumnItem : Int -> Column.ColumnItem -> ItemForView
@@ -780,8 +737,11 @@ renderConfigPref m =
     let
         marshalShadowColumn c =
             let
-                ( sources, filters ) =
-                    marshalSourcesAndFilters m.columnStore.fam (Column.getFilters c)
+                sources =
+                    resolveSources m.columnStore.availableSources (Column.getSources c)
+
+                filters =
+                    marshalFilters (Column.getFilters c)
             in
             { id = Column.getId c, pinned = Column.getPinned c, sources = sources, filters = filters }
     in

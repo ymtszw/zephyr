@@ -3011,7 +3011,7 @@ columnConfig m =
     , onRemoveSourceButtonClick = \\_ _ -> NoOp
     }
     { selectState = m.select
-    , availableSourecs =
+    , availableSources =
         [ discordChannel "DID1" "Discord Channel" "Guild" (Just (Image.ph 20 20))
         , discordChannel "DID2" (String.repeat 4 "Discord Channel ") "Guild" (Just (Image.ph 20 20))
         , slackConvo "SID1" "Slack Conversation" True "TID" "Team" (Just (Image.ph 21 21))
@@ -3036,7 +3036,7 @@ columnConfig m =
                     , onRemoveSourceButtonClick = \_ _ -> NoOp
                     }
                     { selectState = m.select
-                    , availableSourecs =
+                    , availableSources =
                         [ discordChannel "DID1" "Discord Channel" "Guild" (Just (Image.ph 20 20))
                         , discordChannel "DID2" (String.repeat 4 "Discord Channel ") "Guild" (Just (Image.ph 20 20))
                         , slackConvo "SID1" "Slack Conversation" True "TID" "Team" (Just (Image.ph 21 21))
@@ -3064,7 +3064,7 @@ columnConfig m =
     , onRemoveSourceButtonClick = \\_ _ -> NoOp
     }
     { selectState = m.select
-    , availableSourecs =
+    , availableSources =
         [ discordChannel "DID1" "Discord Channel" "Guild" (Just (Image.ph 20 20))
         , discordChannel "DID2" (String.repeat 4 "Discord Channel ") "Guild" (Just (Image.ph 20 20))
         , slackConvo "SID1" "Slack Conversation" True "TID" "Team" (Just (Image.ph 21 21))
@@ -3089,7 +3089,7 @@ columnConfig m =
                     , onRemoveSourceButtonClick = \_ _ -> NoOp
                     }
                     { selectState = m.select
-                    , availableSourecs =
+                    , availableSources =
                         [ discordChannel "DID1" "Discord Channel" "Guild" (Just (Image.ph 20 20))
                         , discordChannel "DID2" (String.repeat 4 "Discord Channel ") "Guild" (Just (Image.ph 20 20))
                         , slackConvo "SID1" "Slack Conversation" True "TID" "Team" (Just (Image.ph 21 21))
