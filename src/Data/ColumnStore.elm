@@ -144,8 +144,7 @@ encode cs =
         [ ( "dict", E.assocList Id.to Column.encode cs.dict )
         , ( "order", E.array (E.string << Id.to) cs.order )
         , ( "fam", FAM.encode cs.fam )
-
-        -- TODO store availableSources
+        , ( "availableSources", AvailableSources.encode cs.availableSources )
         ]
 
 
