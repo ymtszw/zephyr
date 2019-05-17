@@ -30,8 +30,8 @@ import Browser.Dom
 import Data.Column.IdGenerator exposing (idGenerator)
 import Data.Column.Source as Source exposing (Source(..))
 import Data.ColumnEditor as ColumnEditor exposing (ColumnEditor(..))
+import Data.ColumnStore.AvailableSources exposing (AvailableSources)
 import Data.Filter as Filter exposing (Filter, FilterAtom)
-import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial)
 import Data.Item as Item exposing (Item)
 import Data.ItemBroker as ItemBroker
 import Data.Producer.Discord as Discord
@@ -151,8 +151,8 @@ encodeMedia media =
             E.tagged "Video" (E.string (Url.toString url))
 
 
-decoder : Int -> FilterAtomMaterial -> Decoder ( Column, Cmd Msg )
-decoder clientHeight fam =
+decoder : Int -> AvailableSources -> Decoder ( Column, Cmd Msg )
+decoder clientHeight availableSources =
     let
         scrollDecoder id =
             Scroll.decoder (scrollInitOptions id clientHeight) columnItemDecoder
@@ -170,7 +170,7 @@ decoder clientHeight fam =
                                 |> D.succeed
                                 |> D.map2 setOffset (D.maybeField "offset" offsetDecoder)
                                 |> D.map2 setPinned (D.field "pinned" D.bool)
-                                |> D.map2 setSources (sourcesDecoder fam)
+                                |> D.map2 setSources (sourcesDecoder availableSources)
                                 |> D.map (\c -> ( c, Cmd.map ScrollMsg sCmd ))
 
 
@@ -226,8 +226,8 @@ mediaDecoder =
         ]
 
 
-sourcesDecoder : FilterAtomMaterial -> Decoder (List Source)
-sourcesDecoder fam =
+sourcesDecoder : AvailableSources -> Decoder (List Source)
+sourcesDecoder { slackConvos } =
     let
         convertFromFilter filter acc =
             Filter.foldl convertFilterAtom acc filter
@@ -238,7 +238,7 @@ sourcesDecoder fam =
                     DiscordChannel id :: acc
 
                 Filter.OfSlackConversation convoId ->
-                    case FAM.findSlackConvoCache convoId fam of
+                    case List.Extra.find (\c -> c.id == convoId) slackConvos of
                         Just convo ->
                             SlackConvo (SlackTeam.getId convo.team) convoId :: acc
 

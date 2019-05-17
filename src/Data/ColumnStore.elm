@@ -1,8 +1,8 @@
 module Data.ColumnStore exposing
     ( ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
     , map, listVisible, listShadow
-    , Msg(..), PostProcess, update, updateFAM
-    , setDict, setOrder, setSwapState, setFam, setAvailableSources, setScanQueue, setSeed
+    , Msg(..), PostProcess, update
+    , setDict, setOrder, setSwapState, setAvailableSources, setScanQueue, setSeed
     )
 
 {-| Order-aware Column storage.
@@ -20,8 +20,8 @@ This can be toggled at users' preferences. See Data.Model.
 
 @docs ColumnStore, SwapState, init, addWelcome, encode, decoder, storeId, size, sizePinned
 @docs map, listVisible, listShadow
-@docs Msg, PostProcess, update, updateFAM
-@docs setDict, setOrder, setSwapState, setFam, setAvailableSources, setScanQueue, setSeed
+@docs Msg, PostProcess, update
+@docs setDict, setOrder, setSwapState, setAvailableSources, setScanQueue, setSeed
 
 -}
 
@@ -50,7 +50,6 @@ type alias ColumnStore =
     { dict : Dict Column.Id Column
     , order : Array Column.Id
     , swapState : Maybe SwapState
-    , fam : FilterAtomMaterial
     , availableSources : AvailableSources
     , scanQueue : Deque Column.Id
     , seed : Random.Seed
@@ -70,7 +69,6 @@ init posix =
     { dict = Dict.empty
     , order = Array.empty
     , swapState = Nothing
-    , fam = FAM.init
     , availableSources = AvailableSources.init
     , scanQueue = Deque.empty
     , seed = Random.initialSeed posix
@@ -81,23 +79,22 @@ decoder : { clientHeight : Int, posix : Int } -> Decoder ( ColumnStore, Cmd Msg 
 decoder { clientHeight, posix } =
     D.do (D.field "order" (D.array (Id.decoder D.string))) <|
         \order ->
-            D.do (D.field "fam" FAM.decoder) <|
-                \fam ->
-                    D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order fam)) <|
+            D.do availableSourcesDecoder <|
+                \availableSources ->
+                    D.do (D.field "dict" (dictAndInitCmdDecoder clientHeight order availableSources)) <|
                         \( dict, cmds ) ->
                             init posix
                                 |> setDict dict
-                                |> setFam fam
+                                |> setAvailableSources availableSources
                                 |> setOrder order
                                 |> setScanQueue (Deque.fromList (Dict.keys dict))
                                 |> D.succeed
-                                |> D.map2 setAvailableSources (availableSourcesDecoder fam)
                                 |> D.map (\cs -> ( cs, Cmd.batch cmds ))
 
 
-dictAndInitCmdDecoder : Int -> Array Column.Id -> FilterAtomMaterial -> Decoder ( Dict Column.Id Column, List (Cmd Msg) )
-dictAndInitCmdDecoder clientHeight order fam =
-    D.do (D.assocList Id.from (Column.decoder clientHeight fam)) <|
+dictAndInitCmdDecoder : Int -> Array Column.Id -> AvailableSources -> Decoder ( Dict Column.Id Column, List (Cmd Msg) )
+dictAndInitCmdDecoder clientHeight order availableSources =
+    D.do (D.assocList Id.from (Column.decoder clientHeight availableSources)) <|
         \dictWithCmds ->
             let
                 reducer cId ( c, initCmd ) ( accDict, accCmds ) =
@@ -111,12 +108,13 @@ dictAndInitCmdDecoder clientHeight order fam =
             D.succeed (Dict.foldl reducer ( Dict.empty, [] ) dictWithCmds)
 
 
-availableSourcesDecoder : FilterAtomMaterial -> Decoder AvailableSources
-availableSourcesDecoder { ofDiscordChannel, ofSlackConversation } =
+availableSourcesDecoder : Decoder AvailableSources
+availableSourcesDecoder =
     D.oneOf
         [ D.field "availableSources" AvailableSources.decoder
-        , D.lazy <|
-            \() ->
+        , -- Migration
+          D.do (D.field "fam" FAM.decoder) <|
+            \{ ofDiscordChannel, ofSlackConversation } ->
                 let
                     discordChannels =
                         case ofDiscordChannel of
@@ -143,7 +141,6 @@ encode cs =
     Data.Storable.encode storeId
         [ ( "dict", E.assocList Id.to Column.encode cs.dict )
         , ( "order", E.array (E.string << Id.to) cs.order )
-        , ( "fam", FAM.encode cs.fam )
         , ( "availableSources", AvailableSources.encode cs.availableSources )
         ]
 
@@ -456,12 +453,6 @@ autoArrange limitMaybe dict order =
         |> concatClassified
 
 
-updateFAM : List UpdateInstruction -> ColumnStore -> ( ColumnStore, Bool )
-updateFAM instructions cs =
-    FAM.update instructions cs.fam
-        |> Tuple.mapFirst (\newFAM -> { cs | fam = newFAM })
-
-
 
 -- Accessors
 
@@ -479,11 +470,6 @@ setOrder val cs =
 setSwapState : Maybe SwapState -> ColumnStore -> ColumnStore
 setSwapState val cs =
     { cs | swapState = val }
-
-
-setFam : FilterAtomMaterial -> ColumnStore -> ColumnStore
-setFam val cs =
-    { cs | fam = val }
 
 
 setAvailableSources : AvailableSources -> ColumnStore -> ColumnStore

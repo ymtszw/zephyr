@@ -74,7 +74,7 @@ type Msg
 type alias GrossReload =
     { cmd : Cmd Msg
     , famInstructions : List UpdateInstruction
-    , availableSources : Maybe (AvailableSources -> AvailableSources)
+    , updateAvailableSources : Maybe (AvailableSources -> AvailableSources)
     , works : List Work
     }
 
@@ -87,7 +87,7 @@ On reload, items are ignored and states are always persisted.
 -}
 reloadAll : ProducerRegistry -> ( ProducerRegistry, GrossReload )
 reloadAll producerRegistry =
-    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], availableSources = Nothing, works = [] } )
+    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], updateAvailableSources = Nothing, works = [] } )
         |> reloadImpl DiscordInstruction
             AvailableSources.setDiscordChannels
             DiscordMsg
@@ -112,7 +112,7 @@ reloadImpl famTagger asSetter msgTagger stateUpdater ( nesState, y ) ( producerR
     ( stateUpdater nesState producerRegistry
     , { cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
       , famInstructions = famTagger y.updateFAM :: gr.famInstructions
-      , availableSources = transitiveMap asSetter y.availableSources gr.availableSources
+      , updateAvailableSources = transitiveMap asSetter y.availableSources gr.updateAvailableSources
       , works =
             case y.work of
                 Just w ->

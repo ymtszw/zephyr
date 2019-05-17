@@ -22,6 +22,7 @@ import Browser.Events
 import Browser.Navigation as Nav exposing (Key)
 import Data.Column as Column
 import Data.ColumnStore as ColumnStore exposing (ColumnStore)
+import Data.ColumnStore.AvailableSources exposing (AvailableSources)
 import Data.ItemBroker as ItemBroker
 import Data.Model as Model exposing (Env, Model)
 import Data.Msg exposing (..)
@@ -321,7 +322,8 @@ reloadProducers m =
             ProducerRegistry.reloadAll m.producerRegistry
 
         ( columnStore, _ ) =
-            ColumnStore.updateFAM gr.famInstructions m.columnStore
+            -- Always save ColumnStore on reload
+            updateAvailableSources gr.updateAvailableSources m.columnStore
     in
     ( { m
         | producerRegistry = producerRegistry
@@ -333,21 +335,21 @@ reloadProducers m =
     )
 
 
+updateAvailableSources : Maybe (AvailableSources -> AvailableSources) -> ColumnStore -> ( ColumnStore, Bool )
+updateAvailableSources updaterMaybe cs =
+    case updaterMaybe of
+        Just updater ->
+            ( ColumnStore.setAvailableSources (updater cs.availableSources) cs, True )
+
+        Nothing ->
+            ( cs, False )
+
+
 applyProducerYield : Model -> ( ProducerRegistry, ProducerRegistry.Yield ) -> ( Model, Cmd Msg, ChangeSet )
 applyProducerYield m_ ( producerRegistry, y ) =
     let
-        ( columnStore_, _ ) =
-            ColumnStore.updateFAM [ y.famInstruction ] m_.columnStore
-
         ( columnStore, persistColumnStore ) =
-            case y.updateAvailableSources of
-                Just updater ->
-                    ( columnStore_ |> ColumnStore.setAvailableSources (updater columnStore_.availableSources)
-                    , True
-                    )
-
-                Nothing ->
-                    ( columnStore_, False )
+            updateAvailableSources y.updateAvailableSources m_.columnStore
 
         m =
             { m_
