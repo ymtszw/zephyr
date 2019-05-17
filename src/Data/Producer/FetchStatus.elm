@@ -202,11 +202,11 @@ type Msg
     | Spur Posix
 
 
-update : Msg -> FetchStatus -> { fs : FetchStatus, persist : Bool, updateFAM : Bool }
+update : Msg -> FetchStatus -> { fs : FetchStatus, persist : Bool, triggerRefresh : Bool }
 update msg fs =
     let
         pure fs_ =
-            { fs = fs_, persist = False, updateFAM = False }
+            { fs = fs_, persist = False, triggerRefresh = False }
     in
     case msg of
         Sub ->
@@ -223,7 +223,7 @@ update msg fs =
                     pure fs
 
                 _ ->
-                    { fs = Available, persist = True, updateFAM = True }
+                    { fs = Available, persist = True, triggerRefresh = True }
 
         Start posix ->
             case fs of
@@ -239,10 +239,10 @@ update msg fs =
         Hit posix ->
             case fs of
                 Fetching _ _ ->
-                    { fs = NextFetchAt (TimeExtra.add 10000 posix) BO10, persist = True, updateFAM = False }
+                    { fs = NextFetchAt (TimeExtra.add 10000 posix) BO10, persist = True, triggerRefresh = False }
 
                 InitialFetching _ ->
-                    { fs = NextFetchAt (TimeExtra.add 10000 posix) BO10, persist = True, updateFAM = True }
+                    { fs = NextFetchAt (TimeExtra.add 10000 posix) BO10, persist = True, triggerRefresh = True }
 
                 _ ->
                     pure fs
@@ -250,10 +250,10 @@ update msg fs =
         Miss posix ->
             case fs of
                 Fetching _ bo ->
-                    { fs = backoff bo posix, persist = True, updateFAM = False }
+                    { fs = backoff bo posix, persist = True, triggerRefresh = False }
 
                 InitialFetching _ ->
-                    { fs = backoff BO10 posix, persist = True, updateFAM = True }
+                    { fs = backoff BO10 posix, persist = True, triggerRefresh = True }
 
                 _ ->
                     pure fs
@@ -261,7 +261,7 @@ update msg fs =
         Fail ->
             case fs of
                 Fetching posix bo ->
-                    { fs = backoff bo posix, persist = True, updateFAM = False }
+                    { fs = backoff bo posix, persist = True, triggerRefresh = False }
 
                 InitialFetching _ ->
                     -- This is very rare, but can happen.
@@ -279,7 +279,7 @@ update msg fs =
                     pure fs
 
                 NextFetchAt _ _ ->
-                    { fs = NextFetchAt posix BO10, persist = True, updateFAM = False }
+                    { fs = NextFetchAt posix BO10, persist = True, triggerRefresh = False }
 
                 _ ->
                     pure fs

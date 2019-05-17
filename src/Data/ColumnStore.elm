@@ -32,7 +32,7 @@ import Browser.Dom
 import Data.Column as Column exposing (Column, Position(..))
 import Data.ColumnStore.AvailableSources as AvailableSources exposing (AvailableSources)
 import Data.Filter exposing (FilterAtom(..))
-import Data.FilterAtomMaterial as FAM exposing (FilterAtomMaterial, UpdateInstruction)
+import Data.FilterAtomMaterial as FAM
 import Data.ProducerRegistry as ProducerRegistry
 import Data.Storable exposing (Storable)
 import Deque exposing (Deque)

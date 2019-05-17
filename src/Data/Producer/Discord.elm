@@ -244,7 +244,7 @@ famDecoder =
 
 
 type alias Yield =
-    Producer.Yield Message FAM ChannelCache Msg
+    Producer.Yield Message ChannelCache Msg
 
 
 reload : Discord -> ( Discord, Yield )
@@ -263,27 +263,6 @@ reload discord =
         _ ->
             -- Other state; possibly newly introduced one? Do check its possibility of persistence
             pure discord
-
-
-calculateFAM : Dict Channel.Id Channel -> Producer.UpdateFAM FAM
-calculateFAM channels =
-    let
-        filtered =
-            channels |> Dict.foldl reducer [] |> List.sortWith Channel.compareShared
-
-        reducer _ c acc =
-            if FetchStatus.subscribed (Channel.getFetchStatus c) then
-                ChannelCache.from c :: acc
-
-            else
-                acc
-    in
-    case filtered of
-        [] ->
-            DestroyFAM
-
-        c :: _ ->
-            SetFAM ( OfDiscordChannel c.id, filtered )
 
 
 
@@ -458,7 +437,6 @@ handleHydrate discord guilds channels =
             ( Hydrated token (POV token user guilds channels)
             , { yield
                 | persist = True
-                , updateFAM = calculateFAM channels
                 , availableSources = availableChannelCaches channels
                 , work = Just Worque.DiscordFetch
               }
@@ -469,7 +447,6 @@ handleHydrate discord guilds channels =
             ( Hydrated token (POV token user guilds channels)
             , { yield
                 | persist = True
-                , updateFAM = calculateFAM channels
                 , availableSources = availableChannelCaches channels
                 , work = Just Worque.DiscordFetch
               }
@@ -483,7 +460,6 @@ handleHydrate discord guilds channels =
             ( Hydrated token { pov | guilds = guilds, channels = newChannels }
             , { yield
                 | persist = True
-                , updateFAM = calculateFAM newChannels
                 , availableSources = availableChannelCaches newChannels
               }
             )
@@ -604,7 +580,7 @@ unsubscribeImpl tagger cId pov =
     case Dict.get cId pov.channels of
         Just c ->
             let
-                { fs, persist, updateFAM } =
+                { fs, persist, triggerRefresh } =
                     FetchStatus.update Unsub (Channel.getFetchStatus c)
 
                 newChannels =
@@ -613,8 +589,7 @@ unsubscribeImpl tagger cId pov =
             ( tagger { pov | channels = newChannels }
             , { yield
                 | persist = persist
-                , updateFAM = updateOrKeepFAM updateFAM newChannels
-                , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+                , availableSources = updateOrKeepChannelCaches triggerRefresh newChannels
               }
             )
 
@@ -622,18 +597,9 @@ unsubscribeImpl tagger cId pov =
             pure (tagger pov)
 
 
-updateOrKeepFAM : Bool -> Dict Channel.Id Channel -> Producer.UpdateFAM FAM
-updateOrKeepFAM doUpdate channels =
-    if doUpdate then
-        calculateFAM channels
-
-    else
-        KeepFAM
-
-
 updateOrKeepChannelCaches : Bool -> Dict Channel.Id Channel -> Maybe (List ChannelCache)
-updateOrKeepChannelCaches doUpdate channels =
-    if doUpdate then
+updateOrKeepChannelCaches triggerRefresh channels =
+    if triggerRefresh then
         availableChannelCaches channels
 
     else
@@ -716,7 +682,7 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
             case ms of
                 [] ->
                     let
-                        { fs, persist, updateFAM } =
+                        { fs, persist, triggerRefresh } =
                             FetchStatus.update (Miss posix) (Channel.getFetchStatus c)
 
                         newChannels =
@@ -725,15 +691,14 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
                     ( tagger { pov | channels = newChannels }
                     , { yield
                         | persist = persist
-                        , updateFAM = updateOrKeepFAM updateFAM newChannels
-                        , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+                        , availableSources = updateOrKeepChannelCaches triggerRefresh newChannels
                         , work = Just Worque.DiscordFetch
                       }
                     )
 
                 m :: _ ->
                     let
-                        { fs, updateFAM } =
+                        { fs, triggerRefresh } =
                             FetchStatus.update (Hit posix) (Channel.getFetchStatus c)
 
                         newChannels =
@@ -751,8 +716,7 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
                     , { yield
                         | persist = True
                         , items = List.reverse ms
-                        , updateFAM = updateOrKeepFAM updateFAM newChannels
-                        , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+                        , availableSources = updateOrKeepChannelCaches triggerRefresh newChannels
                         , work = Just Worque.DiscordFetch
                       }
                     )
@@ -762,7 +726,6 @@ updatePovOnFetchSuccess tagger cId ms posix pov =
             ( tagger pov
             , { yield
                 | persist = True
-                , updateFAM = calculateFAM pov.channels
                 , availableSources = availableChannelCaches pov.channels
                 , work = Just Worque.DiscordFetch
               }
@@ -830,7 +793,7 @@ updatePovOnPostSuccess tagger cId posix pov =
     case Dict.get cId pov.channels of
         Just c ->
             let
-                { fs, persist, updateFAM } =
+                { fs, persist, triggerRefresh } =
                     FetchStatus.update (Spur posix) (Channel.getFetchStatus c)
 
                 newChannels =
@@ -839,8 +802,7 @@ updatePovOnPostSuccess tagger cId posix pov =
             ( tagger { pov | channels = newChannels }
             , { yield
                 | persist = persist
-                , updateFAM = updateOrKeepFAM updateFAM newChannels
-                , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+                , availableSources = updateOrKeepChannelCaches triggerRefresh newChannels
               }
             )
 
@@ -849,7 +811,6 @@ updatePovOnPostSuccess tagger cId posix pov =
             ( tagger pov
             , { yield
                 | persist = True
-                , updateFAM = calculateFAM pov.channels
                 , availableSources = availableChannelCaches pov.channels
               }
             )
@@ -901,7 +862,6 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
                 ( tagger { pov | channels = newChannels }
                 , { yield
                     | persist = True
-                    , updateFAM = calculateFAM newChannels
                     , availableSources = availableChannelCaches newChannels
                     , work = Just Worque.DiscordFetch
                   }
@@ -910,7 +870,7 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
             else
                 -- Considered transient
                 let
-                    { fs, persist, updateFAM } =
+                    { fs, persist, triggerRefresh } =
                         FetchStatus.update Fail (Channel.getFetchStatus c)
 
                     newChannels =
@@ -926,8 +886,7 @@ updatePovOnChannelAPIError tagger cId httpError req pov =
                 ( tagger { pov | channels = newChannels }
                 , { yield
                     | persist = persist
-                    , updateFAM = updateOrKeepFAM updateFAM newChannels
-                    , availableSources = updateOrKeepChannelCaches updateFAM newChannels
+                    , availableSources = updateOrKeepChannelCaches triggerRefresh newChannels
                     , work = work
                   }
                 )

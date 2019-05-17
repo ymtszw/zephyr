@@ -300,19 +300,19 @@ famDecoder =
 
 
 type alias Yield =
-    Producer.Yield Message FAM ConvoCache Msg
+    Producer.Yield Message ConvoCache Msg
 
 
 {-| Yield from sub component of SlackRegistry (i.e. Team or Convo).
 
-Bubbling up to root registry, then Cmds are batched and the updateFAM is calculated.
+Bubbling up to root registry, then Cmds are batched and the availableSources are calculated.
 
 -}
 type alias SubYield =
     { cmd : Cmd Msg
     , persist : Bool
     , items : List Message
-    , updateFAM : Bool
+    , refreshSources : Bool
     , work : Maybe Worque.Work
     }
 
@@ -322,7 +322,7 @@ sYield =
     { cmd = Cmd.none
     , persist = False
     , items = []
-    , updateFAM = False
+    , refreshSources = False
     , work = Nothing
     }
 
@@ -333,33 +333,17 @@ liftToYield sy sr =
     , persist = sy.persist
     , items = sy.items
     , work = sy.work
-    , updateFAM =
-        if sy.updateFAM then
-            calculateFAM sr
-
-        else
-            KeepFAM
     , availableSources =
-        if sy.updateFAM then
-            Just (subscribedConvsAcrossTeams sr.dict)
+        if sy.refreshSources then
+            Just (subscribedConvosAcrossTeams sr.dict)
 
         else
             Nothing
     }
 
 
-calculateFAM : SlackRegistry -> Producer.UpdateFAM FAM
-calculateFAM sr =
-    case subscribedConvsAcrossTeams sr.dict of
-        [] ->
-            DestroyFAM
-
-        (c :: _) as subscribed ->
-            SetFAM <| FAM (OfSlackConversation c.id) subscribed
-
-
-subscribedConvsAcrossTeams : Dict Team.Id Slack -> List ConvoCache
-subscribedConvsAcrossTeams dict =
+subscribedConvosAcrossTeams : Dict Team.Id Slack -> List ConvoCache
+subscribedConvosAcrossTeams dict =
     let
         reducer _ slack acc =
             let
@@ -420,7 +404,7 @@ reloadTeam _ slack sy =
         Revisit pov ->
             { sy
                 | cmd = Cmd.batch [ sy.cmd, revisit pov.token pov ]
-                , updateFAM = True
+                , refreshSources = True
             }
 
         _ ->
@@ -603,7 +587,7 @@ handleIHydrate users convos slack =
                     mergeConvos pov.convos convos
             in
             ( Hydrated token { pov | users = users, convos = newConvos }
-            , { sYield | persist = True, updateFAM = True }
+            , { sYield | persist = True, refreshSources = True }
             )
 
         _ ->
@@ -669,7 +653,7 @@ handleIRevisit pov slack =
                     mergeConvos oldPov.convos pov.convos
             in
             ( Hydrated pov.token { pov | convos = newConvos }
-            , { sYield | persist = True, updateFAM = True, work = work }
+            , { sYield | persist = True, refreshSources = True, work = work }
             )
     in
     case slack of
@@ -727,17 +711,17 @@ withConversation tagger convoId pov work func =
 
         Nothing ->
             -- Convo somehow gone; should not basically happen
-            ( tagger pov, { sYield | persist = True, updateFAM = True, work = work } )
+            ( tagger pov, { sYield | persist = True, refreshSources = True, work = work } )
 
 
 updateFetchStatus : FetchStatus.Msg -> Convo -> ( Convo, SubYield )
 updateFetchStatus fMsg convo =
     let
-        { fs, persist, updateFAM } =
+        { fs, persist, triggerRefresh } =
             FetchStatus.update fMsg (Convo.getFetchStatus convo)
     in
     ( Convo.setFetchStatus fs convo
-    , { sYield | persist = persist, updateFAM = updateFAM }
+    , { sYield | persist = persist, refreshSources = triggerRefresh }
     )
 
 
@@ -777,7 +761,7 @@ handleFetchImpl : Posix -> Convo -> Slack -> ( Slack, SubYield )
 handleFetchImpl posix convo slack =
     let
         ( newConv, _ ) =
-            -- We never persist/updateFAM on Start
+            -- We never persist/refreshSources on Start
             updateFetchStatus (FetchStatus.Start posix) convo
     in
     case slack of
@@ -926,7 +910,7 @@ handleIAPIFailure convoIdMaybe f slack =
 
         Revisit pov ->
             -- Somehow Revisit failed. Settle with Expired with old pov.
-            ( Expired pov.token pov, { sYield | persist = True, updateFAM = True } )
+            ( Expired pov.token pov, { sYield | persist = True, refreshSources = True } )
 
         Expired _ _ ->
             -- Any API failure on Expired. Just keep the state.
@@ -957,7 +941,7 @@ updatePovOnIApiFailure unauthorizedTagger tagger convoIdMaybe f pov =
                         { pov | convos = Dict.remove fetchedConvIdStr pov.convos }
                 in
                 ( tagger newPov
-                , { sYield | persist = True, work = Just Worque.SlackFetch, updateFAM = True }
+                , { sYield | persist = True, work = Just Worque.SlackFetch, refreshSources = True }
                 )
 
             else

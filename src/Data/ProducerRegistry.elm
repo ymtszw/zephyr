@@ -13,9 +13,8 @@ module Data.ProducerRegistry exposing
 -}
 
 import Data.ColumnStore.AvailableSources as AvailableSources exposing (AvailableSources)
-import Data.FilterAtomMaterial exposing (UpdateInstruction(..))
 import Data.Item exposing (Item(..))
-import Data.Producer as Producer exposing (UpdateFAM(..))
+import Data.Producer as Producer
 import Data.Producer.Discord as Discord exposing (Discord)
 import Data.Producer.Slack as Slack exposing (SlackRegistry)
 import Data.Storable exposing (Storable)
@@ -73,7 +72,6 @@ type Msg
 
 type alias GrossReload =
     { cmd : Cmd Msg
-    , famInstructions : List UpdateInstruction
     , updateAvailableSources : Maybe (AvailableSources -> AvailableSources)
     , works : List Work
     }
@@ -87,31 +85,27 @@ On reload, items are ignored and states are always persisted.
 -}
 reloadAll : ProducerRegistry -> ( ProducerRegistry, GrossReload )
 reloadAll producerRegistry =
-    ( producerRegistry, { cmd = Cmd.none, famInstructions = [], updateAvailableSources = Nothing, works = [] } )
-        |> reloadImpl DiscordInstruction
-            AvailableSources.setDiscordChannels
+    ( producerRegistry, { cmd = Cmd.none, updateAvailableSources = Nothing, works = [] } )
+        |> reloadImpl AvailableSources.setDiscordChannels
             DiscordMsg
             setDiscord
             (Discord.reload producerRegistry.discord)
-        |> reloadImpl SlackInstruction
-            AvailableSources.setSlackConvos
+        |> reloadImpl AvailableSources.setSlackConvos
             SlackMsg
             setSlack
             (Slack.reload producerRegistry.slack)
 
 
 reloadImpl :
-    (UpdateFAM mat -> UpdateInstruction)
-    -> (List s -> AvailableSources -> AvailableSources)
+    (List s -> AvailableSources -> AvailableSources)
     -> (msg -> Msg)
     -> (state -> ProducerRegistry -> ProducerRegistry)
-    -> ( state, Producer.Yield item mat s msg )
+    -> ( state, Producer.Yield item s msg )
     -> ( ProducerRegistry, GrossReload )
     -> ( ProducerRegistry, GrossReload )
-reloadImpl famTagger asSetter msgTagger stateUpdater ( nesState, y ) ( producerRegistry, gr ) =
+reloadImpl asSetter msgTagger stateUpdater ( nesState, y ) ( producerRegistry, gr ) =
     ( stateUpdater nesState producerRegistry
     , { cmd = Cmd.batch [ Cmd.map msgTagger y.cmd, gr.cmd ]
-      , famInstructions = famTagger y.updateFAM :: gr.famInstructions
       , updateAvailableSources = transitiveMap asSetter y.availableSources gr.updateAvailableSources
       , works =
             case y.work of
@@ -147,7 +141,6 @@ type alias Yield =
     { cmd : Cmd Msg
     , persist : Bool
     , items : List Item
-    , famInstruction : UpdateInstruction
     , updateAvailableSources : Maybe (AvailableSources -> AvailableSources)
     , work : Maybe Work
     }
@@ -165,7 +158,6 @@ update msg producerRegistry =
             Discord.update dMsg producerRegistry.discord
                 |> mapYield producerRegistry
                     DiscordItem
-                    DiscordInstruction
                     AvailableSources.setDiscordChannels
                     DiscordMsg
                     setDiscord
@@ -174,7 +166,6 @@ update msg producerRegistry =
             Slack.update sMsg producerRegistry.slack
                 |> mapYield producerRegistry
                     SlackItem
-                    SlackInstruction
                     AvailableSources.setSlackConvos
                     SlackMsg
                     setSlack
@@ -183,18 +174,16 @@ update msg producerRegistry =
 mapYield :
     ProducerRegistry
     -> (item -> Item)
-    -> (UpdateFAM mat -> UpdateInstruction)
     -> (List s -> AvailableSources -> AvailableSources)
     -> (msg -> Msg)
     -> (state -> ProducerRegistry -> ProducerRegistry)
-    -> ( state, Producer.Yield item mat s msg )
+    -> ( state, Producer.Yield item s msg )
     -> ( ProducerRegistry, Yield )
-mapYield registry itemTagger famTagger asSetter msgTagger setter ( newState, y ) =
+mapYield registry itemTagger asSetter msgTagger setter ( newState, y ) =
     ( setter newState registry
     , { cmd = Cmd.map msgTagger y.cmd
       , persist = y.persist
       , items = List.map itemTagger y.items
-      , famInstruction = famTagger y.updateFAM
       , updateAvailableSources = Maybe.map asSetter y.availableSources
       , work = y.work
       }
