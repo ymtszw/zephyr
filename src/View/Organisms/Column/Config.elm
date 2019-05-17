@@ -29,7 +29,7 @@ type alias Effects msg =
 
 type alias Props c =
     { selectState : Select.State
-    , availableSourecs : List ResolvedSource -- Expects it to be already parsed
+    , availableSources : List ResolvedSource -- Expects it to be already parsed
     , column :
         ColumnProps
             { c
@@ -128,7 +128,7 @@ sourceSelector eff props =
         , onSelect = eff.onSourceSelect props.column.id
         , selectedOption = Nothing
         , filterMatch = Just sourceFilterMatch
-        , options = List.map (\s -> ( ResolvedSource.id s, s )) props.availableSourecs
+        , options = List.map (\s -> ( ResolvedSource.id s, s )) props.availableSources
         , optionHtml = ResolvedSource.horizontalBlock14
         }
 
