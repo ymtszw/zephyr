@@ -1,10 +1,14 @@
-module Data.ColumnStore.AvailableSources exposing (AvailableSources, init, encode, decoder)
+module Data.ColumnStore.AvailableSources exposing
+    ( AvailableSources, init, encode, decoder
+    , setDiscordChannels, setSlackConvos
+    )
 
 {-| Data.Column.Sources that available to be used.
 
 Stored in ColumnStore for faster access, act as cache of ProducerRegistry.
 
 @docs AvailableSources, init, encode, decoder
+@docs setDiscordChannels, setSlackConvos
 
 -}
 
@@ -43,3 +47,13 @@ decoder =
     D.map2 AvailableSources
         (D.field "discordChannels" ChannelCache.listDecoder)
         (D.field "slackConvos" ConvoCache.listDecoder)
+
+
+setDiscordChannels : List ChannelCache -> AvailableSources -> AvailableSources
+setDiscordChannels val record =
+    { record | discordChannels = val }
+
+
+setSlackConvos : List ConvoCache -> AvailableSources -> AvailableSources
+setSlackConvos val record =
+    { record | slackConvos = val }

@@ -1,13 +1,14 @@
 module Data.ProducerRegistry exposing
-    ( init, decoder, storeId
+    ( ProducerRegistry, init, encode, decoder, storeId
     , GrossReload, reloadAll, Msg(..), Yield, update
-    , ProducerRegistry, encode
+    , setDiscord, setSlack
     )
 
 {-| Types and functions representing data produecr in Zephyr.
 
-@docs Producer, init, encodeRegistry, decoder, storeId
+@docs ProducerRegistry, init, encode, decoder, storeId
 @docs GrossReload, reloadAll, Msg, Yield, update
+@docs setDiscord, setSlack
 
 -}
 
@@ -140,32 +141,53 @@ update msg producerRegistry =
     case msg of
         DiscordMsg dMsg ->
             Discord.update dMsg producerRegistry.discord
-                |> mapYield DiscordItem
+                |> mapYield producerRegistry
+                    DiscordItem
                     DiscordInstruction
+                    AvailableSources.setDiscordChannels
                     DiscordMsg
-                    (\newState -> { producerRegistry | discord = newState })
+                    setDiscord
 
         SlackMsg sMsg ->
             Slack.update sMsg producerRegistry.slack
-                |> mapYield SlackItem
+                |> mapYield producerRegistry
+                    SlackItem
                     SlackInstruction
+                    AvailableSources.setSlackConvos
                     SlackMsg
-                    (\newState -> { producerRegistry | slack = newState })
+                    setSlack
 
 
 mapYield :
-    (item -> Item)
+    ProducerRegistry
+    -> (item -> Item)
     -> (UpdateFAM mat -> UpdateInstruction)
+    -> (List s -> AvailableSources -> AvailableSources)
     -> (msg -> Msg)
-    -> (state -> ProducerRegistry)
-    -> ( state, Producer.Yield item mat msg )
+    -> (state -> ProducerRegistry -> ProducerRegistry)
+    -> ( state, Producer.Yield item mat s msg )
     -> ( ProducerRegistry, Yield )
-mapYield itemTagger famTagger msgTagger stateSetter ( newState, y ) =
-    ( stateSetter newState
+mapYield registry itemTagger famTagger asSetter msgTagger setter ( newState, y ) =
+    ( setter newState registry
     , { cmd = Cmd.map msgTagger y.cmd
       , persist = y.persist
       , items = List.map itemTagger y.items
       , famInstruction = famTagger y.updateFAM
+      , updateAvailableSources = Maybe.map asSetter y.availableSources
       , work = y.work
       }
     )
+
+
+
+-- Accessors
+
+
+setDiscord : Discord -> ProducerRegistry -> ProducerRegistry
+setDiscord val registry =
+    { registry | discord = val }
+
+
+setSlack : SlackRegistry -> ProducerRegistry -> ProducerRegistry
+setSlack val registry =
+    { registry | slack = val }
